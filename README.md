@@ -18,7 +18,13 @@ Die ausführliche Produktvision und die bisher festgelegten Spielregeln stehen i
 
 ## Datenbasis
 
-Das fachliche Datenmodell ist in [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) beschrieben. Die initiale PostgreSQL-Struktur liegt in [`db/migrations/001_catalog_schema.sql`](db/migrations/001_catalog_schema.sql) und [`db/migrations/002_challenge_history_schema.sql`](db/migrations/002_challenge_history_schema.sql).
+Das fachliche Datenmodell ist in [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) beschrieben. Die initiale Katalogbefüllung und ihre Pflegeprinzipien stehen in [`docs/INITIAL_CATALOG.md`](docs/INITIAL_CATALOG.md).
+
+Die PostgreSQL-Struktur liegt unter [`db/migrations`](db/migrations), die initialen Daten unter [`db/seeds`](db/seeds). Für eine frische Datenbank führt [`db/bootstrap.sql`](db/bootstrap.sql) Migrationen, Seeds und anschließend den strukturellen Sanity-Check aus:
+
+```bash
+psql -v ON_ERROR_STOP=1 -1 -f db/bootstrap.sql "$DATABASE_URL"
+```
 
 Zentrale Modellierungsentscheidungen sind insbesondere:
 
@@ -29,6 +35,8 @@ Zentrale Modellierungsentscheidungen sind insbesondere:
 - persistente Audit-Historie für Kandidatensätze und Kuratorentscheidungen
 - freie manuelle Vorgaben, die den Zufallsgenerator und seine Regeln bewusst übersteuern können
 
+Der initiale Katalog umfasst 155 Zutatenkonzepte, davon 153 zufällig ziehbar. Jeder aktive Zieh-Kandidat besitzt mindestens eine funktionale Rolle sowie eine Beschaffbarkeitseinschätzung für Georgia und Tobias.
+
 ## Status
 
-Produktvision und initiales Datenmodell sind spezifiziert. Die PostgreSQL-Grundstruktur ist angelegt; als nächster Schritt folgt die initiale Befüllung der Zutaten-, Rollen-, Eigenschafts- und Kategorienbasis.
+Produktvision, Datenmodell, PostgreSQL-Grundstruktur und initialer Zutatenkatalog sind angelegt. Als nächster Entwicklungsschritt folgt die Spezifikation der harten Generierungsregeln und anschließend der Kandidatengenerator.
