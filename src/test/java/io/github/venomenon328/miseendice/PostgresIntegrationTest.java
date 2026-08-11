@@ -4,9 +4,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import io.github.venomenon328.miseendice.catalog.api.CatalogAggregateSnapshot;
+import io.github.venomenon328.miseendice.catalog.api.CatalogAuditEntry;
+import io.github.venomenon328.miseendice.catalog.api.CatalogAuditEntryDraft;
+import io.github.venomenon328.miseendice.catalog.api.CatalogAuditLog;
+import io.github.venomenon328.miseendice.catalog.internal.JdbcCatalogAggregateVersionRepository;
 import javax.sql.DataSource;
 import liquibase.Contexts;
 import liquibase.LabelExpression;
@@ -49,9 +58,15 @@ class PostgresIntegrationTest {
     @Autowired
     private DataSource dataSource;
 
+    @Autowired
+    private CatalogAuditLog catalogAuditLog;
+
+    @Autowired
+    private JdbcCatalogAggregateVersionRepository aggregateVersionRepository;
+
     @Test
     void applicationContextStartsWithTheCompleteLiquibaseBaseline() {
-        assertThat(count("databasechangelog")).isEqualTo(16);
+        assertThat(count("databasechangelog")).isEqualTo(17);
         assertThat(count("ingredient_concept")).isEqualTo(642);
         assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(640);
         assertThat(countWhere("ingredient_concept", "active and random_draw_enabled and challenge_specificity = 'OPEN'"))
@@ -61,6 +76,107 @@ class PostgresIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from ingredient_concept where code = 'ALIGUE'", Integer.class))
                 .isEqualTo(1);
+    }
+
+    @Test
+    void administrationChangesetInitializesVersionsAndAuditSchema() {
+        assertThat(countWhere("ingredient_concept", "version = 0")).isEqualTo(642);
+        assertThat(countWhere("exclusion_rule", "version = 0")).isEqualTo(count("exclusion_rule"));
+        assertThat(jdbcTemplate.queryForList(
+                """
+                select column_name || ':' || data_type
+                from information_schema.columns
+                where table_schema = 'public' and table_name = 'catalog_audit_entry'
+                """,
+                String.class
+        )).contains("before_state:jsonb", "after_state:jsonb");
+        assertThat(jdbcTemplate.queryForList(
+                """
+                select indexname
+                from pg_indexes
+                where schemaname = 'public' and tablename = 'catalog_audit_entry'
+                """,
+                String.class
+        )).contains(
+                "ix_catalog_audit_entry_entity_occurred_at",
+                "ix_catalog_audit_entry_actor_occurred_at",
+                "ix_catalog_audit_entry_change_group"
+        );
+        assertThat(jdbcTemplate.queryForObject(
+                """
+                select count(*)
+                from information_schema.table_constraints
+                where table_schema = 'public'
+                  and table_name = 'catalog_audit_entry'
+                  and constraint_type = 'FOREIGN KEY'
+                """,
+                Integer.class
+        )).isZero();
+    }
+
+    @Test
+    void upgradeFromThePreviousLiquibaseBaselineAppliesAdministrationFoundation() throws Exception {
+        String upgradeDatabase = "administration_upgrade_" + UUID.randomUUID().toString().replace("-", "");
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            statement.execute("create database " + upgradeDatabase);
+        }
+
+        String upgradeUrl = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + upgradeDatabase);
+        try (Connection connection = DriverManager.getConnection(upgradeUrl, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+            runLiquibase(connection, "db/changelog/db.changelog-before-administration.yaml");
+            assertThat(count(connection, "databasechangelog")).isEqualTo(16);
+
+            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+
+            assertThat(count(connection, "databasechangelog")).isEqualTo(17);
+            assertThat(countWhere(connection, "ingredient_concept", "version = 0")).isEqualTo(642);
+            assertThat(countWhere(connection, "exclusion_rule", "version = 0")).isEqualTo(count(connection, "exclusion_rule"));
+            assertThat(count(connection, "catalog_audit_entry")).isZero();
+        }
+    }
+
+    @Test
+    void catalogAuditEntriesPersistAndReadBackAggregateSnapshots() {
+        UUID changeGroupId = UUID.randomUUID();
+        CatalogAuditEntry persisted = catalogAuditLog.append(new CatalogAuditEntryDraft(
+                changeGroupId,
+                "editor-tobias",
+                "INGREDIENT_CONCEPT",
+                42,
+                "UPDATED",
+                new CatalogAggregateSnapshot(Map.of("displayName", "Miso", "active", true)),
+                new CatalogAggregateSnapshot(Map.of("displayName", "Rotes Miso", "active", true))
+        ));
+
+        assertThat(persisted.id()).isPositive();
+        assertThat(persisted.changeGroupId()).isEqualTo(changeGroupId);
+        assertThat(persisted.payloadVersion()).isEqualTo((short) 1);
+        assertThat(persisted.occurredAt()).isNotNull();
+        assertThat(catalogAuditLog.findById(persisted.id()))
+                .contains(persisted);
+    }
+
+    @Test
+    void aggregateVersionUpdatesRequireTheExpectedVersion() {
+        long conceptId = insertConcept("versioned-concept");
+        long exclusionRuleId = insertReturningId(
+                """
+                insert into exclusion_rule (code, display_text, base_draw_weight)
+                values (?, ?, 1.0000)
+                returning id
+                """,
+                "TEST_VERSION_" + UUID.randomUUID().toString().replace("-", ""),
+                "Test version " + UUID.randomUUID()
+        );
+        try {
+            assertThat(aggregateVersionRepository.advanceIngredientConceptVersion(conceptId, 0)).isTrue();
+            assertThat(aggregateVersionRepository.advanceIngredientConceptVersion(conceptId, 0)).isFalse();
+            assertThat(aggregateVersionRepository.advanceExclusionRuleVersion(exclusionRuleId, 0)).isTrue();
+            assertThat(aggregateVersionRepository.advanceExclusionRuleVersion(exclusionRuleId, 0)).isFalse();
+        } finally {
+            jdbcTemplate.update("delete from exclusion_rule where id = ?", exclusionRuleId);
+            jdbcTemplate.update("delete from ingredient_concept where id = ?", conceptId);
+        }
     }
 
     @Test
@@ -213,15 +329,15 @@ class PostgresIntegrationTest {
 
     private void rerunLiquibase() throws Exception {
         try (Connection connection = dataSource.getConnection()) {
-            Database database = DatabaseFactory.getInstance()
-                    .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-            Liquibase liquibase = new Liquibase(
-                    "db/changelog/db.changelog-master.yaml",
-                    new ClassLoaderResourceAccessor(),
-                    database
-            );
-            liquibase.update(new Contexts(), new LabelExpression());
+            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
         }
+    }
+
+    private static void runLiquibase(Connection connection, String changelog) throws Exception {
+        Database database = DatabaseFactory.getInstance()
+                .findCorrectDatabaseImplementation(new JdbcConnection(connection));
+        Liquibase liquibase = new Liquibase(changelog, new ClassLoaderResourceAccessor(), database);
+        liquibase.update(new Contexts(), new LabelExpression());
     }
 
     private long insertConcept(String label) {
@@ -308,5 +424,21 @@ class PostgresIntegrationTest {
 
     private int countWhere(String table, String whereClause) {
         return jdbcTemplate.queryForObject("select count(*) from " + table + " where " + whereClause, Integer.class);
+    }
+
+    private static int count(Connection connection, String table) throws Exception {
+        try (Statement statement = connection.createStatement(); ResultSet result = statement.executeQuery("select count(*) from " + table)) {
+            result.next();
+            return result.getInt(1);
+        }
+    }
+
+    private static int countWhere(Connection connection, String table, String whereClause) throws Exception {
+        try (Statement statement = connection.createStatement(); ResultSet result = statement.executeQuery(
+                "select count(*) from " + table + " where " + whereClause
+        )) {
+            result.next();
+            return result.getInt(1);
+        }
     }
 }

@@ -246,6 +246,12 @@ Vor den ersten schreibenden Katalogmasken müssen folgende Punkte spezifiziert u
 
 Die genaue Tabellen- und UI-Ausgestaltung wird im Webentwicklungspaket festgelegt und ist nicht Bestandteil des reinen Anwendungsfundaments.
 
+### 8.4 Administrationssicherheits- und Schreibfundament
+
+Der optional aktivierbare Administrationsadapter schützt `/admin/**` mit Spring Security, Form-Login, einer serverseitigen Session und aktivem CSRF-Schutz. Seine ein oder zwei Identitäten stammen zunächst ausschließlich aus externer Konfiguration: stabiler `actor_key`, Anzeigename und BCrypt-Passworthash. Sie sind keine `participant`-Datensätze und es gibt weder eine Default-Anmeldung noch eine Datenbank-Benutzerverwaltung.
+
+`ingredient_concept` und `exclusion_rule` besitzen eine Aggregatversion für optimistisches Locking. Spätere schreibende Application Services erhöhen sie innerhalb ihrer Transaktion ausschließlich beim erwarteten Versionswert. `catalog_audit_entry` speichert dafür fachliche JSONB-Vorher-/Nachher-Snapshots mit Akteur und `change_group_id`; sie enthält keine HTTP- oder Sicherheitsdaten und hat bewusst keine Fremdschlüssel auf Teilnehmer oder veränderliche Katalogobjekte.
+
 ## 9. Konfiguration und Betrieb
 
 Konfiguration erfolgt über Spring-Boot-Properties und Umgebungsvariablen. Geheimnisse werden weder committed noch in Beispielkonfigurationen mit echten Werten abgelegt.

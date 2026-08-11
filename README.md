@@ -33,6 +33,21 @@ docker compose up -d postgres
 
 Beim Start führt Liquibase eine leere Datenbank vollständig auf die Katalog-Baseline. Ein erneuter Start führt bereits protokollierte Changesets nicht erneut aus und überschreibt damit keine redaktionellen Katalogänderungen. Die Health-Prüfung steht danach unter <http://localhost:8080/actuator/health> bereit.
 
+### Private Administration aktivieren
+
+Der Administrationsadapter ist standardmäßig deaktiviert. Dann werden keine Admin-Zugangsdaten benötigt und es gibt keine Fallback-Anmeldung. Zum Aktivieren sind in einer **nicht versionierten** lokalen `.env` ein oder zwei Konten vollständig zu konfigurieren:
+
+```properties
+MISE_EN_DICE_ADMINISTRATION_ENABLED=true
+MISE_EN_DICE_ADMINISTRATION_ACCOUNTS_0_ACTOR_KEY=local-admin
+MISE_EN_DICE_ADMINISTRATION_ACCOUNTS_0_DISPLAY_NAME=Local Admin
+MISE_EN_DICE_ADMINISTRATION_ACCOUNTS_0_PASSWORD_HASH=$2b$12$replace-this-with-a-real-60-character-bcrypt-hash
+```
+
+Die Anwendung akzeptiert ausschließlich gültige BCrypt-Hashes; fehlende oder unvollständige Werte beenden den Start mit einer klaren Konfigurationsfehlermeldung. Einen Hash erzeugst du beispielsweise außerhalb des Repositories mit einem vertrauenswürdigen lokalen Werkzeug. Niemals ein Klartextpasswort oder einen funktionsfähigen Hash committen. Der geschützte technische Einstieg liegt bei `/admin`; eine Katalogoberfläche folgt erst in einem späteren Paket.
+
+Session-Cookies sind `HttpOnly` und `SameSite=Lax`. Für eine produktive HTTPS-Bereitstellung muss zusätzlich `SERVER_SERVLET_SESSION_COOKIE_SECURE=true` gesetzt werden. Der CSRF-Schutz bleibt aktiv.
+
 Alle Datenbanktests verwenden PostgreSQL 17 in Testcontainers; H2, JPA und Hibernate sind nicht Bestandteil des Builds:
 
 ```bash

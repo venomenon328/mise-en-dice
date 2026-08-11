@@ -6,6 +6,7 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 
 - [`001-catalog-schema.sql`](../src/main/resources/db/changelog/schema/001-catalog-schema.sql) für Zutatenwissen und Generator-Metadaten
 - [`002-challenge-history-schema.sql`](../src/main/resources/db/changelog/schema/002-challenge-history-schema.sql) für Generierung, Kuratierung und sichtbare Challenge-Historie
+- [`003-administration-foundation.sql`](../src/main/resources/db/changelog/schema/003-administration-foundation.sql) für optimistisches Locking und Katalog-Audit
 
 Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
 
@@ -193,7 +194,22 @@ Ein freiwilliger Reroll überschreibt die alte Challenge nicht. Die ursprünglic
 
 Die Fremdschlüssel auf die aktuellen Katalogeinträge bleiben für Auswertungen erhalten, während die damalige Darstellung unabhängig von späteren Umbenennungen nachvollziehbar bleibt.
 
-## 13. Bewusst nicht in der Datenbank erzwungene Regeln
+## 13. Administrationsversionen und Katalog-Audit
+
+`ingredient_concept.version` und `exclusion_rule.version` starten für bestehende und neue Datensätze bei `0`. Sie schützen jeweils das gesamte künftig bearbeitete Verwaltungsaggregat. Ein schreibender Application Service verwendet den erwarteten Versionswert und erhöht die Version nur im selben erfolgreichen Update; ein nicht aktualisierter Datensatz signalisiert einen fachlichen Konkurrenzkonflikt. Zugeordnete Rollen, Eigenschaften, Verfügbarkeiten, Saisonwerte und direkte Konkretisierungsbeziehungen erhalten keine eigenen UI-Versionen.
+
+`catalog_audit_entry` hält jede erfolgreiche redaktionelle Änderung dauerhaft fest:
+
+```text
+id, change_group_id, actor_key, entity_type, entity_id, action,
+before_state jsonb, after_state jsonb, payload_version, occurred_at
+```
+
+Die Indizes auf `(entity_type, entity_id, occurred_at desc)`, `(actor_key, occurred_at desc)` und `change_group_id` unterstützen Entity-Historie, Akteursfilter und zusammengehörende Änderungen. Die Tabelle besitzt bewusst keinen Fremdschlüssel auf `participant` oder veränderliche Katalogobjekte: ein Audit-Eintrag soll auch nach Deaktivierung oder einer späteren, bewusst behandelten Datenbereinigung lesbar bleiben.
+
+Die Snapshots sind fachliche Aggregatdaten, keine HTTP-Formulare. Insbesondere enthalten sie keine Passwörter, Session-, Cookie- oder CSRF-Daten. Die zugehörige Administrationsidentität wird zunächst extern konfiguriert und bleibt technisch vom fachlichen Teilnehmermodell getrennt.
+
+## 14. Bewusst nicht in der Datenbank erzwungene Regeln
 
 Unter anderem bleiben im Anwendungscode:
 
@@ -208,7 +224,7 @@ Unter anderem bleiben im Anwendungscode:
 
 Diese Regeln sind absichtlich nicht als konfigurierbare SQL-Regelmaschine modelliert.
 
-## 14. Noch nicht modellierte spätere Funktionen
+## 15. Noch nicht modellierte spätere Funktionen
 
 Die Struktur soll folgende Erweiterungen ermöglichen, bildet sie aber noch nicht ab:
 
@@ -221,7 +237,7 @@ Die Struktur soll folgende Erweiterungen ermöglichen, bildet sie aber noch nich
 
 Für solche Daten kann später auf `challenge`, `participant` und die gespeicherten Challenge-Vorgaben referenziert werden. Freitext beziehungsweise optionale Katalogreferenzen können wie bei manuellen Vorgaben kombiniert werden, sodass die Zutatenbasis auch künftig nicht künstlich vollständig sein muss.
 
-## 15. Datenbank aufsetzen
+## 16. Datenbank aufsetzen
 
 Für eine frische PostgreSQL-Datenbank gibt es genau einen Einstiegspunkt: Liquibase beim Anwendungsstart. Die Anwendung akzeptiert eine vollständige JDBC-URL über `MISE_EN_DICE_DB_URL` oder leitet sie aus `MISE_EN_DICE_DB_HOST`, `MISE_EN_DICE_DB_PORT` und `MISE_EN_DICE_DB_NAME` ab; Benutzername und Passwort kommen aus `MISE_EN_DICE_DB_USERNAME` und `MISE_EN_DICE_DB_PASSWORD`. Für lokale Entwicklung existieren Standardwerte in `application.yml` und `.env.example`.
 
