@@ -31,5 +31,3 @@ databaseChangeLog:
       file: db/changelog/catalog/013-exclusion-rules-expansion.sql
   - include:
       file: db/changelog/checks/001-seed-sanity.sql
-  - include:
-      file: db/changelog/schema/003-administration-foundation.sql
