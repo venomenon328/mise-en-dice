@@ -2,12 +2,12 @@
 
 Stand: 11. August 2026
 
-Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der initialen PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt in zwei aufeinander aufbauenden Migrationen:
+Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt als explizit geordnete Liquibase-Changesets vor:
 
-- [`db/migrations/001_catalog_schema.sql`](../db/migrations/001_catalog_schema.sql) für Zutatenwissen und Generator-Metadaten
-- [`db/migrations/002_challenge_history_schema.sql`](../db/migrations/002_challenge_history_schema.sql) für Generierung, Kuratierung und sichtbare Challenge-Historie
+- [`001-catalog-schema.sql`](../src/main/resources/db/changelog/schema/001-catalog-schema.sql) für Zutatenwissen und Generator-Metadaten
+- [`002-challenge-history-schema.sql`](../src/main/resources/db/changelog/schema/002-challenge-history-schema.sql) für Generierung, Kuratierung und sichtbare Challenge-Historie
 
-Die erste kuratierte Befüllung liegt unter [`db/seeds`](../db/seeds) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
+Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
 
 ## 1. Ziel und Abgrenzung
 
@@ -223,12 +223,13 @@ Für solche Daten kann später auf `challenge`, `participant` und die gespeicher
 
 ## 15. Datenbank aufsetzen
 
-Für eine frische PostgreSQL-Datenbank gibt es einen vollständigen Bootstrap-Einstiegspunkt. Er führt beide Migrationen, alle initialen Seeds und anschließend den strukturellen Sanity-Check in einer Transaktion aus:
+Für eine frische PostgreSQL-Datenbank gibt es genau einen Einstiegspunkt: Liquibase beim Anwendungsstart. Die Anwendung akzeptiert eine vollständige JDBC-URL über `MISE_EN_DICE_DB_URL` oder leitet sie aus `MISE_EN_DICE_DB_HOST`, `MISE_EN_DICE_DB_PORT` und `MISE_EN_DICE_DB_NAME` ab; Benutzername und Passwort kommen aus `MISE_EN_DICE_DB_USERNAME` und `MISE_EN_DICE_DB_PASSWORD`. Für lokale Entwicklung existieren Standardwerte in `application.yml` und `.env.example`.
 
 ```bash
-psql -v ON_ERROR_STOP=1 -1 -f db/bootstrap.sql "$DATABASE_URL"
+docker compose up -d postgres
+./mvnw spring-boot:run
 ```
 
-Die einzelnen Schritte können bei Bedarf weiterhin separat ausgeführt werden. Die Seed-Reihenfolge und die inhaltlichen Pflegeprinzipien sind in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) dokumentiert.
+Der Master-Changelog führt beide Schemas, Referenzdaten, den initialen Katalog und anschließend den strukturellen Sanity-Check in fester Reihenfolge aus. Jeder Changeset wird von Liquibase genau einmal protokolliert; ein späterer Neustart führt weder die Katalog-Baseline erneut aus noch überschreibt er operative Daten. Eine vorhandene, außerhalb Liquibase erstellte Datenbank wird bewusst nicht übernommen.
 
-[`db/checks/001_seed_sanity.sql`](../db/checks/001_seed_sanity.sql) prüft insbesondere, dass der aktive Ziehungspool ausreichend groß ist und jeder aktive Zieh-Kandidat funktionale Rollen sowie Beschaffbarkeitsdaten für Georgia und Tobias besitzt.
+[`001-seed-sanity.sql`](../src/main/resources/db/changelog/checks/001-seed-sanity.sql) prüft beim ersten Aufbau insbesondere, dass der aktive Ziehungspool ausreichend groß ist und jeder aktive Zieh-Kandidat funktionale Rollen sowie Beschaffbarkeitsdaten für Georgia und Tobias besitzt. Die vollständige Ausführung wird zusätzlich in PostgreSQL-Testcontainers-Integrationstests geprüft.

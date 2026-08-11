@@ -27,4 +27,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Nach Abschluss des laufenden Katalogausbaus in PR #1 folgt Issue #2 zum Anwendungsfundament aus Spring Boot, Spring Modulith, Liquibase und echten PostgreSQL-Integrationstests. Anschließend wird die private Webverwaltung detailliert spezifiziert.
+Das Anwendungsfundament aus Spring Boot, Spring Modulith, Liquibase und echten PostgreSQL-Integrationstests ist umgesetzt. Als Nächstes wird die private Webverwaltung detailliert spezifiziert.

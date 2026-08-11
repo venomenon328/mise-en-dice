@@ -18,21 +18,21 @@ Jedes Paket soll:
 
 Größere zusammenhängende Pakete werden bevorzugt mit Codex umgesetzt. Kleine isolierte Nacharbeiten, Reviews und klar lokalisierte Fehlerbehebungen können direkt übernommen werden.
 
-## Phase 0: Katalog-Baseline abschließen
+## Phase 0: Katalog-Baseline abschließen (abgeschlossen)
 
-Der laufende Ausbau des initialen Zutatenkatalogs in PR #1 wird vor dem Anwendungsfundament abgeschlossen.
+Der Ausbau des initialen Zutatenkatalogs in PR #1 wurde vor dem Anwendungsfundament abgeschlossen und nach `main` gemergt.
 
 Er bildet die Baseline, die anschließend in Liquibase überführt wird. Das Infrastrukturpaket soll nicht parallel eine zweite, abweichende Kopie der Katalogdaten erzeugen.
 
-**Gate für die nächste Phase:**
+**Erfülltes Gate für die nächste Phase:**
 
 - PR #1 ist gemergt,
 - alle Seed-Manifeste sind strukturell validiert,
 - der aktuelle Inhalt von `main` ist der verbindliche Ausgangspunkt.
 
-## Phase 1: Anwendungs- und Persistenzfundament
+## Phase 1: Anwendungs- und Persistenzfundament (abgeschlossen)
 
-Ziel ist ein ausführbares, getestetes Spring-Boot-Grundsystem ohne produktive Web-, Bot-, Generator- oder Kuratorfunktionen.
+Das Ergebnis ist ein ausführbares, getestetes Spring-Boot-Grundsystem ohne produktive Web-, Bot-, Generator- oder Kuratorfunktionen.
 
 Enthalten sind insbesondere:
 
@@ -54,7 +54,7 @@ Nicht enthalten sind:
 - JDA beziehungsweise Discord-Kommandos,
 - fachliche Änderungen am bestehenden Katalogmodell, soweit sie nicht zwingend für die technische Überführung erforderlich sind.
 
-**Gate für die nächste Phase:**
+**Erfülltes Gate für die nächste Phase:**
 
 - eine leere PostgreSQL-Datenbank wird ausschließlich über Liquibase vollständig aufgebaut,
 - ein zweiter Start verändert die Baseline nicht erneut,
