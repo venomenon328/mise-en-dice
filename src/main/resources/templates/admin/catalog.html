@@ -16,7 +16,7 @@
         <span aria-disabled="true">Änderungen <small>(später)</small></span>
     </nav>
     <div class="account">
-        <span th:text="${administratorName}">Administration</span>
+        <span th:text="${administratorDisplayName}">Administration</span>
         <form th:action="@{/logout}" method="post">
             <button type="submit">Abmelden</button>
         </form>
@@ -34,6 +34,7 @@
             <input type="hidden" name="view" th:value="${state.requestedView}">
             <input type="hidden" name="sort" th:value="${state.sort}">
             <input type="hidden" name="size" th:value="${state.pageSize}">
+            <input th:if="${state.quickFilter != null}" type="hidden" name="quick" th:value="${state.quickFilter}">
             <input th:if="${state.selectedConceptId != null}" type="hidden" name="selected" th:value="${state.selectedConceptId}">
             <label for="catalog-search">Suche nach Name oder Code</label>
             <div class="search-row">
