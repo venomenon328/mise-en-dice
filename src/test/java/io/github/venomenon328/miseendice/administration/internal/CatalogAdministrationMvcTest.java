@@ -67,6 +67,7 @@ class CatalogAdministrationMvcTest {
     private long codParentId;
     private long expandableRootId;
     private long scaleConceptId;
+    private long scaleConceptParentId;
     private int scaleNoveltyLevel;
     private String managedDimensionCode;
     private int managedDimensionLevel;
@@ -81,7 +82,6 @@ class CatalogAdministrationMvcTest {
         codId = conceptIdByCode("COD");
         var codDetail = catalogQueries.findConcept(codId).orElseThrow();
         codParentId = codDetail.directParents().getFirst().id();
-        assertTrue(codDetail.directChildren().isEmpty(), "COD is expected to remain a hierarchy leaf for this fixture");
 
         expandableRootId = catalogQueries.findHierarchyRoots().stream()
                 .filter(node -> node.hasDirectChildren())
@@ -91,6 +91,9 @@ class CatalogAdministrationMvcTest {
 
         scaleConceptId = conceptIdByCode("BEEF_LIVER");
         var scaleDetail = catalogQueries.findConcept(scaleConceptId).orElseThrow();
+        assertTrue(scaleDetail.directChildren().isEmpty(),
+                "BEEF_LIVER is expected to remain a hierarchy leaf for this fixture");
+        scaleConceptParentId = scaleDetail.directParents().getFirst().id();
         scaleNoveltyLevel = scaleDetail.noveltyLevel();
         var managedDimension = scaleDetail.culinaryDimensions().stream()
                 .filter(dimension -> dimension.level() != null)
@@ -170,14 +173,14 @@ class CatalogAdministrationMvcTest {
         assertTrue(rootsHtml.contains("aria-controls=\"children-" + expandableRootId + "\""));
         assertTrue(rootsHtml.contains("hx-trigger=\"tree-load\""));
 
-        MvcResult childrenResult = mockMvc.perform(get("/admin/catalog/{id}/children", codParentId)
+        MvcResult childrenResult = mockMvc.perform(get("/admin/catalog/{id}/children", scaleConceptParentId)
                         .session(session)
                         .header("HX-Request", "true"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Kabeljau")))
+                .andExpect(content().string(containsString("Rinderleber")))
                 .andReturn();
         String childrenHtml = childrenResult.getResponse().getContentAsString();
-        assertFalse(childrenHtml.contains("data-node-id=\"" + codId + "\""),
+        assertFalse(childrenHtml.contains("data-node-id=\"" + scaleConceptId + "\""),
                 "A leaf node must not render a non-functional hierarchy toggle");
     }
 
