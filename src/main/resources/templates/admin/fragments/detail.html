@@ -2,73 +2,199 @@
 <html lang="de" xmlns:th="https://www.thymeleaf.org">
 <body>
 <section th:fragment="panel" id="catalog-detail" class="detail-panel" data-testid="catalog-detail">
-    <header>
-        <p class="eyebrow" th:text="${detail.code}">COD</p>
-        <h2 th:text="${detail.displayName}">Kabeljau</h2>
-        <p class="status-line">
-            <span th:text="${detail.active ? 'Aktiv' : 'Inaktiv'}">Aktiv</span>
-            <span th:text="${detail.challengeSpecificity == 'OPEN' ? 'Offen' : 'Spezifisch'}">Spezifisch</span>
-            <span th:text="${detail.randomDrawEnabled ? 'Ziehbar' : 'Nicht ziehbar'}">Ziehbar</span>
-        </p>
+    <header class="detail-header">
+        <div>
+            <p class="eyebrow" th:text="${detail.code}">COD</p>
+            <h2 th:text="${detail.displayName}">Kabeljau</h2>
+            <p class="status-line">
+                <span class="status-badge"
+                      th:classappend="${detail.active} ? ' status-badge--positive' : ' status-badge--muted'"
+                      th:text="${detail.active ? 'Aktiv' : 'Inaktiv'}">Aktiv</span>
+                <span class="status-badge"
+                      th:classappend="${detail.challengeSpecificity == 'OPEN'} ? ' status-badge--accent' : ' status-badge--neutral'"
+                      th:text="${detail.challengeSpecificity == 'OPEN' ? 'Offen' : 'Spezifisch'}">Spezifisch</span>
+                <span class="status-badge"
+                      th:classappend="${detail.randomDrawEnabled} ? ' status-badge--brand' : ' status-badge--muted'"
+                      th:text="${detail.randomDrawEnabled ? 'Ziehbar' : 'Nicht ziehbar'}">Ziehbar</span>
+            </p>
+        </div>
     </header>
 
-    <section>
-        <h3>Basis</h3>
-        <dl><div><dt>Anzeigename</dt><dd th:text="${detail.displayName}">Kabeljau</dd></div>
-            <div><dt>Code</dt><dd><code th:text="${detail.code}">COD</code></dd></div></dl>
+    <section class="detail-section">
+        <div class="detail-section-heading">
+            <p class="section-kicker">Identität</p>
+            <h3>Basis</h3>
+        </div>
+        <dl class="detail-list">
+            <div><dt>Anzeigename</dt><dd th:text="${detail.displayName}">Kabeljau</dd></div>
+            <div><dt>Code</dt><dd><code th:text="${detail.code}">COD</code></dd></div>
+        </dl>
     </section>
-    <section>
-        <h3>Ziehung</h3>
-        <dl><div><dt>Gewicht</dt><dd th:text="${detail.baseDrawWeight}">1.0000</dd></div>
-            <div><dt>Ungewöhnlichkeit</dt><dd th:text="${detail.noveltyLevel == null ? 'nicht gepflegt' : 'Stufe ' + detail.noveltyLevel}">Stufe</dd></div></dl>
+
+    <section class="detail-section">
+        <div class="detail-section-heading">
+            <p class="section-kicker">Challenge</p>
+            <h3>Ziehung</h3>
+        </div>
+        <dl class="detail-list">
+            <div><dt>Gewicht</dt><dd class="numeric-value" th:text="${detail.baseDrawWeight}">1.0000</dd></div>
+            <div>
+                <dt>Ungewöhnlichkeit</dt>
+                <dd>
+                    <span th:if="${detail.noveltyLevel != null}" class="metric-scale metric-scale--novelty"
+                          data-testid="novelty-scale" role="img"
+                          th:aria-label="|Ungewöhnlichkeit: ${detail.noveltyLevel} von 5|">
+                        <svg th:each="step : ${#numbers.sequence(1, 5)}" class="metric-icon"
+                             th:classappend="${step <= detail.noveltyLevel} ? ' is-active' : ' is-inactive'"
+                             th:attr="data-scale-step=${step},data-scale-state=${step <= detail.noveltyLevel ? 'active' : 'inactive'}"
+                             aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+                            <use href="/admin/assets/catalog-icons.svg#icon-novelty"></use>
+                        </svg>
+                    </span>
+                    <span th:if="${detail.noveltyLevel == null}" class="unmanaged-value"
+                          data-testid="novelty-unmanaged">nicht gepflegt</span>
+                </dd>
+            </div>
+        </dl>
     </section>
-    <section>
-        <h3>Konkretisierungsbeziehungen</h3>
-        <p th:text="|${detail.directParents.size()} direkte Eltern · ${detail.directChildren.size()} direkte Kinder|">0 direkte Eltern</p>
-        <h4>Direkte Eltern</h4>
-        <ul><li th:each="parent : ${detail.directParents}"><a th:href="${state.detailUrl(parent.id)}" th:hx-get="${state.detailUrl(parent.id)}" hx-target="#catalog-detail" hx-swap="outerHTML" hx-push-url="true"><span th:text="${parent.displayName}">Fisch</span> <code th:text="${parent.code}">FISH</code></a></li>
-            <li th:if="${detail.directParents.isEmpty()}">Keine direkten Eltern</li></ul>
-        <h4>Direkte Kinder</h4>
-        <ul><li th:each="child : ${detail.directChildren}"><a th:href="${state.detailUrl(child.id)}" th:hx-get="${state.detailUrl(child.id)}" hx-target="#catalog-detail" hx-swap="outerHTML" hx-push-url="true"><span th:text="${child.displayName}">Kabeljau</span> <code th:text="${child.code}">COD</code></a></li>
-            <li th:if="${detail.directChildren.isEmpty()}">Keine direkten Kinder</li></ul>
-        <details><summary>Transitive Kontextinformation</summary>
+
+    <section class="detail-section">
+        <div class="detail-section-heading">
+            <p class="section-kicker">Graph</p>
+            <h3>Konkretisierungsbeziehungen</h3>
+        </div>
+        <p class="relation-summary"
+           th:text="|${detail.directParents.size()} direkte Eltern · ${detail.directChildren.size()} direkte Kinder|">
+            0 direkte Eltern
+        </p>
+        <div class="relation-columns">
+            <div>
+                <h4>Direkte Eltern</h4>
+                <ul class="relation-list">
+                    <li th:each="parent : ${detail.directParents}">
+                        <a th:href="${state.detailUrl(parent.id)}" th:hx-get="${state.detailUrl(parent.id)}"
+                           hx-target="#catalog-detail" hx-swap="outerHTML" hx-push-url="true">
+                            <span th:text="${parent.displayName}">Fisch</span>
+                            <code th:text="${parent.code}">FISH</code>
+                        </a>
+                    </li>
+                    <li th:if="${detail.directParents.isEmpty()}" class="muted-copy">Keine direkten Eltern</li>
+                </ul>
+            </div>
+            <div>
+                <h4>Direkte Kinder</h4>
+                <ul class="relation-list">
+                    <li th:each="child : ${detail.directChildren}">
+                        <a th:href="${state.detailUrl(child.id)}" th:hx-get="${state.detailUrl(child.id)}"
+                           hx-target="#catalog-detail" hx-swap="outerHTML" hx-push-url="true">
+                            <span th:text="${child.displayName}">Kabeljau</span>
+                            <code th:text="${child.code}">COD</code>
+                        </a>
+                    </li>
+                    <li th:if="${detail.directChildren.isEmpty()}" class="muted-copy">Keine direkten Kinder</li>
+                </ul>
+            </div>
+        </div>
+        <details class="context-details">
+            <summary>Transitive Kontextinformation</summary>
             <p>Vorfahren: <span th:text="${#strings.listJoin(detail.transitiveAncestors.![displayName], ', ')} ?: 'keine'">keine</span></p>
             <p>Nachfahren: <span th:text="${#strings.listJoin(detail.transitiveDescendants.![displayName], ', ')} ?: 'keine'">keine</span></p>
         </details>
     </section>
-    <section>
-        <h3>Funktionale Rollen</h3>
-        <ul><li th:each="role : ${detail.functionalRoles}" th:text="${role.displayName}">tierisches Protein</li>
-            <li th:if="${detail.functionalRoles.isEmpty()}">nicht gepflegt</li></ul>
+
+    <section class="detail-section">
+        <div class="detail-section-heading">
+            <p class="section-kicker">Verwendung</p>
+            <h3>Funktionale Rollen</h3>
+        </div>
+        <ul class="chip-list">
+            <li th:each="role : ${detail.functionalRoles}" class="property-chip" th:text="${role.displayName}">tierisches Protein</li>
+            <li th:if="${detail.functionalRoles.isEmpty()}" class="unmanaged-value">nicht gepflegt</li>
+        </ul>
     </section>
-    <section>
-        <h3>Kulinarische Eigenschaften</h3>
+
+    <section class="detail-section">
+        <div class="detail-section-heading">
+            <p class="section-kicker">Sensorik</p>
+            <h3>Kulinarische Eigenschaften</h3>
+        </div>
         <h4>Flags</h4>
-        <ul><li th:each="flag : ${detail.culinaryFlags}" th:text="${flag.displayName}">fermentiert</li>
-            <li th:if="${detail.culinaryFlags.isEmpty()}">Keine Flags gepflegt</li></ul>
+        <ul class="chip-list">
+            <li th:each="flag : ${detail.culinaryFlags}" class="property-chip property-chip--accent"
+                th:text="${flag.displayName}">fermentiert</li>
+            <li th:if="${detail.culinaryFlags.isEmpty()}" class="muted-copy">Keine Flags gepflegt</li>
+        </ul>
         <h4>Dimensionen</h4>
-        <dl><div th:each="dimension : ${detail.culinaryDimensions}"><dt th:text="${dimension.dimension.displayName}">Umami</dt>
-            <dd th:text="${dimension.level == null ? 'nicht gepflegt' : 'Stufe ' + dimension.level}">nicht gepflegt</dd></div></dl>
+        <dl class="detail-list dimension-list">
+            <div th:each="dimension : ${detail.culinaryDimensions}">
+                <dt th:text="${dimension.dimension.displayName}">Umami</dt>
+                <dd>
+                    <span th:if="${dimension.level != null}" class="metric-scale"
+                          th:attr="data-dimension=${dimension.dimension.code},data-testid=|dimension-scale-${dimension.dimension.code}|" role="img"
+                          th:aria-label="|${dimension.dimension.displayName}: ${dimension.level} von 5|">
+                        <svg th:each="step : ${#numbers.sequence(1, 5)}" class="metric-icon"
+                             th:classappend="${step <= dimension.level} ? ' is-active' : ' is-inactive'"
+                             th:attr="data-scale-step=${step},data-scale-state=${step <= dimension.level ? 'active' : 'inactive'}"
+                             aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+                            <use th:attr="href=|/admin/assets/catalog-icons.svg#icon-${#strings.toLowerCase(dimension.dimension.code)}|"></use>
+                        </svg>
+                    </span>
+                    <span th:if="${dimension.level == null}" class="unmanaged-value"
+                          th:attr="data-testid=|dimension-unmanaged-${dimension.dimension.code}|">nicht gepflegt</span>
+                </dd>
+            </div>
+        </dl>
     </section>
-    <section>
-        <h3>Beschaffbarkeit</h3>
-        <dl><div th:each="entry : ${detail.availability}"><dt th:text="${entry.participant.displayName}">Georgia</dt>
-            <dd th:text="${entry.level == null ? 'nicht gepflegt' : entry.level}">nicht gepflegt</dd></div></dl>
+
+    <section class="detail-section">
+        <div class="detail-section-heading">
+            <p class="section-kicker">Einkauf</p>
+            <h3>Beschaffbarkeit</h3>
+        </div>
+        <dl class="detail-list">
+            <div th:each="entry : ${detail.availability}">
+                <dt th:text="${entry.participant.displayName}">Georgia</dt>
+                <dd>
+                    <span class="availability-value" th:classappend="${entry.level == null} ? ' is-unmanaged'"
+                          th:text="${entry.level == null ? 'nicht gepflegt' : entry.level}">nicht gepflegt</span>
+                </dd>
+            </div>
+        </dl>
     </section>
-    <section>
-        <h3>Saison</h3>
-        <table><thead><tr><th th:each="month : ${monthNames}" th:text="${month}">Jan</th></tr></thead>
-            <tbody><tr><td th:each="value : ${detail.seasonality}" th:text="${value.weightMultiplier}">1.0</td></tr></tbody></table>
+
+    <section class="detail-section">
+        <div class="detail-section-heading">
+            <p class="section-kicker">Jahresverlauf</p>
+            <h3>Saison</h3>
+        </div>
+        <div class="table-scroll">
+            <table class="season-table">
+                <thead><tr><th th:each="month : ${monthNames}" th:text="${month}">Jan</th></tr></thead>
+                <tbody><tr><td th:each="value : ${detail.seasonality}" th:text="${value.weightMultiplier}">1.0</td></tr></tbody>
+            </table>
+        </div>
     </section>
-    <section>
-        <h3>Kuratornotiz</h3>
-        <p th:text="${detail.curatorNote ?: 'Keine Kuratornotiz gepflegt.'}">Keine Kuratornotiz gepflegt.</p>
+
+    <section class="detail-section">
+        <div class="detail-section-heading">
+            <p class="section-kicker">Redaktion</p>
+            <h3>Kuratornotiz</h3>
+        </div>
+        <p class="curator-note" th:text="${detail.curatorNote ?: 'Keine Kuratornotiz gepflegt.'}">
+            Keine Kuratornotiz gepflegt.
+        </p>
     </section>
-    <section>
-        <h3>Referenzen</h3>
+
+    <section class="detail-section">
+        <div class="detail-section-heading">
+            <p class="section-kicker">Verknüpfungen</p>
+            <h3>Referenzen</h3>
+        </div>
         <h4>Direkte Ausschlussregeln</h4>
-        <ul><li th:each="rule : ${detail.directExclusionRules}" th:text="${rule}">keine Kokosmilch</li>
-            <li th:if="${detail.directExclusionRules.isEmpty()}">Keine direkten Ausschlussregeln</li></ul>
+        <ul class="reference-list">
+            <li th:each="rule : ${detail.directExclusionRules}" th:text="${rule}">keine Kokosmilch</li>
+            <li th:if="${detail.directExclusionRules.isEmpty()}" class="muted-copy">Keine direkten Ausschlussregeln</li>
+        </ul>
         <p class="technical" th:text="|Technik: Aggregatversion ${detail.version}|">Technik: Aggregatversion 0</p>
     </section>
 </section>

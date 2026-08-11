@@ -2,21 +2,37 @@
 <html lang="de" xmlns:th="https://www.thymeleaf.org">
 <body>
 <ul th:fragment="nodes" class="hierarchy-nodes" data-testid="hierarchy-nodes">
-    <li th:each="node : ${nodes}" th:classappend="${!node.active} ? 'inactive'">
-        <div class="tree-node">
-            <button th:if="${node.hasDirectChildren}" type="button" th:aria-controls="|children-${node.id}|"
-                    th:hx-get="${state.childrenUrl(node.id)}" th:hx-target="|#children-${node.id}|" hx-swap="innerHTML">Kinder laden</button>
-            <a th:href="${state.detailUrl(node.id)}" th:hx-get="${state.detailUrl(node.id)}" hx-target="#catalog-detail" hx-swap="outerHTML" hx-push-url="true">
+    <li th:each="node : ${nodes}" class="hierarchy-item" th:classappend="${!node.active} ? ' inactive'">
+        <div class="tree-node" th:classappend="${state.selectedConceptId == node.id} ? ' is-selected'">
+            <button th:if="${node.hasDirectChildren}" type="button" class="tree-toggle"
+                    aria-expanded="false" th:aria-controls="|children-${node.id}|"
+                    th:aria-label="|${node.displayName}: Kinder einblenden|"
+                    th:attr="data-node-label=${node.displayName},data-node-id=${node.id}" data-tree-toggle
+                    th:hx-get="${state.childrenUrl(node.id)}" th:hx-target="|#children-${node.id}|"
+                    hx-trigger="tree-load" hx-swap="innerHTML">
+                <span class="tree-toggle-symbol" data-tree-toggle-symbol aria-hidden="true">+</span>
+            </button>
+            <span th:unless="${node.hasDirectChildren}" class="tree-leaf-marker" aria-hidden="true"></span>
+            <a class="tree-node-link" th:href="${state.detailUrl(node.id)}"
+               th:hx-get="${state.detailUrl(node.id)}" hx-target="#catalog-detail"
+               hx-swap="outerHTML" hx-push-url="true">
                 <strong th:text="${node.displayName}">Fisch</strong>
-                <span th:text="${node.active ? 'aktiv' : 'inaktiv'}">aktiv</span>
-                <span th:text="${node.challengeSpecificity == 'OPEN' ? 'offen' : 'spezifisch'}">offen</span>
-                <span th:text="${node.randomDrawEnabled ? 'ziehbar' : 'nicht ziehbar'}">ziehbar</span>
-                <span th:if="${node.directParentCount > 1}" th:text="|${node.directParentCount} Eltern|">2 Eltern</span>
+                <span class="status-badge"
+                      th:classappend="${node.active} ? ' status-badge--positive' : ' status-badge--muted'"
+                      th:text="${node.active ? 'aktiv' : 'inaktiv'}">aktiv</span>
+                <span class="status-badge"
+                      th:classappend="${node.challengeSpecificity == 'OPEN'} ? ' status-badge--accent' : ' status-badge--neutral'"
+                      th:text="${node.challengeSpecificity == 'OPEN' ? 'offen' : 'spezifisch'}">offen</span>
+                <span class="status-badge"
+                      th:classappend="${node.randomDrawEnabled} ? ' status-badge--brand' : ' status-badge--muted'"
+                      th:text="${node.randomDrawEnabled ? 'ziehbar' : 'nicht ziehbar'}">ziehbar</span>
+                <span th:if="${node.directParentCount > 1}" class="status-badge status-badge--relation"
+                      th:text="|${node.directParentCount} Eltern|">2 Eltern</span>
             </a>
         </div>
-        <div th:id="|children-${node.id}|" class="tree-children"></div>
+        <div th:id="|children-${node.id}|" class="tree-children" aria-live="polite" hidden></div>
     </li>
-    <li th:if="${nodes.isEmpty()}" class="empty-state">Keine direkten Kinder.</li>
+    <li th:if="${nodes.isEmpty()}" class="empty-state empty-state--compact">Keine direkten Kinder.</li>
 </ul>
 </body>
 </html>
