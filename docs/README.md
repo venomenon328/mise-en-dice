@@ -7,6 +7,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`VISION.md`](VISION.md): Produktidee, Challenge-Regeln, Ziele und Nicht-Ziele
 - [`DATA_MODEL.md`](DATA_MODEL.md): fachliche Entscheidungen des PostgreSQL-Datenmodells
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
+- [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md): verbindliche Bedien-, Interaktions-, Locking-, Audit- und Sicherheitsentscheidungen für die private Katalogverwaltung
 
 ## Architektur und Umsetzung
 
@@ -27,4 +28,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Das Anwendungsfundament aus Spring Boot, Spring Modulith, Liquibase und echten PostgreSQL-Integrationstests ist umgesetzt. Als Nächstes wird die private Webverwaltung detailliert spezifiziert.
+Anwendungsfundament und Webspezifikation sind abgeschlossen. Als nächstes folgt das Paket **Administrationssicherheit und Schreibfundament**: Spring Security, getrennte Administrationsidentitäten, optimistisches Locking und Audit-Grundlagen – noch ohne produktives Katalog-CRUD.

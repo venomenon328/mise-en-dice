@@ -198,67 +198,74 @@ Arbeitsregeln:
 
 ## 7. Zutaten- und Kategorienbasis
 
-Die Datenbasis ist zentral für die Qualität der Challenges und der nächste geplante Spezifikationsschritt.
+Die Datenbasis ist zentral für die Qualität der Challenges. Das konkrete fachliche Modell ist inzwischen in [`DATA_MODEL.md`](DATA_MODEL.md) beschrieben; die folgende Produktperspektive bleibt dafür maßgeblich.
 
-Sie muss mindestens zwei unterschiedliche Konzepte abbilden können:
+Sie muss insbesondere konkrete und allgemeinere Zutatenkonzepte gemeinsam abbilden können:
 
-1. **konkrete Zutaten**, z. B. `Kabeljau`, `Lachs`, `Spitzkohl`, `Miso`
-2. **allgemeine Gruppen/Kategorien**, z. B. `Fisch`, `weißfleischiger Fisch`, `Kohlgemüse`, `Zitrusfrucht`
+1. **konkretere Zutaten**, z. B. `Kabeljau`, `Lachs`, `Spitzkohl`, `Miso`
+2. **allgemeinere Konzepte**, z. B. `Fisch`, `weißfleischiger Fisch`, `Kohlgemüse`, `Zitrusfrucht`
 
-Eine konkrete Zutat kann sinnvollerweise mehreren Gruppen angehören. Ein starrer einzelner Parent-Child-Baum dürfte daher nicht ausreichen.
+Eine konkrete Zutat kann mehreren allgemeineren Konzepten zugeordnet sein. Ein starrer einzelner Parent-Child-Baum ist deshalb nicht ausreichend.
 
-Voraussichtlich relevante Informationen sind unter anderem:
+Für Auswahl und Kuratierung relevante Informationen sind unter anderem:
 
-- Anzeigename
-- aktiv/inaktiv
-- konkrete Zutat oder allgemeine Kategorie
-- Mitgliedschaften bzw. Beziehungen zwischen Zutaten und Kategorien
-- funktionale Tags wie Fleisch, Fisch, Gemüse, Obst, Stärke, Würzmittel usw.
-- für die Kuratierung relevante Eigenschaften wie mild, dominant, fettig, süß, bitter, fermentiert usw.
-- individuelle Beschaffbarkeit für Georgia und Tobias
-- Bezugsart, z. B. Supermarkt, größerer Supermarkt, Asia-Laden, Spezialgeschäft oder online
-- optionale Seltenheit/Ungewöhnlichkeit
-- Ziehungsgewicht
-- Cooldown bzw. letzte Verwendungen
-- optional Saisonabhängigkeit
-- optional kurze sachliche Modellnotizen für wenig bekannte Zutaten
+- Anzeigename,
+- aktiv/inaktiv,
+- Challenge-Spezifität,
+- bekannte Konkretisierungen,
+- funktionale Rollen,
+- kulinarische Eigenschaften,
+- individuelle Beschaffbarkeit für Georgia und Tobias,
+- optionale Ungewöhnlichkeit,
+- Ziehungsgewicht,
+- Saisonabhängigkeit,
+- kurze sachliche Kuratornotizen,
+- kuratierte Ausschlussregeln.
 
-Diese Liste ist ausdrücklich **keine fertige Datenbankspezifikation**. Das Datenmodell soll im nächsten Schritt separat entworfen werden.
+Die Datenbasis bleibt bewusst kuratiertes Systemwissen und keine universelle Lebensmittelontologie.
 
 ### Beschaffbarkeit
 
 Eine Zutat muss nicht in jedem Discounter liegen. Asia-Läden, Spezialgeschäfte und gegebenenfalls Online-Beschaffung sind legitim, sofern die Beschaffung für beide realistisch bleibt.
 
-Beschaffbarkeit sollte individuell gepflegt werden können, da die Einkaufsmöglichkeiten in Rostock und im Raum Bornheim/Köln unterschiedlich sein können.
+Beschaffbarkeit wird individuell gepflegt, da die Einkaufsmöglichkeiten in Rostock und im Raum Bornheim/Köln unterschiedlich sein können.
 
 Außergewöhnliche Zutaten dürfen Teil des Pools sein, sollten aber nur aktiviert werden, wenn ihre tatsächliche Beschaffbarkeit plausibel bestätigt ist.
 
 ## 8. Nutzung und Oberfläche
 
-### 8.1 Discord-Bot
+### 8.1 Private Verwaltungsoberfläche
 
-Mise en Dice wird als **eigenständiger Discord-Bot** entwickelt. Er ist ausdrücklich kein Modul des bestehenden Gridwords-Bots.
+Die private Webverwaltung wird vor Generator und Discord-Bot funktional ausgebaut, damit der umfangreiche Katalog komfortabel geprüft und gepflegt werden kann.
 
-Discord ist zunächst die primäre Benutzeroberfläche für:
+Sie dient insbesondere für:
 
-- Challenge ziehen
-- Challenge anzeigen
-- gemeinsamen Reroll auslösen/bestätigen
-- später eventuell persönliche Konkretisierungen und drei Zusatz-Zutaten verdeckt erfassen
-- Entscheidungen beider Personen gleichzeitig offenlegen
-- später gegebenenfalls Ergebnisse und Bewertungen dokumentieren
+- Zutatenkonzepte suchen, filtern, anlegen, bearbeiten und deaktivieren,
+- den Konkretisierungsgraphen hierarchisch navigieren und direkte Beziehungen pflegen,
+- Rollen und kulinarische Eigenschaften zuordnen,
+- individuelle Beschaffbarkeit verwalten,
+- Ziehungsgewichte, Ungewöhnlichkeit und Saisonfaktoren pflegen,
+- Ausschlussregeln verwalten,
+- spätere redaktionelle Änderungen über einen Audit-Trail nachvollziehen.
 
-### 8.2 Verwaltungsoberfläche
+Die konkrete Bedien- und Interaktionsspezifikation steht in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md).
 
-Für die Pflege einer größeren Zutatenbasis ist später eine kleine private Weboberfläche sinnvoll. Sie kann insbesondere dienen für:
+Die Webverwaltung ist kein Ersatz für die eigentliche Challenge-Oberfläche. Sie ist das Werkzeug zur Pflege der Datenbasis.
 
-- Zutaten und Kategorien anlegen/bearbeiten/deaktivieren
-- Beziehungen und Tags pflegen
-- individuelle Beschaffbarkeit verwalten
-- Ziehungsgewichte und Cooldowns konfigurieren
-- Challenge-Historie einsehen
+### 8.2 Discord-Bot
 
-Discord-Bot und Verwaltungsoberfläche sollen auf dieselbe fachliche Logik und dieselbe persistente Datenbasis zugreifen. Eine unnötig verteilte Architektur ist für zwei Benutzer nicht das Ziel.
+Mise en Dice erhält als eigentliche Challenge-Oberfläche einen **eigenständigen Discord-Bot**. Er ist ausdrücklich kein Modul des bestehenden Gridwords-Bots.
+
+Discord ist vorgesehen für:
+
+- Challenge ziehen,
+- Challenge anzeigen,
+- gemeinsamen Reroll auslösen und bestätigen,
+- später persönliche Konkretisierungen und drei Zusatz-Zutaten verdeckt erfassen,
+- Entscheidungen beider Personen gleichzeitig offenlegen,
+- später gegebenenfalls Ergebnisse und Bewertungen dokumentieren.
+
+Discord-Bot und Verwaltungsoberfläche verwenden dieselbe fachliche Logik und dieselbe persistente Datenbasis. Eine unnötig verteilte Architektur ist für zwei Benutzer nicht das Ziel.
 
 ## 9. Nachgelagerter Challenge-Ablauf
 
@@ -280,11 +287,11 @@ Die Challenges können später auf Instagram dokumentiert werden, ohne dass die 
 
 Denkbar sind beispielsweise:
 
-- Challenge-Karte mit den vier Vorgaben
-- Offenlegung der jeweiligen Konkretisierungen und drei Freiheiten
-- Bilder der fertigen Gerichte
-- kurzes gemeinsames Fazit
-- Rückblick darauf, welche Entscheidung besonders gut oder besonders fatal war
+- Challenge-Karte mit den vier Vorgaben,
+- Offenlegung der jeweiligen Konkretisierungen und drei Freiheiten,
+- Bilder der fertigen Gerichte,
+- kurzes gemeinsames Fazit,
+- Rückblick darauf, welche Entscheidung besonders gut oder besonders fatal war.
 
 Ein bisher diskutierter Formatname ist **„Umami oder Unfall“**. Dieser ist nicht zwingend identisch mit dem technischen Projektnamen `Mise en Dice` und gilt derzeit nicht als endgültige Produktentscheidung.
 
@@ -292,27 +299,35 @@ Ein bisher diskutierter Formatname ist **„Umami oder Unfall“**. Dieser ist n
 
 Für den ersten Entwicklungsabschnitt sind ausdrücklich nicht notwendig:
 
-- öffentliche Accounts oder Benutzerregistrierung
-- Community-Abstimmungen
-- Rezeptgenerierung durch KI
-- KI-Bewertung der fertigen Gerichte
-- Video- oder Instagram-Automation
-- komplexe Turnier- oder Punktesysteme
-- Microservice-Architektur
-- allgemeine Unterstützung beliebig vieler Nutzer
+- öffentliche Accounts oder Benutzerregistrierung,
+- Community-Abstimmungen,
+- Rezeptgenerierung durch KI,
+- KI-Bewertung der fertigen Gerichte,
+- Video- oder Instagram-Automation,
+- komplexe Turnier- oder Punktesysteme,
+- Microservice-Architektur,
+- allgemeine Unterstützung beliebig vieler Nutzer.
 
 Zunächst soll das System **für exakt zwei bekannte Personen zuverlässig gute Challenge-Ausgangslagen erzeugen**.
 
 ## 12. Nächste Schritte
 
-1. Fachliche Spezifikation der Zutaten-/Kategorien-Datenbasis
-2. Initiale Befüllung mit realistisch beschaffbaren Zutaten und Kategorien
-3. Festlegung der harten Generierungsregeln und Gewichtungen
-4. Implementierung des Kandidatengenerators
-5. Definition des strukturierten Kurator-Requests/-Responses
-6. OpenAI-Anbindung und Testvergleich geeigneter Modelle
-7. Discord-Flow für Ziehung und einen gemeinsamen Reroll
-8. Später: persönliche Auswahl, Historie, Ergebnisdokumentation und Webverwaltung
+Bereits abgeschlossen sind:
+
+1. fachliche Modellierung der Zutaten-/Kategorien-Datenbasis,
+2. umfangreiche initiale Katalogbefüllung,
+3. Spring-Boot-/Liquibase-/PostgreSQL-Anwendungsfundament,
+4. Spezifikation der privaten Webverwaltung.
+
+Als nächste Schritte folgen:
+
+5. schrittweise Implementierung der Webverwaltung gemäß [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md),
+6. Festlegung der harten Generierungsregeln und Gewichtungen,
+7. Implementierung des Kandidatengenerators,
+8. Definition des strukturierten Kurator-Requests/-Responses,
+9. OpenAI-Anbindung und Testvergleich geeigneter Modelle,
+10. Discord-Flow für Ziehung und einen gemeinsamen Reroll,
+11. später: persönliche Auswahl, Historie und Ergebnisdokumentation.
 
 ## 13. Leitprinzip in einem Satz
 

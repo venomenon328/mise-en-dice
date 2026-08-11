@@ -6,7 +6,7 @@ Die Grundidee: Beide erhalten dieselben vier kulinarischen Vorgaben, entwickeln 
 
 > Vier Vorgaben. Zwei Küchen. Drei Freiheiten.
 
-Die ausführliche Produktvision und die bisher festgelegten Spielregeln stehen in [`docs/VISION.md`](docs/VISION.md).
+Die ausführliche Produktvision und die bisher festgelegten Spielregeln stehen in [`docs/VISION.md`](docs/VISION.md). Die private Katalogverwaltung ist in [`docs/ADMINISTRATION_UI.md`](docs/ADMINISTRATION_UI.md) spezifiziert.
 
 ## Geplanter Zuschnitt
 
@@ -52,4 +52,4 @@ Der initiale Katalog umfasst **642 Zutatenkonzepte**, davon **640 zufällig zieh
 
 ## Status
 
-Produktvision, Datenmodell, Anwendungsfundament und ein umfangreicher initialer Zutatenkatalog sind angelegt. Als nächster Entwicklungsschritt wird die private Webverwaltung spezifiziert; erst danach folgen die harten Generierungsregeln und der Kandidatengenerator.
+Produktvision, Datenmodell, Anwendungsfundament, umfangreicher initialer Zutatenkatalog und die Spezifikation der privaten Webverwaltung sind angelegt. Als nächster Entwicklungsschritt folgen Administrationssicherheit, optimistisches Locking und Audit-Grundlagen; danach wird die lesende Katalogoberfläche umgesetzt.
