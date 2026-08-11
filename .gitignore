@@ -1,0 +1,4 @@
+.m2-repository/
+.mvn/mise-settings.xml
+target/
+.env

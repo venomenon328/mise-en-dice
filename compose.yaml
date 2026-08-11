@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: ${MISE_EN_DICE_DB_NAME:-mise_en_dice}
+      POSTGRES_USER: ${MISE_EN_DICE_DB_USERNAME:-mise_en_dice}
+      POSTGRES_PASSWORD: ${MISE_EN_DICE_DB_PASSWORD:-mise_en_dice}
+    ports:
+      - "${MISE_EN_DICE_DB_PORT:-5432}:5432"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    volumes:
+      - mise-en-dice-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  mise-en-dice-postgres-data:
