@@ -10,6 +10,17 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
 
+mise-en-dice:
+  administration:
+    enabled: ${MISE_EN_DICE_ADMINISTRATION_ENABLED:false}
+
+server:
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+
 management:
   endpoints:
     web:
