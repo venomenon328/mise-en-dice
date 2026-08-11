@@ -2,14 +2,16 @@
 
 Stand: 11. August 2026
 
-Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der initialen PostgreSQL-Struktur von Mise en Dice. Die konkrete PostgreSQL-Struktur liegt in zwei aufeinander aufbauenden Migrationen:
+Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der initialen PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt in zwei aufeinander aufbauenden Migrationen:
 
 - [`db/migrations/001_catalog_schema.sql`](../db/migrations/001_catalog_schema.sql) für Zutatenwissen und Generator-Metadaten
 - [`db/migrations/002_challenge_history_schema.sql`](../db/migrations/002_challenge_history_schema.sql) für Generierung, Kuratierung und sichtbare Challenge-Historie
 
+Die erste kuratierte Befüllung liegt unter [`db/seeds`](../db/seeds) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
+
 ## 1. Ziel und Abgrenzung
 
-Die Datenbank soll die kuratierte Zutatenbasis, die für die Zufallsauswahl relevanten Metadaten sowie die Generierungs- und Kuratierungshistorie zuverlässig persistieren.
+Die Datenbank persistiert die kuratierte Zutatenbasis, die für die Zufallsauswahl relevanten Metadaten sowie die Generierungs- und Kuratierungshistorie.
 
 Sie ist ausdrücklich **keine universelle Lebensmittelontologie und keine Rule Engine**. Harte Generierungsregeln wie „vier Vorgaben“, die gewünschte Mischung aus spezifischen und offenen Vorgaben, Redundanzprüfung, Cooldown-Berechnung und die Auswahl von zwölf Kandidaten bleiben in der Anwendung.
 
@@ -17,21 +19,23 @@ Die erste Struktur konzentriert sich auf die Erzeugung von Challenges. Persönli
 
 ## 2. Zutatenkonzepte statt Zutat/Kategorie-Dichotomie
 
-`ingredient_concept` ist die zentrale Entität. Sie enthält sowohl sehr offene Vorgaben wie `Fisch` als auch spezifische Vorgaben wie `Kabeljau`, `Hähnchen`, `Chili` oder `Habanero`.
+`ingredient_concept` ist die zentrale Entität. Sie enthält sowohl offene Vorgaben wie `Fisch` als auch spezifische Vorgaben wie `Kabeljau`, `Hähnchen`, `Chili` oder `Habanero`.
 
 Es gibt bewusst keinen festen Typ `INGREDIENT` oder `CATEGORY`.
 
-`code` dient dabei als stabiler technischer Schlüssel; `display_name` darf sich ändern, ohne technische Referenzen umzubenennen.
+`code` dient als stabiler technischer Schlüssel; `display_name` darf sich ändern, ohne technische Referenzen umzubenennen.
 
-Stattdessen werden drei voneinander unabhängige Fragen getrennt behandelt:
+Drei voneinander unabhängige Fragen werden getrennt behandelt:
 
 1. **Spezifität als Challenge-Vorgabe** (`challenge_specificity`): `SPECIFIC` oder `OPEN`.
 2. **Ziehbarkeit** (`random_draw_enabled`): Darf der Zufallsgenerator den Eintrag auswählen?
 3. **Bekannte Konkretisierungen** (`ingredient_refinement`): Welche spezielleren Konzepte kennt die Datenbasis?
 
-Damit kann beispielsweise `Hähnchen` eine spezifische, zufällig ziehbare Vorgabe sein und gleichzeitig bekannte Konkretisierungen wie `Hähnchenbrust` und `Hähnchenschenkel` besitzen. Ebenso gilt `Chili` als spezifische Vorgabe, obwohl feinere Sorten hinterlegt werden können.
+Damit kann `Hähnchen` eine spezifische, zufällig ziehbare Vorgabe sein und gleichzeitig bekannte Konkretisierungen wie `Hähnchenbrust` und `Hähnchenschenkel` besitzen. Ebenso gilt `Chili` als spezifische Vorgabe, obwohl feinere Sorten hinterlegt werden können.
 
-Ein nicht ziehbares Konzept soll nur dann gepflegt werden, wenn es fachlich tatsächlich benötigt wird, etwa als Gruppenknoten für eine Ausschlussregel. `active = false` nimmt einen Eintrag aus der normalen operativen Nutzung, ohne historische Referenzen zu verlieren; `random_draw_enabled = false` lässt einen aktiven Eintrag für Klassifikation oder Regeln bestehen, schließt ihn aber aus der Zufallsauswahl aus. Es besteht kein Anspruch, jede theoretisch mögliche Unterform zu speichern.
+Ein nicht ziehbares Konzept wird nur gepflegt, wenn es fachlich tatsächlich benötigt wird, etwa als Gruppenknoten für eine Ausschlussregel. `active = false` nimmt einen Eintrag aus der normalen operativen Nutzung, ohne historische Referenzen zu verlieren; `random_draw_enabled = false` lässt einen aktiven Eintrag für Klassifikation oder Regeln bestehen, schließt ihn aber aus der Zufallsauswahl aus.
+
+Es besteht kein Anspruch, jede theoretisch mögliche Unterform zu speichern.
 
 ## 3. Konkretisierungsgraph
 
@@ -47,7 +51,7 @@ Die Migration verhindert Zyklen im Konkretisierungsgraphen per Trigger.
 
 ## 4. Funktionale Rollen
 
-`functional_role` beschreibt strukturelle Funktionen für die Kandidatengenerierung, beispielsweise:
+`functional_role` beschreibt strukturelle Funktionen für die Kandidatengenerierung. Initial vorgesehen sind:
 
 - tierisches Protein
 - pflanzliches Protein
@@ -56,8 +60,8 @@ Die Migration verhindert Zyklen im Konkretisierungsgraphen per Trigger.
 - Stärke
 - Fett
 - Säure
-- Würzkomponente
 - Aromat
+- Würzkomponente
 
 Ein Zutatenkonzept darf mehrere Rollen besitzen.
 
@@ -115,7 +119,7 @@ Es gibt bewusst kein `last_used` auf `ingredient_concept` und keine persistierte
 
 Die Challenge-Historie ist die Quelle der Wahrheit. In der ersten Regelversion soll nur die **exakt als Challenge-Vorgabe gezogene Vorgabe** einen Cooldown beziehungsweise Gewichtsabschlag für dieselbe Vorgabe auslösen.
 
-Die Konkretisierungshierarchie erzeugt zunächst keine automatische Eltern-, Kind- oder Geschwister-Sperre. Insbesondere soll eine offene Vorgabe wie `Gemüse` nicht dazu führen, dass anschließend der gesamte Gemüsebereich blockiert wird.
+Die Konkretisierungshierarchie erzeugt zunächst keine automatische Eltern-, Kind- oder Geschwister-Sperre. Insbesondere soll eine sehr offene Vorgabe nicht dazu führen, dass anschließend ihr gesamter semantischer Bereich blockiert wird.
 
 Nur Challenge-Vorgaben beeinflussen diese Logik. Später dokumentierte persönliche Konkretisierungen oder Zusatz-Zutaten tun dies nicht automatisch.
 
@@ -125,7 +129,7 @@ Ausschlüsse sind ein eigener, bewusst kuratierter Pool in `exclusion_rule`. Nic
 
 Eine Ausschlussregel besitzt ein oder mehrere `exclusion_rule_target`-Ziele. Für jedes Ziel kann `include_refinements` festlegen, ob bekannte Konkretisierungen des Zielkonzepts mit betroffen sind.
 
-Dadurch lassen sich beispielsweise konkrete Verbote und breitere Regeln mit derselben Grundstruktur abbilden, ohne eine frei programmierbare Rule Engine in der Datenbank zu bauen.
+Dadurch lassen sich konkrete Verbote und breitere Regeln mit derselben Grundstruktur abbilden, ohne eine frei programmierbare Rule Engine in der Datenbank zu bauen.
 
 ## 10. Manuelle Vorgaben
 
@@ -171,7 +175,7 @@ Eine `curation_round` entspricht einem Kandidatensatz, der dem Sprachmodell vorg
 
 ### Challenge Candidate
 
-Jeder `challenge_candidate` enthält bis zu vier positionsgebundene `candidate_requirement`-Zeilen. Der Anwendungscode erstellt vollständige Kandidaten mit genau vier Vorgaben; zusätzlich verhindert die Datenbank, dass eine sichtbare `challenge` aus einem Kandidaten mit einer anderen Anzahl von Vorgaben erzeugt wird.
+Jeder `challenge_candidate` enthält positionsgebundene `candidate_requirement`-Zeilen. Der Anwendungscode erstellt vollständige Kandidaten mit genau vier Vorgaben; zusätzlich verhindert die Datenbank, dass eine sichtbare `challenge` aus einem Kandidaten mit einer anderen Anzahl von Vorgaben erzeugt wird.
 
 Manuelle Vorgaben werden in jedem Kandidaten als Snapshot wiederholt. Zufällige Vorgaben speichern zusätzlich ihre zum Ziehungszeitpunkt geltende Challenge-Spezifität als Snapshot. Dadurch bleibt nachvollziehbar, welche vollständige Viererkombination dem Kurator vorlag und wie sie bei der Generierung klassifiziert war, selbst wenn der Katalog später geändert wird.
 
@@ -217,13 +221,14 @@ Die Struktur soll folgende Erweiterungen ermöglichen, bildet sie aber noch nich
 
 Für solche Daten kann später auf `challenge`, `participant` und die gespeicherten Challenge-Vorgaben referenziert werden. Freitext beziehungsweise optionale Katalogreferenzen können wie bei manuellen Vorgaben kombiniert werden, sodass die Zutatenbasis auch künftig nicht künstlich vollständig sein muss.
 
-## 15. Migration anwenden
+## 15. Datenbank aufsetzen
 
-Solange noch kein Migrationstool festgelegt ist, kann die Migration beispielsweise atomar mit `psql` ausgeführt werden:
+Für eine frische PostgreSQL-Datenbank gibt es einen vollständigen Bootstrap-Einstiegspunkt. Er führt beide Migrationen, alle initialen Seeds und anschließend den strukturellen Sanity-Check in einer Transaktion aus:
 
 ```bash
-psql -v ON_ERROR_STOP=1 -1 -f db/migrations/001_catalog_schema.sql "$DATABASE_URL"
-psql -v ON_ERROR_STOP=1 -1 -f db/migrations/002_challenge_history_schema.sql "$DATABASE_URL"
+psql -v ON_ERROR_STOP=1 -1 -f db/bootstrap.sql "$DATABASE_URL"
 ```
 
-Die Migration enthält noch keine initiale Zutatenbefüllung. Diese ist der nächste separate Spezifikations- und Arbeitsschritt.
+Die einzelnen Schritte können bei Bedarf weiterhin separat ausgeführt werden. Die Seed-Reihenfolge und die inhaltlichen Pflegeprinzipien sind in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) dokumentiert.
+
+[`db/checks/001_seed_sanity.sql`](../db/checks/001_seed_sanity.sql) prüft insbesondere, dass der aktive Ziehungspool ausreichend groß ist und jeder aktive Zieh-Kandidat funktionale Rollen sowie Beschaffbarkeitsdaten für Georgia und Tobias besitzt.
