@@ -1,6 +1,8 @@
 spring:
   application:
     name: mise-en-dice
+  config:
+    import: "optional:file:./.env[.properties]"
   datasource:
     url: ${MISE_EN_DICE_DB_URL:jdbc:postgresql://${MISE_EN_DICE_DB_HOST:localhost}:${MISE_EN_DICE_DB_PORT:5432}/${MISE_EN_DICE_DB_NAME:mise_en_dice}}
     username: ${MISE_EN_DICE_DB_USERNAME:mise_en_dice}

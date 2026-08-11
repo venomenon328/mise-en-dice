@@ -14,7 +14,7 @@ Die ausführliche Produktvision und die bisher festgelegten Spielregeln stehen i
 - PostgreSQL als persistente Quelle für Zutaten, Kategorien, Verfügbarkeit und Challenge-Historie
 - deterministische bzw. nachvollziehbare Zufallsauswahl im eigenen Code
 - OpenAI API nur als kulinarischer Kurator bereits gezogener Kandidaten
-- optional später eine kleine Weboberfläche zur Pflege der Datenbasis
+- private Weboberfläche zur Pflege und Prüfung der Datenbasis
 
 ## Datenbasis
 
@@ -24,7 +24,7 @@ Schema, stabile Referenzdaten, Katalog-Baseline und der strukturelle Sanity-Chec
 
 ## Lokal starten
 
-Voraussetzungen sind Java 21 und Docker. Die lokale Datenbank verwendet PostgreSQL 17; die Beispielwerte können in eine lokale `.env` kopiert und bei Bedarf angepasst werden. Ist Port 5432 bereits belegt, setze `MISE_EN_DICE_DB_PORT` dort beispielsweise auf `5433`; Compose und die Standard-DataSource verwenden denselben Wert.
+Voraussetzungen sind Java 21 und Docker. Die lokale Datenbank verwendet PostgreSQL 17. Die Beispielwerte können in eine lokale `.env` kopiert und bei Bedarf angepasst werden; Spring Boot lädt diese Datei beim lokalen Start optional ein. Ist Port 5432 bereits belegt, setze `MISE_EN_DICE_DB_PORT` dort beispielsweise auf `5433`; Compose und die Standard-DataSource verwenden dann denselben Wert.
 
 ```bash
 docker compose up -d postgres
