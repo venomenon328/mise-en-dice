@@ -2,7 +2,7 @@
 
 Stand: 11. August 2026
 
-Dieses Dokument beschreibt die kuratierte Erstbefüllung der Zutatenbasis. Das fachliche Datenmodell selbst ist in [`DATA_MODEL.md`](DATA_MODEL.md) beschrieben; die konkreten Seed-Daten liegen unter [`db/seeds`](../db/seeds).
+Dieses Dokument beschreibt die kuratierte Erstbefüllung der Zutatenbasis. Das fachliche Datenmodell selbst ist in [`DATA_MODEL.md`](DATA_MODEL.md) beschrieben; die konkreten Baseline-Changesets liegen unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog).
 
 ## 1. Ziel der Befüllung
 
@@ -169,29 +169,29 @@ Zusätzlich zu den bisherigen sechs Regeln existieren nun sechzehn weitere:
 
 Breite Ausschlüsse sind niedriger gewichtet. Sie nutzen den Konkretisierungsgraphen, damit etwa `kein Schweinefleisch` auch die hinterlegten Zuschnitte und Produkte erfasst.
 
-## 11. Seed-Dateien
+## 11. Liquibase-Baseline-Dateien
 
-Die Befüllung ist in eine kompakte Basis und die umfangreiche Erweiterung aufgeteilt:
+Die Befüllung ist als einmalige Baseline in den explizit geordneten Master-Changelog [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml) eingebunden. Schema und Referenzdaten sind dabei sichtbar vom Katalog getrennt:
 
-1. `db/seeds/001_reference_data.sql` – Teilnehmer, Rollen, Flags und Dimensionen
-2. `db/seeds/002_ingredient_catalog.sql` – ursprüngliche Zutatenkonzepte und Konkretisierungen
-3. `db/seeds/003_functional_roles.sql` – ursprüngliche Rollenzuordnungen
-4. `db/seeds/004_availability.sql` – ursprüngliche individuelle Beschaffbarkeit
-5. `db/seeds/005_culinary_properties.sql` – ursprüngliche Flags und Dimensionen
-6. `db/seeds/006_seasonality.sql` – ursprüngliche Saisonfaktoren
-7. `db/seeds/007_exclusion_rules.sql` – ursprüngliche Ausschlussregeln
-8. `db/seeds/008_ingredient_catalog_expansion_1.sql` – erster Teil der zusätzlichen Konzepte und Pflichtmetadaten
-9. `db/seeds/009_ingredient_catalog_expansion_2.sql` – zweiter Teil der zusätzlichen Konzepte und Pflichtmetadaten
-10. `db/seeds/010_ingredient_catalog_expansion_3.sql` – dritter Teil der zusätzlichen Konzepte und Pflichtmetadaten
-11. `db/seeds/011_ingredient_refinements_expansion.sql` – zusätzliche Konkretisierungsbeziehungen
-12. `db/seeds/012_seasonality_expansion.sql` – zusätzliche Saisonfaktoren
-13. `db/seeds/013_exclusion_rules_expansion.sql` – zusätzliche Ausschlussregeln
+1. `reference/001-reference-data.sql` – Teilnehmer, Rollen, Flags und Dimensionen
+2. `catalog/002-ingredient-catalog.sql` – ursprüngliche Zutatenkonzepte und Konkretisierungen
+3. `catalog/003-functional-roles.sql` – ursprüngliche Rollenzuordnungen
+4. `catalog/004-availability.sql` – ursprüngliche individuelle Beschaffbarkeit
+5. `catalog/005-culinary-properties.sql` – ursprüngliche Flags und Dimensionen
+6. `catalog/006-seasonality.sql` – ursprüngliche Saisonfaktoren
+7. `catalog/007-exclusion-rules.sql` – ursprüngliche Ausschlussregeln
+8. `catalog/008-ingredient-catalog-expansion-1.sql` – erster Teil der zusätzlichen Konzepte und Pflichtmetadaten
+9. `catalog/009-ingredient-catalog-expansion-2.sql` – zweiter Teil der zusätzlichen Konzepte und Pflichtmetadaten
+10. `catalog/010-ingredient-catalog-expansion-3.sql` – dritter Teil der zusätzlichen Konzepte und Pflichtmetadaten
+11. `catalog/011-ingredient-refinements-expansion.sql` – zusätzliche Konkretisierungsbeziehungen
+12. `catalog/012-seasonality-expansion.sql` – zusätzliche Saisonfaktoren
+13. `catalog/013-exclusion-rules-expansion.sql` – zusätzliche Ausschlussregeln
 
-Die Erweiterung hält die Pflichtmetadaten pro Konzept in drei kompakten, dokumentierten Manifesten zusammen und überführt sie beim Seed über kurzlebige `DO`-Blöcke in temporäre Quelltabellen. Dadurch existieren Code, Rolle und Beschaffbarkeit nicht in mehreren unabhängig zu synchronisierenden Listen. Alle Seeds sind idempotent und überschreiben bestehende kuratierte Einträge grundsätzlich nicht.
+Die Erweiterung hält die Pflichtmetadaten pro Konzept in drei kompakten, dokumentierten Manifesten zusammen und überführt sie über kurzlebige `DO`-Blöcke in temporäre Quelltabellen. Dadurch existieren Code, Rolle und Beschaffbarkeit nicht in mehreren unabhängig zu synchronisierenden Listen. Die Dateien sind Liquibase-Changesets ohne `runAlways`: Die Baseline wird nur auf eine leere Datenbank angewandt und überschreibt bei späteren Starts keine kuratierten Laufzeitdaten.
 
 ## 12. Sanity-Check
 
-[`db/checks/001_seed_sanity.sql`](../db/checks/001_seed_sanity.sql) prüft nach dem Seed unter anderem:
+[`checks/001-seed-sanity.sql`](../src/main/resources/db/changelog/checks/001-seed-sanity.sql) prüft nach der Baseline unter anderem:
 
 - mindestens 600 aktive Zieh-Kandidaten,
 - mindestens 70 offene und 540 spezifische Vorgaben,

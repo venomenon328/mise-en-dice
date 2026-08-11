@@ -20,10 +20,23 @@ Die ausführliche Produktvision und die bisher festgelegten Spielregeln stehen i
 
 Das fachliche Datenmodell ist in [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) beschrieben. Die initiale Katalogbefüllung und ihre Pflegeprinzipien stehen in [`docs/INITIAL_CATALOG.md`](docs/INITIAL_CATALOG.md).
 
-Die PostgreSQL-Struktur liegt unter [`db/migrations`](db/migrations), die initialen Daten unter [`db/seeds`](db/seeds). Für eine frische Datenbank führt [`db/bootstrap.sql`](db/bootstrap.sql) Migrationen, Seeds und anschließend den strukturellen Sanity-Check aus:
+Schema, stabile Referenzdaten, Katalog-Baseline und der strukturelle Sanity-Check liegen als explizit geordnete Liquibase-Changesets unter [`src/main/resources/db/changelog`](src/main/resources/db/changelog). [`db.changelog-master.yaml`](src/main/resources/db/changelog/db.changelog-master.yaml) ist der einzige Einstiegspunkt; die PostgreSQL-Skripte bleiben darin als formatiertes SQL erhalten.
+
+## Lokal starten
+
+Voraussetzungen sind Java 21 und Docker. Die lokale Datenbank verwendet PostgreSQL 17; die Beispielwerte können in eine lokale `.env` kopiert und bei Bedarf angepasst werden. Ist Port 5432 bereits belegt, setze `MISE_EN_DICE_DB_PORT` dort beispielsweise auf `5433`; Compose und die Standard-DataSource verwenden denselben Wert.
 
 ```bash
-psql -v ON_ERROR_STOP=1 -1 -f db/bootstrap.sql "$DATABASE_URL"
+docker compose up -d postgres
+./mvnw spring-boot:run
+```
+
+Beim Start führt Liquibase eine leere Datenbank vollständig auf die Katalog-Baseline. Ein erneuter Start führt bereits protokollierte Changesets nicht erneut aus und überschreibt damit keine redaktionellen Katalogänderungen. Die Health-Prüfung steht danach unter <http://localhost:8080/actuator/health> bereit.
+
+Alle Datenbanktests verwenden PostgreSQL 17 in Testcontainers; H2, JPA und Hibernate sind nicht Bestandteil des Builds:
+
+```bash
+./mvnw clean verify
 ```
 
 Zentrale Modellierungsentscheidungen sind insbesondere:
@@ -39,4 +52,4 @@ Der initiale Katalog umfasst **642 Zutatenkonzepte**, davon **640 zufällig zieh
 
 ## Status
 
-Produktvision, Datenmodell, PostgreSQL-Grundstruktur und ein umfangreicher initialer Zutatenkatalog sind angelegt. Als nächster Entwicklungsschritt folgt die Spezifikation der harten Generierungsregeln und anschließend der Kandidatengenerator.
+Produktvision, Datenmodell, Anwendungsfundament und ein umfangreicher initialer Zutatenkatalog sind angelegt. Als nächster Entwicklungsschritt wird die private Webverwaltung spezifiziert; erst danach folgen die harten Generierungsregeln und der Kandidatengenerator.
