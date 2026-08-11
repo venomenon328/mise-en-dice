@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.administration.internal;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
@@ -72,6 +73,10 @@ class CatalogAdministrationMvcTest {
     private String managedDimensionCode;
     private int managedDimensionLevel;
     private String unmanagedDimensionCode;
+    private String localizedAvailabilityLabel;
+    private long seafoodId;
+    private long shellfishId;
+    private long crustaceansId;
 
     @BeforeEach
     void setUp() {
@@ -107,6 +112,20 @@ class CatalogAdministrationMvcTest {
                 .orElseThrow()
                 .dimension()
                 .code();
+        localizedAvailabilityLabel = scaleDetail.availability().stream()
+                .filter(entry -> entry.level() != null)
+                .map(entry -> availabilityLabel(entry.level()))
+                .findFirst()
+                .orElseThrow();
+
+        seafoodId = conceptIdByCode("SEAFOOD");
+        shellfishId = conceptIdByCode("SHELLFISH");
+        crustaceansId = conceptIdByCode("CRUSTACEANS");
+        var crustaceansDetail = catalogQueries.findConcept(crustaceansId).orElseThrow();
+        assertTrue(crustaceansDetail.directChildren().size() > 0,
+                "CRUSTACEANS must have children for the hierarchy-occurrence regression fixture");
+        assertTrue(crustaceansDetail.directParents().stream().anyMatch(parent -> parent.id() == seafoodId));
+        assertTrue(crustaceansDetail.directParents().stream().anyMatch(parent -> parent.id() == shellfishId));
     }
 
     @Test
@@ -144,6 +163,12 @@ class CatalogAdministrationMvcTest {
                 .andExpect(content().string(containsString("value=\"DRAWABLE\"")))
                 .andExpect(content().string(containsString("/admin/assets/catalog.css")))
                 .andExpect(content().string(containsString("/admin/assets/catalog.js")))
+                .andExpect(content().string(containsString("einfach")))
+                .andExpect(content().string(containsString("gezielter Einkauf")))
+                .andExpect(content().string(containsString("schwierig")))
+                .andExpect(content().string(containsString("regulär nicht verfügbar")))
+                .andExpect(content().string(containsString("Name A–Z")))
+                .andExpect(content().string(containsString("Name Z–A")))
                 .andExpect(content().string(containsString("Kabeljau")))
                 .andExpect(content().string(containsString("Aggregatversion")));
 
@@ -170,7 +195,9 @@ class CatalogAdministrationMvcTest {
         assertFalse(rootsHtml.contains("Kinder laden"));
         assertTrue(rootsHtml.contains("data-node-id=\"" + expandableRootId + "\""));
         assertTrue(rootsHtml.contains("aria-expanded=\"false\""));
-        assertTrue(rootsHtml.contains("aria-controls=\"children-" + expandableRootId + "\""));
+        String rootTarget = ariaControlsForNode(rootsHtml, expandableRootId);
+        assertTrue(rootTarget.startsWith("children-"));
+        assertTrue(rootsHtml.contains("hx-target=\"#" + rootTarget + "\""));
         assertTrue(rootsHtml.contains("hx-trigger=\"tree-load\""));
 
         MvcResult childrenResult = mockMvc.perform(get("/admin/catalog/{id}/children", scaleConceptParentId)
@@ -182,6 +209,39 @@ class CatalogAdministrationMvcTest {
         String childrenHtml = childrenResult.getResponse().getContentAsString();
         assertFalse(childrenHtml.contains("data-node-id=\"" + scaleConceptId + "\""),
                 "A leaf node must not render a non-functional hierarchy toggle");
+    }
+
+    @Test
+    void givesMultiParentHierarchyOccurrencesIndependentChildTargets() throws Exception {
+        MockHttpSession session = authenticate();
+
+        String seafoodChildren = mockMvc.perform(get("/admin/catalog/{id}/children", seafoodId)
+                        .session(session)
+                        .header("HX-Request", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Krustentiere")))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String shellfishChildren = mockMvc.perform(get("/admin/catalog/{id}/children", shellfishId)
+                        .session(session)
+                        .header("HX-Request", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Krustentiere")))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String directTarget = ariaControlsForNode(seafoodChildren, crustaceansId);
+        String nestedTarget = ariaControlsForNode(shellfishChildren, crustaceansId);
+
+        assertNotEquals(directTarget, nestedTarget,
+                "The same concept rendered in two hierarchy branches must control different child containers");
+        assertTrue(seafoodChildren.contains("hx-target=\"#" + directTarget + "\""));
+        assertTrue(shellfishChildren.contains("hx-target=\"#" + nestedTarget + "\""));
+        assertTrue(seafoodChildren.contains("data-tree-occurrence="));
+        assertTrue(shellfishChildren.contains("data-tree-occurrence="));
     }
 
     @Test
@@ -209,6 +269,11 @@ class CatalogAdministrationMvcTest {
 
         assertTrue(detailHtml.contains("data-testid=\"dimension-unmanaged-" + unmanagedDimensionCode + "\""));
         assertFalse(detailHtml.contains("data-testid=\"dimension-scale-" + unmanagedDimensionCode + "\""));
+        assertTrue(detailHtml.contains(localizedAvailabilityLabel));
+        assertFalse(detailHtml.contains(">EASY<"));
+        assertFalse(detailHtml.contains(">PLANNED<"));
+        assertFalse(detailHtml.contains(">DIFFICULT<"));
+        assertFalse(detailHtml.contains(">UNAVAILABLE<"));
     }
 
     @Test
@@ -230,7 +295,8 @@ class CatalogAdministrationMvcTest {
                 .andExpect(content().string(containsString("--herb")));
         mockMvc.perform(get("/admin/assets/catalog.js").session(session))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("data-tree-toggle")));
+                .andExpect(content().string(containsString("data-tree-toggle")))
+                .andExpect(content().string(containsString(":scope > .tree-children")));
         mockMvc.perform(get("/admin/assets/catalog-icons.svg").session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("icon-heat")));
@@ -253,6 +319,34 @@ class CatalogAdministrationMvcTest {
                 .findFirst()
                 .orElseThrow()
                 .id();
+    }
+
+    private static String ariaControlsForNode(String html, long nodeId) {
+        int nodePosition = html.indexOf("data-node-id=\"" + nodeId + "\"");
+        assertTrue(nodePosition >= 0, () -> "Missing hierarchy toggle for node " + nodeId);
+        int buttonStart = html.lastIndexOf("<button", nodePosition);
+        int buttonEnd = html.indexOf('>', nodePosition);
+        assertTrue(buttonStart >= 0 && buttonEnd >= 0, () -> "Could not isolate toggle for node " + nodeId);
+        return attributeValue(html.substring(buttonStart, buttonEnd + 1), "aria-controls");
+    }
+
+    private static String attributeValue(String html, String attribute) {
+        String prefix = attribute + "=\"";
+        int start = html.indexOf(prefix);
+        assertTrue(start >= 0, () -> "Missing attribute " + attribute);
+        start += prefix.length();
+        int end = html.indexOf('"', start);
+        assertTrue(end >= 0, () -> "Unterminated attribute " + attribute);
+        return html.substring(start, end);
+    }
+
+    private static String availabilityLabel(CatalogQueries.CatalogAvailability availability) {
+        return switch (availability) {
+            case EASY -> "einfach";
+            case PLANNED -> "gezielter Einkauf";
+            case DIFFICULT -> "schwierig";
+            case UNAVAILABLE -> "regulär nicht verfügbar";
+        };
     }
 
     private static String elementByTestId(String html, String testId) {
