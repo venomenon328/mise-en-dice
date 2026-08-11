@@ -2,13 +2,14 @@
 <html lang="de" xmlns:th="https://www.thymeleaf.org">
 <body>
 <ul th:fragment="nodes" class="hierarchy-nodes" data-testid="hierarchy-nodes">
-    <li th:each="node : ${nodes}" class="hierarchy-item" th:classappend="${!node.active} ? ' inactive'">
+    <li th:each="node : ${nodes}" class="hierarchy-item" th:classappend="${!node.active} ? ' inactive'"
+        th:with="occurrenceId=|${hierarchyFragmentId}-${node.id}|">
         <div class="tree-node" th:classappend="${state.selectedConceptId == node.id} ? ' is-selected'">
             <button th:if="${node.hasDirectChildren}" type="button" class="tree-toggle"
-                    aria-expanded="false" th:aria-controls="|children-${node.id}|"
+                    aria-expanded="false" th:aria-controls="|children-${occurrenceId}|"
                     th:aria-label="|${node.displayName}: Kinder einblenden|"
-                    th:attr="data-node-label=${node.displayName},data-node-id=${node.id}" data-tree-toggle
-                    th:hx-get="${state.childrenUrl(node.id)}" th:hx-target="|#children-${node.id}|"
+                    th:attr="data-node-label=${node.displayName},data-node-id=${node.id},data-tree-occurrence=${occurrenceId}" data-tree-toggle
+                    th:hx-get="${state.childrenUrl(node.id)}" th:hx-target="|#children-${occurrenceId}|"
                     hx-trigger="tree-load" hx-swap="innerHTML">
                 <span class="tree-toggle-symbol" data-tree-toggle-symbol aria-hidden="true">+</span>
             </button>
@@ -30,7 +31,7 @@
                       th:text="|${node.directParentCount} Eltern|">2 Eltern</span>
             </a>
         </div>
-        <div th:id="|children-${node.id}|" class="tree-children" aria-live="polite" hidden></div>
+        <div th:id="|children-${occurrenceId}|" class="tree-children" aria-live="polite" hidden></div>
     </li>
     <li th:if="${nodes.isEmpty()}" class="empty-state empty-state--compact">Keine direkten Kinder.</li>
 </ul>
