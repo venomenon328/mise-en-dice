@@ -35,8 +35,8 @@ Zentrale Modellierungsentscheidungen sind insbesondere:
 - persistente Audit-Historie für Kandidatensätze und Kuratorentscheidungen
 - freie manuelle Vorgaben, die den Zufallsgenerator und seine Regeln bewusst übersteuern können
 
-Der initiale Katalog umfasst 155 Zutatenkonzepte, davon 153 zufällig ziehbar. Jeder aktive Zieh-Kandidat besitzt mindestens eine funktionale Rolle sowie eine Beschaffbarkeitseinschätzung für Georgia und Tobias.
+Der initiale Katalog umfasst **642 Zutatenkonzepte**, davon **640 zufällig ziehbar**. Darunter befinden sich **78 offene** und **562 spezifische** Vorgaben. Jeder aktive Zieh-Kandidat besitzt mindestens eine funktionale Rolle sowie eine Beschaffbarkeitseinschätzung für Georgia und Tobias.
 
 ## Status
 
-Produktvision, Datenmodell, PostgreSQL-Grundstruktur und initialer Zutatenkatalog sind angelegt. Als nächster Entwicklungsschritt folgt die Spezifikation der harten Generierungsregeln und anschließend der Kandidatengenerator.
+Produktvision, Datenmodell, PostgreSQL-Grundstruktur und ein umfangreicher initialer Zutatenkatalog sind angelegt. Als nächster Entwicklungsschritt folgt die Spezifikation der harten Generierungsregeln und anschließend der Kandidatengenerator.

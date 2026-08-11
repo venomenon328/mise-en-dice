@@ -1,14 +1,17 @@
 -- Mise en Dice - seed sanity checks
 -- Run after schema migrations and all db/seeds/*.sql files.
--- Fails fast when the baseline catalog is incomplete in structurally relevant ways.
+-- Fails fast when the catalog is incomplete in structurally relevant ways.
 
 DO $$
 DECLARE
     draw_count integer;
     open_count integer;
     specific_count integer;
+    refinement_count integer;
+    exclusion_count integer;
     missing_roles integer;
     missing_availability integer;
+    open_without_refinements integer;
     targetless_exclusions integer;
 BEGIN
     SELECT count(*)
@@ -17,7 +20,7 @@ BEGIN
      WHERE active
        AND random_draw_enabled;
 
-    IF draw_count < 100 THEN
+    IF draw_count < 600 THEN
         RAISE EXCEPTION 'draw pool unexpectedly small: % active draw concepts', draw_count;
     END IF;
 
@@ -28,7 +31,7 @@ BEGIN
        AND random_draw_enabled
        AND challenge_specificity = 'OPEN';
 
-    IF open_count < 10 THEN
+    IF open_count < 70 THEN
         RAISE EXCEPTION 'open requirement pool unexpectedly small: % concepts', open_count;
     END IF;
 
@@ -39,8 +42,25 @@ BEGIN
        AND random_draw_enabled
        AND challenge_specificity = 'SPECIFIC';
 
-    IF specific_count < 50 THEN
+    IF specific_count < 540 THEN
         RAISE EXCEPTION 'specific requirement pool unexpectedly small: % concepts', specific_count;
+    END IF;
+
+    SELECT count(*)
+      INTO refinement_count
+      FROM ingredient_refinement;
+
+    IF refinement_count < 750 THEN
+        RAISE EXCEPTION 'refinement graph unexpectedly small: % relations', refinement_count;
+    END IF;
+
+    SELECT count(*)
+      INTO exclusion_count
+      FROM exclusion_rule
+     WHERE active;
+
+    IF exclusion_count < 20 THEN
+        RAISE EXCEPTION 'active exclusion pool unexpectedly small: % rules', exclusion_count;
     END IF;
 
     SELECT count(*)
@@ -77,6 +97,22 @@ BEGIN
 
     IF missing_availability <> 0 THEN
         RAISE EXCEPTION '% required participant availability rows are missing', missing_availability;
+    END IF;
+
+    SELECT count(*)
+      INTO open_without_refinements
+      FROM ingredient_concept ic
+     WHERE ic.active
+       AND ic.random_draw_enabled
+       AND ic.challenge_specificity = 'OPEN'
+       AND NOT EXISTS (
+           SELECT 1
+             FROM ingredient_refinement ir
+            WHERE ir.parent_concept_id = ic.id
+       );
+
+    IF open_without_refinements <> 0 THEN
+        RAISE EXCEPTION '% open draw concepts have no known refinement', open_without_refinements;
     END IF;
 
     IF (

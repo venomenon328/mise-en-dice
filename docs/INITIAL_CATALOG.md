@@ -2,69 +2,80 @@
 
 Stand: 11. August 2026
 
-Dieses Dokument beschreibt die erste kuratierte Befüllung der Zutatenbasis. Das fachliche Datenmodell selbst ist in [`DATA_MODEL.md`](DATA_MODEL.md) beschrieben; die konkreten Seed-Daten liegen unter [`db/seeds`](../db/seeds).
+Dieses Dokument beschreibt die kuratierte Erstbefüllung der Zutatenbasis. Das fachliche Datenmodell selbst ist in [`DATA_MODEL.md`](DATA_MODEL.md) beschrieben; die konkreten Seed-Daten liegen unter [`db/seeds`](../db/seeds).
 
-## 1. Ziel der ersten Befüllung
+## 1. Ziel der Befüllung
 
-Die erste Befüllung soll keinen vollständigen Lebensmittelkatalog darstellen. Sie soll einen ausreichend breiten und abwechslungsreichen Pool bereitstellen, mit dem die spätere Kandidatengenerierung realistisch entwickelt und getestet werden kann.
+Der Katalog soll einen breiten und abwechslungsreichen Pool bereitstellen, mit dem Kandidatengenerierung, Gewichtung, Verfügbarkeitsfilter und Sprachmodell-Kuration realistisch entwickelt werden können. Er ist nicht als ernährungswissenschaftlich vollständige Lebensmittelontologie gedacht. Nach der Erweiterung ist er allerdings groß genug, diese Abgrenzung mit einer gewissen Überzeugungskraft ignorieren zu wollen.
 
-Der Katalog ist deshalb bewusst:
+Die Befüllung ist deshalb:
 
-- breit genug für unterschiedliche Küchen und Kombinationen,
+- breit über unterschiedliche Küchen, Produktgruppen und Verarbeitungsformen verteilt,
 - nicht auf ost- und südostasiatische Zutaten beschränkt,
-- bei Spezialzutaten eher konservativ gewichtet,
-- bei bekannten Konkretisierungen bewusst unvollständig,
-- und bei kulinarischen Eigenschaften nur dort detailliert, wo die Information voraussichtlich tatsächlich nützlich ist.
+- bei Spezialzutaten über Gewicht und Beschaffbarkeit gebremst,
+- sowohl mit offenen Oberbegriffen als auch konkreten Zutaten und Zuschnitten versehen,
+- und bei kulinarischen Eigenschaften nur dort detailliert, wo die Information voraussichtlich nützlich ist.
 
 Eine fehlende Zutat oder Konkretisierung bedeutet weiterhin nicht, dass sie beim Kochen unzulässig wäre.
 
 ## 2. Umfang
 
-Die erste Befüllung enthält:
+Die Befüllung enthält:
 
-- **155 Zutatenkonzepte** insgesamt,
-- davon **153 zufällig ziehbar**,
-- **18 offene** ziehbare Vorgaben,
-- **135 spezifische** ziehbare Vorgaben,
+- **642 Zutatenkonzepte** insgesamt,
+- davon **640 zufällig ziehbar**,
+- **78 offene** ziehbare Vorgaben,
+- **562 spezifische** ziehbare Vorgaben,
 - **2 nicht ziehbare Strukturknoten**,
-- **72 bekannte Konkretisierungsbeziehungen**,
+- **765 bekannte Konkretisierungsbeziehungen**,
 - **9 funktionale Rollen**,
 - **7 fünfstufige kulinarische Dimensionen**,
 - **5 binäre kulinarische Flags**,
-- sowie **6 kuratierte Ausschlussregeln**.
+- **42 Zutatenkonzepte mit saisonalen Faktoren**,
+- sowie **22 kuratierte Ausschlussregeln**.
 
-Die beiden nicht ziehbaren Strukturknoten sind zunächst `Milchprodukte` und `fertige Currypaste`. Sie existieren ausschließlich, weil sie als Ziele kuratierter Ausschlussregeln benötigt werden.
+Die beiden nicht ziehbaren Strukturknoten bleiben `Milchprodukte` und `fertige Currypaste`. Sie werden für Klassifikation und Ausschlussregeln benötigt, ohne selbst als Challenge-Vorgabe ausgelost zu werden.
 
-## 3. Offene Vorgaben
+## 3. Offene und konkrete Vorgaben
 
-Die initialen offenen, zufällig ziehbaren Vorgaben sind:
+Offene Vorgaben decken nun nicht nur einzelne Produktfamilien wie `Fisch`, `Kohlgemüse` oder `Nüsse` ab, sondern auch deutlich breitere beziehungsweise zusätzliche Bereiche. Beispiele sind:
 
-- Fisch
-- weißfleischiger Fisch
-- fettreicher Fisch
-- Schalen- und Krustentiere
-- Geflügel
-- Hülsenfrüchte
-- Kohlgemüse
-- Wurzelgemüse
-- Blattgemüse
-- Pilze
-- Zitrusfrucht
-- Steinobst
-- Beeren
-- frische Kräuter
-- Käse
-- Nudeln
-- Nüsse
-- Algen
+- Fleisch, Schweinefleisch, Rindfleisch, Kalbfleisch, Wild und Innereien,
+- Krustentiere, Weichtiere und Muscheln,
+- Gemüse, Fruchtgemüse, Lauchgewächse, Salate, Sprossen und konservierte pflanzliche Zutaten,
+- Obst, Kernobst, tropische Früchte, Melonen und Trockenfrüchte,
+- Bohnen, Erbsen, Sojaprodukte und pflanzliche Proteinprodukte,
+- Stärke, Getreide, Mehl, Brot, Pasta, Reisprodukte und Teighüllen,
+- Milchprodukte, Speiseöle, Kerne und Samen,
+- Gewürze, Gewürzmischungen, Essige, Süßungsmittel, Fonds,
+- fermentierte Würzzutaten, Chilisaucen, Tomatenprodukte sowie Saucen und Pasten.
 
-`Hähnchen` und `Chili` sind dagegen ausdrücklich **spezifische Vorgaben**, obwohl die Datenbasis bekannte Konkretisierungen wie `Hähnchenbrust`, `Hähnchenschenkel`, `Jalapeño` und `Habanero` kennt.
+Dazu kommen konkrete Zuschnitte, Sorten und Produkte. `Schweinefleisch` kennt beispielsweise Schweinebauch, Filet, Nacken, Schulter, Kotelett, Haxe, Hack, Leber sowie mehrere Wurst- und Pökelwaren. `Rindfleisch` umfasst unter anderem Hack, Gulasch, Steak, Brust, Rinderhüfte, Beinscheibe, Short Ribs, Filet, Leber, Herz und Zunge.
 
-## 4. Funktionale Rollen
+Der Konkretisierungsgraph bildet dabei gültige Alternativen für eine Vorgabe ab, nicht bloß die Zutatenliste eines zusammengesetzten Produkts. Ketchup ist daher kein Süßungsmittel, nur weil die Industrie gelegentlich großzügig Zucker hineinkippt.
+
+## 4. Inhaltliche Breite
+
+Die Erweiterung ergänzt unter anderem:
+
+- zahlreiche Fischarten, Krusten- und Weichtiere, Räucher- und Konservenprodukte sowie Rogen,
+- Geflügel, Wild, Ziege, Innereien, Würste und Pökelwaren,
+- weitere Hülsenfrüchte, Tofuvarianten, Natto, Sojagranulat, Lupine und Mykoprotein,
+- Salate, Sprossen, Kürbisse, Wurzel- und Stängelgemüse sowie ein deutlich größeres Pilzsortiment,
+- Beeren, Zitrusfrüchte, Kern- und Steinobst, tropische Früchte, Melonen und Trockenfrüchte,
+- Reis- und Nudelsorten, Getreide, Brote, Teighüllen, Mehle und Bindemittel,
+- Käse, weitere Milchprodukte, Öle, Nüsse, Samen und Mus,
+- Kräuter, Einzelgewürze, Gewürzmischungen, Essige und Süßungsmittel,
+- asiatische und südostasiatische Würzmittel ebenso wie europäische und amerikanische Saucen,
+- Spezialzutaten wie Ube, Calamansi, Bagoong, Aligue, Mắm ruốc, stinkender Tofu, Egusi, Trüffel und Safran.
+
+Nicht jede Zutat ist gleich häufig oder gleich spontan beschaffbar. Ein Katalog darf Hummer kennen, ohne deshalb so zu tun, als läge er neben den Kartoffeln im Discounter.
+
+## 5. Funktionale Rollen
 
 Die Rollen dienen der strukturellen Kandidatenbewertung und nicht einer vollständigen ernährungswissenschaftlichen Einordnung.
 
-Initial vorhanden sind:
+Vorhanden sind:
 
 - tierisches Protein
 - pflanzliches Protein
@@ -76,11 +87,9 @@ Initial vorhanden sind:
 - Aromat
 - Würzkomponente
 
-Mehrfachzuordnungen sind ausdrücklich normal. Beispielsweise können Nüsse zugleich pflanzliches Protein und Fett sein; Tahini ist zusätzlich eine Würzkomponente.
+Mehrfachzuordnungen sind ausdrücklich normal. Rollen werden explizit gepflegt und nicht automatisch aus dem Konkretisierungsgraphen vererbt. Jeder der 640 aktiven Zieh-Kandidaten besitzt mindestens eine Rolle.
 
-Rollen werden zunächst explizit gepflegt und nicht aus dem Konkretisierungsgraphen vererbt.
-
-## 5. Kulinarische Eigenschaften
+## 6. Kulinarische Eigenschaften
 
 Die fünfstufigen Dimensionen sind:
 
@@ -92,114 +101,105 @@ Die fünfstufigen Dimensionen sind:
 - Schärfe
 - Umami
 
-Die Stufen reichen von `1` = sehr niedrig bis `5` = sehr hoch.
+Die Stufen reichen von `1` = sehr niedrig bis `5` = sehr hoch. Ein fehlender Eintrag bedeutet „nicht kuratiert beziehungsweise derzeit nicht relevant“ und nicht den niedrigsten Wert.
 
-Die Initialwerte sind bewusst **sparsam**. Es wird nicht versucht, für jede Zutat jede Dimension zu bewerten. Ein fehlender Eintrag bedeutet „nicht kuratiert beziehungsweise derzeit nicht relevant“ und nicht den niedrigsten Wert.
+Binäre Flags kennzeichnen Fermentation, Einlegen, Räuchern, Pökeln/Reifen und Trocknung. Auch diese Werte werden bewusst sparsam gesetzt. Die Erweiterung fügt **80 Flag-Zuordnungen** und **862 Dimensionswerte** hinzu.
 
-Beispiele für bewusst gesetzte Extremwerte sind etwa:
+## 7. Beschaffbarkeit
 
-- Habanero: Schärfe 5
-- Fischsauce: Dominanz 5, Umami 5
-- Miso: Umami 5
-- Blauschimmelkäse: Dominanz 5, Umami 5
-- Honig: Süße 5
-- Tamarinde: Säure 5
-
-Binäre Flags werden ebenfalls zurückhaltend verwendet, beispielsweise für Fermentation, Einlegen, Trocknung oder Reifung.
-
-## 6. Beschaffbarkeit
-
-Jeder der 153 zufällig ziehbaren Einträge besitzt einen separaten Beschaffbarkeitswert für Georgia und Tobias.
-
-Die erste Einschätzung ist bewusst pragmatisch und darf später anhand realer Einkaufserfahrungen korrigiert werden. Sie ist keine Behauptung über einen bestimmten Laden oder einen dauerhaft garantierten Bestand.
-
-Initiale Verteilung:
+Jeder der 640 zufällig ziehbaren Einträge besitzt einen separaten Beschaffbarkeitswert für Georgia und Tobias. Die Einschätzungen sind pragmatische Startwerte und dürfen anhand realer Einkaufserfahrungen korrigiert werden.
 
 | Stufe | Tobias | Georgia |
 |---|---:|---:|
-| EASY | 117 | 134 |
-| PLANNED | 32 | 18 |
-| DIFFICULT | 4 | 1 |
+| EASY | 405 | 445 |
+| PLANNED | 167 | 178 |
+| DIFFICULT | 68 | 17 |
 | UNAVAILABLE | 0 | 0 |
 
-Der initiale Zufallspool enthält bewusst keine Zutat, die für einen der beiden bereits als `UNAVAILABLE` eingeschätzt wird. Spezialfälle wie Weinbergschnecken, Okra, Jakobsmuscheln oder Tamarinde sind entsprechend niedriger eingestuft beziehungsweise gewichtet.
+Die deutlich höhere Zahl geplanter oder schwieriger Einträge bei Tobias berücksichtigt insbesondere Spezialgeschäfte und das regional unterschiedliche Angebot. Die Werte werden direkt pro Konzept gepflegt und nicht aus Eltern- oder Kindknoten abgeleitet.
 
-Beschaffbarkeit wird weiterhin direkt pro Konzept gepflegt. Sie wird nicht aus bekannten Konkretisierungen abgeleitet.
-
-## 7. Ziehungsgewichte und Ungewöhnlichkeit
+## 8. Ziehungsgewichte und Ungewöhnlichkeit
 
 `base_draw_weight` und `novelty_level` erfüllen unterschiedliche Zwecke.
 
-Die initialen Gewichte folgen grob diesen Prinzipien:
+Die Gewichte folgen grob diesen Prinzipien:
 
-- verbreitete, vielseitige Zutaten liegen häufig bei ungefähr `1.0`,
-- sehr offene Kategorien meist etwas darunter,
-- geschmacksprägende Saucen und Würzkomponenten werden etwas gebremst,
-- schwierigere oder ungewöhnlichere Zutaten werden deutlich seltener gezogen,
-- Weinbergschnecken bilden mit einem Gewicht von `0.2` bewusst einen seltenen Extremfall.
+- verbreitete, vielseitige Zutaten liegen häufig zwischen `0.7` und `1.0`,
+- sehr breite Kategorien werden etwas gebremst,
+- Saucen, Gewürze und sehr dominante Komponenten erhalten niedrigere Gewichte,
+- schwierige oder teure Spezialzutaten werden deutlich seltener gezogen,
+- extreme Sonderfälle wie Trüffel, Safran, Froschschenkel oder Hummer bleiben möglich, aber selten.
 
-Die Werte sind Startwerte für spätere empirische Anpassung. Sie sollen nicht als objektive kulinarische Kennzahlen verstanden werden.
+Die Werte sind Startwerte für späteres empirisches Tuning und keine objektiven kulinarischen Naturkonstanten.
 
-Die Ungewöhnlichkeit wird unabhängig davon auf einer optionalen Skala von 1 bis 5 gepflegt.
+## 9. Saisonfaktoren
 
-## 8. Saisonfaktoren
+Saisonale Faktoren sind nun für **42 Konzepte** gepflegt. Neben den bisherigen Einträgen für Spargel, Erdbeeren, Kürbis, Rosenkohl, Grünkohl, Pfirsich, Pflaume und Aprikose kommen unter anderem hinzu:
 
-Saisonfaktoren sind zunächst nur für Zutaten gesetzt, bei denen die Jahreszeit einen klaren praktischen Einfluss auf Attraktivität oder Beschaffbarkeit hat:
+- grüner und weißer Spargel,
+- Rhabarber,
+- Kirschen, Nektarinen, Feigen, Quitten und Kaki,
+- Himbeeren, Heidelbeeren, Brombeeren und Johannisbeeren,
+- Tomaten, Paprika, Zucchini, Gurken und Erbsen,
+- Kohlrabi, Romanesco, Steckrübe, Weißkohl und Lauch,
+- Pfifferlinge, Steinpilze, Feldsalat und Chicorée.
 
-- Spargel
-- Erdbeeren
-- Kürbis
-- Rosenkohl
-- Grünkohl
-- Pfirsich
-- Pflaume
-- Aprikose
+Für alle anderen Zutaten gilt implizit Faktor `1.0`. Saisonfaktoren verändern die Ziehungswahrscheinlichkeit, machen eine Zutat aber nicht automatisch unzulässig.
 
-Für alle anderen Zutaten gilt implizit der Faktor `1.0`.
+## 10. Ausschlussregeln
 
-Auch diese Werte sind Tuningdaten. Sie machen eine Zutat außerhalb ihrer Hauptsaison nicht automatisch unzulässig.
+Zusätzlich zu den bisherigen sechs Regeln existieren nun sechzehn weitere:
 
-## 9. Ausschlussregeln
+- kein Fleisch
+- kein Schweinefleisch
+- kein Rindfleisch
+- kein Geflügel
+- kein Fisch oder Meeresfrüchte
+- keine Eier
+- keine Nüsse
+- keine Kerne oder Samen
+- keine Hülsenfrüchte
+- keine Chili
+- kein Kochalkohol
+- keine Pilze
+- keine Lauchgewächse
+- keine Tomaten
+- kein zusätzliches Süßungsmittel
+- keine fertige Sauce oder Würzpaste
 
-Initial vorhanden sind:
-
-- keine Kokosmilch
-- kein Reis
-- keine Nudeln
-- keine Sojasauce
-- keine Milchprodukte
-- keine fertige Currypaste
-
-Die Regeln sind ein bewusst kleiner kuratierter Pool. Neue Regeln werden nicht automatisch aus Zutatenkonzepten erzeugt.
-
-## 10. Noch offene Regelfrage: Küchenbasics
-
-Die endgültige Abgrenzung frei verfügbarer Küchenbasics ist weiterhin nicht festgelegt. Deshalb befinden sich unter anderem Zwiebel, Knoblauch, Ingwer und Chili bereits im Katalog und sind momentan grundsätzlich ziehbar.
-
-Wenn die spätere Regelspezifikation einzelne dieser Zutaten als stets freie Basics behandelt und dadurch als Challenge-Vorgabe uninteressant macht, kann ihre Zufalls-Ziehbarkeit oder Gewichtung angepasst werden, ohne das Datenmodell zu verändern.
+Breite Ausschlüsse sind niedriger gewichtet. Sie nutzen den Konkretisierungsgraphen, damit etwa `kein Schweinefleisch` auch die hinterlegten Zuschnitte und Produkte erfasst.
 
 ## 11. Seed-Dateien
 
-Die Befüllung ist nach Verantwortlichkeit aufgeteilt:
+Die Befüllung ist in eine kompakte Basis und die umfangreiche Erweiterung aufgeteilt:
 
 1. `db/seeds/001_reference_data.sql` – Teilnehmer, Rollen, Flags und Dimensionen
-2. `db/seeds/002_ingredient_catalog.sql` – Zutatenkonzepte und Konkretisierungsgraph
-3. `db/seeds/003_functional_roles.sql` – Rollenzuordnungen
-4. `db/seeds/004_availability.sql` – individuelle Beschaffbarkeit
-5. `db/seeds/005_culinary_properties.sql` – Flags und fünfstufige Eigenschaften
-6. `db/seeds/006_seasonality.sql` – Saisonfaktoren
-7. `db/seeds/007_exclusion_rules.sql` – kuratierte Ausschlussregeln
+2. `db/seeds/002_ingredient_catalog.sql` – ursprüngliche Zutatenkonzepte und Konkretisierungen
+3. `db/seeds/003_functional_roles.sql` – ursprüngliche Rollenzuordnungen
+4. `db/seeds/004_availability.sql` – ursprüngliche individuelle Beschaffbarkeit
+5. `db/seeds/005_culinary_properties.sql` – ursprüngliche Flags und Dimensionen
+6. `db/seeds/006_seasonality.sql` – ursprüngliche Saisonfaktoren
+7. `db/seeds/007_exclusion_rules.sql` – ursprüngliche Ausschlussregeln
+8. `db/seeds/008_ingredient_catalog_expansion_1.sql` – erster Teil der zusätzlichen Konzepte und Pflichtmetadaten
+9. `db/seeds/009_ingredient_catalog_expansion_2.sql` – zweiter Teil der zusätzlichen Konzepte und Pflichtmetadaten
+10. `db/seeds/010_ingredient_catalog_expansion_3.sql` – dritter Teil der zusätzlichen Konzepte und Pflichtmetadaten
+11. `db/seeds/011_ingredient_refinements_expansion.sql` – zusätzliche Konkretisierungsbeziehungen
+12. `db/seeds/012_seasonality_expansion.sql` – zusätzliche Saisonfaktoren
+13. `db/seeds/013_exclusion_rules_expansion.sql` – zusätzliche Ausschlussregeln
 
-Die Seed-Skripte sind so ausgelegt, dass ein erneuter Lauf bestehende kuratierte Einträge grundsätzlich nicht überschreibt. Die Availability-Befüllung überschreibt insbesondere keine später manuell angepassten Werte.
+Die Erweiterung hält die Pflichtmetadaten pro Konzept in drei kompakten, dokumentierten Manifesten zusammen und überführt sie beim Seed über kurzlebige `DO`-Blöcke in temporäre Quelltabellen. Dadurch existieren Code, Rolle und Beschaffbarkeit nicht in mehreren unabhängig zu synchronisierenden Listen. Alle Seeds sind idempotent und überschreiben bestehende kuratierte Einträge grundsätzlich nicht.
 
 ## 12. Sanity-Check
 
 [`db/checks/001_seed_sanity.sql`](../db/checks/001_seed_sanity.sql) prüft nach dem Seed unter anderem:
 
-- ausreichende Größe des Ziehungspools,
-- ausreichende Zahl offener und spezifischer Vorgaben,
+- mindestens 600 aktive Zieh-Kandidaten,
+- mindestens 70 offene und 540 spezifische Vorgaben,
+- mindestens 750 Konkretisierungsbeziehungen,
+- mindestens 20 aktive Ausschlussregeln,
 - mindestens eine funktionale Rolle für jeden aktiven Zieh-Kandidaten,
 - vollständige Beschaffbarkeitsdaten für Georgia und Tobias,
+- mindestens eine bekannte Konkretisierung für jede offene Zieh-Vorgabe,
 - aktive Teilnehmerdatensätze,
 - sowie mindestens ein Ziel für jede aktive Ausschlussregel.
 
@@ -220,4 +220,4 @@ Optional folgen:
 - Saisonfaktoren,
 - kurze Kuratornotiz.
 
-Damit bleibt das Pflichtwissen klein genug, dass der Katalog praktisch weiter gepflegt werden kann, ohne bei jedem neuen Lebensmittel zunächst eine Dissertation über dessen sensorische Ontologie zu verfassen.
+Damit bleibt die Datenpflege trotz des inzwischen sehr breiten Katalogs handhabbar. Eine Dissertation über die metaphysische Stellung der Steckrübe bleibt freiwillig.
