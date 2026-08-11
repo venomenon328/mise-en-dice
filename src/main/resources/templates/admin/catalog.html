@@ -36,7 +36,13 @@
                 <p class="eyebrow">Zutatenverwaltung</p>
                 <h1>Katalog</h1>
             </div>
-            <span class="catalog-count" th:text="|${catalogResults.totalItems} Konzepte|">Konzepte</span>
+            <div class="catalog-title-actions">
+                <span class="catalog-count" th:text="|${catalogResults.totalItems} Konzepte|">Konzepte</span>
+                <a class="button button--primary button--small" th:href="${state.newUrl()}"
+                   th:hx-get="${state.newUrl()}" hx-target="#catalog-detail" hx-swap="outerHTML" hx-push-url="true">
+                    + Neue Zutat
+                </a>
+            </div>
         </div>
 
         <form class="catalog-filters" method="get" th:action="@{/admin/catalog}">
@@ -218,13 +224,15 @@
     </section>
 
     <section class="catalog-detail-column" aria-live="polite">
+        <p th:if="${saveNotice != null}" class="save-notice" role="status" th:text="${saveNotice}">Gespeichert.</p>
+        <section th:if="${form != null}" th:replace="~{admin/fragments/detail :: form}"></section>
         <p th:if="${selectionOutsideResults}" class="notice">Das ausgewählte Konzept liegt außerhalb der aktuellen Treffer.</p>
-        <section th:if="${missingConceptId != null}" id="catalog-detail" class="detail-empty error">
+        <section th:if="${form == null and missingConceptId != null}" id="catalog-detail" class="detail-empty error">
             <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="/admin/assets/catalog-icons.svg#icon-warning"></use></svg>
             <h2>Nicht verfügbar</h2>
             <p>Dieses Zutatenkonzept ist nicht mehr verfügbar.</p>
         </section>
-        <section th:if="${detail == null and missingConceptId == null}" id="catalog-detail" class="detail-empty">
+        <section th:if="${form == null and detail == null and missingConceptId == null}" id="catalog-detail" class="detail-empty">
             <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="/admin/assets/catalog-icons.svg#icon-brand"></use></svg>
             <h2>Konzept auswählen</h2>
             <p>Wähle links eine Zutat oder ein Konzept aus.</p>
@@ -235,7 +243,7 @@
                 <div><dt>Wurzeln</dt><dd th:text="${catalogSummary.rootCount}">0</dd></div>
             </dl>
         </section>
-        <div th:if="${detail != null}">
+        <div th:if="${form == null and detail != null}">
             <section th:replace="~{admin/fragments/detail :: panel}"></section>
         </div>
     </section>

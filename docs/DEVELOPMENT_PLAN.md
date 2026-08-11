@@ -157,7 +157,7 @@ Vor den ersten Schreibflows wird die in Phase 4 entstandene Webshell funktional 
 - alle Frontend-Artefakte werden mit der Anwendung ausgeliefert,
 - Phase 5 bleibt der nächste fachliche Entwicklungsschritt und erhält keine vorgezogenen Schreibfunktionen.
 
-## Phase 5: Zutatenkonzept-Basisbearbeitung
+## Phase 5: Zutatenkonzept-Basisbearbeitung (abgeschlossen mit Issue #11)
 
 Dieses Paket führt die ersten produktiven Schreibzugriffe ein.
 
@@ -178,7 +178,7 @@ Dieses Paket führt die ersten produktiven Schreibzugriffe ein.
 - Audit für Anlage und Änderungen,
 - verständliche Datenbank-Constraint-Fehler.
 
-### Gate
+### Erfülltes Gate
 
 - konkurrierende Änderungen überschreiben sich nicht stillschweigend,
 - Codeänderungen nach Anlage sind über die normale Weboberfläche ausgeschlossen,
@@ -186,7 +186,7 @@ Dieses Paket führt die ersten produktiven Schreibzugriffe ein.
 - unbekannte Datenbankfehler werden nicht als fachliche Konflikte maskiert,
 - jeder erfolgreiche Schreibzugriff erzeugt einen korrekten Audit-Eintrag.
 
-## Phase 6: Konkretisierungsbeziehungen
+## Phase 6: Konkretisierungsbeziehungen (nächster Schritt)
 
 Dieses Paket macht den Graphen schreibend pflegbar.
 

@@ -48,7 +48,7 @@ Die Anwendung akzeptiert ausschließlich gültige BCrypt-Hashes; fehlende oder u
 
 Session-Cookies sind `HttpOnly` und `SameSite=Lax`. Für eine produktive HTTPS-Bereitstellung muss zusätzlich `SERVER_SERVLET_SESSION_COOKIE_SECURE=true` gesetzt werden. Der CSRF-Schutz bleibt aktiv. Nach dem Login führt `/admin` zur lesenden Katalogverwaltung unter `/admin/catalog`.
 
-Die Katalogansicht bietet Suche, Schnell- und Detailfilter, serverseitige Sortierung und Pagination, einen per HTMX nachladbaren Konkretisierungsgraphen sowie die vollständige Detailansicht eines Zutatenkonzepts. Sie ist in dieser Stufe bewusst ausschließlich lesend: Es gibt keine Anlage-, Bearbeitungs-, Bulk-, Ausschluss- oder Audit-Webflows.
+Die Katalogansicht bietet Suche, Schnell- und Detailfilter, serverseitige Sortierung und Pagination, einen per HTMX nachladbaren Konkretisierungsgraphen sowie die vollständige Detailansicht eines Zutatenkonzepts. Zutatenkonzepte können jetzt angelegt und in ihren Basisfeldern bearbeitet werden: Anzeigename, Aktivstatus, Ziehbarkeit, Spezifität, Gewicht, Ungewöhnlichkeit und Kuratornotiz. Jeder Schreibvorgang nutzt optimistisches Locking, eine explizite Bestätigung für relevante Gewichtsrichtwerte und einen atomaren Audit-Eintrag. Beziehungen, Rollen, Eigenschaften, Beschaffbarkeit, Ausschlüsse und die Auditansicht bleiben bewusst folgenden Paketen vorbehalten.
 
 ## Auf einem Docker-VPS deployen
 
@@ -88,4 +88,4 @@ Der initiale Katalog umfasst **642 Zutatenkonzepte**, davon **640 zufällig zieh
 
 ## Status
 
-Produktvision, Datenmodell, Anwendungsfundament, umfangreicher initialer Zutatenkatalog, Administrationssicherheit, die lesende Katalogoberfläche sowie das Produktions- und Branch-Preview-Deployment sind umgesetzt. Vor der ersten schreibenden Katalogstufe folgt die abgegrenzte gestalterische Nachschärfung der bestehenden Oberfläche.
+Produktvision, Datenmodell, Anwendungsfundament, umfangreicher initialer Zutatenkatalog, Administrationssicherheit, die konsolidierte Katalogoberfläche, die erste schreibende Basisbearbeitung sowie das Produktions- und Branch-Preview-Deployment sind umgesetzt. Als nächster fachlicher Schritt folgt die Pflege direkter Konkretisierungsbeziehungen.

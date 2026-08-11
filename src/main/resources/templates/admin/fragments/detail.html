@@ -18,6 +18,10 @@
                       th:text="${detail.randomDrawEnabled ? 'Ziehbar' : 'Nicht ziehbar'}">Ziehbar</span>
             </p>
         </div>
+        <a class="button button--primary" th:href="${state.editUrl(detail.id)}"
+           th:hx-get="${state.editUrl(detail.id)}" hx-target="#catalog-detail" hx-swap="outerHTML" hx-push-url="true">
+            Bearbeiten
+        </a>
     </header>
 
     <section class="detail-section">
@@ -196,6 +200,165 @@
             <li th:if="${detail.directExclusionRules.isEmpty()}" class="muted-copy">Keine direkten Ausschlussregeln</li>
         </ul>
         <p class="technical" th:text="|Technik: Aggregatversion ${detail.version}|">Technik: Aggregatversion 0</p>
+    </section>
+</section>
+
+<section th:fragment="form" th:if="${form != null and formMode != null}" id="catalog-detail" class="detail-panel detail-panel--editing" data-testid="catalog-edit-form">
+    <section th:if="${formMode.name() == 'CONFLICT'}" class="conflict-view" data-testid="catalog-conflict-view">
+        <p class="eyebrow">Gleichzeitige Änderung</p>
+        <h2>Dein Stand wurde nicht gespeichert</h2>
+        <p>Das Zutatenkonzept wurde seit dem Laden geändert. Nichts wurde überschrieben.</p>
+        <div class="conflict-columns">
+            <section>
+                <h3>Dein Stand</h3>
+                <dl class="conflict-list">
+                    <div th:classappend="${form.displayName != currentDetail.displayName} ? ' is-different'"><dt>Anzeigename</dt><dd th:text="${form.displayName}">Mein Name</dd></div>
+                    <div th:classappend="${form.active != currentDetail.active} ? ' is-different'"><dt>Status</dt><dd th:text="${form.active ? 'Aktiv' : 'Inaktiv'}">Aktiv</dd></div>
+                    <div th:classappend="${form.randomDrawEnabled != currentDetail.randomDrawEnabled} ? ' is-different'"><dt>Ziehbar</dt><dd th:text="${form.randomDrawEnabled ? 'Ja' : 'Nein'}">Nein</dd></div>
+                    <div th:classappend="${form.challengeSpecificity != currentDetail.challengeSpecificity} ? ' is-different'"><dt>Spezifität</dt><dd th:text="${form.challengeSpecificity == 'OPEN' ? 'Offen' : 'Spezifisch'}">Spezifisch</dd></div>
+                    <div th:classappend="${form.baseDrawWeight != currentDetail.baseDrawWeight.toPlainString()} ? ' is-different'"><dt>Gewicht</dt><dd th:text="${form.baseDrawWeight}">1.0000</dd></div>
+                    <div th:classappend="${form.noveltyLevel != (currentDetail.noveltyLevel == null ? '' : currentDetail.noveltyLevel.toString())} ? ' is-different'"><dt>Ungewöhnlichkeit</dt><dd th:text="${form.noveltyLevel.isEmpty() ? 'nicht gepflegt' : form.noveltyLevel}">nicht gepflegt</dd></div>
+                    <div th:classappend="${form.curatorNote != (currentDetail.curatorNote ?: '')} ? ' is-different'"><dt>Kuratornotiz</dt><dd th:text="${form.curatorNote.isEmpty() ? 'keine' : form.curatorNote}">keine</dd></div>
+                </dl>
+            </section>
+            <section>
+                <h3>Aktueller Datenbankstand</h3>
+                <dl class="conflict-list">
+                    <div th:classappend="${form.displayName != currentDetail.displayName} ? ' is-different'"><dt>Anzeigename</dt><dd th:text="${currentDetail.displayName}">Aktueller Name</dd></div>
+                    <div th:classappend="${form.active != currentDetail.active} ? ' is-different'"><dt>Status</dt><dd th:text="${currentDetail.active ? 'Aktiv' : 'Inaktiv'}">Aktiv</dd></div>
+                    <div th:classappend="${form.randomDrawEnabled != currentDetail.randomDrawEnabled} ? ' is-different'"><dt>Ziehbar</dt><dd th:text="${currentDetail.randomDrawEnabled ? 'Ja' : 'Nein'}">Nein</dd></div>
+                    <div th:classappend="${form.challengeSpecificity != currentDetail.challengeSpecificity} ? ' is-different'"><dt>Spezifität</dt><dd th:text="${currentDetail.challengeSpecificity == 'OPEN' ? 'Offen' : 'Spezifisch'}">Spezifisch</dd></div>
+                    <div th:classappend="${form.baseDrawWeight != currentDetail.baseDrawWeight.toPlainString()} ? ' is-different'"><dt>Gewicht</dt><dd th:text="${currentDetail.baseDrawWeight}">1.0000</dd></div>
+                    <div th:classappend="${form.noveltyLevel != (currentDetail.noveltyLevel == null ? '' : currentDetail.noveltyLevel.toString())} ? ' is-different'"><dt>Ungewöhnlichkeit</dt><dd th:text="${currentDetail.noveltyLevel ?: 'nicht gepflegt'}">nicht gepflegt</dd></div>
+                    <div th:classappend="${form.curatorNote != (currentDetail.curatorNote ?: '')} ? ' is-different'"><dt>Kuratornotiz</dt><dd th:text="${currentDetail.curatorNote ?: 'keine'}">keine</dd></div>
+                </dl>
+            </section>
+        </div>
+        <div class="form-actions">
+            <a class="button button--secondary" th:href="${state.detailUrl(currentDetail.id)}">Aktuellen Stand laden und meine Änderungen verwerfen</a>
+            <form method="post" th:action="${state.detailUrl(form.conceptId)}">
+                <input type="hidden" name="displayName" th:value="${form.displayName}">
+                <input type="hidden" name="active" th:value="${form.active}">
+                <input type="hidden" name="randomDrawEnabled" th:value="${form.randomDrawEnabled}">
+                <input type="hidden" name="challengeSpecificity" th:value="${form.challengeSpecificity}">
+                <input type="hidden" name="baseDrawWeight" th:value="${form.baseDrawWeight}">
+                <input type="hidden" name="noveltyLevel" th:value="${form.noveltyLevel}">
+                <input type="hidden" name="curatorNote" th:value="${form.curatorNote}">
+                <input type="hidden" name="version" th:value="${currentDetail.version}">
+                <input type="hidden" name="continueEditing" value="true">
+                <button class="button button--primary" type="submit">Mit aktuellem Stand weiterbearbeiten</button>
+            </form>
+        </div>
+    </section>
+
+    <section th:unless="${formMode.name() == 'CONFLICT'}">
+        <header class="detail-header">
+            <div>
+                <p class="eyebrow" th:text="${formMode.name() == 'CREATE' ? 'Neue Zutat' : detail.code}">Neue Zutat</p>
+                <h2 th:text="${formMode.name() == 'CREATE' ? 'Zutatenkonzept anlegen' : 'Zutatenkonzept bearbeiten'}">Zutatenkonzept bearbeiten</h2>
+                <p th:if="${formMode.name() == 'CREATE'}" class="muted-copy">Neue Konzepte starten aktiv, aber bewusst noch nicht ziehbar.</p>
+            </div>
+        </header>
+
+        <form method="post" th:action="${formMode.name() == 'CREATE' ? state.createUrl() : state.detailUrl(form.conceptId)}"
+              data-catalog-concept-form th:attr="data-original-active=${detail != null and detail.active}">
+            <div th:if="${formErrors != null and !formErrors.isEmpty()}" class="form-errors" role="alert">
+                <h3>Bitte überprüfe die Eingaben</h3>
+                <ul><li th:each="error : ${formErrors}" th:text="${error.value}">Feldfehler</li></ul>
+            </div>
+            <aside th:if="${weightWarnings != null and !weightWarnings.isEmpty()}" class="weight-warning" data-testid="weight-warning">
+                <h3>Gewicht bewusst prüfen</h3>
+                <p>Diese Baseline-Richtwerte dienen dem späteren empirischen Tuning. Das Speichern bleibt möglich.</p>
+                <ul><li th:each="warning : ${weightWarnings}" th:text="${warning}">Richtwert</li></ul>
+                <label class="confirmation-check"><input type="checkbox" name="weightWarningsAcknowledged" value="true" th:checked="${form.weightWarningsAcknowledged}"> Ich habe den Richtwert geprüft und möchte trotzdem speichern.</label>
+            </aside>
+
+            <section class="detail-section">
+                <div class="detail-section-heading"><p class="section-kicker">Identität</p><h3>Basis</h3></div>
+                <div class="form-grid">
+                    <label> Anzeigename
+                        <input name="displayName" required th:value="${form.displayName}" aria-describedby="display-name-error" data-display-name>
+                    </label>
+                    <p id="display-name-error" class="field-error" th:if="${formErrors != null and formErrors.get('displayName') != null}" th:text="${formErrors.get('displayName')}">Fehler</p>
+                    <label th:if="${formMode.name() == 'CREATE'}"> Code
+                        <input name="code" required pattern="[A-Z][A-Z0-9_]*" th:value="${form.code}" data-code-from-display-name>
+                    </label>
+                    <p th:if="${formMode.name() == 'CREATE' and formErrors != null and formErrors.get('code') != null}" class="field-error" th:text="${formErrors.get('code')}">Fehler</p>
+                    <p th:if="${formMode.name() != 'CREATE'}" class="read-only-field">Code <code th:text="${detail.code}">COD</code> bleibt nach der Anlage unveränderlich.</p>
+                    <p th:if="${formMode.name() != 'CREATE' and formErrors != null and formErrors.get('code') != null}" class="field-error" th:text="${formErrors.get('code')}">Fehler</p>
+                    <label th:if="${formMode.name() != 'CREATE'}" class="toggle-field"><input type="checkbox" name="active" value="true" th:checked="${form.active}"> Aktiv</label>
+                    <p th:if="${formMode.name() == 'CREATE'}" class="read-only-field">Neue Konzepte starten aktiv. Weitere Basisfelder können nach der Anlage bewusst bearbeitet werden.</p>
+                </div>
+            </section>
+
+            <section th:if="${formMode.name() == 'CREATE'}" class="detail-section read-only-section">
+                <div class="detail-section-heading"><p class="section-kicker">Konservative Vorgaben</p><h3>Ziehung</h3></div>
+                <p>Neue Konzepte sind zunächst nicht ziehbar, spezifisch, mit Gewicht <strong>1.0000</strong> und ohne gepflegte Ungewöhnlichkeit oder Kuratornotiz angelegt.</p>
+            </section>
+
+            <section th:if="${formMode.name() != 'CREATE'}" class="detail-section">
+                <div class="detail-section-heading"><p class="section-kicker">Challenge</p><h3>Ziehung</h3></div>
+                <div class="form-grid">
+                    <label class="toggle-field"><input type="checkbox" name="randomDrawEnabled" value="true" th:checked="${form.randomDrawEnabled}"> Für Zufallsziehungen aktivieren</label>
+                    <p th:if="${formErrors != null and formErrors.get('randomDrawEnabled') != null}" class="field-error" th:text="${formErrors.get('randomDrawEnabled')}">Fehler</p>
+                    <fieldset><legend>Challenge-Spezifität</legend>
+                        <label><input type="radio" name="challengeSpecificity" value="SPECIFIC" th:checked="${form.challengeSpecificity == 'SPECIFIC'}"> spezifisch</label>
+                        <label><input type="radio" name="challengeSpecificity" value="OPEN" th:checked="${form.challengeSpecificity == 'OPEN'}"> offen</label>
+                    </fieldset>
+                    <p th:if="${formErrors != null and formErrors.get('challengeSpecificity') != null}" class="field-error" th:text="${formErrors.get('challengeSpecificity')}">Fehler</p>
+                    <label> Ziehungsgewicht <input name="baseDrawWeight" inputmode="decimal" required th:value="${form.baseDrawWeight}"></label>
+                    <p th:if="${formErrors != null and formErrors.get('baseDrawWeight') != null}" class="field-error" th:text="${formErrors.get('baseDrawWeight')}">Fehler</p>
+                    <label> Ungewöhnlichkeit
+                        <select name="noveltyLevel">
+                            <option value="" th:selected="${form.noveltyLevel.isEmpty()}">nicht gepflegt</option>
+                            <option th:each="level : ${#numbers.sequence(1, 5)}" th:value="${level}" th:selected="${form.noveltyLevel == level.toString()}" th:text="|Stufe ${level}|">Stufe 1</option>
+                        </select>
+                    </label>
+                    <p th:if="${formErrors != null and formErrors.get('noveltyLevel') != null}" class="field-error" th:text="${formErrors.get('noveltyLevel')}">Fehler</p>
+                </div>
+            </section>
+
+            <section class="detail-section">
+                <div class="detail-section-heading"><p class="section-kicker">Redaktion</p><h3>Kuratornotiz</h3></div>
+                <label class="textarea-field">Sachliche Notiz für die spätere Kuration
+                    <textarea name="curatorNote" rows="4" th:text="${form.curatorNote}"></textarea>
+                </label>
+            </section>
+
+            <section th:if="${detail != null}" class="detail-section read-only-section">
+                <div class="detail-section-heading"><p class="section-kicker">Read-only in diesem Paket</p><h3>Konkretisierungen und Rollen</h3></div>
+                <p><strong>Direkte Eltern:</strong> <span th:text="${#strings.listJoin(detail.directParents.![displayName], ', ')} ?: 'keine'">keine</span></p>
+                <p><strong>Direkte Kinder:</strong> <span th:text="${#strings.listJoin(detail.directChildren.![displayName], ', ')} ?: 'keine'">keine</span></p>
+                <p><strong>Funktionale Rollen:</strong> <span th:text="${#strings.listJoin(detail.functionalRoles.![displayName], ', ')} ?: 'nicht gepflegt'">nicht gepflegt</span></p>
+                <p th:if="${formErrors != null and formErrors.get('functionalRoles') != null}" class="field-error" th:text="${formErrors.get('functionalRoles')}">Fehler</p>
+            </section>
+            <section th:if="${detail != null}" class="detail-section read-only-section">
+                <div class="detail-section-heading"><p class="section-kicker">Read-only in diesem Paket</p><h3>Eigenschaften, Beschaffbarkeit und Saison</h3></div>
+                <p><strong>Flags:</strong> <span th:text="${#strings.listJoin(detail.culinaryFlags.![displayName], ', ')} ?: 'nicht gepflegt'">nicht gepflegt</span></p>
+                <p><strong>Dimensionen:</strong> <span th:each="dimension : ${detail.culinaryDimensions}" th:text="|${dimension.dimension.displayName}: ${dimension.level ?: 'nicht gepflegt'}|">Umami</span></p>
+                <p th:each="availability : ${detail.availability}"><strong th:text="${availability.participant.displayName}">Georgia</strong>: <span th:text="${availability.level == null ? 'nicht gepflegt' : availabilityLabels.get(availability.level)}">nicht gepflegt</span></p>
+                <p th:if="${formErrors != null and formErrors.get('availabilityGeorgia') != null}" class="field-error" th:text="${formErrors.get('availabilityGeorgia')}">Fehler</p>
+                <p th:if="${formErrors != null and formErrors.get('availabilityTobias') != null}" class="field-error" th:text="${formErrors.get('availabilityTobias')}">Fehler</p>
+                <p><strong>Saison:</strong> Die bestehende saisonale Pflege bleibt unverändert.</p>
+            </section>
+
+            <input th:if="${formMode.name() != 'CREATE'}" type="hidden" name="version" th:value="${form.version}">
+            <div class="form-actions">
+                <button class="button button--primary" type="submit" data-save-button>Speichern</button>
+                <a class="button button--secondary" data-discard-form th:href="${formMode.name() == 'CREATE' ? state.catalogUrl(0) : state.detailUrl(form.conceptId)}">Verwerfen</a>
+            </div>
+        </form>
+
+        <dialog class="confirmation-dialog" data-deactivation-dialog>
+            <h3>Konzept deaktivieren?</h3>
+            <p>Es fällt aus der normalen operativen Nutzung. Beziehungen und historische Referenzen bleiben erhalten; eine gespeicherte Ziehflagge wird nicht gelöscht.</p>
+            <div class="form-actions"><button type="button" class="button button--secondary" data-deactivation-cancel>Weiter bearbeiten</button><button type="button" class="button button--primary" data-deactivation-confirm>Deaktivierung bestätigen</button></div>
+        </dialog>
+        <dialog class="confirmation-dialog" data-dirty-dialog>
+            <h3>Ungespeicherte Änderungen</h3>
+            <p>Beim Wechsel gehen deine Änderungen verloren.</p>
+            <div class="form-actions"><button type="button" class="button button--secondary" data-dirty-cancel>Weiter bearbeiten</button><button type="button" class="button button--primary" data-dirty-discard>Änderungen verwerfen und wechseln</button></div>
+        </dialog>
     </section>
 </section>
 
