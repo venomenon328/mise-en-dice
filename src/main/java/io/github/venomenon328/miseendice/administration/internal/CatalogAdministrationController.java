@@ -1,6 +1,11 @@
 package io.github.venomenon328.miseendice.administration.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
+import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
+import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
+import io.github.venomenon328.miseendice.catalog.api.CatalogConceptNotFoundException;
+import io.github.venomenon328.miseendice.catalog.api.CatalogDrawWeightWarningException;
+import io.github.venomenon328.miseendice.catalog.api.CatalogVersionConflictException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvailability;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvailabilityFilter;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogConceptDetail;
@@ -9,6 +14,9 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogNovel
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogSearchCriteria;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogSort;
 import java.util.Collection;
+import java.math.BigDecimal;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -20,24 +28,28 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
 
-/** Read-only Spring MVC adapter for catalog navigation. */
+/** Spring MVC adapter for catalog navigation and the Phase-5 base editing flows. */
 @Controller
 @RequestMapping("/admin")
 @ConditionalOnProperty(prefix = "mise-en-dice.administration", name = "enabled", havingValue = "true")
 class CatalogAdministrationController {
 
     private final CatalogQueries catalogQueries;
+    private final CatalogCommands catalogCommands;
 
-    CatalogAdministrationController(CatalogQueries catalogQueries) {
+    CatalogAdministrationController(CatalogQueries catalogQueries, CatalogCommands catalogCommands) {
         this.catalogQueries = catalogQueries;
+        this.catalogCommands = catalogCommands;
     }
 
     @GetMapping
@@ -87,6 +99,130 @@ class CatalogAdministrationController {
         return "admin/catalog";
     }
 
+    @GetMapping("/catalog/new")
+    String newConcept(
+            @RequestParam MultiValueMap<String, String> parameters,
+            @RequestHeader(value = "HX-Request", required = false) String htmxRequest,
+            Authentication authentication,
+            Model model,
+            HttpServletResponse response
+    ) {
+        CatalogState state = CatalogState.from(parameters, null);
+        model.addAttribute("state", state);
+        model.addAttribute("form", CatalogConceptForm.forCreate());
+        model.addAttribute("formMode", FormMode.CREATE);
+        if (isHtmx(htmxRequest)) {
+            return "admin/fragments/detail :: form";
+        }
+        populateCatalogPage(state, authentication, model, response);
+        return "admin/catalog";
+    }
+
+    @GetMapping("/catalog/{conceptId}/edit")
+    String editConcept(
+            @PathVariable long conceptId,
+            @RequestParam MultiValueMap<String, String> parameters,
+            @RequestHeader(value = "HX-Request", required = false) String htmxRequest,
+            Authentication authentication,
+            Model model,
+            HttpServletResponse response
+    ) {
+        CatalogState state = CatalogState.from(parameters, conceptId);
+        Optional<CatalogConceptDetail> detail = catalogQueries.findConcept(conceptId);
+        if (detail.isEmpty()) {
+            return renderMissing(state, htmxRequest, authentication, model, response, conceptId);
+        }
+        model.addAttribute("state", state);
+        model.addAttribute("detail", detail.get());
+        model.addAttribute("form", CatalogConceptForm.forEdit(detail.get()));
+        model.addAttribute("formMode", FormMode.EDIT);
+        if (isHtmx(htmxRequest)) {
+            return "admin/fragments/detail :: form";
+        }
+        populateCatalogPage(state, authentication, model, response);
+        return "admin/catalog";
+    }
+
+    @PostMapping("/catalog")
+    String createConcept(
+            @RequestParam MultiValueMap<String, String> parameters,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String displayName,
+            Authentication authentication,
+            Model model,
+            HttpServletResponse response,
+            RedirectAttributes redirectAttributes
+    ) {
+        CatalogState state = CatalogState.from(parameters, null);
+        CatalogConceptForm form = CatalogConceptForm.forCreate(code, displayName);
+        try {
+            var result = catalogCommands.createIngredientConcept(form.toCreateCommand(actorKey(authentication)));
+            redirectAttributes.addFlashAttribute("saveNotice", "Zutatenkonzept angelegt.");
+            return "redirect:" + state.detailUrl(result.conceptId());
+        } catch (CatalogCommandValidationException exception) {
+            return renderFormFailure(state, FormMode.CREATE, null, form, exception.fieldErrors(), List.of(),
+                    authentication, model, response);
+        }
+    }
+
+    @PostMapping("/catalog/{conceptId}")
+    String updateConcept(
+            @PathVariable long conceptId,
+            @RequestParam MultiValueMap<String, String> parameters,
+            @RequestParam(required = false) String displayName,
+            @RequestParam(defaultValue = "false") boolean active,
+            @RequestParam(defaultValue = "false") boolean randomDrawEnabled,
+            @RequestParam(required = false) String challengeSpecificity,
+            @RequestParam(required = false) String baseDrawWeight,
+            @RequestParam(required = false) String noveltyLevel,
+            @RequestParam(required = false) String curatorNote,
+            @RequestParam(required = false) String version,
+            @RequestParam(defaultValue = "false") boolean weightWarningsAcknowledged,
+            @RequestParam(defaultValue = "false") boolean continueEditing,
+            Authentication authentication,
+            Model model,
+            HttpServletResponse response,
+            RedirectAttributes redirectAttributes
+    ) {
+        CatalogState state = CatalogState.from(parameters, conceptId);
+        CatalogConceptForm form = CatalogConceptForm.forEdit(
+                conceptId, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
+                noveltyLevel, curatorNote, version, weightWarningsAcknowledged
+        );
+        if (parameters.containsKey("code")) {
+            return renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), form,
+                    Map.of("code", "Der Code ist nach der Anlage unveränderlich."), List.of(),
+                    authentication, model, response);
+        }
+        if (continueEditing) {
+            Optional<CatalogConceptDetail> current = catalogQueries.findConcept(conceptId);
+            if (current.isEmpty()) {
+                return renderMissing(state, null, authentication, model, response, conceptId);
+            }
+            model.addAttribute("state", state);
+            model.addAttribute("detail", current.get());
+            model.addAttribute("form", form.withVersion(current.get().version()));
+            model.addAttribute("formMode", FormMode.EDIT);
+            populateCatalogPage(state, authentication, model, response);
+            return "admin/catalog";
+        }
+        try {
+            var result = catalogCommands.updateIngredientConcept(form.toUpdateCommand(actorKey(authentication)));
+            redirectAttributes.addFlashAttribute("saveNotice", "Gespeichert.");
+            return "redirect:" + state.detailUrl(result.conceptId());
+        } catch (CatalogDrawWeightWarningException exception) {
+            return renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), form,
+                    Map.of(), exception.warnings(), authentication, model, response);
+        } catch (CatalogCommandValidationException exception) {
+            return renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), form,
+                    exception.fieldErrors(), List.of(), authentication, model, response);
+        } catch (CatalogVersionConflictException exception) {
+            return renderConflict(state, form, authentication, model, response, conceptId);
+        } catch (CatalogConceptNotFoundException exception) {
+            return renderMissing(state, null, authentication, model, response, conceptId);
+        }
+    }
+
     @GetMapping("/catalog/hierarchy/roots")
     String hierarchyRoots(
             @RequestParam MultiValueMap<String, String> parameters,
@@ -108,6 +244,67 @@ class CatalogAdministrationController {
         model.addAttribute("nodes", catalogQueries.findDirectChildren(conceptId));
         model.addAttribute("state", state);
         return "admin/fragments/hierarchy :: nodes";
+    }
+
+    private String renderFormFailure(
+            CatalogState state,
+            FormMode formMode,
+            CatalogConceptDetail detail,
+            CatalogConceptForm form,
+            Map<String, String> errors,
+            List<String> weightWarnings,
+            Authentication authentication,
+            Model model,
+            HttpServletResponse response
+    ) {
+        response.setStatus(HttpStatus.UNPROCESSABLE_ENTITY.value());
+        model.addAttribute("state", state);
+        model.addAttribute("detail", detail);
+        model.addAttribute("form", form);
+        model.addAttribute("formMode", formMode);
+        model.addAttribute("formErrors", errors);
+        model.addAttribute("weightWarnings", weightWarnings);
+        populateCatalogPage(state, authentication, model, response);
+        return "admin/catalog";
+    }
+
+    private String renderConflict(
+            CatalogState state,
+            CatalogConceptForm form,
+            Authentication authentication,
+            Model model,
+            HttpServletResponse response,
+            long conceptId
+    ) {
+        Optional<CatalogConceptDetail> current = catalogQueries.findConcept(conceptId);
+        if (current.isEmpty()) {
+            return renderMissing(state, null, authentication, model, response, conceptId);
+        }
+        response.setStatus(HttpStatus.CONFLICT.value());
+        model.addAttribute("state", state);
+        model.addAttribute("detail", current.get());
+        model.addAttribute("form", form);
+        model.addAttribute("currentDetail", current.get());
+        model.addAttribute("formMode", FormMode.CONFLICT);
+        populateCatalogPage(state, authentication, model, response);
+        return "admin/catalog";
+    }
+
+    private String renderMissing(
+            CatalogState state,
+            String htmxRequest,
+            Authentication authentication,
+            Model model,
+            HttpServletResponse response,
+            long conceptId
+    ) {
+        response.setStatus(HttpStatus.NOT_FOUND.value());
+        model.addAttribute("missingConceptId", conceptId);
+        if (isHtmx(htmxRequest)) {
+            return "admin/fragments/detail :: missing";
+        }
+        populateCatalogPage(state, authentication, model, response);
+        return "admin/catalog";
     }
 
     private void populateCatalogPage(
@@ -144,6 +341,13 @@ class CatalogAdministrationController {
         return "true".equalsIgnoreCase(htmxRequest);
     }
 
+    private static String actorKey(Authentication authentication) {
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            throw new IllegalStateException("Catalog writing requires an authenticated administration identity");
+        }
+        return authentication.getName();
+    }
+
     private static List<String> monthNames() {
         return List.of("Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez");
     }
@@ -151,6 +355,125 @@ class CatalogAdministrationController {
     enum CatalogView {
         HIERARCHY,
         LIST
+    }
+
+    enum FormMode {
+        CREATE,
+        EDIT,
+        CONFLICT
+    }
+
+    record CatalogConceptForm(
+            long conceptId,
+            String code,
+            String displayName,
+            boolean active,
+            boolean randomDrawEnabled,
+            String challengeSpecificity,
+            String baseDrawWeight,
+            String noveltyLevel,
+            String curatorNote,
+            String version,
+            boolean weightWarningsAcknowledged
+    ) {
+
+        static CatalogConceptForm forCreate() {
+            return forCreate("", "");
+        }
+
+        static CatalogConceptForm forCreate(String code, String displayName) {
+            return new CatalogConceptForm(0, text(code), text(displayName), true, false, "SPECIFIC", "1.0000", "", "", "", false);
+        }
+
+        static CatalogConceptForm forEdit(CatalogConceptDetail detail) {
+            return forEdit(
+                    detail.id(), detail.displayName(), detail.active(), detail.randomDrawEnabled(),
+                    detail.challengeSpecificity(), detail.baseDrawWeight().toPlainString(),
+                    detail.noveltyLevel() == null ? "" : detail.noveltyLevel().toString(), detail.curatorNote(),
+                    Long.toString(detail.version()), false
+            );
+        }
+
+        static CatalogConceptForm forEdit(
+                long conceptId,
+                String displayName,
+                boolean active,
+                boolean randomDrawEnabled,
+                String challengeSpecificity,
+                String baseDrawWeight,
+                String noveltyLevel,
+                String curatorNote,
+                String version,
+                boolean weightWarningsAcknowledged
+        ) {
+            return new CatalogConceptForm(
+                    conceptId, "", text(displayName), active, randomDrawEnabled, text(challengeSpecificity),
+                    text(baseDrawWeight), text(noveltyLevel), text(curatorNote), text(version), weightWarningsAcknowledged
+            );
+        }
+
+        CatalogConceptForm withVersion(long currentVersion) {
+            return new CatalogConceptForm(
+                    conceptId, code, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
+                    noveltyLevel, curatorNote, Long.toString(currentVersion), weightWarningsAcknowledged
+            );
+        }
+
+        CatalogCommands.CreateIngredientConceptCommand toCreateCommand(String actorKey) {
+            return new CatalogCommands.CreateIngredientConceptCommand(code, displayName, actorKey);
+        }
+
+        CatalogCommands.UpdateIngredientConceptCommand toUpdateCommand(String actorKey) {
+            Map<String, String> errors = new LinkedHashMap<>();
+            long expectedVersion = parseLong(version, "version", "Die Formularversion ist ungültig.", errors);
+            BigDecimal weight = parseWeight(baseDrawWeight, errors);
+            Integer novelty = parseNovelty(noveltyLevel, errors);
+            if (!errors.isEmpty()) {
+                throw new CatalogCommandValidationException(errors);
+            }
+            return new CatalogCommands.UpdateIngredientConceptCommand(
+                    conceptId, expectedVersion, displayName, active, randomDrawEnabled, challengeSpecificity,
+                    weight, novelty, curatorNote, actorKey, weightWarningsAcknowledged
+            );
+        }
+
+        private static long parseLong(String value, String field, String message, Map<String, String> errors) {
+            try {
+                long parsed = Long.parseLong(text(value));
+                if (parsed >= 0) {
+                    return parsed;
+                }
+            } catch (NumberFormatException ignored) {
+                // The field error below intentionally keeps the browser input visible.
+            }
+            errors.put(field, message);
+            return 0;
+        }
+
+        private static BigDecimal parseWeight(String value, Map<String, String> errors) {
+            try {
+                return new BigDecimal(text(value).replace(',', '.'));
+            } catch (NumberFormatException ignored) {
+                errors.put("baseDrawWeight", "Gib ein positives Ziehungsgewicht ein.");
+                return BigDecimal.ZERO;
+            }
+        }
+
+        private static Integer parseNovelty(String value, Map<String, String> errors) {
+            if (text(value).isEmpty()) {
+                return null;
+            }
+            try {
+                return Integer.valueOf(text(value));
+            } catch (NumberFormatException ignored) {
+                errors.put("noveltyLevel", "Die Ungewöhnlichkeit muss zwischen 1 und 5 liegen oder leer bleiben.");
+                return null;
+            }
+        }
+
+        private static String text(String value) {
+            return value == null ? "" : value.strip();
+        }
     }
 
     /** URL-stable state shared by full page links and HTMX fragment requests. */
@@ -288,6 +611,18 @@ class CatalogAdministrationController {
 
         public String detailUrl(long conceptId) {
             return url("/admin/catalog/" + conceptId, null, 0, conceptId, treeParentId);
+        }
+
+        public String newUrl() {
+            return url("/admin/catalog/new", null, 0, selectedConceptId, treeParentId);
+        }
+
+        public String createUrl() {
+            return url("/admin/catalog", null, 0, selectedConceptId, treeParentId);
+        }
+
+        public String editUrl(long conceptId) {
+            return url("/admin/catalog/" + conceptId + "/edit", null, 0, conceptId, treeParentId);
         }
 
         public String rootsUrl() {

@@ -98,4 +98,152 @@
             children.replaceChildren(message);
         }
     });
+
+    let pendingNavigation = null;
+
+    function activeForm() {
+        return document.querySelector("[data-catalog-concept-form]");
+    }
+
+    function dialogFor(selector) {
+        return document.querySelector(selector);
+    }
+
+    function showDialog(dialog) {
+        if (!dialog) {
+            return;
+        }
+        if (typeof dialog.showModal === "function") {
+            dialog.showModal();
+        } else {
+            dialog.setAttribute("open", "open");
+        }
+    }
+
+    function closeDialog(dialog) {
+        if (!dialog) {
+            return;
+        }
+        if (typeof dialog.close === "function") {
+            dialog.close();
+        } else {
+            dialog.removeAttribute("open");
+        }
+    }
+
+    function markDirty(event) {
+        const form = event.target.closest?.("[data-catalog-concept-form]");
+        if (form) {
+            form.dataset.dirty = "true";
+        }
+    }
+
+    function suggestCode(event) {
+        const displayName = event.target.closest?.("[data-display-name]");
+        if (!displayName) {
+            return;
+        }
+        const form = displayName.closest("[data-catalog-concept-form]");
+        const code = form?.querySelector("[data-code-from-display-name]");
+        if (!code || code.dataset.edited === "true") {
+            return;
+        }
+        code.value = displayName.value
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, "_")
+            .replace(/^_+|_+$/g, "")
+            .replace(/^[^A-Z]+/, "");
+    }
+
+    document.addEventListener("input", (event) => {
+        markDirty(event);
+        suggestCode(event);
+        if (event.target.matches?.("[data-code-from-display-name]")) {
+            event.target.dataset.edited = "true";
+        }
+    });
+    document.addEventListener("change", markDirty);
+
+    document.addEventListener("submit", (event) => {
+        const form = event.target.matches?.("[data-catalog-concept-form]") ? event.target : null;
+        if (!form) {
+            return;
+        }
+        const active = form.querySelector("input[name='active']");
+        if (form.dataset.originalActive === "true" && active && !active.checked && form.dataset.deactivationConfirmed !== "true") {
+            event.preventDefault();
+            showDialog(dialogFor("[data-deactivation-dialog]"));
+            return;
+        }
+        form.dataset.dirty = "false";
+        const saveButton = form.querySelector("[data-save-button]");
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.textContent = "Speichert …";
+        }
+    });
+
+    document.addEventListener("click", (event) => {
+        const confirm = event.target.closest?.("[data-deactivation-confirm]");
+        if (confirm) {
+            const form = activeForm();
+            if (form) {
+                form.dataset.deactivationConfirmed = "true";
+                closeDialog(dialogFor("[data-deactivation-dialog]"));
+                form.requestSubmit();
+            }
+            return;
+        }
+        if (event.target.closest?.("[data-deactivation-cancel]")) {
+            closeDialog(dialogFor("[data-deactivation-dialog]"));
+            return;
+        }
+        if (event.target.closest?.("[data-dirty-cancel]")) {
+            pendingNavigation = null;
+            closeDialog(dialogFor("[data-dirty-dialog]"));
+            return;
+        }
+        if (event.target.closest?.("[data-dirty-discard]")) {
+            const target = pendingNavigation;
+            pendingNavigation = null;
+            closeDialog(dialogFor("[data-dirty-dialog]"));
+            if (target) {
+                window.location.assign(target);
+            }
+        }
+    });
+
+    document.addEventListener("click", (event) => {
+        const link = event.target.closest?.("a[href]");
+        const form = activeForm();
+        if (!link || !form || form.dataset.dirty !== "true" || link.matches("[data-discard-form]")) {
+            return;
+        }
+        if (link.origin !== window.location.origin || link.href === window.location.href) {
+            return;
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        pendingNavigation = link.href;
+        showDialog(dialogFor("[data-dirty-dialog]"));
+    }, true);
+
+    document.addEventListener("keydown", (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+            const form = activeForm();
+            if (form) {
+                event.preventDefault();
+                form.requestSubmit();
+            }
+        }
+    });
+
+    window.addEventListener("beforeunload", (event) => {
+        if (activeForm()?.dataset.dirty === "true") {
+            event.preventDefault();
+            event.returnValue = "";
+        }
+    });
 })();
