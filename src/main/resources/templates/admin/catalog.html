@@ -105,7 +105,7 @@
                         <legend>Beschaffbarkeit Georgia</legend>
                         <label th:each="level : ${availabilityLevels}">
                             <input name="ga" type="checkbox" th:value="${level.name()}" th:checked="${state.hasGeorgiaAvailability(level.name())}">
-                            <span th:text="${level}">EASY</span>
+                            <span th:text="${availabilityLabels.get(level)}">einfach</span>
                         </label>
                         <label><input name="ga" type="checkbox" value="UNMANAGED" th:checked="${state.hasGeorgiaAvailability('UNMANAGED')}"> nicht gepflegt</label>
                     </fieldset>
@@ -113,7 +113,7 @@
                         <legend>Beschaffbarkeit Tobias</legend>
                         <label th:each="level : ${availabilityLevels}">
                             <input name="ta" type="checkbox" th:value="${level.name()}" th:checked="${state.hasTobiasAvailability(level.name())}">
-                            <span th:text="${level}">EASY</span>
+                            <span th:text="${availabilityLabels.get(level)}">einfach</span>
                         </label>
                         <label><input name="ta" type="checkbox" value="UNMANAGED" th:checked="${state.hasTobiasAvailability('UNMANAGED')}"> nicht gepflegt</label>
                     </fieldset>
@@ -157,7 +157,7 @@
             <nav class="list-options" aria-label="Sortierung">
                 <span>Sortierung:</span>
                 <a th:each="sort : ${sortOptions}" th:classappend="${state.sort == sort} ? ' selected'"
-                   th:href="${state.sortUrl(sort)}" th:text="${sort}">DISPLAY_NAME_ASC</a>
+                   th:href="${state.sortUrl(sort)}" th:text="${sortLabels.get(sort)}">Name A–Z</a>
             </nav>
             <nav class="list-options" aria-label="Seitengröße">
                 <span>Pro Seite:</span>
@@ -192,8 +192,12 @@
                     </div>
                     <div class="list-entry-meta">
                         <span><strong>Rollen:</strong> <span th:text="${#strings.listJoin(item.functionalRoles, ', ')} ?: 'nicht gepflegt'">Rolle</span></span>
-                        <span th:text="${item.availabilityByParticipant.get('GEORGIA') ?: 'Georgia: nicht gepflegt'}">Georgia</span>
-                        <span th:text="${item.availabilityByParticipant.get('TOBIAS') ?: 'Tobias: nicht gepflegt'}">Tobias</span>
+                        <span><strong>Georgia:</strong>
+                            <span th:text="${item.availabilityByParticipant.get('GEORGIA') == null ? 'nicht gepflegt' : availabilityLabels.get(item.availabilityByParticipant.get('GEORGIA'))}">nicht gepflegt</span>
+                        </span>
+                        <span><strong>Tobias:</strong>
+                            <span th:text="${item.availabilityByParticipant.get('TOBIAS') == null ? 'nicht gepflegt' : availabilityLabels.get(item.availabilityByParticipant.get('TOBIAS'))}">nicht gepflegt</span>
+                        </span>
                     </div>
                     <span th:if="${!item.directParents.isEmpty()}" class="parent-context">
                         <span>Eltern:</span>

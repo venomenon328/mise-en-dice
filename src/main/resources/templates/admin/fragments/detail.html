@@ -156,7 +156,7 @@
                 <dt th:text="${entry.participant.displayName}">Georgia</dt>
                 <dd>
                     <span class="availability-value" th:classappend="${entry.level == null} ? ' is-unmanaged'"
-                          th:text="${entry.level == null ? 'nicht gepflegt' : entry.level}">nicht gepflegt</span>
+                          th:text="${entry.level == null ? 'nicht gepflegt' : availabilityLabels.get(entry.level)}">nicht gepflegt</span>
                 </dd>
             </div>
         </dl>
