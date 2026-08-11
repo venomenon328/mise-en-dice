@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="de" xmlns:th="https://www.thymeleaf.org">
+<body>
+<section th:fragment="panel" id="catalog-detail" class="detail-panel" data-testid="catalog-detail">
+    <header>
+        <p class="eyebrow" th:text="${detail.code}">COD</p>
+        <h2 th:text="${detail.displayName}">Kabeljau</h2>
+        <p class="status-line">
+            <span th:text="${detail.active ? 'Aktiv' : 'Inaktiv'}">Aktiv</span>
+            <span th:text="${detail.challengeSpecificity == 'OPEN' ? 'Offen' : 'Spezifisch'}">Spezifisch</span>
+            <span th:text="${detail.randomDrawEnabled ? 'Ziehbar' : 'Nicht ziehbar'}">Ziehbar</span>
+        </p>
+    </header>
+
+    <section>
+        <h3>Basis</h3>
+        <dl><div><dt>Anzeigename</dt><dd th:text="${detail.displayName}">Kabeljau</dd></div>
+            <div><dt>Code</dt><dd><code th:text="${detail.code}">COD</code></dd></div></dl>
+    </section>
+    <section>
+        <h3>Ziehung</h3>
+        <dl><div><dt>Gewicht</dt><dd th:text="${detail.baseDrawWeight}">1.0000</dd></div>
+            <div><dt>Ungewöhnlichkeit</dt><dd th:text="${detail.noveltyLevel == null ? 'nicht gepflegt' : 'Stufe ' + detail.noveltyLevel}">Stufe</dd></div></dl>
+    </section>
+    <section>
+        <h3>Konkretisierungsbeziehungen</h3>
+        <p th:text="|${detail.directParents.size()} direkte Eltern · ${detail.directChildren.size()} direkte Kinder|">0 direkte Eltern</p>
+        <h4>Direkte Eltern</h4>
+        <ul><li th:each="parent : ${detail.directParents}"><span th:text="${parent.displayName}">Fisch</span> <code th:text="${parent.code}">FISH</code></li>
+            <li th:if="${detail.directParents.isEmpty()}">Keine direkten Eltern</li></ul>
+        <h4>Direkte Kinder</h4>
+        <ul><li th:each="child : ${detail.directChildren}"><span th:text="${child.displayName}">Kabeljau</span> <code th:text="${child.code}">COD</code></li>
+            <li th:if="${detail.directChildren.isEmpty()}">Keine direkten Kinder</li></ul>
+        <details><summary>Transitive Kontextinformation</summary>
+            <p>Vorfahren: <span th:text="${#strings.listJoin(detail.transitiveAncestors.![displayName], ', ')} ?: 'keine'">keine</span></p>
+            <p>Nachfahren: <span th:text="${#strings.listJoin(detail.transitiveDescendants.![displayName], ', ')} ?: 'keine'">keine</span></p>
+        </details>
+    </section>
+    <section>
+        <h3>Funktionale Rollen</h3>
+        <ul><li th:each="role : ${detail.functionalRoles}" th:text="${role.displayName}">tierisches Protein</li>
+            <li th:if="${detail.functionalRoles.isEmpty()}">nicht gepflegt</li></ul>
+    </section>
+    <section>
+        <h3>Kulinarische Eigenschaften</h3>
+        <h4>Flags</h4>
+        <ul><li th:each="flag : ${detail.culinaryFlags}" th:text="${flag.displayName}">fermentiert</li>
+            <li th:if="${detail.culinaryFlags.isEmpty()}">Keine Flags gepflegt</li></ul>
+        <h4>Dimensionen</h4>
+        <dl><div th:each="dimension : ${detail.culinaryDimensions}"><dt th:text="${dimension.dimension.displayName}">Umami</dt>
+            <dd th:text="${dimension.level == null ? 'nicht gepflegt' : 'Stufe ' + dimension.level}">nicht gepflegt</dd></div></dl>
+    </section>
+    <section>
+        <h3>Beschaffbarkeit</h3>
+        <dl><div th:each="entry : ${detail.availability}"><dt th:text="${entry.participant.displayName}">Georgia</dt>
+            <dd th:text="${entry.level == null ? 'nicht gepflegt' : entry.level}">nicht gepflegt</dd></div></dl>
+    </section>
+    <section>
+        <h3>Saison</h3>
+        <table><thead><tr><th th:each="month : ${monthNames}" th:text="${month}">Jan</th></tr></thead>
+            <tbody><tr><td th:each="value : ${detail.seasonality}" th:text="${value.weightMultiplier}">1.0</td></tr></tbody></table>
+    </section>
+    <section>
+        <h3>Kuratornotiz</h3>
+        <p th:text="${detail.curatorNote ?: 'Keine Kuratornotiz gepflegt.'}">Keine Kuratornotiz gepflegt.</p>
+    </section>
+    <section>
+        <h3>Referenzen</h3>
+        <h4>Direkte Ausschlussregeln</h4>
+        <ul><li th:each="rule : ${detail.directExclusionRules}" th:text="${rule}">keine Kokosmilch</li>
+            <li th:if="${detail.directExclusionRules.isEmpty()}">Keine direkten Ausschlussregeln</li></ul>
+        <p class="technical" th:text="|Technik: Aggregatversion ${detail.version}|">Technik: Aggregatversion 0</p>
+    </section>
+</section>
+
+<section th:fragment="missing" id="catalog-detail" class="detail-empty error" data-testid="catalog-detail-missing">
+    <h2>Nicht verfügbar</h2>
+    <p>Dieses Zutatenkonzept ist nicht mehr verfügbar.</p>
+</section>
+</body>
+</html>
