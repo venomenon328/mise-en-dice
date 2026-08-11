@@ -216,7 +216,10 @@ class CatalogAdministrationMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-testid=\"catalog-detail\"")))
                 .andExpect(content().string(containsString("Kabeljau")))
-                .andExpect(content().string(containsString("/admin/catalog/" + codParentId)))
+                .andExpect(content().string(containsString("/admin/catalog/" + codParentId)));
+
+        mockMvc.perform(get("/admin/catalog/{id}", scaleConceptId).session(session).header("HX-Request", "true"))
+                .andExpect(status().isOk())
                 .andExpect(content().string(containsString("/admin/assets/catalog-icons.svg#")));
 
         mockMvc.perform(get("/admin/assets/catalog.css").session(session))
