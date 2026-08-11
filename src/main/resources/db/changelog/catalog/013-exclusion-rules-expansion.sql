@@ -1,6 +1,9 @@
+--liquibase formatted sql
+--changeset venomenon328:013-exclusion-rules-expansion splitStatements:false
+
 -- Mise en Dice - exclusion rules for the expanded catalog
--- Requires: db/migrations/001_catalog_schema.sql
--- Requires: db/seeds/011_ingredient_refinements_expansion.sql
+-- Requires: schema/001-catalog-schema.sql
+-- Requires: catalog/011-ingredient-refinements-expansion.sql
 --
 -- Exclusion rules remain an intentionally curated subset. Existing rule text,
 -- weights and targets are preserved on re-run.

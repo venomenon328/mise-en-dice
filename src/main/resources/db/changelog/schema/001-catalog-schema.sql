@@ -1,3 +1,6 @@
+--liquibase formatted sql
+--changeset venomenon328:001-catalog-schema splitStatements:false
+
 -- Mise en Dice - catalog and generation metadata schema
 -- Target: PostgreSQL 14+
 --

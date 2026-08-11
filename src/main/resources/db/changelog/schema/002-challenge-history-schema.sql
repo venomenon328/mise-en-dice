@@ -1,3 +1,6 @@
+--liquibase formatted sql
+--changeset venomenon328:002-challenge-history-schema splitStatements:false
+
 -- Mise en Dice - challenge generation and audit schema
 -- Target: PostgreSQL 14+
 -- Depends on: 001_catalog_schema.sql

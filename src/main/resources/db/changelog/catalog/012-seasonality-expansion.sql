@@ -1,5 +1,8 @@
+--liquibase formatted sql
+--changeset venomenon328:012-seasonality-expansion splitStatements:false
+
 -- Mise en Dice - additional seasonal draw multipliers
--- Requires: db/seeds/010_ingredient_catalog_expansion_3.sql
+-- Requires: catalog/010-ingredient-catalog-expansion-3.sql
 --
 -- Each manifest line contains one concept and twelve monthly multipliers from
 -- January through December. Missing concepts continue to use factor 1.0.

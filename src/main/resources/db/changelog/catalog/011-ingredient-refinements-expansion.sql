@@ -1,5 +1,8 @@
+--liquibase formatted sql
+--changeset venomenon328:011-ingredient-refinements-expansion splitStatements:false
+
 -- Mise en Dice - refinement graph for the expanded ingredient catalog
--- Requires: db/seeds/010_ingredient_catalog_expansion_3.sql
+-- Requires: catalog/010-ingredient-catalog-expansion-3.sql
 --
 -- Relations are inserted only after all new concepts exist. Each manifest line
 -- maps one parent to its comma-separated children. This includes links between

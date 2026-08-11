@@ -1,7 +1,10 @@
+--liquibase formatted sql
+--changeset venomenon328:009-ingredient-catalog-expansion-2 splitStatements:false
+
 -- Mise en Dice - extensive ingredient catalog expansion, part 2 of 3
--- Requires: db/migrations/001_catalog_schema.sql
--- Requires: db/seeds/001_reference_data.sql
--- Requires: db/seeds/002_ingredient_catalog.sql
+-- Requires: schema/001-catalog-schema.sql
+-- Requires: reference/001-reference-data.sql
+-- Requires: catalog/002-ingredient-catalog.sql
 --
 -- Each compact manifest keeps concept, role, availability and culinary
 -- metadata together. Hierarchy edges are inserted after all three parts.

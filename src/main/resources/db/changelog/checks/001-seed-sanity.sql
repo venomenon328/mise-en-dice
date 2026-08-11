@@ -1,5 +1,8 @@
+--liquibase formatted sql
+--changeset venomenon328:001-seed-sanity splitStatements:false
+
 -- Mise en Dice - seed sanity checks
--- Run after schema migrations and all db/seeds/*.sql files.
+-- Run after schema, reference-data, and catalog-baseline changesets.
 -- Fails fast when the catalog is incomplete in structurally relevant ways.
 
 DO $$

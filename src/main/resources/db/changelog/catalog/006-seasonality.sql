@@ -1,6 +1,9 @@
+--liquibase formatted sql
+--changeset venomenon328:006-seasonality splitStatements:false
+
 -- Mise en Dice - initial seasonal draw multipliers
--- Requires: db/migrations/001_catalog_schema.sql
--- Requires: db/seeds/002_ingredient_catalog.sql
+-- Requires: schema/001-catalog-schema.sql
+-- Requires: catalog/002-ingredient-catalog.sql
 --
 -- Only ingredients with a meaningful seasonal effect are listed. Missing months
 -- for other ingredients implicitly use multiplier 1.0 in application logic.

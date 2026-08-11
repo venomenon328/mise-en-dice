@@ -1,6 +1,9 @@
+--liquibase formatted sql
+--changeset venomenon328:002-ingredient-catalog splitStatements:false
+
 -- Mise en Dice - initial curated ingredient catalog
--- Requires: db/migrations/001_catalog_schema.sql
--- Requires: db/seeds/001_reference_data.sql
+-- Requires: schema/001-catalog-schema.sql
+-- Requires: reference/001-reference-data.sql
 --
 -- The catalog is intentionally curated and incomplete. Missing refinements are
 -- not forbidden cooking choices; they are simply not system knowledge yet.

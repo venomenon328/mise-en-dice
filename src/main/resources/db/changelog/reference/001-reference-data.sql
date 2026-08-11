@@ -1,5 +1,8 @@
+--liquibase formatted sql
+--changeset venomenon328:001-reference-data splitStatements:false
+
 -- Mise en Dice - initial reference data
--- Requires: db/migrations/001_catalog_schema.sql
+-- Requires: schema/001-catalog-schema.sql
 --
 -- Idempotent bootstrap data. Existing rows are deliberately not overwritten.
 

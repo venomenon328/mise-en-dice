@@ -1,7 +1,10 @@
+--liquibase formatted sql
+--changeset venomenon328:003-functional-roles splitStatements:false
+
 -- Mise en Dice - initial functional-role assignments
--- Requires: db/migrations/001_catalog_schema.sql
--- Requires: db/seeds/001_reference_data.sql
--- Requires: db/seeds/002_ingredient_catalog.sql
+-- Requires: schema/001-catalog-schema.sql
+-- Requires: reference/001-reference-data.sql
+-- Requires: catalog/002-ingredient-catalog.sql
 --
 -- Roles are maintained explicitly; refinement inheritance is intentionally not
 -- assumed.

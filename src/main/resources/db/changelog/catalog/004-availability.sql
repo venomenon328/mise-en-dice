@@ -1,7 +1,10 @@
+--liquibase formatted sql
+--changeset venomenon328:004-availability splitStatements:false
+
 -- Mise en Dice - initial per-participant ingredient availability
--- Requires: db/migrations/001_catalog_schema.sql
--- Requires: db/seeds/001_reference_data.sql
--- Requires: db/seeds/002_ingredient_catalog.sql
+-- Requires: schema/001-catalog-schema.sql
+-- Requires: reference/001-reference-data.sql
+-- Requires: catalog/002-ingredient-catalog.sql
 --
 -- The baseline is EASY for the explicitly listed initial draw pool. Selected
 -- specialty items are then downgraded only when the row was inserted by this

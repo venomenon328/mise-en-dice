@@ -1,6 +1,9 @@
+--liquibase formatted sql
+--changeset venomenon328:007-exclusion-rules splitStatements:false
+
 -- Mise en Dice - initial curated exclusion rules
--- Requires: db/migrations/001_catalog_schema.sql
--- Requires: db/seeds/002_ingredient_catalog.sql
+-- Requires: schema/001-catalog-schema.sql
+-- Requires: catalog/002-ingredient-catalog.sql
 --
 -- Exclusion rules are a deliberately small curated set. They are not generated
 -- automatically from ingredient concepts.

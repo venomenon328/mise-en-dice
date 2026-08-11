@@ -1,7 +1,10 @@
+--liquibase formatted sql
+--changeset venomenon328:005-culinary-properties splitStatements:false
+
 -- Mise en Dice - initial culinary metadata
--- Requires: db/migrations/001_catalog_schema.sql
--- Requires: db/seeds/001_reference_data.sql
--- Requires: db/seeds/002_ingredient_catalog.sql
+-- Requires: schema/001-catalog-schema.sql
+-- Requires: reference/001-reference-data.sql
+-- Requires: catalog/002-ingredient-catalog.sql
 --
 -- Culinary metadata is intentionally sparse. Missing values mean "not curated
 -- yet / not relevant", not the lowest level.
