@@ -1,0 +1,306 @@
+# Architektur von Mise en Dice
+
+Stand: 11. August 2026
+
+Dieses Dokument beschreibt die verbindliche Zielarchitektur für die nächsten Entwicklungsabschnitte. Die Produktregeln stehen in [`VISION.md`](VISION.md), das fachliche Datenmodell in [`DATA_MODEL.md`](DATA_MODEL.md). Einzelne Architekturentscheidungen werden zusätzlich unter [`adr`](adr) begründet.
+
+## 1. Architekturziele
+
+Die Architektur soll insbesondere folgende Ziele unterstützen:
+
+- eine gemeinsame fachliche Logik für Weboberfläche und Discord-Bot,
+- eine einzige persistente Quelle für Katalog und Challenge-Historie,
+- nachvollziehbare und reproduzierbare Datenbankänderungen,
+- einfache lokale Entwicklung und ein überschaubares Deployment,
+- klare Modulgrenzen ohne vorschnelle Verteilung auf mehrere Dienste,
+- gute Testbarkeit mit der tatsächlich verwendeten Datenbank,
+- spätere Erweiterbarkeit, ohne die erste Version mit Infrastruktur zu überfrachten.
+
+Mise en Dice ist zunächst ein privates System für zwei bekannte Personen. Die Architektur soll solide, aber nicht demonstrativ groß sein. Ein Microservice-Zoo wäre für diesen Anwendungsfall keine Zukunftssicherheit, sondern hauptsächlich zusätzlicher Tierpflegeaufwand.
+
+## 2. Systemzuschnitt
+
+### 2.1 Ein Repository
+
+Datenbankdefinition, gemeinsame Fachlogik, Webverwaltung und Discord-Adapter liegen im selben Repository `venomenon328/mise-en-dice`.
+
+Ein separates Datenbank-, Bot- oder Frontend-Repository ist zunächst nicht vorgesehen. Änderungen am Datenmodell betreffen regelmäßig auch Persistenzcode, Validierung, Verwaltungsoberfläche oder Generatorlogik. Ein gemeinsames Repository erlaubt, solche Änderungen atomar zu entwickeln, zu testen und zu veröffentlichen.
+
+### 2.2 Modularer Monolith
+
+Die Anwendung wird als modularer Spring-Boot-Monolith umgesetzt. Zu Beginn entsteht genau ein deploybares Artefakt und ein Anwendungsprozess.
+
+```text
+Browser ───────► Web-Adapter ───────┐
+                                    │
+Discord ───────► Discord-Adapter ───┼──► Application- und Domain-Module
+                                    │                │
+                                    │                ├──► PostgreSQL
+                                    │                └──► externer Kurator
+                                    │
+                                    └── ein Spring-Boot-Prozess
+```
+
+Web und Discord sind eingehende Adapter. Sie greifen nicht direkt auf Tabellen oder auf interne Implementierungen anderer Module zu, sondern verwenden öffentliche Application-APIs.
+
+Der OpenAI-Zugriff ist ein ausgehender Adapter hinter einer anwendungsinternen Schnittstelle. Modellname, Promptversion und Transportdetails dürfen nicht Teil der fachlichen Challenge-Logik werden.
+
+### 2.3 Spätere Trennung nur bei einem echten Betriebsgrund
+
+Eine Aufteilung in mehrere Prozesse oder Repositories wird erst geprüft, wenn mindestens einer der folgenden Gründe tatsächlich eintritt:
+
+- Web und Bot benötigen unabhängig voneinander deutlich andere Releasezyklen,
+- ein Adapter muss unabhängig skaliert oder besonders isoliert betrieben werden,
+- verschiedene Teams verantworten die Komponenten dauerhaft getrennt,
+- Sicherheits- oder Verfügbarkeitsanforderungen verlangen getrennte Prozesse,
+- das gemeinsame Deployment verursacht nachweislich betriebliche Probleme.
+
+Die bloße Existenz zweier Benutzeroberflächen ist kein solcher Grund.
+
+## 3. Technischer Rahmen
+
+Für das erste Anwendungsfundament gelten folgende Vorgaben:
+
+- Java 21,
+- Maven inklusive Maven Wrapper,
+- Spring Boot 4.1.x mit aktueller kompatibler Patchversion zum Umsetzungszeitpunkt,
+- Spring Modulith zur Prüfung fachlicher Modulgrenzen,
+- Spring JDBC für explizite relationale Persistenz,
+- PostgreSQL als einzige unterstützte Laufzeitdatenbank,
+- Liquibase als einzige Autorität für Schema- und Baseline-Datenänderungen,
+- Testcontainers für PostgreSQL-Integrationstests,
+- Docker Compose für die lokale PostgreSQL-Instanz.
+
+Eine serverseitig gerenderte Weboberfläche soll später mit Spring MVC, Thymeleaf und gezielten HTMX-Interaktionen umgesetzt werden. Eine separate Single-Page-Application ist für die erste Version nicht vorgesehen.
+
+## 4. Anwendungsmodule
+
+Die konkrete Paketstruktur darf während des ersten Entwicklungspakets sinnvoll geschärft werden. Die fachlichen Grenzen sind jedoch verbindlich.
+
+```text
+io.github.venomenon328.miseendice
+├── catalog
+│   ├── api
+│   └── internal
+├── challenge
+│   ├── api
+│   └── internal
+├── administration
+│   └── internal
+├── discord
+│   └── internal
+└── bootstrap
+```
+
+### 4.1 `catalog`
+
+Das Katalogmodul besitzt das Zutatenwissen und alle unmittelbar dazugehörenden Regeln:
+
+- Zutatenkonzepte,
+- Konkretisierungsbeziehungen,
+- funktionale Rollen,
+- kulinarische Flags und Dimensionen,
+- individuelle Beschaffbarkeit,
+- Saisonfaktoren,
+- Ausschlussregeln,
+- katalogbezogene Validierung.
+
+Es stellt nach außen Commands, Queries und unveränderliche Projektionen bereit. Andere Module erhalten keine frei navigierbaren Persistence-Objekte.
+
+### 4.2 `challenge`
+
+Das Challenge-Modul besitzt:
+
+- Sessions und Generierungsversuche,
+- Kandidatengenerierung,
+- Kuratierungsrunden,
+- ausgewählte sichtbare Challenges,
+- Reroll-Semantik,
+- Challenge-Historie,
+- die Schnittstelle zum externen Kurator.
+
+Es darf die öffentliche API des Katalogmoduls verwenden. Ein direkter Zugriff auf interne Katalog-Repositories oder Tabellen ist unzulässig.
+
+### 4.3 `administration`
+
+Das Administrationsmodul ist der Webadapter für die private Datenpflege. Controller und Templates dürfen:
+
+- Requests und Formulardaten entgegennehmen,
+- Application-Commands aufrufen,
+- Query-Ergebnisse als View Models darstellen,
+- verständliches Validierungsfeedback liefern.
+
+Fachliche Regeln, Transaktionsentscheidungen und SQL gehören nicht in Controller, Templates oder Browser-JavaScript.
+
+### 4.4 `discord`
+
+Das Discord-Modul übersetzt Discord-Interaktionen in Application-Commands und stellt Ergebnisse Discord-gerecht dar. Es besitzt keine eigene Generator-, Reroll- oder Persistenzlogik.
+
+Der bestehende Gridwords-Bot wird nicht wiederverwendet. Mise en Dice erhält einen eigenständigen Discord-Bot-Adapter.
+
+### 4.5 `bootstrap`
+
+Das Bootstrap-Paket enthält den Anwendungseinstieg und technische Konfiguration. Es darf Module zusammenbauen, aber keine Fachlogik aufnehmen.
+
+## 5. Abhängigkeitsregeln
+
+Folgende Regeln werden durch Struktur, Sichtbarkeit und Spring-Modulith-Tests abgesichert:
+
+1. Adapter verwenden öffentliche Application-APIs und keine internen Persistence-Klassen.
+2. Das Challenge-Modul darf die öffentliche Katalog-API verwenden; das Katalogmodul kennt das Challenge-Modul nicht.
+3. Fachlogik kennt weder HTTP-, Discord- noch OpenAI-spezifische Transportobjekte.
+4. Domain- und Application-Code hängt nicht von Thymeleaf, JDA oder konkreten API-Clients ab.
+5. Ausgehende Netzwerkaufrufe erfolgen nicht innerhalb offener Datenbanktransaktionen.
+6. Gemeinsame Logik wird nicht zwischen Adaptern kopiert und nicht über direkte Datenbankzugriffe geteilt.
+
+## 6. Persistenzstrategie
+
+### 6.1 PostgreSQL und explizites SQL
+
+Das bestehende Modell nutzt PostgreSQL-spezifische Funktionen, Trigger, rekursive Abfragen, partielle Indizes und `jsonb`. Spring JDBC ist deshalb der bevorzugte Persistenzzugang.
+
+Repositories sind explizite Adapter hinter Application- oder Domain-Schnittstellen. Abfragen sollen auf den jeweiligen Anwendungsfall zugeschnittene Projektionen liefern, statt einen frei navigierbaren Entity-Graphen aufzubauen.
+
+JPA beziehungsweise Hibernate ist für das Anwendungsfundament nicht vorgesehen. Eine spätere Einführung bedarf einer neuen Architekturentscheidung und eines nachgewiesenen Nutzens.
+
+### 6.2 Transaktionen
+
+Transaktionsgrenzen liegen in Application Services. Ein Command wird entweder vollständig gespeichert oder vollständig verworfen.
+
+Externe Kuratoraufrufe erfolgen außerhalb offener Transaktionen. Request und späteres Ergebnis werden in getrennten, kurzen Transaktionen persistiert. Fehler des externen Dienstes dürfen nicht als fachliche Datenbankkonflikte maskiert werden.
+
+## 7. Liquibase und Datenverantwortung
+
+### 7.1 Eine einzige Migrationsautorität
+
+Liquibase ist der einzige Mechanismus für:
+
+- Tabellen, Spalten, Indizes und Constraints,
+- PostgreSQL-Funktionen und Trigger,
+- strukturelle Datenmigrationen,
+- stabile Referenzdaten,
+- die einmalige Katalog-Baseline einer leeren Datenbank.
+
+Das bisherige `db/bootstrap.sql` darf nach der Umstellung keine parallele Bootstrap- oder Migrationsstrecke bleiben.
+
+Die vorhandenen PostgreSQL-Skripte dürfen als Liquibase-formatiertes SQL weitergeführt werden. PostgreSQL-spezifisches SQL soll nicht nur zur dekorativen Verwendung von XML in Tags nachgebaut werden.
+
+### 7.2 Append-only-Changesets
+
+Bereits veröffentlichte und ausgeführte Changesets werden nicht nachträglich verändert. Korrekturen und Erweiterungen erhalten neue Changesets mit stabilen IDs.
+
+Der Master-Changelog bindet Dateien explizit und in nachvollziehbarer Reihenfolge ein. `includeAll` wird nicht verwendet.
+
+### 7.3 Drei Datenklassen
+
+Die Daten werden bewusst unterschieden:
+
+1. **Schema und strukturelle Migrationen**: immer neue Liquibase-Changesets.
+2. **Stabile Referenzdaten**: einmalige Changesets; spätere Änderungen über neue Changesets oder dafür vorgesehene Verwaltungsfunktionen.
+3. **Initialer Zutatenkatalog**: einmalige Baseline für eine leere Datenbank.
+
+Für die Katalog-Baseline wird weder `runAlways` noch ein anderer Mechanismus verwendet, der operative Änderungen bei einem Neustart erneut überschreibt.
+
+### 7.4 Operative Quelle der Wahrheit
+
+Nach Einführung der Webverwaltung ist die laufende PostgreSQL-Datenbank die Quelle der Wahrheit für redaktionelle Katalogänderungen. Die Baseline bleibt der Startstand für neue Installationen, nicht eine ständig erneut angewandte Sollkopie.
+
+Regelmäßige Datenbank-Backups sind deshalb verpflichtender Bestandteil des Betriebs. Ein späterer JSON- oder CSV-Export kann Review, Transport und bewusste Rückführung geeigneter Änderungen in eine neue Baseline unterstützen, ersetzt aber kein Backup.
+
+## 8. Webverwaltung
+
+Die Webverwaltung wird vor dem Discord-Bot spezifiziert und voraussichtlich auch zuerst funktional umgesetzt. Dadurch kann der Katalog vor Entwicklung des Generators und des produktiven Bot-Flows komfortabel geprüft und gepflegt werden.
+
+### 8.1 Oberflächenprinzipien
+
+- zentrale Funktionen sind direkt erreichbar und nicht hinter tiefen Menüketten verborgen,
+- Listenansicht, Suche, Filter, Hierarchie und Detailbearbeitung greifen sichtbar ineinander,
+- häufig benötigte Eigenschaften sind in einer Ansicht bearbeitbar,
+- seltene oder erklärungsbedürftige Einstellungen dürfen gruppiert, aber nicht versteckt werden,
+- Fehler werden am betroffenen Feld und mit fachlich verständlicher Ursache angezeigt,
+- Desktop-Nutzung ist prioritär; grundlegende Bedienbarkeit auf kleineren Displays bleibt erhalten.
+
+### 8.2 Hierarchie ist fachlich ein Graph
+
+Der Konkretisierungszusammenhang ist kein Baum. Ein Konzept kann mehrere Eltern besitzen und daher in mehreren Ästen einer hierarchischen Darstellung erscheinen.
+
+Die Oberfläche darf diesen Graphen als aufklappbare Hierarchie visualisieren, aber nicht intern auf einen einzelnen Parent reduzieren. Insbesondere gilt:
+
+- alle Eltern und Kinder eines Konzepts müssen erkennbar sein,
+- zusätzliche Eltern sind ausdrücklich zu kennzeichnen,
+- das Hinzufügen oder Entfernen einer Beziehung darf keine anderen Beziehungen stillschweigend ersetzen,
+- Zyklusfehler sollen vor dem Speichern verständlich erklärt werden,
+- der Datenbanktrigger bleibt die letzte Integritätssicherung.
+
+Ein künstlicher `primary_parent_id` wird nicht allein für eine bequemere Darstellung eingeführt.
+
+### 8.3 Schreibschutz, Konflikte und Audit
+
+Vor den ersten schreibenden Katalogmasken müssen folgende Punkte spezifiziert und umgesetzt sein:
+
+- optimistisches Locking für veränderliche Hauptobjekte,
+- klare Regeln für Deaktivierung und Löschung,
+- ein nachvollziehbarer Audit-Trail für redaktionelle Änderungen,
+- eine von fachlichen Teilnehmern getrennte Administrationsidentität,
+- Schutz der privaten Verwaltungsoberfläche.
+
+Die genaue Tabellen- und UI-Ausgestaltung wird im Webentwicklungspaket festgelegt und ist nicht Bestandteil des reinen Anwendungsfundaments.
+
+## 9. Konfiguration und Betrieb
+
+Konfiguration erfolgt über Spring-Boot-Properties und Umgebungsvariablen. Geheimnisse werden weder committed noch in Beispielkonfigurationen mit echten Werten abgelegt.
+
+Web-, Discord- und Kuratoradapter müssen so gekapselt sein, dass nicht verwendete Adapter keine Zugangsdaten verlangen. Sobald ein Adapter aktiviert ist, führen fehlende oder ungültige Pflichtwerte zu einem klaren Startfehler.
+
+Für die erste Ausbaustufe genügt ein Prozess mit einer PostgreSQL-Datenbank. Docker Compose stellt mindestens die lokale Datenbank bereit; die Anwendung kann lokal über Maven gestartet werden.
+
+## 10. Teststrategie
+
+### 10.1 Keine Ersatzdatenbank
+
+Persistenztests verwenden eine echte PostgreSQL-Instanz über Testcontainers. H2 oder andere Ersatzdatenbanken sind nicht zulässig, weil sie die verwendeten PostgreSQL-Funktionen und Integritätsregeln nicht zuverlässig abbilden.
+
+### 10.2 Testebenen
+
+- Unit-Tests für reine Fachlogik,
+- Spring-Modulith-Tests für Modulgrenzen und Zyklen,
+- PostgreSQL-Integrationstests für Repositories, Migrationen, Funktionen und Trigger,
+- MVC-Tests für die spätere Verwaltungsoberfläche,
+- Adaptertests für Discord und den Kurator,
+- wenige vollständige Ablauf-Tests für besonders wichtige Challenge-Flows.
+
+### 10.3 Migrationsprüfung
+
+Eine leere Testdatenbank muss durch Liquibase vollständig aufgebaut und mit der Baseline befüllt werden können. Die vorhandenen strukturellen Seed-Prüfungen werden in einen automatisierten PostgreSQL-Integrationstest überführt.
+
+Mindestens folgende Risiken sind ausdrücklich zu testen:
+
+- vollständiger Aufbau einer leeren Datenbank,
+- erneuter Start ohne erneute Baseline-Überschreibung,
+- Zyklusvermeidung im Konkretisierungsgraphen,
+- Challenge-Integritätstrigger,
+- Vollständigkeit der Rollen- und Beschaffbarkeitsdaten im aktiven Ziehungspool.
+
+## 11. Entwicklungsreihenfolge
+
+Die aktuelle Reihenfolge ist:
+
+1. laufenden Ausbau des initialen Zutatenkatalogs abschließen,
+2. Anwendungsfundament mit Spring Boot, Modulen, Liquibase, PostgreSQL und Tests schaffen,
+3. Webverwaltung fachlich und gestalterisch spezifizieren,
+4. lesende und anschließend schreibende Katalogverwaltung umsetzen,
+5. harte Generierungsregeln spezifizieren und Kandidatengenerator implementieren,
+6. strukturierten Kuratorvertrag und OpenAI-Adapter umsetzen,
+7. Discord-Flow für Ziehung und gemeinsamen Reroll umsetzen,
+8. nachgelagerte persönliche Auswahl- und Ergebnisfunktionen ergänzen.
+
+Die einzelnen Pakete sollen jeweils nur den für ihren Zweck notwendigen Umfang enthalten. Insbesondere zieht das Anwendungsfundament weder Generatorlogik noch Web-CRUD, JDA oder OpenAI-Integration vor.
+
+## 12. Verwandte Entscheidungen
+
+- [`ADR 0001`](adr/0001-single-repository-modular-monolith.md): ein Repository und modularer Monolith
+- [`ADR 0002`](adr/0002-liquibase-as-single-migration-authority.md): Liquibase als einzige Migrationsautorität
+- [`ADR 0003`](adr/0003-runtime-catalog-owned-by-postgresql.md): operative Katalogdaten gehören der Laufzeitdatenbank
+- [`ADR 0004`](adr/0004-postgresql-only-persistence-tests.md): Persistenztests verwenden PostgreSQL
+- [`ADR 0005`](adr/0005-server-rendered-administration-ui.md): serverseitig gerenderte Webverwaltung
+- [`ADR 0006`](adr/0006-spring-jdbc-persistence.md): explizite Persistenz mit Spring JDBC
