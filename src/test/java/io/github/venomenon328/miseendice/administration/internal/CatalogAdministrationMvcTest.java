@@ -89,6 +89,7 @@ class CatalogAdministrationMvcTest {
                         .session(session)
                         .param("view", "LIST")
                         .param("q", "Kabeljau")
+                        .param("quick", "DRAWABLE")
                         .param("active", "ACTIVE")
                         .param("draw", "ENABLED")
                         .param("specificity", "SPECIFIC")
@@ -103,6 +104,9 @@ class CatalogAdministrationMvcTest {
                 .andExpect(content().string(containsString("data-testid=\"catalog-list\"")))
                 .andExpect(content().string(containsString("catalog-navigation")))
                 .andExpect(content().string(containsString("catalog-detail-column")))
+                .andExpect(content().string(containsString("Catalog MVC Admin")))
+                .andExpect(content().string(containsString("name=\"quick\"")))
+                .andExpect(content().string(containsString("value=\"DRAWABLE\"")))
                 .andExpect(content().string(containsString("Kabeljau")))
                 .andExpect(content().string(containsString("Aggregatversion")));
 
@@ -128,7 +132,8 @@ class CatalogAdministrationMvcTest {
         mockMvc.perform(get("/admin/catalog/{id}", codId).session(session).header("HX-Request", "true"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-testid=\"catalog-detail\"")))
-                .andExpect(content().string(containsString("Kabeljau")));
+                .andExpect(content().string(containsString("Kabeljau")))
+                .andExpect(content().string(containsString("/admin/catalog/" + codParentId)));
     }
 
     @Test
