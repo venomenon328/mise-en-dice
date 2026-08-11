@@ -140,6 +140,16 @@ class CatalogQueriesIntegrationTest {
     }
 
     @Test
+    void treatsLikeWildcardsInSearchTermsAsLiteralCharacters() {
+        long literal = insertConcept("LITERAL", "Query literal 100%_sure", "SPECIFIC", false, false, null);
+        insertConcept("WILDCARD_DECOY", "Query literal 100XXsure", "SPECIFIC", false, false, null);
+
+        var result = catalogQueries.search(search("%_", CatalogSort.DISPLAY_NAME_ASC));
+
+        assertThat(result.items()).extracting(item -> item.id()).containsExactly(literal);
+    }
+
+    @Test
     void sortsAndPaginatesOnTheServer() {
         for (int number = 0; number < 51; number++) {
             insertConcept("PAGE_" + number, "Query page " + String.format("%02d", number), "SPECIFIC", false, false, null);
