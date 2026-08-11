@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Mise en Dice PostgreSQL backup every night
+
+[Timer]
+OnCalendar=*-*-* 03:20:00
+Persistent=true
+RandomizedDelaySec=10m
+Unit=mise-en-dice-backup.service
+
+[Install]
+WantedBy=timers.target

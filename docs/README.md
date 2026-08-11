@@ -9,9 +9,10 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
 - [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md): verbindliche Bedien-, Interaktions-, Locking-, Audit- und Sicherheitsentscheidungen für die private Katalogverwaltung
 
-## Architektur und Umsetzung
+## Architektur, Betrieb und Umsetzung
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): verbindliche Zielarchitektur und Modulgrenzen
+- [`DEPLOYMENT.md`](DEPLOYMENT.md): VPS-Betrieb, Produktionsdeployment, isolierte Branch-Previews, Backup und Restore
 - [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md): aktuelle Reihenfolge der Entwicklungspakete und ihre Gates
 - [`adr`](adr): einzelne grundlegende Architekturentscheidungen mit Kontext und Konsequenzen
 
@@ -28,4 +29,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Anwendungsfundament und Webspezifikation sind abgeschlossen. Als nächstes folgt das Paket **Administrationssicherheit und Schreibfundament**: Spring Security, getrennte Administrationsidentitäten, optimistisches Locking und Audit-Grundlagen – noch ohne produktives Katalog-CRUD.
+Anwendungsfundament, Administrationssicherheit, lesende Katalogverwaltung und Deploymentpaket sind umgesetzt. Vor der Basisbearbeitung von Zutatenkonzepten wird die bestehende Oberfläche in einem abgegrenzten Zwischenpaket bei Hierarchiebedienung, grafischen Skalen und kulinarischem Design nachgeschärft.

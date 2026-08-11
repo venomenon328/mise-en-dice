@@ -1,0 +1,15 @@
+.git
+.github
+.idea
+.vscode
+.m2-repository
+.mvn/mise-settings.xml
+target
+.env
+.env.*
+!.env.example
+*.log
+*.dump
+*.sha256
+runtime
+.deploy
