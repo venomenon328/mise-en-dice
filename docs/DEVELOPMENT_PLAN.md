@@ -2,7 +2,7 @@
 
 Stand: 11. August 2026
 
-Dieses Dokument beschreibt die aktuelle Umsetzungsreihenfolge. Die [`VISION.md`](VISION.md) beschreibt das gewünschte Produkt; dieser Plan legt fest, in welcher technischen Reihenfolge die dafür notwendigen Bausteine entstehen.
+Dieses Dokument beschreibt die aktuelle Umsetzungsreihenfolge. Die [`VISION.md`](VISION.md) beschreibt das gewünschte Produkt; dieser Plan legt fest, in welcher technischen Reihenfolge die dafür notwendigen Bausteine entstehen. Die konkrete Webspezifikation steht in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md).
 
 ## Leitlinien für Entwicklungspakete
 
@@ -22,13 +22,13 @@ Größere zusammenhängende Pakete werden bevorzugt mit Codex umgesetzt. Kleine 
 
 Der Ausbau des initialen Zutatenkatalogs in PR #1 wurde vor dem Anwendungsfundament abgeschlossen und nach `main` gemergt.
 
-Er bildet die Baseline, die anschließend in Liquibase überführt wird. Das Infrastrukturpaket soll nicht parallel eine zweite, abweichende Kopie der Katalogdaten erzeugen.
+Er bildet die Baseline, die anschließend in Liquibase überführt wurde.
 
-**Erfülltes Gate für die nächste Phase:**
+**Erfülltes Gate:**
 
 - PR #1 ist gemergt,
 - alle Seed-Manifeste sind strukturell validiert,
-- der aktuelle Inhalt von `main` ist der verbindliche Ausgangspunkt.
+- der Inhalt von `main` war der verbindliche Ausgangspunkt für das Anwendungsfundament.
 
 ## Phase 1: Anwendungs- und Persistenzfundament (abgeschlossen)
 
@@ -38,91 +38,199 @@ Enthalten sind insbesondere:
 
 - Java-/Maven-/Spring-Boot-Grundgerüst,
 - fachliche Modulstruktur und Spring-Modulith-Verifikation,
-- Liquibase-Konvertierung der vorhandenen PostgreSQL-Struktur und Baseline,
+- Liquibase-Konvertierung der PostgreSQL-Struktur und Baseline,
 - Docker-Compose-Konfiguration für PostgreSQL,
 - Testcontainers-Integration,
 - automatisierte Migration-, Seed- und Triggerprüfungen,
 - GitHub-Actions-Build,
-- Aktualisierung der bestehenden Datenbankdokumentation.
+- Aktualisierung der Datenbankdokumentation.
 
-Nicht enthalten sind:
-
-- funktionale Katalog-Webmasken,
-- neue Tabellen für Web-Audit oder optimistisches Locking,
-- Kandidatengenerator,
-- OpenAI-Integration,
-- JDA beziehungsweise Discord-Kommandos,
-- fachliche Änderungen am bestehenden Katalogmodell, soweit sie nicht zwingend für die technische Überführung erforderlich sind.
-
-**Erfülltes Gate für die nächste Phase:**
+**Erfülltes Gate:**
 
 - eine leere PostgreSQL-Datenbank wird ausschließlich über Liquibase vollständig aufgebaut,
 - ein zweiter Start verändert die Baseline nicht erneut,
 - `./mvnw verify` führt Modul- und PostgreSQL-Integrationstests erfolgreich aus,
 - es existiert keine parallele Schema- oder Bootstrap-Autorität mehr.
 
-## Phase 2: Spezifikation der Webverwaltung
+## Phase 2: Spezifikation der Webverwaltung (abgeschlossen mit Issue #5)
 
-Nach dem technischen Fundament wird die Verwaltungsoberfläche fachlich und gestalterisch spezifiziert, bevor umfangreicher UI-Code entsteht.
+Die private Verwaltungsoberfläche wurde vor umfangreichem UI-Code fachlich, gestalterisch und technisch spezifiziert.
 
-Die Spezifikation muss mindestens entscheiden:
+Verbindliche Ergebnisse stehen in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md), insbesondere:
 
-- primäre Navigation und direkt sichtbare Hauptfunktionen,
-- Verhältnis von Katalogliste, Hierarchie und Detailansicht,
-- Darstellung eines Konkretisierungsgraphen mit mehreren Eltern,
-- Suche, Filter, Sortierung und gespeicherte beziehungsweise schnelle Filter,
-- Anlegen, Bearbeiten, Deaktivieren und gegebenenfalls Löschen,
-- Pflege von Rollen, Eigenschaften, Beschaffbarkeit, Saison und Ausschlüssen,
-- Inline-Bearbeitung gegenüber eigenständigen Detailformularen,
-- Bulk-Operationen,
-- Validierungs- und Konfliktmeldungen,
-- optimistisches Locking,
-- Audit-Trail und Änderungsverlauf,
-- Administrationsidentität und Zugriffsschutz,
-- Desktop-Priorität und minimale Anforderungen für kleinere Displays.
+- globale Navigation ohne vorgeschaltetes Dashboard,
+- Split-View aus Suche/Filter/Hierarchie beziehungsweise Liste und Detailansicht,
+- korrekte Mehrfach-Eltern-Darstellung des Konkretisierungsgraphen,
+- vollständige Zuordnung aller aktuellen Katalogfelder zu UI-Bereichen,
+- expliziter Editiermodus ohne Autosave,
+- Neuanlage und Deaktivierung statt physischem Löschen,
+- Beziehungspflege ohne Drag-and-drop-Nebeneffekte,
+- Ausschlussregelpflege,
+- begrenzte und atomare Bulk-Aktionen,
+- optimistisches Locking auf Aggregatsebene,
+- Audit-Trail,
+- vom `participant` getrennte Administrationsidentität,
+- Spring-Security-basierter Zugriffsschutz,
+- Validierungs- und Konfliktdarstellung,
+- konkrete Low-Fidelity-Wireframes,
+- benötigte Application-Use-Cases und Datenprojektionen.
 
-Wichtige Oberflächenprinzipien:
+**Erfülltes Gate:**
 
-- zentrale Einstellungen werden nicht hinter vielen Menüs versteckt,
-- häufige Tätigkeiten benötigen wenige, nachvollziehbare Schritte,
-- die Oberfläche darf die Mehrfach-Eltern-Semantik nicht zu einem falschen Baum vereinfachen,
-- seltene Einstellungen dürfen gruppiert, aber nicht unauffindbar werden,
-- kritische Auswirkungen einer Änderung sind vor dem Speichern sichtbar.
+- für den Start der Administrationsimplementierung bleiben keine blockierenden UX- oder Datenmodellentscheidungen offen,
+- notwendige Schemaergänzungen sind benannt, aber nicht vorzeitig implementiert,
+- die Webumsetzung ist in sechs getrennte Pakete zerlegt.
 
-**Ergebnis der Phase:**
+## Phase 3: Administrationssicherheit und Schreibfundament
 
-- verbindliche UI-/Interaktionsspezifikation,
-- Seiten- und Komponentenübersicht,
-- Zustände und Validierungsfälle,
-- notwendige Datenmodellergänzungen,
-- in sinnvolle Implementierungspakete zerlegter Lieferplan.
+Dieses Paket schafft die technischen Voraussetzungen für alle späteren schreibenden Verwaltungsfunktionen, ohne bereits Katalog-CRUD zu implementieren.
 
-## Phase 3: Lesende Katalogverwaltung
+### Scope
 
-Die erste funktionale Webstufe stellt den Katalog ohne Schreibzugriffe dar:
+- Spring Security für `/admin/**`,
+- konfigurationsbasierte Administrationsidentitäten mit sicher bereitgestellten Passwort-Hashes,
+- keine Default-Zugangsdaten,
+- aktivierbarer Administrationsadapter,
+- `version bigint not null default 0` auf `ingredient_concept` und `exclusion_rule`,
+- `catalog_audit_entry` einschließlich Gruppierung von zusammengehörenden Änderungen,
+- interne Locking- und Auditgrundlagen im Katalogmodul,
+- PostgreSQL-Integrationstests für Versionierung und Audit,
+- Sicherheits- und Modulgrenzentests.
 
-- Übersicht,
-- Suche und Filter,
-- hierarchische beziehungsweise graphbasierte Navigation,
-- Detailansicht,
-- Sichtbarkeit aller relevanten Eigenschaften und Beziehungen.
+### Nicht enthalten
 
-Diese Stufe validiert Informationsarchitektur und Query-Projektionen, bevor Schreiblogik, Locking und Audit hinzukommen.
+- produktive Katalogformulare,
+- Hierarchie- oder Suchoberfläche,
+- fachliche Bearbeitungscommands außerhalb der für die Infrastruktur nötigen Testfälle.
 
-## Phase 4: Schreibende Katalogverwaltung
+### Gate
 
-Schreibzugriffe werden nach fachlich zusammenhängenden Bereichen ergänzt, voraussichtlich in dieser Reihenfolge:
+- `/admin/**` ist ohne Authentifizierung nicht nutzbar,
+- bei deaktiviertem Adapter sind keine Admin-Zugangsdaten erforderlich,
+- bei aktiviertem Adapter führt fehlende sichere Konfiguration zu einem klaren Startfehler,
+- Versionierungs- und Auditschema ist über echtes PostgreSQL geprüft,
+- Passwörter und Sessiondaten gelangen nicht in Auditdaten.
 
-1. Zutatenkonzepte und grundlegende Eigenschaften,
-2. Konkretisierungsbeziehungen,
-3. Rollen, Flags und Dimensionen,
-4. individuelle Beschaffbarkeit und Saison,
-5. Ausschlussregeln,
-6. Bulk-Operationen und Änderungsverlauf.
+## Phase 4: Lesende Katalogverwaltung
 
-Optimistisches Locking, Audit und Zugriffsschutz sind keine spätere Politur, sondern Voraussetzung für die ersten produktiven Schreibzugriffe.
+Die erste sichtbare Webstufe validiert Informationsarchitektur und Query-Projektionen ohne fachliche Schreibzugriffe.
 
-## Phase 5: Generierungsregeln und Kandidatengenerator
+### Scope
+
+- Thymeleaf-/HTMX-Webshell,
+- Katalog als Startseite nach Login,
+- Suche und Schnell-/Detailfilter,
+- Hierarchie mit Mehrfach-Eltern,
+- paginierte Listenansicht,
+- vollständige read-only Zutaten-Detailansicht,
+- Reverse-Referenzen aus Ausschlussregeln,
+- Erhalt von Such-/Filterzustand bei Navigation,
+- Fallback für kleinere Displays.
+
+### Gate
+
+- alle aktuellen Katalogeigenschaften sind sichtbar,
+- Mehrfach-Eltern werden mit realen Katalogdaten korrekt dargestellt,
+- ein Konzept kann über Suche und verschiedene Hierarchiepfade erreicht werden, ohne dass sich sein fachlicher Zustand unterscheidet,
+- MVC- und PostgreSQL-Integrationstests decken Suche, Filter und Hierarchie ab,
+- Controller greifen nicht direkt auf JDBC zu.
+
+## Phase 5: Zutatenkonzept-Basisbearbeitung
+
+Dieses Paket führt die ersten produktiven Schreibzugriffe ein.
+
+### Scope
+
+- Neuanlage eines Zutatenkonzepts,
+- Anzeigename,
+- Aktivstatus,
+- Ziehbarkeit,
+- Spezifität,
+- Ziehungsgewicht,
+- Ungewöhnlichkeit,
+- Kuratornotiz,
+- stabiler Code nur bei Neuanlage editierbar,
+- explizites Speichern/Verwerfen,
+- Umgang mit ungespeicherten Änderungen,
+- optimistisches Locking und Konfliktansicht,
+- Audit für Anlage und Änderungen,
+- verständliche Datenbank-Constraint-Fehler.
+
+### Gate
+
+- konkurrierende Änderungen überschreiben sich nicht stillschweigend,
+- Codeänderungen nach Anlage sind über die normale Weboberfläche ausgeschlossen,
+- Deaktivierung erhält Beziehungen und historische Referenzen,
+- unbekannte Datenbankfehler werden nicht als fachliche Konflikte maskiert,
+- jeder erfolgreiche Schreibzugriff erzeugt einen korrekten Audit-Eintrag.
+
+## Phase 6: Konkretisierungsbeziehungen
+
+Dieses Paket macht den Graphen schreibend pflegbar.
+
+### Scope
+
+- direkte Oberbegriffe und Konkretisierungen bearbeiten,
+- suchbarer Parent-/Child-Picker,
+- Mehrfach-Eltern vollständig erhalten,
+- transitive Vorfahren/Nachfahren als read-only Kontext,
+- Vorabprüfung auf Selbstbeziehungen, Duplikate und Zyklen,
+- PostgreSQL-Trigger bleibt letzte Integritätssicherung,
+- Versionierung beider betroffener Aggregate,
+- zwei Audit-Einträge pro Beziehungsänderung mit gemeinsamer `change_group_id`.
+
+### Gate
+
+- Hinzufügen einer Beziehung entfernt keine andere Beziehung stillschweigend,
+- echte Zyklus- und Konkurrenzfälle sind gegen PostgreSQL getestet,
+- inaktive Konzepte können bewusst in Beziehungen verbleiben,
+- die UI unterscheidet direkte und transitive Beziehungen eindeutig.
+
+## Phase 7: Rollen, Eigenschaften, Beschaffbarkeit und Saison
+
+Dieses Paket vervollständigt die Zutatenpflege.
+
+### Scope
+
+- funktionale Rollen,
+- kulinarische Flags,
+- kulinarische Dimensionen,
+- Beschaffbarkeit für Georgia und Tobias,
+- Saisonmultiplikatoren,
+- vollständige Pflichtvalidierung aktiver Ziehkandidaten,
+- `Pflegebedarf`-Filter.
+
+Die Stammdaten `functional_role`, `culinary_flag`, `culinary_dimension` und `participant` bleiben in dieser Phase migrationsgeführt und werden nicht selbst per Web administriert.
+
+### Gate
+
+- aktive ziehbare Konzepte können nicht ohne Rolle und vollständige Beschaffbarkeit gespeichert werden,
+- aktive ziehbare offene Konzepte benötigen mindestens eine direkte bekannte Konkretisierung,
+- fehlende Dimensionswerte bleiben semantisch `nicht gepflegt`,
+- fehlende Saisonwerte bleiben semantisch Faktor 1.0,
+- Änderungen sind versionsgesichert und auditiert.
+
+## Phase 8: Ausschlüsse, Bulk und Auditoberfläche
+
+Dieses Paket schließt die vollständige Katalogverwaltung ab.
+
+### Scope
+
+- Ausschlussregeln einschließlich mehrerer Ziele und `include_refinements`,
+- Neuanlage, Bearbeitung und Deaktivierung von Ausschlussregeln,
+- begrenzte Bulk-Aktionen für explizit ausgewählte Zutatenkonzepte,
+- atomare Bulk-Verarbeitung,
+- Auditliste, Filter und feldweiser Diff,
+- Entity-bezogene Änderungshistorie in den Detailansichten.
+
+### Gate
+
+- aktive Ausschlussregeln besitzen mindestens ein Ziel,
+- Bulk-Aktionen verändern höchstens 200 explizit ausgewählte Konzepte und sind vollständig atomar,
+- Auditdaten machen normale redaktionelle Änderungen ohne Roh-JSON verständlich nachvollziehbar,
+- die in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md) beschriebene erste vollständige Webverwaltung ist funktional abgedeckt.
+
+## Phase 9: Generierungsregeln und Kandidatengenerator
 
 Erst nach einer praktikabel pflegbaren Datenbasis werden die harten Generierungsregeln vollständig spezifiziert und implementiert.
 
@@ -130,13 +238,13 @@ Die Anwendung erzeugt nachvollziehbar Kandidatensätze aus dem eigenen Katalog. 
 
 Der externe Kurator ist in dieser Phase noch nicht für die Korrektheit harter Regeln verantwortlich.
 
-## Phase 6: Strukturierter Kuratorvertrag und OpenAI-Adapter
+## Phase 10: Strukturierter Kuratorvertrag und OpenAI-Adapter
 
 Der Kurator erhält ausschließlich bereits gültige Kandidaten. Request, Response, Reason-Codes, Modell und Promptversion werden strukturiert und auditierbar behandelt.
 
 Netzwerkaufrufe erfolgen außerhalb offener Datenbanktransaktionen. Vollständige Ablehnung eines Kandidatensatzes führt zu einer internen neuen Runde und verbraucht keinen sichtbaren Reroll.
 
-## Phase 7: Discord-Bot
+## Phase 11: Discord-Bot
 
 Der eigenständige Discord-Adapter verwendet dieselben Application-APIs wie die Weboberfläche. Die erste Bot-Stufe umfasst Ziehung, Anzeige und den gemeinsamen einmaligen Reroll.
 
@@ -150,4 +258,6 @@ Persönliche Konkretisierungen, Zusatz-Zutaten, Grundpläne und Ergebnisdokument
 - allgemeine Lebensmittelontologie,
 - Rezeptgenerierung als Ersatz für die Challenge-Idee,
 - frei konfigurierbare Datenbank-Rule-Engine,
+- physisches Löschen von Katalogobjekten über die normale Webverwaltung,
+- Webadministration der kleinen Referenzvokabulare,
 - frühzeitige Implementierung späterer Komfortfunktionen ohne tragfähige Kernabläufe.
