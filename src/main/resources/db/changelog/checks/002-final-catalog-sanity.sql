@@ -13,6 +13,7 @@ DECLARE
     root_count integer;
     specific_roots text[];
     refinement_count integer;
+    missing_expected_relations integer;
     redundant_edges integer;
     role_disjoint_edges integer;
     specificity_inversions integer;
@@ -62,6 +63,43 @@ BEGIN
 
     IF refinement_count <> 711 THEN
         RAISE EXCEPTION 'unexpected refinement count after catalog consolidation: %', refinement_count;
+    END IF;
+
+    SELECT count(*)
+      INTO missing_expected_relations
+      FROM (
+          VALUES
+              ('VEGETABLES', 'SEAWEED'),
+              ('VEGETABLES', 'ARTICHOKE'),
+              ('STEM_VEGETABLES', 'BAMBOO_SHOOTS'),
+              ('SPICES', 'CHILI'),
+              ('FRUIT', 'POMEGRANATE'),
+              ('SPICES', 'GINGER'),
+              ('FRUIT', 'PERSIMMON'),
+              ('PRESERVED_PRODUCE', 'CAPERS'),
+              ('GRAINS', 'CORN'),
+              ('ROOT_VEGETABLES', 'HORSERADISH'),
+              ('SPICES', 'MSG'),
+              ('PRESERVED_PRODUCE', 'OLIVES'),
+              ('GARLIC', 'BLACK_GARLIC'),
+              ('TROPICAL_FRUIT', 'TAMARIND'),
+              ('MEAT', 'ESCARGOT'),
+              ('FRUIT', 'GRAPE'),
+              ('FRESH_HERBS', 'LEMONGRASS')
+      ) AS expected(parent_code, child_code)
+     WHERE NOT EXISTS (
+         SELECT 1
+           FROM ingredient_refinement relation
+           JOIN ingredient_concept parent
+             ON parent.id = relation.parent_concept_id
+           JOIN ingredient_concept child
+             ON child.id = relation.child_concept_id
+          WHERE parent.code = expected.parent_code
+            AND child.code = expected.child_code
+     );
+
+    IF missing_expected_relations <> 0 THEN
+        RAISE EXCEPTION '% expected root-closing refinement relations are missing', missing_expected_relations;
     END IF;
 
     WITH RECURSIVE alternate_paths(parent_concept_id, child_concept_id) AS (

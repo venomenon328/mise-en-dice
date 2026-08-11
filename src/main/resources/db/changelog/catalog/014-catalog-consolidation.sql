@@ -29,7 +29,7 @@ FROM (
         ('PRESERVED_PRODUCE', 'OLIVES'),
         ('GARLIC', 'BLACK_GARLIC'),
         ('TROPICAL_FRUIT', 'TAMARIND'),
-        ('MOLLUSCS', 'ESCARGOT'),
+        ('MEAT', 'ESCARGOT'),
         ('FRUIT', 'GRAPE'),
         ('FRESH_HERBS', 'LEMONGRASS')
 ) AS relation(parent_code, child_code)
