@@ -26,10 +26,10 @@
         <h3>Konkretisierungsbeziehungen</h3>
         <p th:text="|${detail.directParents.size()} direkte Eltern · ${detail.directChildren.size()} direkte Kinder|">0 direkte Eltern</p>
         <h4>Direkte Eltern</h4>
-        <ul><li th:each="parent : ${detail.directParents}"><span th:text="${parent.displayName}">Fisch</span> <code th:text="${parent.code}">FISH</code></li>
+        <ul><li th:each="parent : ${detail.directParents}"><a th:href="${state.detailUrl(parent.id)}" th:hx-get="${state.detailUrl(parent.id)}" hx-target="#catalog-detail" hx-swap="outerHTML" hx-push-url="true"><span th:text="${parent.displayName}">Fisch</span> <code th:text="${parent.code}">FISH</code></a></li>
             <li th:if="${detail.directParents.isEmpty()}">Keine direkten Eltern</li></ul>
         <h4>Direkte Kinder</h4>
-        <ul><li th:each="child : ${detail.directChildren}"><span th:text="${child.displayName}">Kabeljau</span> <code th:text="${child.code}">COD</code></li>
+        <ul><li th:each="child : ${detail.directChildren}"><a th:href="${state.detailUrl(child.id)}" th:hx-get="${state.detailUrl(child.id)}" hx-target="#catalog-detail" hx-swap="outerHTML" hx-push-url="true"><span th:text="${child.displayName}">Kabeljau</span> <code th:text="${child.code}">COD</code></a></li>
             <li th:if="${detail.directChildren.isEmpty()}">Keine direkten Kinder</li></ul>
         <details><summary>Transitive Kontextinformation</summary>
             <p>Vorfahren: <span th:text="${#strings.listJoin(detail.transitiveAncestors.![displayName], ', ')} ?: 'keine'">keine</span></p>
