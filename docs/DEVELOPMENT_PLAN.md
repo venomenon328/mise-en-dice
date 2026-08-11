@@ -81,7 +81,7 @@ Verbindliche Ergebnisse stehen in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md)
 - notwendige Schemaergänzungen sind benannt, aber nicht vorzeitig implementiert,
 - die Webumsetzung ist in sechs getrennte Pakete zerlegt.
 
-## Phase 3: Administrationssicherheit und Schreibfundament (abgeschlossen mit Issue #8)
+## Phase 3: Administrationssicherheit und Schreibfundament (abgeschlossen mit Issue #7)
 
 Dieses Paket schafft die technischen Voraussetzungen für alle späteren schreibenden Verwaltungsfunktionen, ohne bereits Katalog-CRUD zu implementieren.
 
