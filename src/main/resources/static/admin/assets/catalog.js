@@ -4,8 +4,8 @@
     const toggleSelector = "[data-tree-toggle]";
 
     function controlledChildren(toggle) {
-        const targetId = toggle.getAttribute("aria-controls");
-        return targetId ? document.getElementById(targetId) : null;
+        const item = toggle.closest?.(".hierarchy-item");
+        return item?.querySelector?.(":scope > .tree-children") ?? null;
     }
 
     function setExpanded(toggle, expanded) {
