@@ -27,7 +27,7 @@ Die Befüllung enthält:
 - **78 offene** ziehbare Vorgaben,
 - **562 spezifische** ziehbare Vorgaben,
 - **2 nicht ziehbare Strukturknoten**,
-- **765 bekannte Konkretisierungsbeziehungen**,
+- **711 bekannte Konkretisierungsbeziehungen**,
 - **9 funktionale Rollen**,
 - **7 fünfstufige kulinarische Dimensionen**,
 - **5 binäre kulinarische Flags**,
@@ -35,6 +35,8 @@ Die Befüllung enthält:
 - sowie **22 kuratierte Ausschlussregeln**.
 
 Die beiden nicht ziehbaren Strukturknoten bleiben `Milchprodukte` und `fertige Currypaste`. Sie werden für Klassifikation und Ausschlussregeln benötigt, ohne selbst als Challenge-Vorgabe ausgelost zu werden.
+
+Nach der Konsolidierung besitzt der aktive Katalog **24 Root-Konzepte**. Davon ist nur `Kaffee` eine spezifische Vorgabe; alle übrigen Wurzeln sind bewusst breite Familien wie `Fleisch`, `Gemüse`, `Obst`, `Gewürz` oder `Kochalkohol`. Ein universeller Oberknoten namens „Zutat“ wurde nicht ergänzt, weil er zwar die Baumansicht beruhigen, fachlich aber ungefähr so viel erklären würde wie ein Ordner namens „Sonstiges“.
 
 ## 3. Offene und konkrete Vorgaben
 
@@ -53,6 +55,8 @@ Offene Vorgaben decken nun nicht nur einzelne Produktfamilien wie `Fisch`, `Kohl
 Dazu kommen konkrete Zuschnitte, Sorten und Produkte. `Schweinefleisch` kennt beispielsweise Schweinebauch, Filet, Nacken, Schulter, Kotelett, Haxe, Hack, Leber sowie mehrere Wurst- und Pökelwaren. `Rindfleisch` umfasst unter anderem Hack, Gulasch, Steak, Brust, Rinderhüfte, Beinscheibe, Short Ribs, Filet, Leber, Herz und Zunge.
 
 Der Konkretisierungsgraph bildet dabei gültige Alternativen für eine Vorgabe ab, nicht bloß die Zutatenliste eines zusammengesetzten Produkts. Ketchup ist daher kein Süßungsmittel, nur weil die Industrie gelegentlich großzügig Zucker hineinkippt.
+
+Die Relation wird transitiv ausgewertet. Deshalb enthält die konsolidierte Baseline keine direkte Kante, wenn dasselbe Ziel bereits über einen fachlich sinnvollen Zwischenknoten erreichbar ist. Die Meeresfrüchte-Hierarchie folgt beispielsweise dem kanonischen Pfad `Fisch und Meeresfrüchte → Schalen- und Krustentiere → Krustentiere → Garnelen`; parallele Abkürzungen wie `Fisch und Meeresfrüchte → Krustentiere` wurden entfernt. Mehrfach-Eltern bleiben dort erlaubt, wo sie unterschiedliche, nicht voneinander ableitbare Einordnungen ausdrücken.
 
 ## 4. Inhaltliche Breite
 
@@ -130,6 +134,16 @@ Die Gewichte folgen grob diesen Prinzipien:
 - schwierige oder teure Spezialzutaten werden deutlich seltener gezogen,
 - extreme Sonderfälle wie Trüffel, Safran, Froschschenkel oder Hummer bleiben möglich, aber selten.
 
+Für die unberührte Baseline gelten zusätzlich überprüfte Plausibilitätsgrenzen:
+
+- Ungewöhnlichkeit `5`: Gewicht höchstens `0.25`,
+- Ungewöhnlichkeit `4`: Gewicht höchstens `0.35`,
+- Ungewöhnlichkeit `3`: Gewicht höchstens `0.55`,
+- mindestens einmal als `DIFFICULT` bewertete Zutaten: Gewicht höchstens `0.35`,
+- direkte Konkretisierungen von `Kochalkohol`: Gewicht höchstens `0.35`.
+
+Bier wurde dabei von `0.50` auf `0.25` abgesenkt. Es bleibt damit ein legitimer Kandidat, tritt aber nicht länger auf, als sei jeder zweite Kochtopf eigentlich ein Braukessel.
+
 Die Werte sind Startwerte für späteres empirisches Tuning und keine objektiven kulinarischen Naturkonstanten.
 
 ## 9. Saisonfaktoren
@@ -186,16 +200,18 @@ Die Befüllung ist als einmalige Baseline in den explizit geordneten Master-Chan
 11. `catalog/011-ingredient-refinements-expansion.sql` – zusätzliche Konkretisierungsbeziehungen
 12. `catalog/012-seasonality-expansion.sql` – zusätzliche Saisonfaktoren
 13. `catalog/013-exclusion-rules-expansion.sql` – zusätzliche Ausschlussregeln
+14. `catalog/014-catalog-consolidation.sql` – einmalige Hierarchie-, Rollen- und Gewichtskorrekturen
+15. `checks/002-final-catalog-sanity.sql` – Plausibilitätsprüfung des konsolidierten, unberührten Baseline-Zustands
 
 Die Erweiterung hält die Pflichtmetadaten pro Konzept in drei kompakten, dokumentierten Manifesten zusammen und überführt sie über kurzlebige `DO`-Blöcke in temporäre Quelltabellen. Dadurch existieren Code, Rolle und Beschaffbarkeit nicht in mehreren unabhängig zu synchronisierenden Listen. Die Dateien sind Liquibase-Changesets ohne `runAlways`: Die Baseline wird nur auf eine leere Datenbank angewandt und überschreibt bei späteren Starts keine kuratierten Laufzeitdaten.
 
-## 12. Sanity-Check
+## 12. Sanity-Checks
 
-[`checks/001-seed-sanity.sql`](../src/main/resources/db/changelog/checks/001-seed-sanity.sql) prüft nach der Baseline unter anderem:
+[`checks/001-seed-sanity.sql`](../src/main/resources/db/changelog/checks/001-seed-sanity.sql) ist der historische Vollständigkeitscheck der erweiterten Baseline. Er läuft in der append-only Migrationsfolge noch vor der Konsolidierung und prüft unter anderem:
 
 - mindestens 600 aktive Zieh-Kandidaten,
 - mindestens 70 offene und 540 spezifische Vorgaben,
-- mindestens 750 Konkretisierungsbeziehungen,
+- mindestens 750 zunächst geladene Konkretisierungsbeziehungen,
 - mindestens 20 aktive Ausschlussregeln,
 - mindestens eine funktionale Rolle für jeden aktiven Zieh-Kandidaten,
 - vollständige Beschaffbarkeitsdaten für Georgia und Tobias,
@@ -203,7 +219,17 @@ Die Erweiterung hält die Pflichtmetadaten pro Konzept in drei kompakten, dokume
 - aktive Teilnehmerdatensätze,
 - sowie mindestens ein Ziel für jede aktive Ausschlussregel.
 
-Der Check ist kein Test der kulinarischen Qualität einzelner Kombinationen. Dafür sind später Generatorregeln und Kurator zuständig.
+Anschließend reduziert `catalog/014-catalog-consolidation.sql` den Graphen auf seine fachlich notwendigen direkten Kanten. [`checks/002-final-catalog-sanity.sql`](../src/main/resources/db/changelog/checks/002-final-catalog-sanity.sql) prüft den resultierenden Startzustand zusätzlich auf:
+
+- exakt 24 aktive Wurzelkonzepte und `Kaffee` als einziges spezifisches Root-Konzept,
+- exakt 711 direkte Konkretisierungsbeziehungen,
+- keine transitiv redundanten Direktkanten,
+- mindestens eine gemeinsame funktionale Rolle je direkter Parent-Child-Beziehung,
+- keine offene Vorgabe unter einem spezifischen Parent,
+- die kanonische Meeresfrüchte-Hierarchie,
+- sowie die festgelegten Gewichtsobergrenzen für ungewöhnliche, schwer beschaffbare und alkoholische Kochzutaten.
+
+Die exakten Baseline-Prüfungen werden bewusst übersprungen, sobald bereits versionierte redaktionelle Änderungen vorliegen. Ein Upgrade soll kuratierte Laufzeitdaten nicht nachträglich zu einer unveränderten Seed-Datei umerziehen. Der Check prüft weiterhin keine kulinarische Qualität einzelner Kombinationen; dafür sind Generatorregeln und Kurator zuständig.
 
 ## 13. Pflegeprinzip für neue Zutaten
 

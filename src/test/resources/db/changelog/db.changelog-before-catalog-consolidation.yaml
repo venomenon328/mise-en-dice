@@ -33,7 +33,3 @@ databaseChangeLog:
       file: db/changelog/checks/001-seed-sanity.sql
   - include:
       file: db/changelog/schema/003-administration-foundation.sql
-  - include:
-      file: db/changelog/catalog/014-catalog-consolidation.sql
-  - include:
-      file: db/changelog/checks/002-final-catalog-sanity.sql
