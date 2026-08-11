@@ -1,0 +1,17 @@
+[Unit]
+Description=Create and validate the Mise en Dice PostgreSQL backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=gridwords
+Group=gridwords
+WorkingDirectory=/opt/mise-en-dice/repository
+Environment=MISE_EN_DICE_DEPLOY_ROOT=/opt/mise-en-dice/runtime
+ExecStart=/opt/mise-en-dice/repository/deploy/mise-en-dice.sh production backup
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

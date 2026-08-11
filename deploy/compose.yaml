@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      POSTGRES_DB: ${MISE_EN_DICE_DB_NAME:?MISE_EN_DICE_DB_NAME must be set}
+      POSTGRES_USER: ${MISE_EN_DICE_DB_USERNAME:?MISE_EN_DICE_DB_USERNAME must be set}
+      POSTGRES_PASSWORD: ${MISE_EN_DICE_DB_PASSWORD:?MISE_EN_DICE_DB_PASSWORD must be set}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - database
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    pids_limit: 256
+    mem_limit: ${MISE_EN_DICE_POSTGRES_MEMORY_LIMIT:-512m}
+    cpus: 1.0
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  app:
+    image: ${MISE_EN_DICE_IMAGE:?MISE_EN_DICE_IMAGE must be set}
+    group_add:
+      - "${MISE_EN_DICE_RUNTIME_GID:?MISE_EN_DICE_RUNTIME_GID must be set}"
+    init: true
+    read_only: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      MISE_EN_DICE_DB_URL: jdbc:postgresql://postgres:5432/${MISE_EN_DICE_DB_NAME:?MISE_EN_DICE_DB_NAME must be set}
+      MISE_EN_DICE_DB_USERNAME: ${MISE_EN_DICE_DB_USERNAME:?MISE_EN_DICE_DB_USERNAME must be set}
+      MISE_EN_DICE_DB_PASSWORD: ${MISE_EN_DICE_DB_PASSWORD:?MISE_EN_DICE_DB_PASSWORD must be set}
+      SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/run/mise-en-dice/application.properties
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError
+    volumes:
+      - type: bind
+        source: ${MISE_EN_DICE_APP_CONFIG_FILE:?MISE_EN_DICE_APP_CONFIG_FILE must be set}
+        target: /run/mise-en-dice/application.properties
+        read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,mode=1777,size=64m
+    ports:
+      - "127.0.0.1:${MISE_EN_DICE_APP_PORT:?MISE_EN_DICE_APP_PORT must be set}:8080"
+    networks:
+      - database
+      - outbound
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - --show-error
+        - http://127.0.0.1:8080/actuator/health
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    mem_limit: ${MISE_EN_DICE_APP_MEMORY_LIMIT:-768m}
+    cpus: 1.0
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  database:
+    internal: true
+  outbound: {}
+
+volumes:
+  postgres-data: {}

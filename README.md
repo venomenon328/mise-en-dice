@@ -6,7 +6,7 @@ Die Grundidee: Beide erhalten dieselben vier kulinarischen Vorgaben, entwickeln 
 
 > Vier Vorgaben. Zwei Küchen. Drei Freiheiten.
 
-Die ausführliche Produktvision und die bisher festgelegten Spielregeln stehen in [`docs/VISION.md`](docs/VISION.md). Die private Katalogverwaltung ist in [`docs/ADMINISTRATION_UI.md`](docs/ADMINISTRATION_UI.md) spezifiziert.
+Die ausführliche Produktvision und die bisher festgelegten Spielregeln stehen in [`docs/VISION.md`](docs/VISION.md). Die private Katalogverwaltung ist in [`docs/ADMINISTRATION_UI.md`](docs/ADMINISTRATION_UI.md) spezifiziert. Das Serverdeployment einschließlich isolierter Branch-Previews beschreibt [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ## Geplanter Zuschnitt
 
@@ -50,6 +50,25 @@ Session-Cookies sind `HttpOnly` und `SameSite=Lax`. Für eine produktive HTTPS-B
 
 Die Katalogansicht bietet Suche, Schnell- und Detailfilter, serverseitige Sortierung und Pagination, einen per HTMX nachladbaren Konkretisierungsgraphen sowie die vollständige Detailansicht eines Zutatenkonzepts. Sie ist in dieser Stufe bewusst ausschließlich lesend: Es gibt keine Anlage-, Bearbeitungs-, Bulk-, Ausschluss- oder Audit-Webflows.
 
+## Auf einem Docker-VPS deployen
+
+Das Verzeichnis [`deploy`](deploy) enthält ein mehrstufiges Java-21-Image, ein isoliertes App-/PostgreSQL-Compose und den Operator [`deploy/mise-en-dice.sh`](deploy/mise-en-dice.sh).
+
+Nach der einmaligen Initialisierung sind die wichtigsten Befehle:
+
+```bash
+# Sichere Vorschau der aktuellen main-Version mit eigener Datenbank
+./deploy/mise-en-dice.sh preview deploy main
+
+# Beliebigen Branch aus origin als getrennte Preview ausrollen
+./deploy/mise-en-dice.sh preview deploy feat/example-branch
+
+# Produktion mit frischem Smoke-System und vorherigem Backup aktualisieren
+./deploy/mise-en-dice.sh production deploy main
+```
+
+Jede Preview verwendet ein eigenes Compose-Projekt, einen automatisch gewählten Loopback-Port und ein eigenes PostgreSQL-Volume. Produktion und Previews veröffentlichen niemals einen Datenbankport; der App-Port bindet ausschließlich an `127.0.0.1`. Die vollständige Erstinstallation, SSH-Tunnel, Caddy, Logs, Backup und Restore stehen in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
 Alle Datenbanktests verwenden PostgreSQL 17 in Testcontainers; H2, JPA und Hibernate sind nicht Bestandteil des Builds:
 
 ```bash
@@ -69,4 +88,4 @@ Der initiale Katalog umfasst **642 Zutatenkonzepte**, davon **640 zufällig zieh
 
 ## Status
 
-Produktvision, Datenmodell, Anwendungsfundament, umfangreicher initialer Zutatenkatalog, Administrationssicherheit sowie die lesende Katalogoberfläche sind umgesetzt. Als nächster Entwicklungsschritt folgt die Basisbearbeitung von Zutatenkonzepten mit optimistischem Locking und Audit.
+Produktvision, Datenmodell, Anwendungsfundament, umfangreicher initialer Zutatenkatalog, Administrationssicherheit, die lesende Katalogoberfläche sowie das Produktions- und Branch-Preview-Deployment sind umgesetzt. Vor der ersten schreibenden Katalogstufe folgt die abgegrenzte gestalterische Nachschärfung der bestehenden Oberfläche.

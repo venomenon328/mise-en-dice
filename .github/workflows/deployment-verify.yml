@@ -1,0 +1,113 @@
+name: Deployment Verify
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deployment-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install deployment test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes apache2-utils shellcheck
+
+      - name: Check shell scripts
+        run: |
+          shellcheck deploy/lib.sh deploy/mise-en-dice.sh deploy/tests/lib-test.sh
+          bash deploy/tests/lib-test.sh
+
+      - name: Configure isolated CI runtime
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          admin_password=$(openssl rand -hex 24)
+          admin_hash=$(printf '%s\n' "$admin_password" | htpasswd -n -i -B -C 12 ci-admin | cut -d: -f2-)
+
+          {
+            echo "MISE_EN_DICE_DEPLOY_ROOT=$RUNNER_TEMP/mise-en-dice-runtime"
+            echo "MISE_EN_DICE_SSH_USER=ci"
+            echo "MISE_EN_DICE_SSH_HOST=ci.invalid"
+            echo "MISE_EN_DICE_PRODUCTION_PORT=18080"
+            echo "MISE_EN_DICE_PREVIEW_PORT_START=18100"
+            echo "MISE_EN_DICE_PREVIEW_PORT_END=18120"
+            echo "MISE_EN_DICE_BACKUP_RETENTION_DAYS=2"
+            echo "MISE_EN_DICE_ADMIN_ACTOR_KEY=ci-admin"
+            echo "MISE_EN_DICE_ADMIN_DISPLAY_NAME=CI Admin"
+            echo 'MISE_EN_DICE_ADMIN_PASSWORD_HASH<<__BCRYPT__'
+            echo "$admin_hash"
+            echo '__BCRYPT__'
+          } >> "$GITHUB_ENV"
+
+      - name: Initialize and validate deployment package
+        run: |
+          set -Eeuo pipefail
+          ./deploy/mise-en-dice.sh init --non-interactive
+          ./deploy/mise-en-dice.sh doctor
+
+      - name: Exercise branch preview, production, backup and restore
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          ./deploy/mise-en-dice.sh preview deploy "$GITHUB_SHA" ci-source
+
+          ./deploy/mise-en-dice.sh preview sql ci-source \
+            "UPDATE ingredient_concept SET curator_note = 'deployment-restart-marker' WHERE id = (SELECT min(id) FROM ingredient_concept);"
+          ./deploy/mise-en-dice.sh preview stop ci-source
+          ./deploy/mise-en-dice.sh preview start ci-source
+          marker_count=$(./deploy/mise-en-dice.sh preview sql ci-source \
+            "SELECT count(*) FROM ingredient_concept WHERE curator_note = 'deployment-restart-marker';" \
+            | tr -d '[:space:]')
+          test "$marker_count" = "1"
+
+          ./deploy/mise-en-dice.sh production deploy "$GITHUB_SHA"
+          backup_output=$(./deploy/mise-en-dice.sh production backup)
+          backup_file=$(printf '%s\n' "$backup_output" | sed -n 's/^BACKUP_FILE=//p')
+          test -n "$backup_file"
+          test -s "$backup_file"
+          test -s "$backup_file.sha256"
+
+          ./deploy/mise-en-dice.sh preview deploy "$GITHUB_SHA" restore-target
+          ./deploy/mise-en-dice.sh preview restore restore-target "$backup_file" --yes
+          restored_count=$(./deploy/mise-en-dice.sh preview sql restore-target \
+            'SELECT count(*) FROM ingredient_concept;' | tr -d '[:space:]')
+          test "$restored_count" -ge 600
+
+          production_env="$MISE_EN_DICE_DEPLOY_ROOT/instances/production/compose.env"
+          database_container=$(docker compose \
+            --project-name med-production \
+            --env-file "$production_env" \
+            -f deploy/compose.yaml ps -q postgres)
+          app_container=$(docker compose \
+            --project-name med-production \
+            --env-file "$production_env" \
+            -f deploy/compose.yaml ps -q app)
+          test -n "$database_container"
+          test -n "$app_container"
+          test -z "$(docker port "$database_container")"
+          test "$(docker port "$app_container" 8080/tcp)" = '127.0.0.1:18080'
+          test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' "$app_container")" = true
+          runtime_user=$(docker inspect --format '{{.Config.User}}' "$app_container")
+          test -n "$runtime_user"
+          test "$runtime_user" != 0
+          test "$runtime_user" != root
+          test "$runtime_user" != 0:0
+
+          ./deploy/mise-en-dice.sh preview remove ci-source --yes
+          ./deploy/mise-en-dice.sh preview remove restore-target --yes
