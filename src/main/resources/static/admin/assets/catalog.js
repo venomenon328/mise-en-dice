@@ -157,6 +157,30 @@
             .replace(/^[^A-Z]+/, "");
     }
 
+    function discardChangesAndNavigate() {
+        const form = activeForm();
+        if (form) {
+            form.dataset.dirty = "false";
+        }
+        const navigation = pendingNavigation;
+        pendingNavigation = null;
+        closeDialog(dialogFor("[data-dirty-dialog]"));
+        if (!navigation) {
+            return;
+        }
+        if (navigation.kind === "url") {
+            window.location.assign(navigation.target);
+            return;
+        }
+        if (navigation.kind === "form") {
+            if (navigation.submitter) {
+                navigation.form.requestSubmit(navigation.submitter);
+            } else {
+                navigation.form.requestSubmit();
+            }
+        }
+    }
+
     document.addEventListener("input", (event) => {
         markDirty(event);
         suggestCode(event);
@@ -167,7 +191,23 @@
     document.addEventListener("change", markDirty);
 
     document.addEventListener("submit", (event) => {
-        const form = event.target.matches?.("[data-catalog-concept-form]") ? event.target : null;
+        const submittedForm = event.target.matches?.("form") ? event.target : null;
+        const editingForm = activeForm();
+        if (submittedForm
+                && !submittedForm.matches("[data-catalog-concept-form]")
+                && editingForm?.dataset.dirty === "true") {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            pendingNavigation = {
+                kind: "form",
+                form: submittedForm,
+                submitter: event.submitter ?? null
+            };
+            showDialog(dialogFor("[data-dirty-dialog]"));
+            return;
+        }
+
+        const form = submittedForm?.matches("[data-catalog-concept-form]") ? submittedForm : null;
         if (!form) {
             return;
         }
@@ -183,7 +223,7 @@
             saveButton.disabled = true;
             saveButton.textContent = "Speichert …";
         }
-    });
+    }, true);
 
     document.addEventListener("click", (event) => {
         const confirm = event.target.closest?.("[data-deactivation-confirm]");
@@ -206,19 +246,18 @@
             return;
         }
         if (event.target.closest?.("[data-dirty-discard]")) {
-            const target = pendingNavigation;
-            pendingNavigation = null;
-            closeDialog(dialogFor("[data-dirty-dialog]"));
-            if (target) {
-                window.location.assign(target);
-            }
+            discardChangesAndNavigate();
         }
     });
 
     document.addEventListener("click", (event) => {
         const link = event.target.closest?.("a[href]");
         const form = activeForm();
-        if (!link || !form || form.dataset.dirty !== "true" || link.matches("[data-discard-form]")) {
+        if (!link || !form || form.dataset.dirty !== "true") {
+            return;
+        }
+        if (link.matches("[data-discard-form]")) {
+            form.dataset.dirty = "false";
             return;
         }
         if (link.origin !== window.location.origin || link.href === window.location.href) {
@@ -226,7 +265,7 @@
         }
         event.preventDefault();
         event.stopImmediatePropagation();
-        pendingNavigation = link.href;
+        pendingNavigation = {kind: "url", target: link.href};
         showDialog(dialogFor("[data-dirty-dialog]"));
     }, true);
 
