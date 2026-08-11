@@ -135,6 +135,28 @@ Die erste sichtbare Webstufe validiert Informationsarchitektur und Query-Projekt
 - MVC- und PostgreSQL-Integrationstests decken Suche, Filter und Hierarchie ab,
 - Controller greifen nicht direkt auf JDBC zu.
 
+### Phase 4a: Nachschärfung der Katalogoberfläche mit Issue #12
+
+Vor den ersten Schreibflows wird die in Phase 4 entstandene Webshell funktional und gestalterisch konsolidiert. Das Zwischenpaket verändert weder Fachlogik noch Persistenz, sondern schafft den belastbaren visuellen Ausgangspunkt für die folgenden Bearbeitungsmasken.
+
+#### Scope
+
+- kompakte, zugängliche `+`-/`−`-Schalter für lazy geladene Hierarchieäste einschließlich erneutem Einklappen,
+- grafische Fünfer-Skalen für Ungewöhnlichkeit und alle sieben kulinarischen Dimensionen,
+- expliziter eigener Zustand für nicht gepflegte Skalenwerte,
+- lokal ausgelieferte SVG-, CSS- und JavaScript-Assets,
+- konsistentes warmes, modernes und zurückhaltend kulinarisches Designsystem,
+- Erhalt von Split-View, URL-Zustand, HTMX-Navigation und Responsive-Fallback,
+- MVC-/Fragmenttests für Toggle-, Skalen- und Assetverhalten.
+
+#### Gate
+
+- Hierarchieäste laden direkte Kinder nur beim ersten Öffnen und lassen sich danach ohne weiteren Request ein- und ausklappen,
+- grafische Skalen besitzen immer fünf Referenzsymbole und unterscheiden aktive und inaktive Stufen nicht nur durch Farbe,
+- fehlende Werte erscheinen weiterhin ausdrücklich als `nicht gepflegt`,
+- alle Frontend-Artefakte werden mit der Anwendung ausgeliefert,
+- Phase 5 bleibt der nächste fachliche Entwicklungsschritt und erhält keine vorgezogenen Schreibfunktionen.
+
 ## Phase 5: Zutatenkonzept-Basisbearbeitung
 
 Dieses Paket führt die ersten produktiven Schreibzugriffe ein.
