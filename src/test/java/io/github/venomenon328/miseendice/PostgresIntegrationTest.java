@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -66,12 +67,12 @@ class PostgresIntegrationTest {
 
     @Test
     void applicationContextStartsWithTheCompleteLiquibaseBaseline() {
-        assertThat(count("databasechangelog")).isEqualTo(17);
+        assertThat(count("databasechangelog")).isEqualTo(19);
         assertThat(count("ingredient_concept")).isEqualTo(642);
         assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(640);
         assertThat(countWhere("ingredient_concept", "active and random_draw_enabled and challenge_specificity = 'OPEN'"))
                 .isEqualTo(78);
-        assertThat(count("ingredient_refinement")).isEqualTo(765);
+        assertThat(count("ingredient_refinement")).isEqualTo(711);
         assertThat(countWhere("exclusion_rule", "active")).isEqualTo(22);
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from ingredient_concept where code = 'ALIGUE'", Integer.class))
@@ -128,10 +129,47 @@ class PostgresIntegrationTest {
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
 
-            assertThat(count(connection, "databasechangelog")).isEqualTo(17);
+            assertThat(count(connection, "databasechangelog")).isEqualTo(19);
             assertThat(countWhere(connection, "ingredient_concept", "version = 0")).isEqualTo(642);
-            assertThat(countWhere(connection, "exclusion_rule", "version = 0")).isEqualTo(count(connection, "exclusion_rule"));
+            assertThat(countWhere(connection, "exclusion_rule", "version = 0"))
+                    .isEqualTo(count(connection, "exclusion_rule"));
             assertThat(count(connection, "catalog_audit_entry")).isZero();
+            assertThat(count(connection, "ingredient_refinement")).isEqualTo(711);
+        }
+    }
+
+    @Test
+    void upgradeConsolidatesThePreviousCatalogWithoutOverwritingEditedWeights() throws Exception {
+        String upgradeDatabase = "catalog_upgrade_" + UUID.randomUUID().toString().replace("-", "");
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            statement.execute("create database " + upgradeDatabase);
+        }
+
+        String upgradeUrl = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + upgradeDatabase);
+        try (Connection connection = DriverManager.getConnection(upgradeUrl, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+            runLiquibase(connection, "db/changelog/db.changelog-before-catalog-consolidation.yaml");
+
+            assertThat(count(connection, "databasechangelog")).isEqualTo(17);
+            assertThat(count(connection, "ingredient_refinement")).isEqualTo(765);
+            assertThat(baseDrawWeight(connection, "BEER")).isEqualByComparingTo("0.5000");
+            assertThat(refinementExists(connection, "SEAFOOD", "CRUSTACEANS")).isTrue();
+
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate(
+                        "update ingredient_concept set base_draw_weight = 0.1234 where code = 'SHERRY'"
+                );
+            }
+
+            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+
+            assertThat(count(connection, "databasechangelog")).isEqualTo(19);
+            assertThat(count(connection, "ingredient_refinement")).isEqualTo(711);
+            assertThat(baseDrawWeight(connection, "BEER")).isEqualByComparingTo("0.2500");
+            assertThat(baseDrawWeight(connection, "SHERRY")).isEqualByComparingTo("0.1234");
+            assertThat(refinementExists(connection, "SEAFOOD", "CRUSTACEANS")).isFalse();
+            assertThat(refinementExists(connection, "SEAFOOD", "SHELLFISH")).isTrue();
+            assertThat(refinementExists(connection, "SHELLFISH", "CRUSTACEANS")).isTrue();
+            assertThat(refinementExists(connection, "FRUIT", "POMEGRANATE")).isTrue();
         }
     }
 
@@ -201,16 +239,34 @@ class PostgresIntegrationTest {
         long grandchild = insertConcept("cycle-grandchild");
 
         try {
-            jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", parent, child);
-            jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", child, grandchild);
+            jdbcTemplate.update(
+                    "insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)",
+                    parent,
+                    child
+            );
+            jdbcTemplate.update(
+                    "insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)",
+                    child,
+                    grandchild
+            );
 
             assertThatThrownBy(() -> jdbcTemplate.update(
-                    "insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", grandchild, parent))
+                    "insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)",
+                    grandchild,
+                    parent
+            ))
                     .isInstanceOf(UncategorizedSQLException.class)
                     .hasMessageContaining("ingredient refinement would create a cycle");
         } finally {
-            jdbcTemplate.update("delete from ingredient_refinement where parent_concept_id in (?, ?, ?) or child_concept_id in (?, ?, ?)",
-                    parent, child, grandchild, parent, child, grandchild);
+            jdbcTemplate.update(
+                    "delete from ingredient_refinement where parent_concept_id in (?, ?, ?) or child_concept_id in (?, ?, ?)",
+                    parent,
+                    child,
+                    grandchild,
+                    parent,
+                    child,
+                    grandchild
+            );
             jdbcTemplate.update("delete from ingredient_concept where id in (?, ?, ?)", parent, child, grandchild);
         }
     }
@@ -222,7 +278,11 @@ class PostgresIntegrationTest {
         OffsetDateTime before = jdbcTemplate.queryForObject(
                 "select updated_at from ingredient_concept where id = ?", OffsetDateTime.class, conceptId);
 
-        jdbcTemplate.update("update ingredient_concept set curator_note = ? where id = ?", "updated-at trigger test", conceptId);
+        jdbcTemplate.update(
+                "update ingredient_concept set curator_note = ? where id = ?",
+                "updated-at trigger test",
+                conceptId
+        );
 
         OffsetDateTime after = jdbcTemplate.queryForObject(
                 "select updated_at from ingredient_concept where id = ?", OffsetDateTime.class, conceptId);
@@ -232,35 +292,55 @@ class PostgresIntegrationTest {
     @Test
     void updatedAtTriggersTouchAvailabilityAndExclusionRules() {
         Long availabilityConceptId = jdbcTemplate.queryForObject(
-                "select ingredient_concept_id from ingredient_availability order by ingredient_concept_id limit 1", Long.class);
+                "select ingredient_concept_id from ingredient_availability order by ingredient_concept_id limit 1",
+                Long.class
+        );
         Long participantId = jdbcTemplate.queryForObject(
-                "select participant_id from ingredient_availability order by ingredient_concept_id limit 1", Long.class);
+                "select participant_id from ingredient_availability order by ingredient_concept_id limit 1",
+                Long.class
+        );
         OffsetDateTime availabilityBefore = jdbcTemplate.queryForObject(
                 "select updated_at from ingredient_availability where ingredient_concept_id = ? and participant_id = ?",
                 OffsetDateTime.class,
                 availabilityConceptId,
-                participantId);
+                participantId
+        );
 
         jdbcTemplate.update(
                 "update ingredient_availability set availability_level = availability_level where ingredient_concept_id = ? and participant_id = ?",
                 availabilityConceptId,
-                participantId);
+                participantId
+        );
 
         OffsetDateTime availabilityAfter = jdbcTemplate.queryForObject(
                 "select updated_at from ingredient_availability where ingredient_concept_id = ? and participant_id = ?",
                 OffsetDateTime.class,
                 availabilityConceptId,
-                participantId);
+                participantId
+        );
         assertThat(availabilityAfter).isAfter(availabilityBefore);
 
-        Long exclusionRuleId = jdbcTemplate.queryForObject("select id from exclusion_rule order by id limit 1", Long.class);
+        Long exclusionRuleId = jdbcTemplate.queryForObject(
+                "select id from exclusion_rule order by id limit 1",
+                Long.class
+        );
         OffsetDateTime exclusionBefore = jdbcTemplate.queryForObject(
-                "select updated_at from exclusion_rule where id = ?", OffsetDateTime.class, exclusionRuleId);
+                "select updated_at from exclusion_rule where id = ?",
+                OffsetDateTime.class,
+                exclusionRuleId
+        );
 
-        jdbcTemplate.update("update exclusion_rule set curator_note = ? where id = ?", "updated-at trigger test", exclusionRuleId);
+        jdbcTemplate.update(
+                "update exclusion_rule set curator_note = ? where id = ?",
+                "updated-at trigger test",
+                exclusionRuleId
+        );
 
         OffsetDateTime exclusionAfter = jdbcTemplate.queryForObject(
-                "select updated_at from exclusion_rule where id = ?", OffsetDateTime.class, exclusionRuleId);
+                "select updated_at from exclusion_rule where id = ?",
+                OffsetDateTime.class,
+                exclusionRuleId
+        );
         assertThat(exclusionAfter).isAfter(exclusionBefore);
     }
 
@@ -270,7 +350,8 @@ class PostgresIntegrationTest {
 
         assertThatThrownBy(() -> jdbcTemplate.update(
                 "insert into generation_attempt (challenge_session_id, attempt_type, generator_version) values (?, 'REROLL', 'test')",
-                session))
+                session
+        ))
                 .isInstanceOf(UncategorizedSQLException.class)
                 .hasMessageContaining("reroll attempt requires an initial attempt");
 
@@ -278,17 +359,30 @@ class PostgresIntegrationTest {
         insertAttempt(session, "REROLL");
 
         assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from generation_attempt where challenge_session_id = ?", Integer.class, session))
-                .isEqualTo(2);
+                "select count(*) from generation_attempt where challenge_session_id = ?",
+                Integer.class,
+                session
+        )).isEqualTo(2);
     }
 
     @Test
     void manualRequirementsMustBelongToTheCandidateAttempt() {
-        long firstAttempt = insertAttempt(insertReturningId("insert into challenge_session default values returning id"), "INITIAL");
-        long secondAttempt = insertAttempt(insertReturningId("insert into challenge_session default values returning id"), "INITIAL");
+        long firstAttempt = insertAttempt(
+                insertReturningId("insert into challenge_session default values returning id"),
+                "INITIAL"
+        );
+        long secondAttempt = insertAttempt(
+                insertReturningId("insert into challenge_session default values returning id"),
+                "INITIAL"
+        );
         long manualRequirement = insertReturningId(
-                "insert into generation_manual_requirement (generation_attempt_id, position, display_text) values (?, 1, 'manual') returning id",
-                firstAttempt);
+                """
+                insert into generation_manual_requirement (generation_attempt_id, position, display_text)
+                values (?, 1, 'manual')
+                returning id
+                """,
+                firstAttempt
+        );
         long candidate = insertCandidate(secondAttempt, false);
 
         assertThatThrownBy(() -> jdbcTemplate.update(
@@ -297,18 +391,26 @@ class PostgresIntegrationTest {
                     (candidate_id, position, source, manual_requirement_id, display_text_snapshot)
                 values (?, 1, 'MANUAL', ?, 'manual')
                 """,
-                candidate, manualRequirement))
+                candidate,
+                manualRequirement
+        ))
                 .isInstanceOf(UncategorizedSQLException.class)
                 .hasMessageContaining("does not belong to candidate generation attempt");
     }
 
     @Test
     void visibleChallengeRequiresItsSelectedCandidateAndExactlyFourRequirements() {
-        long attempt = insertAttempt(insertReturningId("insert into challenge_session default values returning id"), "INITIAL");
+        long attempt = insertAttempt(
+                insertReturningId("insert into challenge_session default values returning id"),
+                "INITIAL"
+        );
         long candidate = insertCandidate(attempt, false);
 
         assertThatThrownBy(() -> jdbcTemplate.update(
-                "insert into challenge (generation_attempt_id, selected_candidate_id) values (?, ?)", attempt, candidate))
+                "insert into challenge (generation_attempt_id, selected_candidate_id) values (?, ?)",
+                attempt,
+                candidate
+        ))
                 .isInstanceOf(UncategorizedSQLException.class)
                 .hasMessageContaining("is not marked as selected");
 
@@ -316,15 +418,25 @@ class PostgresIntegrationTest {
         insertRandomRequirements(candidate, 3);
 
         assertThatThrownBy(() -> jdbcTemplate.update(
-                "insert into challenge (generation_attempt_id, selected_candidate_id) values (?, ?)", attempt, candidate))
+                "insert into challenge (generation_attempt_id, selected_candidate_id) values (?, ?)",
+                attempt,
+                candidate
+        ))
                 .isInstanceOf(UncategorizedSQLException.class)
                 .hasMessageContaining("must contain exactly four requirements");
 
         insertRandomRequirements(candidate, 1);
-        jdbcTemplate.update("insert into challenge (generation_attempt_id, selected_candidate_id) values (?, ?)", attempt, candidate);
+        jdbcTemplate.update(
+                "insert into challenge (generation_attempt_id, selected_candidate_id) values (?, ?)",
+                attempt,
+                candidate
+        );
 
-        assertThat(jdbcTemplate.queryForObject("select count(*) from challenge where generation_attempt_id = ?", Integer.class, attempt))
-                .isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from challenge where generation_attempt_id = ?",
+                Integer.class,
+                attempt
+        )).isEqualTo(1);
     }
 
     private void rerunLiquibase() throws Exception {
@@ -392,13 +504,22 @@ class PostgresIntegrationTest {
                 Long.class
         );
         int existing = jdbcTemplate.queryForObject(
-                "select count(*) from candidate_requirement where candidate_id = ?", Integer.class, candidateId);
+                "select count(*) from candidate_requirement where candidate_id = ?",
+                Integer.class,
+                candidateId
+        );
         for (int offset = 0; offset < amount; offset++) {
             long conceptId = conceptIds.get(existing + offset);
             String displayName = jdbcTemplate.queryForObject(
-                    "select display_name from ingredient_concept where id = ?", String.class, conceptId);
+                    "select display_name from ingredient_concept where id = ?",
+                    String.class,
+                    conceptId
+            );
             String specificity = jdbcTemplate.queryForObject(
-                    "select challenge_specificity from ingredient_concept where id = ?", String.class, conceptId);
+                    "select challenge_specificity from ingredient_concept where id = ?",
+                    String.class,
+                    conceptId
+            );
             jdbcTemplate.update(
                     """
                     insert into candidate_requirement
@@ -423,22 +544,60 @@ class PostgresIntegrationTest {
     }
 
     private int countWhere(String table, String whereClause) {
-        return jdbcTemplate.queryForObject("select count(*) from " + table + " where " + whereClause, Integer.class);
+        return jdbcTemplate.queryForObject(
+                "select count(*) from " + table + " where " + whereClause,
+                Integer.class
+        );
     }
 
     private static int count(Connection connection, String table) throws Exception {
-        try (Statement statement = connection.createStatement(); ResultSet result = statement.executeQuery("select count(*) from " + table)) {
+        try (Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery("select count(*) from " + table)) {
             result.next();
             return result.getInt(1);
         }
     }
 
     private static int countWhere(Connection connection, String table, String whereClause) throws Exception {
-        try (Statement statement = connection.createStatement(); ResultSet result = statement.executeQuery(
-                "select count(*) from " + table + " where " + whereClause
-        )) {
+        try (Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery(
+                     "select count(*) from " + table + " where " + whereClause
+             )) {
             result.next();
             return result.getInt(1);
+        }
+    }
+
+    private static BigDecimal baseDrawWeight(Connection connection, String conceptCode) throws Exception {
+        try (Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery(
+                     "select base_draw_weight from ingredient_concept where code = '" + conceptCode + "'"
+             )) {
+            result.next();
+            return result.getBigDecimal(1);
+        }
+    }
+
+    private static boolean refinementExists(
+            Connection connection,
+            String parentCode,
+            String childCode
+    ) throws Exception {
+        try (Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery(
+                     """
+                     select exists (
+                         select 1
+                         from ingredient_refinement relation
+                         join ingredient_concept parent on parent.id = relation.parent_concept_id
+                         join ingredient_concept child on child.id = relation.child_concept_id
+                         where parent.code = '%s'
+                           and child.code = '%s'
+                     )
+                     """.formatted(parentCode, childCode)
+             )) {
+            result.next();
+            return result.getBoolean(1);
         }
     }
 }

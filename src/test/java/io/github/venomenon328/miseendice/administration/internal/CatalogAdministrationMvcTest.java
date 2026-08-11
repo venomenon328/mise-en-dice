@@ -74,9 +74,9 @@ class CatalogAdministrationMvcTest {
     private int managedDimensionLevel;
     private String unmanagedDimensionCode;
     private String localizedAvailabilityLabel;
-    private long seafoodId;
+    private long molluscsId;
     private long shellfishId;
-    private long crustaceansId;
+    private long bivalvesId;
 
     @BeforeEach
     void setUp() {
@@ -118,14 +118,14 @@ class CatalogAdministrationMvcTest {
                 .findFirst()
                 .orElseThrow();
 
-        seafoodId = conceptIdByCode("SEAFOOD");
+        molluscsId = conceptIdByCode("MOLLUSCS");
         shellfishId = conceptIdByCode("SHELLFISH");
-        crustaceansId = conceptIdByCode("CRUSTACEANS");
-        var crustaceansDetail = catalogQueries.findConcept(crustaceansId).orElseThrow();
-        assertTrue(crustaceansDetail.directChildren().size() > 0,
-                "CRUSTACEANS must have children for the hierarchy-occurrence regression fixture");
-        assertTrue(crustaceansDetail.directParents().stream().anyMatch(parent -> parent.id() == seafoodId));
-        assertTrue(crustaceansDetail.directParents().stream().anyMatch(parent -> parent.id() == shellfishId));
+        bivalvesId = conceptIdByCode("BIVALVES");
+        var bivalvesDetail = catalogQueries.findConcept(bivalvesId).orElseThrow();
+        assertTrue(bivalvesDetail.directChildren().size() > 0,
+                "BIVALVES must have children for the hierarchy-occurrence regression fixture");
+        assertTrue(bivalvesDetail.directParents().stream().anyMatch(parent -> parent.id() == molluscsId));
+        assertTrue(bivalvesDetail.directParents().stream().anyMatch(parent -> parent.id() == shellfishId));
     }
 
     @Test
@@ -215,11 +215,11 @@ class CatalogAdministrationMvcTest {
     void givesMultiParentHierarchyOccurrencesIndependentChildTargets() throws Exception {
         MockHttpSession session = authenticate();
 
-        String seafoodChildren = mockMvc.perform(get("/admin/catalog/{id}/children", seafoodId)
+        String molluscsChildren = mockMvc.perform(get("/admin/catalog/{id}/children", molluscsId)
                         .session(session)
                         .header("HX-Request", "true"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Krustentiere")))
+                .andExpect(content().string(containsString("Muscheln")))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -228,19 +228,19 @@ class CatalogAdministrationMvcTest {
                         .session(session)
                         .header("HX-Request", "true"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Krustentiere")))
+                .andExpect(content().string(containsString("Muscheln")))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        String directTarget = ariaControlsForNode(seafoodChildren, crustaceansId);
-        String nestedTarget = ariaControlsForNode(shellfishChildren, crustaceansId);
+        String molluscsTarget = ariaControlsForNode(molluscsChildren, bivalvesId);
+        String shellfishTarget = ariaControlsForNode(shellfishChildren, bivalvesId);
 
-        assertNotEquals(directTarget, nestedTarget,
+        assertNotEquals(molluscsTarget, shellfishTarget,
                 "The same concept rendered in two hierarchy branches must control different child containers");
-        assertTrue(seafoodChildren.contains("hx-target=\"#" + directTarget + "\""));
-        assertTrue(shellfishChildren.contains("hx-target=\"#" + nestedTarget + "\""));
-        assertTrue(seafoodChildren.contains("data-tree-occurrence="));
+        assertTrue(molluscsChildren.contains("hx-target=\"#" + molluscsTarget + "\""));
+        assertTrue(shellfishChildren.contains("hx-target=\"#" + shellfishTarget + "\""));
+        assertTrue(molluscsChildren.contains("data-tree-occurrence="));
         assertTrue(shellfishChildren.contains("data-tree-occurrence="));
     }
 
