@@ -72,7 +72,8 @@ class AdministrationSecurityIntegrationTest {
     @Test
     void correctlyAuthenticatedAdministrationRequestsPassTheSecurityLayer() throws Exception {
         mockMvc.perform(get("/admin").session(authenticate()))
-                .andExpect(status().isNoContent());
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/catalog"));
     }
 
     @Test

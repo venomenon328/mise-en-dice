@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="de" xmlns:th="https://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Katalog · Mise en Dice</title>
+    <link rel="stylesheet" th:href="@{/admin/assets/catalog.css}">
+    <script defer src="/webjars/htmx.org/2.0.4/dist/htmx.min.js"></script>
+</head>
+<body>
+<header class="site-header">
+    <a class="brand" th:href="@{/admin/catalog}">Mise en Dice</a>
+    <nav aria-label="Administration">
+        <a aria-current="page" th:href="@{/admin/catalog}">Katalog</a>
+        <span aria-disabled="true">Ausschlüsse <small>(später)</small></span>
+        <span aria-disabled="true">Änderungen <small>(später)</small></span>
+    </nav>
+    <div class="account">
+        <span th:text="${administratorDisplayName}">Administration</span>
+        <form th:action="@{/logout}" method="post">
+            <button type="submit">Abmelden</button>
+        </form>
+    </div>
+</header>
+
+<main class="catalog-shell">
+    <section class="catalog-navigation" aria-label="Katalognavigation">
+        <div class="section-title">
+            <h1>Katalog</h1>
+            <span th:text="|${catalogResults.totalItems} Konzepte|">Konzepte</span>
+        </div>
+
+        <form class="catalog-filters" method="get" th:action="@{/admin/catalog}">
+            <input type="hidden" name="view" th:value="${state.requestedView}">
+            <input type="hidden" name="sort" th:value="${state.sort}">
+            <input type="hidden" name="size" th:value="${state.pageSize}">
+            <input th:if="${state.quickFilter != null}" type="hidden" name="quick" th:value="${state.quickFilter}">
+            <input th:if="${state.selectedConceptId != null}" type="hidden" name="selected" th:value="${state.selectedConceptId}">
+            <label for="catalog-search">Suche nach Name oder Code</label>
+            <div class="search-row">
+                <input id="catalog-search" name="q" type="search" th:value="${state.searchTerm}" placeholder="z. B. Kabeljau oder COD">
+                <button type="submit">Suchen</button>
+            </div>
+
+            <div class="quick-filters" aria-label="Schnellfilter">
+                <a th:each="quick : ${quickFilters}" th:classappend="${state.hasQuickFilter(quick)} ? 'selected'"
+                   th:href="${state.quickUrl(quick)}" th:text="${state.quickLabel(quick)}">Ziehbar</a>
+            </div>
+
+            <details class="advanced-filters">
+                <summary>Erweiterte Filter</summary>
+                <fieldset>
+                    <legend>Status</legend>
+                    <label><input name="active" type="radio" value="" th:checked="${state.active == null}"> alle</label>
+                    <label><input name="active" type="radio" value="ACTIVE" th:checked="${state.active == 'ACTIVE'}"> aktiv</label>
+                    <label><input name="active" type="radio" value="INACTIVE" th:checked="${state.active == 'INACTIVE'}"> inaktiv</label>
+                </fieldset>
+                <fieldset>
+                    <legend>Ziehbarkeit</legend>
+                    <label><input name="draw" type="radio" value="" th:checked="${state.draw == null}"> alle</label>
+                    <label><input name="draw" type="radio" value="ENABLED" th:checked="${state.draw == 'ENABLED'}"> aktiviert</label>
+                    <label><input name="draw" type="radio" value="DISABLED" th:checked="${state.draw == 'DISABLED'}"> deaktiviert</label>
+                </fieldset>
+                <fieldset>
+                    <legend>Spezifität</legend>
+                    <label><input name="specificity" type="radio" value="" th:checked="${state.specificity == null}"> alle</label>
+                    <label><input name="specificity" type="radio" value="SPECIFIC" th:checked="${state.specificity == 'SPECIFIC'}"> spezifisch</label>
+                    <label><input name="specificity" type="radio" value="OPEN" th:checked="${state.specificity == 'OPEN'}"> offen</label>
+                </fieldset>
+                <fieldset>
+                    <legend>Funktionale Rollen</legend>
+                    <label th:each="role : ${filterOptions.functionalRoles}">
+                        <input name="role" type="checkbox" th:value="${role.code}" th:checked="${state.hasRole(role.code)}">
+                        <span th:text="${role.displayName}">Rolle</span>
+                    </label>
+                </fieldset>
+                <fieldset>
+                    <legend>Kulinarische Flags</legend>
+                    <label th:each="flag : ${filterOptions.culinaryFlags}">
+                        <input name="flag" type="checkbox" th:value="${flag.code}" th:checked="${state.hasFlag(flag.code)}">
+                        <span th:text="${flag.displayName}">Flag</span>
+                    </label>
+                </fieldset>
+                <fieldset>
+                    <legend>Beschaffbarkeit Georgia</legend>
+                    <label th:each="level : ${availabilityLevels}">
+                        <input name="ga" type="checkbox" th:value="${level.name()}" th:checked="${state.hasGeorgiaAvailability(level.name())}">
+                        <span th:text="${level}">EASY</span>
+                    </label>
+                    <label><input name="ga" type="checkbox" value="UNMANAGED" th:checked="${state.hasGeorgiaAvailability('UNMANAGED')}"> nicht gepflegt</label>
+                </fieldset>
+                <fieldset>
+                    <legend>Beschaffbarkeit Tobias</legend>
+                    <label th:each="level : ${availabilityLevels}">
+                        <input name="ta" type="checkbox" th:value="${level.name()}" th:checked="${state.hasTobiasAvailability(level.name())}">
+                        <span th:text="${level}">EASY</span>
+                    </label>
+                    <label><input name="ta" type="checkbox" value="UNMANAGED" th:checked="${state.hasTobiasAvailability('UNMANAGED')}"> nicht gepflegt</label>
+                </fieldset>
+                <fieldset>
+                    <legend>Ungewöhnlichkeit</legend>
+                    <label th:each="level : ${#numbers.sequence(1, 5)}">
+                        <input name="novelty" type="checkbox" th:value="${level}" th:checked="${state.hasNovelty(level.toString())}">
+                        <span th:text="|Stufe ${level}|">Stufe</span>
+                    </label>
+                    <label><input name="novelty" type="checkbox" value="UNMANAGED" th:checked="${state.hasNovelty('UNMANAGED')}"> nicht gepflegt</label>
+                </fieldset>
+                <button type="submit">Filter anwenden</button>
+            </details>
+        </form>
+
+        <div class="view-switch" aria-label="Ansicht">
+            <a th:classappend="${state.hierarchyVisible()} ? 'selected'" th:href="${state.hierarchyUrl()}">Hierarchie</a>
+            <a th:classappend="${!state.hierarchyVisible()} ? 'selected'"
+               th:href="${state.listUrl()}">Liste</a>
+        </div>
+
+        <section th:if="${state.hierarchyVisible()}" class="hierarchy-panel" data-testid="hierarchy-panel">
+            <div th:if="${state.treeParentId != null}" class="tree-focus">
+                <p>Gewählter Ast unter Konzept <code th:text="${state.treeParentId}">0</code></p>
+                <div th:id="|tree-focus-${state.treeParentId}|" th:hx-get="${state.childrenUrl(state.treeParentId)}"
+                     hx-trigger="load" hx-swap="innerHTML"><span class="loading">Ast wird geladen …</span></div>
+            </div>
+            <div id="hierarchy-roots" th:hx-get="${state.rootsUrl()}" hx-trigger="load" hx-swap="innerHTML">
+                <span class="loading">Hierarchie wird geladen …</span>
+            </div>
+        </section>
+
+        <section th:unless="${state.hierarchyVisible()}" class="list-panel" data-testid="catalog-list">
+            <p th:if="${!state.searchTerm.isBlank()}" class="search-context">Treffer zeigen direkte Eltern als Kontext.</p>
+            <nav class="list-options" aria-label="Sortierung">
+                <span>Sortierung:</span>
+                <a th:each="sort : ${sortOptions}"
+                   th:classappend="${state.sort == sort} ? 'selected'" th:href="${state.sortUrl(sort)}" th:text="${sort}">DISPLAY_NAME_ASC</a>
+            </nav>
+            <nav class="list-options" aria-label="Seitengröße">
+                <span>Pro Seite:</span>
+                <a th:each="size : ${pageSizes}"
+                   th:classappend="${state.pageSize == size} ? 'selected'" th:href="${state.pageSizeUrl(size)}" th:text="${size}">100</a>
+            </nav>
+            <div th:if="${catalogResults.items.isEmpty()}" class="empty-state">
+                <p>Keine Zutaten gefunden.</p>
+                <a th:href="${state.resetUrl()}">Filter zurücksetzen</a>
+            </div>
+            <ol th:unless="${catalogResults.items.isEmpty()}" class="catalog-list">
+                <li th:each="item : ${catalogResults.items}" th:classappend="${state.selectedConceptId == item.id} ? 'selected'">
+                    <a th:href="${state.detailUrl(item.id)}" th:hx-get="${state.detailUrl(item.id)}" hx-target="#catalog-detail" hx-swap="outerHTML" hx-push-url="true">
+                        <strong th:text="${item.displayName}">Kabeljau</strong>
+                        <code th:text="${item.code}">COD</code>
+                    </a>
+                    <span th:text="${item.active ? 'aktiv' : 'inaktiv'}">aktiv</span>
+                    <span th:text="${item.challengeSpecificity == 'OPEN' ? 'offen' : 'spezifisch'}">spezifisch</span>
+                    <span th:text="${item.randomDrawEnabled ? 'ziehbar' : 'nicht ziehbar'}">ziehbar</span>
+                    <span th:text="${#strings.listJoin(item.functionalRoles, ', ')}">Rolle</span>
+                    <span th:text="${item.availabilityByParticipant.get('GEORGIA') ?: 'Georgia: nicht gepflegt'}">Georgia</span>
+                    <span th:text="${item.availabilityByParticipant.get('TOBIAS') ?: 'Tobias: nicht gepflegt'}">Tobias</span>
+                    <span th:if="${!item.directParents.isEmpty()}" class="parent-context">
+                        <span>Eltern:</span>
+                        <a th:each="parent : ${item.directParents}" th:href="${state.treeParentUrl(item.id, parent.id)}"
+                           th:text="${parent.displayName}">Fisch</a>
+                    </span>
+                </li>
+            </ol>
+            <nav th:if="${catalogResults.pageCount > 1}" class="pagination" aria-label="Seitennavigation">
+                <a th:if="${catalogResults.page > 0}" th:href="${state.catalogUrl(catalogResults.page - 1)}">Zurück</a>
+                <span th:text="|Seite ${catalogResults.page + 1} von ${catalogResults.pageCount}|">Seite</span>
+                <a th:if="${catalogResults.page + 1 < catalogResults.pageCount}" th:href="${state.catalogUrl(catalogResults.page + 1)}">Weiter</a>
+            </nav>
+        </section>
+    </section>
+
+    <section class="catalog-detail-column" aria-live="polite">
+        <p th:if="${selectionOutsideResults}" class="notice">Das ausgewählte Konzept liegt außerhalb der aktuellen Treffer.</p>
+        <section th:if="${missingConceptId != null}" id="catalog-detail" class="detail-empty error">
+            <h2>Nicht verfügbar</h2>
+            <p>Dieses Zutatenkonzept ist nicht mehr verfügbar.</p>
+        </section>
+        <section th:if="${detail == null and missingConceptId == null}" id="catalog-detail" class="detail-empty">
+            <h2>Konzept auswählen</h2>
+            <p>Wähle links eine Zutat oder ein Konzept aus.</p>
+            <dl>
+                <div><dt>Konzepte</dt><dd th:text="${catalogSummary.conceptCount}">0</dd></div>
+                <div><dt>Aktiv</dt><dd th:text="${catalogSummary.activeConceptCount}">0</dd></div>
+                <div><dt>Ziehbar</dt><dd th:text="${catalogSummary.drawableConceptCount}">0</dd></div>
+                <div><dt>Wurzeln</dt><dd th:text="${catalogSummary.rootCount}">0</dd></div>
+            </dl>
+        </section>
+        <div th:if="${detail != null}">
+            <section th:replace="~{admin/fragments/detail :: panel}"></section>
+        </div>
+    </section>
+</main>
+</body>
+</html>

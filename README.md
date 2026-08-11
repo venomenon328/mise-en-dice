@@ -44,9 +44,11 @@ MISE_EN_DICE_ADMINISTRATION_ACCOUNTS_0_DISPLAY_NAME=Local Admin
 MISE_EN_DICE_ADMINISTRATION_ACCOUNTS_0_PASSWORD_HASH=$2b$12$replace-this-with-a-real-60-character-bcrypt-hash
 ```
 
-Die Anwendung akzeptiert ausschließlich gültige BCrypt-Hashes; fehlende oder unvollständige Werte beenden den Start mit einer klaren Konfigurationsfehlermeldung. Einen Hash erzeugst du beispielsweise außerhalb des Repositories mit einem vertrauenswürdigen lokalen Werkzeug. Niemals ein Klartextpasswort oder einen funktionsfähigen Hash committen. Der geschützte technische Einstieg liegt bei `/admin`; eine Katalogoberfläche folgt erst in einem späteren Paket.
+Die Anwendung akzeptiert ausschließlich gültige BCrypt-Hashes; fehlende oder unvollständige Werte beenden den Start mit einer klaren Konfigurationsfehlermeldung. Einen Hash erzeugst du beispielsweise außerhalb des Repositories mit einem vertrauenswürdigen lokalen Werkzeug. Niemals ein Klartextpasswort oder einen funktionsfähigen Hash committen. Der geschützte Einstieg liegt bei `/admin`.
 
-Session-Cookies sind `HttpOnly` und `SameSite=Lax`. Für eine produktive HTTPS-Bereitstellung muss zusätzlich `SERVER_SERVLET_SESSION_COOKIE_SECURE=true` gesetzt werden. Der CSRF-Schutz bleibt aktiv.
+Session-Cookies sind `HttpOnly` und `SameSite=Lax`. Für eine produktive HTTPS-Bereitstellung muss zusätzlich `SERVER_SERVLET_SESSION_COOKIE_SECURE=true` gesetzt werden. Der CSRF-Schutz bleibt aktiv. Nach dem Login führt `/admin` zur lesenden Katalogverwaltung unter `/admin/catalog`.
+
+Die Katalogansicht bietet Suche, Schnell- und Detailfilter, serverseitige Sortierung und Pagination, einen per HTMX nachladbaren Konkretisierungsgraphen sowie die vollständige Detailansicht eines Zutatenkonzepts. Sie ist in dieser Stufe bewusst ausschließlich lesend: Es gibt keine Anlage-, Bearbeitungs-, Bulk-, Ausschluss- oder Audit-Webflows.
 
 Alle Datenbanktests verwenden PostgreSQL 17 in Testcontainers; H2, JPA und Hibernate sind nicht Bestandteil des Builds:
 
@@ -67,4 +69,4 @@ Der initiale Katalog umfasst **642 Zutatenkonzepte**, davon **640 zufällig zieh
 
 ## Status
 
-Produktvision, Datenmodell, Anwendungsfundament, umfangreicher initialer Zutatenkatalog und die Spezifikation der privaten Webverwaltung sind angelegt. Als nächster Entwicklungsschritt folgen Administrationssicherheit, optimistisches Locking und Audit-Grundlagen; danach wird die lesende Katalogoberfläche umgesetzt.
+Produktvision, Datenmodell, Anwendungsfundament, umfangreicher initialer Zutatenkatalog, Administrationssicherheit sowie die lesende Katalogoberfläche sind umgesetzt. Als nächster Entwicklungsschritt folgt die Basisbearbeitung von Zutatenkonzepten mit optimistischem Locking und Audit.

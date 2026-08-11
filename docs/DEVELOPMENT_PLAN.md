@@ -81,7 +81,7 @@ Verbindliche Ergebnisse stehen in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md)
 - notwendige Schemaergänzungen sind benannt, aber nicht vorzeitig implementiert,
 - die Webumsetzung ist in sechs getrennte Pakete zerlegt.
 
-## Phase 3: Administrationssicherheit und Schreibfundament
+## Phase 3: Administrationssicherheit und Schreibfundament (abgeschlossen mit Issue #7)
 
 Dieses Paket schafft die technischen Voraussetzungen für alle späteren schreibenden Verwaltungsfunktionen, ohne bereits Katalog-CRUD zu implementieren.
 
@@ -111,7 +111,7 @@ Dieses Paket schafft die technischen Voraussetzungen für alle späteren schreib
 - Versionierungs- und Auditschema ist über echtes PostgreSQL geprüft,
 - Passwörter und Sessiondaten gelangen nicht in Auditdaten.
 
-## Phase 4: Lesende Katalogverwaltung
+## Phase 4: Lesende Katalogverwaltung (abgeschlossen mit Issue #9)
 
 Die erste sichtbare Webstufe validiert Informationsarchitektur und Query-Projektionen ohne fachliche Schreibzugriffe.
 

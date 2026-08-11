@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="de" xmlns:th="https://www.thymeleaf.org">
+<body>
+<ul th:fragment="nodes" class="hierarchy-nodes" data-testid="hierarchy-nodes">
+    <li th:each="node : ${nodes}" th:classappend="${!node.active} ? 'inactive'">
+        <div class="tree-node">
+            <button th:if="${node.hasDirectChildren}" type="button" th:aria-controls="|children-${node.id}|"
+                    th:hx-get="${state.childrenUrl(node.id)}" th:hx-target="|#children-${node.id}|" hx-swap="innerHTML">Kinder laden</button>
+            <a th:href="${state.detailUrl(node.id)}" th:hx-get="${state.detailUrl(node.id)}" hx-target="#catalog-detail" hx-swap="outerHTML" hx-push-url="true">
+                <strong th:text="${node.displayName}">Fisch</strong>
+                <span th:text="${node.active ? 'aktiv' : 'inaktiv'}">aktiv</span>
+                <span th:text="${node.challengeSpecificity == 'OPEN' ? 'offen' : 'spezifisch'}">offen</span>
+                <span th:text="${node.randomDrawEnabled ? 'ziehbar' : 'nicht ziehbar'}">ziehbar</span>
+                <span th:if="${node.directParentCount > 1}" th:text="|${node.directParentCount} Eltern|">2 Eltern</span>
+            </a>
+        </div>
+        <div th:id="|children-${node.id}|" class="tree-children"></div>
+    </li>
+    <li th:if="${nodes.isEmpty()}" class="empty-state">Keine direkten Kinder.</li>
+</ul>
+</body>
+</html>
