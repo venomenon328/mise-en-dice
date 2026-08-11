@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.catalog.api;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -44,7 +45,7 @@ public interface CatalogQueries {
     ) {
 
         public CatalogSearchCriteria {
-            searchTerm = searchTerm == null ? "" : searchTerm.strip();
+            searchTerm = escapeLikeLiteral(searchTerm == null ? "" : searchTerm.strip());
             functionalRoleCodes = immutableSet(functionalRoleCodes);
             culinaryFlagCodes = immutableSet(culinaryFlagCodes);
             georgiaAvailability = georgiaAvailability == null ? CatalogAvailabilityFilter.any() : georgiaAvailability;
@@ -232,6 +233,13 @@ public interface CatalogQueries {
     }
 
     record CatalogSummary(long conceptCount, long activeConceptCount, long drawableConceptCount, long rootCount) {
+    }
+
+    private static String escapeLikeLiteral(String value) {
+        return value.toLowerCase(Locale.ROOT)
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     private static <T> Set<T> immutableSet(Set<T> values) {
