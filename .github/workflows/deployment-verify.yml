@@ -65,6 +65,14 @@ jobs:
         run: |
           set -Eeuo pipefail
 
+          # The PR base deliberately has no deployment Dockerfile. Building it proves that
+          # the checked-out operator recipe can deploy older application branches as well.
+          ./deploy/mise-en-dice.sh preview deploy main legacy-main
+          legacy_count=$(./deploy/mise-en-dice.sh preview sql legacy-main \
+            'SELECT count(*) FROM ingredient_concept;' | tr -d '[:space:]')
+          test "$legacy_count" -ge 600
+          ./deploy/mise-en-dice.sh preview remove legacy-main --yes
+
           ./deploy/mise-en-dice.sh preview deploy "$GITHUB_SHA" ci-source
 
           ./deploy/mise-en-dice.sh preview sql ci-source \

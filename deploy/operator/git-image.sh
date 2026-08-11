@@ -62,9 +62,13 @@ verify_image_user() {
 
 build_image() {
     local requested_ref=$1
-    local sha image worktree
+    local build_dockerfile="$REPOSITORY_ROOT/Dockerfile"
+    [[ -f $build_dockerfile ]] || med_die "Build-Rezept fehlt im Operator-Checkout: $build_dockerfile"
+
+    local sha recipe_sha image worktree
     sha=$(resolve_ref "$requested_ref")
-    image="mise-en-dice:git-${sha:0:12}"
+    recipe_sha=$(sha256sum "$build_dockerfile" | awk '{print $1}')
+    image="mise-en-dice:git-${sha:0:12}-recipe-${recipe_sha:0:12}"
 
     if docker image inspect "$image" >/dev/null 2>&1; then
         verify_image_user "$image"
@@ -81,9 +85,11 @@ build_image() {
     local build_result=0
     med_note "Baue $image ..."
     DOCKER_BUILDKIT=1 docker build \
+        --file "$build_dockerfile" \
         --build-arg "VCS_REF=$sha" \
         --build-arg "BUILD_REF=$requested_ref" \
         --label "io.mise-en-dice.source-ref=$requested_ref" \
+        --label "io.mise-en-dice.build-recipe=$recipe_sha" \
         --tag "$image" \
         "$worktree" >&2 || build_result=$?
 
@@ -93,4 +99,3 @@ build_image() {
 
     printf '%s\t%s\n' "$sha" "$image"
 }
-
