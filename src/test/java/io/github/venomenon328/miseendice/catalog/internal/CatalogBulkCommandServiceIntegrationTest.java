@@ -10,6 +10,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogBulkCommands.BulkSel
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogMetadata;
+import io.github.venomenon328.miseendice.catalog.api.CatalogDrawWeightWarningException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
 import io.github.venomenon328.miseendice.catalog.api.CatalogVersionConflictException;
 import java.math.BigDecimal;
@@ -121,6 +122,70 @@ class CatalogBulkCommandServiceIntegrationTest {
     }
 
     @Test
+    void validatesActivationAgainstTheResultingStateAndRequiresDifficultWeightAcknowledgement() {
+        long invalidActivation = insertConcept("ACTIVATE_INVALID", false, true);
+        assertThatThrownBy(() -> bulkCommands.execute(operation(invalidActivation, BulkAction.ACTIVATE, null, null)))
+                .isInstanceOf(CatalogCommandValidationException.class);
+        assertThat(active(invalidActivation)).isFalse();
+        assertThat(version(invalidActivation)).isZero();
+
+        long difficult = insertConcept("DIFFICULT", true, true, new BigDecimal("0.8000"));
+        assignRoles(difficult, "VEGETABLE");
+        assignAvailability(difficult, "GEORGIA", "EASY");
+        assignAvailability(difficult, "TOBIAS", "EASY");
+        BulkOperation unacknowledged = new BulkOperation(
+                List.of(new BulkSelection(difficult, 0)), BulkAction.SET_GEORGIA_AVAILABILITY,
+                null, CatalogQueries.CatalogAvailability.DIFFICULT, false, ACTOR);
+
+        assertThat(bulkCommands.preview(unacknowledged).warnings()).isNotEmpty();
+        assertThatThrownBy(() -> bulkCommands.execute(unacknowledged))
+                .isInstanceOf(CatalogDrawWeightWarningException.class);
+        assertThat(availability(difficult, "GEORGIA")).isEqualTo("EASY");
+        assertThat(version(difficult)).isZero();
+        assertThat(auditCount()).isZero();
+
+        BulkOperation acknowledged = new BulkOperation(
+                unacknowledged.selections(), unacknowledged.action(), null, unacknowledged.availability(), true, ACTOR);
+        bulkCommands.execute(acknowledged);
+        assertThat(availability(difficult, "GEORGIA")).isEqualTo("DIFFICULT");
+        assertThat(version(difficult)).isEqualTo(1);
+        assertThat(auditCount()).isEqualTo(1);
+    }
+
+    @Test
+    void validatesRoleBulkAgainstTheJointResultingGraphAndGroupsMultiRowAudit() {
+        long parent = insertConcept("JOINT_PARENT", true, false);
+        long child = insertConcept("JOINT_CHILD", true, false);
+        assignRoles(parent, "VEGETABLE", "FRUIT");
+        assignRoles(child, "VEGETABLE", "FRUIT");
+        jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", parent, child);
+
+        BulkOperation removeVegetable = new BulkOperation(
+                List.of(new BulkSelection(parent, 0), new BulkSelection(child, 0)),
+                BulkAction.REMOVE_FUNCTIONAL_ROLE, "VEGETABLE", null, true, ACTOR);
+        var result = bulkCommands.execute(removeVegetable);
+
+        assertThat(result.changedConceptIds()).containsExactly(parent, child);
+        assertThat(version(parent)).isEqualTo(1);
+        assertThat(version(child)).isEqualTo(1);
+        assertThat(roleCodes(parent)).containsExactly("FRUIT");
+        assertThat(roleCodes(child)).containsExactly("FRUIT");
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from catalog_audit_entry where actor_key = ? and change_group_id = ?",
+                Integer.class, ACTOR, result.changeGroupId())).isEqualTo(2);
+
+        BulkOperation removeLastCommonRole = new BulkOperation(
+                List.of(new BulkSelection(parent, 1), new BulkSelection(child, 1)),
+                BulkAction.REMOVE_FUNCTIONAL_ROLE, "FRUIT", null, true, ACTOR);
+        assertThatThrownBy(() -> bulkCommands.execute(removeLastCommonRole))
+                .isInstanceOf(CatalogCommandValidationException.class);
+        assertThat(roleCodes(parent)).containsExactly("FRUIT");
+        assertThat(roleCodes(child)).containsExactly("FRUIT");
+        assertThat(version(parent)).isEqualTo(1);
+        assertThat(version(child)).isEqualTo(1);
+    }
+
+    @Test
     void serializesBulkRolesWithSingleAggregateGraphWritesUnderTheSamePostgresqlLock() throws Exception {
         long parent = insertConcept("GRAPH_PARENT", true, false);
         long child = insertConcept("GRAPH_CHILD", true, false);
@@ -159,6 +224,38 @@ class CatalogBulkCommandServiceIntegrationTest {
         assertThat(commonRoles).isNotEmpty();
     }
 
+    @Test
+    void overlappingBulkAndSingleWritesProduceOneClearVersionWinnerWithoutDeadlock() throws Exception {
+        long conceptId = insertConcept("OVERLAP", true, false);
+        CatalogQueries.CatalogConceptDetail before = catalogQueries.findConcept(conceptId).orElseThrow();
+        BulkOperation bulkOperation = new BulkOperation(
+                List.of(new BulkSelection(conceptId, before.version())), BulkAction.DEACTIVATE,
+                null, null, true, ACTOR);
+
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<Boolean> bulk = executor.submit(() -> runAfterStartVersioned(ready, start,
+                    () -> bulkCommands.execute(bulkOperation)));
+            Future<Boolean> single = executor.submit(() -> runAfterStartVersioned(ready, start, () ->
+                    catalogCommands.updateIngredientConcept(new CatalogCommands.UpdateIngredientConceptCommand(
+                            conceptId, before.version(), before.displayName() + " single", before.active(),
+                            before.randomDrawEnabled(), before.challengeSpecificity(), before.baseDrawWeight(),
+                            before.noveltyLevel(), before.curatorNote(), ACTOR, true))));
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            assertThat(bulk.get(15, TimeUnit.SECONDS)).isNotEqualTo(single.get(15, TimeUnit.SECONDS));
+        } finally {
+            executor.shutdownNow();
+            executor.awaitTermination(5, TimeUnit.SECONDS);
+        }
+
+        assertThat(version(conceptId)).isEqualTo(1);
+        assertThat(auditCount()).isEqualTo(1);
+    }
+
     private boolean runAfterStart(CountDownLatch ready, CountDownLatch start, ThrowingRunnable task) throws Exception {
         ready.countDown();
         if (!start.await(5, TimeUnit.SECONDS)) {
@@ -168,6 +265,19 @@ class CatalogBulkCommandServiceIntegrationTest {
             task.run();
             return true;
         } catch (CatalogCommandValidationException expectedGraphConflict) {
+            return false;
+        }
+    }
+
+    private boolean runAfterStartVersioned(CountDownLatch ready, CountDownLatch start, ThrowingRunnable task) throws Exception {
+        ready.countDown();
+        if (!start.await(5, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("parallel test did not start");
+        }
+        try {
+            task.run();
+            return true;
+        } catch (CatalogVersionConflictException expectedConflict) {
             return false;
         }
     }
@@ -182,10 +292,14 @@ class CatalogBulkCommandServiceIntegrationTest {
     }
 
     private long insertConcept(String suffix, boolean active, boolean randomDrawEnabled) {
+        return insertConcept(suffix, active, randomDrawEnabled, BigDecimal.ONE);
+    }
+
+    private long insertConcept(String suffix, boolean active, boolean randomDrawEnabled, BigDecimal weight) {
         return jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight)
-                values (?, ?, ?, ?, 'SPECIFIC', 1.0000) returning id
-                """, Long.class, PREFIX + suffix, "Issue thirty " + suffix, active, randomDrawEnabled);
+                values (?, ?, ?, ?, 'SPECIFIC', ?) returning id
+                """, Long.class, PREFIX + suffix, "Issue thirty " + suffix, active, randomDrawEnabled, weight);
     }
 
     private void assignRoles(long conceptId, String... roles) {
