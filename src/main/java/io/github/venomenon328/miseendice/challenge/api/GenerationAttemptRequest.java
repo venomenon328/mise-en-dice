@@ -6,6 +6,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptTyp
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /** Immutable input whose attempt-wide decisions have not yet been made. */
@@ -28,6 +29,9 @@ public record GenerationAttemptRequest(
         if (seasonMonth < 1 || seasonMonth > 12 || seasonMonth != catalog.seasonMonth()) {
             throw invalid("Season month must match the catalog snapshot month");
         }
+        if (manualRequirements.stream().anyMatch(Objects::isNull)) {
+            throw invalid("Manual requirements must not contain null entries");
+        }
         manualRequirements = List.copyOf(manualRequirements);
         if (manualRequirements.size() > 2) {
             throw invalid("At most two manual requirements are supported");
@@ -38,12 +42,25 @@ public record GenerationAttemptRequest(
                 throw invalid("Manual requirement positions must be unique");
             }
         }
+        if (rerollBlockedConceptCodes.stream().anyMatch(code -> code == null || code.isBlank())) {
+            throw invalid("REROLL block codes must be non-blank catalog concept codes");
+        }
         rerollBlockedConceptCodes = Set.copyOf(rerollBlockedConceptCodes);
         if (attemptType == AttemptType.INITIAL && !rerollBlockedConceptCodes.isEmpty()) {
             throw invalid("INITIAL request must not contain a REROLL block");
         }
-        if (attemptType == AttemptType.REROLL && rerollBlockedConceptCodes.size() > 4) {
-            throw invalid("REROLL may block at most four catalog concepts");
+        if (attemptType == AttemptType.REROLL) {
+            if (visibleHistory.challengesNewestFirst().isEmpty()) {
+                throw invalid("REROLL requires the immediately previous visible challenge");
+            }
+            Set<String> expectedBlock = new HashSet<>();
+            visibleHistory.challengesNewestFirst().getFirst().requirements().stream()
+                    .map(VisibleHistorySnapshot.VisibleRequirement::conceptCode)
+                    .filter(Objects::nonNull)
+                    .forEach(expectedBlock::add);
+            if (!rerollBlockedConceptCodes.equals(expectedBlock)) {
+                throw invalid("REROLL block must match the catalog-backed requirements of the immediately previous visible challenge");
+            }
         }
     }
 
