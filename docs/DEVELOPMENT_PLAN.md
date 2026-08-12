@@ -299,11 +299,12 @@ Das Repository-Baseline-Gate ist bestanden: Rollen, Neuigkeit und Beschaffbarkei
 
 ### Phase 9C2: Satzdiversität und Baselinesimulation (Issue #47)
 
-- versionierte Kandidatenähnlichkeit,
-- MMR-ähnliche kontrolliert stochastische Zwölfer-Auswahl,
-- geordnete Soft-Fallbacks und Set-Erschöpfung,
-- finaler Set-Fingerprint,
-- vollständige 2.304-Attempt-Baselinesimulation und Satzdiversitätsgates.
+- öffentliche transportneutrale Batch-API auf dem vorhandenen `CandidateReservoirEngine`,
+- versionierte siebenkomponentige Kandidatenähnlichkeit mit expliziter Nichtvergleichbarkeit,
+- MMR-ähnliche kontrolliert stochastische Zwölfer-Auswahl aus den projizierten `GenerationPlan`-Zielen,
+- geordnete Soft-Fallbacks mit Neustart vom leeren Satz und typisierter Set-Erschöpfung,
+- finaler kanonischer Set-Fingerprint einschließlich Batch-Seed, Setdiagnose und Auswahlreihenfolge,
+- vollständige 2.304-Attempt-CI-Baselinesimulation; das 64-Seed-/9.216-Attempt-Gate bleibt Phase 9F.
 
 ### Phase 9D: Persistenz und Generation Lifecycle (Issue #36)
 

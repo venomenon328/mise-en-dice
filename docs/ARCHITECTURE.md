@@ -129,8 +129,10 @@ Die reine Phase 9C1 bereitet einen Attempt aus bereits materialisierten Snapshot
 Ausschlussentscheidung sind attempt-weit und bleiben für alle internen Batchnummern identisch; nur die
 Proposal-Substreams sind batch-spezifisch. Das Reservoir wird ausschließlich über die öffentliche
 `CandidateProposalEngine`-API aufgebaut und enthält jeden eindeutigen harten gültigen Kandidaten unabhängig
-vom späteren Soft-Mindestscore. Paarähnlichkeit, Soft-Fallbacks und Zwölfer-Auswahl folgen getrennt in Phase
-9C2.
+vom späteren Soft-Mindestscore. Phase 9C2 konsumiert es über `CandidateReservoirEngine`, berechnet die
+transportneutrale Paar- und Setdiagnose und liefert über `CandidateSetEngine` entweder genau zwölf Kandidaten
+in Auswahlreihenfolge oder typisierte Erschöpfung. Proposal-, Hard-Rule-, Score-, Kadenz- und
+Ausschlusslogik bleiben dabei Eigentum der vorgelagerten Fachpfade.
 
 Die PostgreSQL-Projektion der vollständigen sichtbaren Historie gehört erst zu Phase 9D. Phase 9C1 erhält den
 `VisibleHistorySnapshot` bereits materialisiert und darf fehlende historische Werte nicht aus dem aktuellen
