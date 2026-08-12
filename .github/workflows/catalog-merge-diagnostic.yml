@@ -1,0 +1,45 @@
+name: Catalog merge diagnostic
+
+on:
+  push:
+    branches:
+      - agent/issue-23-catalog-gap-review
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/issue-23-catalog-gap-review
+          fetch-depth: 0
+      - name: Attempt merge and collect conflicts
+        shell: bash
+        run: |
+          set -u
+          git fetch origin main
+          set +e
+          git merge --no-commit --no-ff origin/main
+          merge_status=$?
+          set -e
+          mkdir -p target/merge-diagnostic/files
+          printf '%s\n' "$merge_status" > target/merge-diagnostic/merge-status.txt
+          git status --short > target/merge-diagnostic/status.txt
+          git diff --name-only --diff-filter=U > target/merge-diagnostic/conflicts.txt
+          while IFS= read -r file; do
+            test -z "$file" && continue
+            mkdir -p "target/merge-diagnostic/files/$(dirname "$file")"
+            cp "$file" "target/merge-diagnostic/files/$file"
+            git show HEAD:"$file" > "target/merge-diagnostic/files/$file.ours" || true
+            git show origin/main:"$file" > "target/merge-diagnostic/files/$file.theirs" || true
+          done < target/merge-diagnostic/conflicts.txt
+      - name: Upload merge diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-merge-diagnostic
+          path: target/merge-diagnostic
+          if-no-files-found: error
