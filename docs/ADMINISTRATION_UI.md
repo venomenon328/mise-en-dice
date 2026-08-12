@@ -1,6 +1,6 @@
 # Spezifikation der privaten Webverwaltung
 
-Stand: 11. August 2026
+Stand: 12. August 2026
 
 Dieses Dokument beschreibt die verbindliche fachliche, gestalterische und technische Spezifikation der privaten Webverwaltung von Mise en Dice. Es konkretisiert die in [`ARCHITECTURE.md`](ARCHITECTURE.md) festgelegten Leitplanken und bildet die Grundlage für die anschließenden Implementierungspakete.
 
@@ -149,8 +149,7 @@ Direkt sichtbar sind vier Schnellfilter:
 `Pflegebedarf` umfasst mindestens:
 
 - aktive ziehbare Konzepte ohne funktionale Rolle,
-- aktive ziehbare Konzepte ohne Beschaffbarkeit für Georgia oder Tobias,
-- aktive ziehbare offene Konzepte ohne direkte bekannte Konkretisierung.
+- aktive ziehbare Konzepte ohne Beschaffbarkeit für Georgia oder Tobias.
 
 ### 5.3 Erweiterte Filter
 
@@ -308,6 +307,8 @@ Darstellung:
 
 `active = false` übersteuert die operative Ziehbarkeit. `random_draw_enabled` wird bei Deaktivierung **nicht automatisch verändert**, damit eine spätere Reaktivierung den vorherigen Zustand wiederherstellen kann.
 
+`OPEN` beschreibt eine bewusst offene Challenge-Vorgabe. Auch ein aktives ziehbares offenes Konzept darf ohne direkt gespeicherte Konkretisierung bestehen; der Graph enthält kuratiertes, aber nicht vollständiges Wissen und ist keine Whitelist möglicher Kochentscheidungen.
+
 ### 7.4 Funktionale Rollen
 
 Die neun aktuell bekannten Rollen werden als sichtbare Checkboxen beziehungsweise Chips dargestellt. Mehrfachauswahl ist normal.
@@ -393,7 +394,7 @@ Challenge-Historie kann später ergänzt werden, sobald dafür ein sinnvoller Ve
 
 ## 8. Anlegen eines Zutatenkonzepts
 
-`+ Neue Zutat` ersetzt die rechte Detailansicht durch ein Neuanlageformular; der Katalogkontext links bleibt sichtbar.
+`+ Neue Zutat` ersetzt die rechte Detailansicht durch ein Neuanlageformular; der Katalogkontext links bleibt sichtbar. Basis, Ziehung, Rollen, Eigenschaften, Beschaffbarkeit und Saison werden im selben atomaren Save gepflegt. Direkte Beziehungen stehen erst nach dem ersten Speichern zur Verfügung.
 
 Defaults:
 
@@ -810,7 +811,6 @@ Die Anwendung validiert verständlich vor dem Datenbankzugriff; die Datenbank bl
 | aktiv + ziehbar ohne Rolle | Fehler im Abschnitt Rollen |
 | aktiv + ziehbar ohne Georgia-Beschaffbarkeit | Fehler bei Georgia |
 | aktiv + ziehbar ohne Tobias-Beschaffbarkeit | Fehler bei Tobias |
-| aktiv + ziehbar + OPEN ohne direkte bekannte Konkretisierung | Fehler im Beziehungsabschnitt |
 
 ### 18.2 Beziehungen
 
@@ -821,6 +821,8 @@ Die Anwendung validiert verständlich vor dem Datenbankzugriff; die Datenbank bl
 | Beziehung würde Zyklus erzeugen | verständlicher Konflikt im Beziehungsabschnitt |
 | Ziel zwischen Auswahl und Speichern inaktiv geworden | Beziehung darf gespeichert werden, aber aktuelle Inaktivität wird vor Speichern angezeigt |
 | Ziel nicht mehr vorhanden | Datensatz neu laden; kein technischer Fehler als Zyklus ausgeben |
+
+Rollen- und Spezifitätsänderungen dürfen mit vorgemerkten Beziehungen in einem Save kombiniert werden. Der Picker verhindert nur sichere Strukturfehler; die finale Prüfung erfolgt gegen den vollständigen resultierenden Graphen.
 
 ### 18.3 Ausschlussregel
 
@@ -944,7 +946,7 @@ Eine Transaktion für Basisdaten und die in diesem Paket bereits implementierten
 
 **Zutatenkonzept ändern**
 
-Eine Transaktion mit erwartetem Versionswert. Alle zum jeweiligen Implementierungsstand unterstützten Änderungen werden atomar gespeichert, Version erhöht und auditiert.
+Eine Transaktion mit erwartetem Versionswert. Basisfelder, Rollen, Eigenschaften, Beschaffbarkeit, Saison und vorgemerkte direkte Beziehungen werden gegen denselben resultierenden Zustand validiert, atomar gespeichert, genau einmal versioniert und auditiert. Vor dem Graph-Read/Validate/Write-Ablauf serialisiert ein PostgreSQL-Transaktionslock Relations-, Rollen- und Spezifitätsänderungen.
 
 **Konkretisierungsbeziehung hinzufügen/entfernen**
 
@@ -1063,7 +1065,7 @@ Die Implementierung wird nach dieser Spezifikation in sechs fachlich getrennte P
 - echte Konkurrenz- und Zyklusfälle sind gegen PostgreSQL getestet,
 - keine stillschweigenden Beziehungslöschungen.
 
-### Paket E – Rollen, Eigenschaften, Beschaffbarkeit und Saison
+### Paket E – Rollen, Eigenschaften, Beschaffbarkeit und Saison (abgeschlossen mit Issue #24)
 
 **Scope**
 
@@ -1072,11 +1074,12 @@ Die Implementierung wird nach dieser Spezifikation in sechs fachlich getrennte P
 - Dimensionen,
 - Georgia-/Tobias-Beschaffbarkeit,
 - Monatsfaktoren,
-- vollständige Ziehbarkeits-Pflichtvalidierung.
+- vollständige Ziehbarkeits-Pflichtvalidierung,
+- ein gemeinsamer Save mit Basisfeldern und vorgemerkten Beziehungen.
 
 **Gate**
 
-- aktive Ziehkandidaten können nicht in strukturell unvollständigem Zustand gespeichert werden,
+- aktive Ziehkandidaten können nicht ohne Rollen und Beschaffbarkeit für Georgia und Tobias gespeichert werden; `OPEN` benötigt keine direkte Konkretisierung,
 - fehlende Dimensions- und Saisonwerte behalten ihre dokumentierte Semantik,
 - alle Änderungen sind versionsgesichert und auditiert.
 

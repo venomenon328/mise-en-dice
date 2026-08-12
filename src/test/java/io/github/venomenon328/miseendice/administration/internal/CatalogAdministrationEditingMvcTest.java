@@ -90,7 +90,7 @@ class CatalogAdministrationEditingMvcTest {
                 .andExpect(content().string(containsString("Zutatenkonzept anlegen")))
                 .andReturn();
         assertTrue(newForm.getResponse().getContentAsString().contains("name=\"code\""));
-        assertTrue(newForm.getResponse().getContentAsString().contains("zunächst nicht ziehbar"));
+        assertTrue(newForm.getResponse().getContentAsString().contains("Funktionale Rollen"));
 
         long conceptId = insertConcept("EDIT", "Issue eleven edit", "SPECIFIC", true, false, null);
         String editHtml = mockMvc.perform(get("/admin/catalog/{id}/edit", conceptId)
@@ -201,14 +201,74 @@ class CatalogAdministrationEditingMvcTest {
                         .param("active", "true")
                         .param("challengeSpecificity", "SPECIFIC")
                         .param("baseDrawWeight", "1.0")
+                        .param("functionalRole", "FRUIT")
+                        .param("culinaryFlag", "PICKLED")
+                        .param("dimension[SWEETNESS]", "5")
+                        .param("availability[GEORGIA]", "PLANNED")
+                        .param("availability[TOBIAS]", "EASY")
+                        .param("seasonality[1]", "1.3")
                         .param("version", "0"))
                 .andExpect(status().isConflict())
                 .andExpect(content().string(containsString("Dein Stand wurde nicht gespeichert")))
                 .andExpect(content().string(containsString("Aktueller Datenbankstand")))
-                .andExpect(content().string(containsString("Mit aktuellem Stand weiterbearbeiten")));
+                .andExpect(content().string(containsString("Mit aktuellem Stand weiterbearbeiten")))
+                .andExpect(content().string(containsString("Rollen")))
+                .andExpect(content().string(containsString("Dimensionen")))
+                .andExpect(content().string(containsString("Beschaffbarkeit")))
+                .andExpect(content().string(containsString("Saison")));
         assertTrue(jdbcTemplate.queryForObject(
                 "select display_name = 'Changed elsewhere' from ingredient_concept where id = ?", Boolean.class, conflictConcept
         ));
+    }
+
+    @Test
+    void editsAllMetadataAreasAndSupportsNotMaintainedAndSeasonReset() throws Exception {
+        MockHttpSession session = authenticate();
+        long concept = insertConcept("METADATA", "Issue twenty-four MVC metadata", "SPECIFIC", true, false, null);
+
+        mockMvc.perform(post("/admin/catalog/{id}", concept).session(session).with(csrf())
+                        .param("displayName", "Issue twenty-four MVC metadata")
+                        .param("active", "true")
+                        .param("randomDrawEnabled", "true")
+                        .param("challengeSpecificity", "OPEN")
+                        .param("baseDrawWeight", "0.75")
+                        .param("functionalRole", "VEGETABLE")
+                        .param("functionalRole", "AROMATIC")
+                        .param("culinaryFlag", "FERMENTED")
+                        .param("dimension[HEAT]", "4")
+                        .param("dimension[UMAMI]", "2")
+                        .param("availability[GEORGIA]", "EASY")
+                        .param("availability[TOBIAS]", "PLANNED")
+                        .param("seasonality[1]", "1.3")
+                        .param("seasonality[2]", "1.0")
+                        .param("version", "0"))
+                .andExpect(status().is3xxRedirection());
+
+        assertTrue(jdbcTemplate.queryForObject("select random_draw_enabled and challenge_specificity = 'OPEN' and version = 1 from ingredient_concept where id = ?", Boolean.class, concept));
+        assertTrue(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_functional_role ifr join functional_role fr on fr.id = ifr.functional_role_id where ifr.ingredient_concept_id = ? and fr.code = 'AROMATIC')", Boolean.class, concept));
+        assertTrue(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_culinary_flag icf join culinary_flag cf on cf.id = icf.culinary_flag_id where icf.ingredient_concept_id = ? and cf.code = 'FERMENTED')", Boolean.class, concept));
+        assertTrue(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_culinary_dimension idim join culinary_dimension dim on dim.id = idim.culinary_dimension_id where idim.ingredient_concept_id = ? and dim.code = 'HEAT' and idim.level = 4)", Boolean.class, concept));
+        assertTrue(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_seasonality where ingredient_concept_id = ? and month = 1 and weight_multiplier = 1.3)", Boolean.class, concept));
+        assertFalse(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_seasonality where ingredient_concept_id = ? and month = 2)", Boolean.class, concept));
+
+        mockMvc.perform(post("/admin/catalog/{id}", concept).session(session).with(csrf())
+                        .param("displayName", "Issue twenty-four MVC metadata")
+                        .param("active", "true")
+                        .param("challengeSpecificity", "OPEN")
+                        .param("baseDrawWeight", "0.75")
+                        .param("functionalRole", "FRUIT")
+                        .param("dimension[HEAT]", "")
+                        .param("availability[GEORGIA]", "")
+                        .param("availability[TOBIAS]", "")
+                        .param("seasonality[1]", "1.0")
+                        .param("version", "1"))
+                .andExpect(status().is3xxRedirection());
+
+        assertTrue(jdbcTemplate.queryForObject("select count(*) = 1 from ingredient_functional_role where ingredient_concept_id = ?", Boolean.class, concept));
+        assertTrue(jdbcTemplate.queryForObject("select count(*) = 0 from ingredient_culinary_flag where ingredient_concept_id = ?", Boolean.class, concept));
+        assertTrue(jdbcTemplate.queryForObject("select count(*) = 0 from ingredient_culinary_dimension where ingredient_concept_id = ?", Boolean.class, concept));
+        assertTrue(jdbcTemplate.queryForObject("select count(*) = 0 from ingredient_availability where ingredient_concept_id = ?", Boolean.class, concept));
+        assertTrue(jdbcTemplate.queryForObject("select count(*) = 0 from ingredient_seasonality where ingredient_concept_id = ?", Boolean.class, concept));
     }
 
     @Test

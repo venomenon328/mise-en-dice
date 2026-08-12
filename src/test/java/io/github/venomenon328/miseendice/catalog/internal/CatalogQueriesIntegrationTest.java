@@ -117,6 +117,10 @@ class CatalogQueriesIntegrationTest {
         assignAvailability(curated, "GEORGIA", "EASY");
         assignAvailability(curated, "TOBIAS", "DIFFICULT");
         long incomplete = insertConcept("INCOMPLETE", "Query incomplete open", "OPEN", true, true, null);
+        long completeOpenWithoutChild = insertConcept("OPEN_COMPLETE", "Query complete open", "OPEN", true, true, null);
+        assignRole(completeOpenWithoutChild, "VEGETABLE");
+        assignAvailability(completeOpenWithoutChild, "GEORGIA", "EASY");
+        assignAvailability(completeOpenWithoutChild, "TOBIAS", "PLANNED");
 
         var incompleteDetail = catalogQueries.findConcept(incomplete).orElseThrow();
         assertThat(incompleteDetail.culinaryDimensions()).allSatisfy(dimension -> assertThat(dimension.level()).isNull());
@@ -137,6 +141,12 @@ class CatalogQueriesIntegrationTest {
                 CatalogAvailabilityFilter.any(), CatalogAvailabilityFilter.any(), CatalogNoveltyFilter.any(), 0, 100
         ));
         assertThat(maintenance.items()).extracting(item -> item.id()).containsExactly(incomplete);
+
+        var completeOpenMaintenance = catalogQueries.search(criteria(
+                "query complete open", CatalogQuickFilter.NEEDS_ATTENTION, Set.of(), Set.of(),
+                CatalogAvailabilityFilter.any(), CatalogAvailabilityFilter.any(), CatalogNoveltyFilter.any(), 0, 100
+        ));
+        assertThat(completeOpenMaintenance.items()).isEmpty();
     }
 
     @Test

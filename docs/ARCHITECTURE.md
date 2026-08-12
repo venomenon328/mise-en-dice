@@ -252,7 +252,7 @@ Der optional aktivierbare Administrationsadapter schützt `/admin/**` mit Spring
 
 `ingredient_concept` und `exclusion_rule` besitzen eine Aggregatversion für optimistisches Locking. Spätere schreibende Application Services erhöhen sie innerhalb ihrer Transaktion ausschließlich beim erwarteten Versionswert. `catalog_audit_entry` speichert dafür fachliche JSONB-Vorher-/Nachher-Snapshots mit Akteur und `change_group_id`; sie enthält keine HTTP- oder Sicherheitsdaten und hat bewusst keine Fremdschlüssel auf Teilnehmer oder veränderliche Katalogobjekte.
 
-Schreibende Änderungen an `ingredient_refinement` nehmen zusätzlich vor jeder Graphvalidierung einen stabilen PostgreSQL-Transaktions-Advisory-Lock. Dieser Lock serialisiert den vollständigen Graph-Read/Validate/Write-Ablauf auch zwischen mehreren Anwendungsprozessen; er ersetzt weder die deterministische Sperrung und Versionsprüfung aller betroffenen Zutatenaggregate noch den Zyklus-Trigger als letzte Datenbanksicherung.
+Schreibende Änderungen an `ingredient_refinement` sowie Rollen- und Spezifitätsänderungen nehmen zusätzlich vor jeder Graphvalidierung einen stabilen PostgreSQL-Transaktions-Advisory-Lock. Dieser Lock serialisiert den vollständigen Graph-Read/Validate/Write-Ablauf auch zwischen mehreren Anwendungsprozessen; er ersetzt weder die deterministische Sperrung und Versionsprüfung aller betroffenen Zutatenaggregate noch den Zyklus-Trigger als letzte Datenbanksicherung.
 
 ## 9. Konfiguration und Betrieb
 

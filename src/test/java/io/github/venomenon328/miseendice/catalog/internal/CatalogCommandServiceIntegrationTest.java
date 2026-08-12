@@ -7,12 +7,15 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogAuditLog;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CreateIngredientConceptCommand;
+import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogMetadata;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.UpdateIngredientConceptCommand;
 import io.github.venomenon328.miseendice.catalog.api.CatalogDrawWeightWarningException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
 import io.github.venomenon328.miseendice.catalog.api.CatalogVersionConflictException;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -137,7 +140,7 @@ class CatalogCommandServiceIntegrationTest {
     }
 
     @Test
-    void rejectsDrawableConceptsWithoutTheirStillReadOnlyRequiredMetadata() {
+    void rejectsDrawableConceptsWithoutRequiredMetadataButNotBecauseOpenHasNoChild() {
         long concept = insertConcept("MISSING_METADATA", "Issue eleven incomplete", "OPEN", true, false, null);
         var before = catalogQueries.findConcept(concept).orElseThrow();
 
@@ -145,7 +148,7 @@ class CatalogCommandServiceIntegrationTest {
                 "OPEN", BigDecimal.ONE, null, null, false)))
                 .isInstanceOf(CatalogCommandValidationException.class)
                 .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
-                        .containsKeys("functionalRoles", "availabilityGeorgia", "availabilityTobias", "challengeSpecificity"));
+                        .containsKeys("functionalRoles", "availabilityGeorgia", "availabilityTobias"));
         assertThat(auditCount()).isZero();
     }
 
@@ -160,7 +163,7 @@ class CatalogCommandServiceIntegrationTest {
                 "OPEN", BigDecimal.ONE, null, null, false)))
                 .isInstanceOf(CatalogCommandValidationException.class)
                 .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
-                        .containsKey("challengeSpecificity"));
+                        .containsKey("relations"));
         assertThat(catalogQueries.findConcept(child).orElseThrow().challengeSpecificity()).isEqualTo("SPECIFIC");
         assertThat(auditCount()).isZero();
     }
@@ -209,6 +212,107 @@ class CatalogCommandServiceIntegrationTest {
         }
     }
 
+    @Test
+    void replacesEveryEditableMetadataGroupInOneVersionedAuditSave() {
+        long concept = insertConcept("METADATA", "Issue twenty-four metadata", "SPECIFIC", true, false, null);
+        CatalogMetadata first = new CatalogMetadata(
+                Set.of("VEGETABLE", "AROMATIC"), Set.of("FERMENTED", "SMOKED"),
+                Map.of("DOMINANCE", 4, "HEAT", 2),
+                Map.of("GEORGIA", CatalogQueries.CatalogAvailability.EASY,
+                        "TOBIAS", CatalogQueries.CatalogAvailability.DIFFICULT),
+                Map.of(1, new BigDecimal("1.2"), 2, new BigDecimal("1.0")));
+        CatalogQueries.CatalogConceptDetail before = catalogQueries.findConcept(concept).orElseThrow();
+
+        var result = catalogCommands.updateIngredientConcept(metadataCommand(before, false, BigDecimal.ONE, first, false));
+
+        assertThat(result.version()).isEqualTo(1);
+        assertThat(roleCodes(concept)).containsExactlyInAnyOrder("VEGETABLE", "AROMATIC");
+        assertThat(flagCodes(concept)).containsExactlyInAnyOrder("FERMENTED", "SMOKED");
+        assertThat(jdbcTemplate.queryForMap("select level from ingredient_culinary_dimension idim join culinary_dimension dim on dim.id = idim.culinary_dimension_id where idim.ingredient_concept_id = ? and dim.code = 'DOMINANCE'", concept))
+                .containsEntry("level", 4);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_culinary_dimension where ingredient_concept_id = ?", Integer.class, concept)).isEqualTo(2);
+        assertThat(availability(concept, "TOBIAS")).isEqualTo("DIFFICULT");
+        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_seasonality where ingredient_concept_id = ?", Integer.class, concept)).isEqualTo(1);
+        assertThat(latestAudit().afterState().values()).containsKeys(
+                "functionalRoles", "culinaryFlags", "culinaryDimensions", "availability", "seasonality");
+
+        CatalogQueries.CatalogConceptDetail current = catalogQueries.findConcept(concept).orElseThrow();
+        CatalogMetadata replacement = new CatalogMetadata(
+                Set.of("FRUIT"), Set.of("PICKLED"), Map.of("SWEETNESS", 5),
+                Map.of("GEORGIA", CatalogQueries.CatalogAvailability.PLANNED), Map.of(1, BigDecimal.ONE));
+        catalogCommands.updateIngredientConcept(metadataCommand(current, false, BigDecimal.ONE, replacement, false));
+
+        assertThat(roleCodes(concept)).containsExactly("FRUIT");
+        assertThat(flagCodes(concept)).containsExactly("PICKLED");
+        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_culinary_dimension where ingredient_concept_id = ?", Integer.class, concept)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_availability where ingredient_concept_id = ?", Integer.class, concept)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_seasonality where ingredient_concept_id = ?", Integer.class, concept)).isZero();
+    }
+
+    @Test
+    void validatesDrawabilityAndDifficultWeightAgainstMetadataFromTheSameSave() {
+        long concept = insertConcept("RESULT", "Issue twenty-four result state", "OPEN", true, false, null);
+        CatalogQueries.CatalogConceptDetail before = catalogQueries.findConcept(concept).orElseThrow();
+        CatalogMetadata difficult = new CatalogMetadata(
+                Set.of("VEGETABLE"), Set.of(), Map.of(),
+                Map.of("GEORGIA", CatalogQueries.CatalogAvailability.DIFFICULT,
+                        "TOBIAS", CatalogQueries.CatalogAvailability.EASY), Map.of());
+
+        assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(
+                metadataCommand(before, true, new BigDecimal("0.50"), difficult, false)))
+                .isInstanceOf(CatalogDrawWeightWarningException.class);
+        assertThat(version(concept)).isZero();
+
+        catalogCommands.updateIngredientConcept(metadataCommand(before, true, new BigDecimal("0.50"), difficult, true));
+        CatalogQueries.CatalogConceptDetail difficultSaved = catalogQueries.findConcept(concept).orElseThrow();
+        CatalogMetadata easy = new CatalogMetadata(
+                Set.of("VEGETABLE"), Set.of(), Map.of(),
+                Map.of("GEORGIA", CatalogQueries.CatalogAvailability.EASY,
+                        "TOBIAS", CatalogQueries.CatalogAvailability.EASY), Map.of());
+
+        assertThat(catalogCommands.updateIngredientConcept(
+                metadataCommand(difficultSaved, true, new BigDecimal("0.50"), easy, false)).version()).isEqualTo(2);
+    }
+
+    @Test
+    void rejectsUnknownEditableMetadataReferencesWithAFieldError() {
+        long concept = insertConcept("UNKNOWN_METADATA", "Issue twenty-four unknown metadata", "SPECIFIC", true, false, null);
+        CatalogQueries.CatalogConceptDetail before = catalogQueries.findConcept(concept).orElseThrow();
+        CatalogMetadata metadata = new CatalogMetadata(
+                Set.of("NOT_A_ROLE"), Set.of(), Map.of(), Map.of(), Map.of());
+
+        assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(
+                metadataCommand(before, false, BigDecimal.ONE, metadata, false)))
+                .isInstanceOf(CatalogCommandValidationException.class)
+                .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
+                        .containsKey("functionalRoles"));
+        assertThat(version(concept)).isZero();
+    }
+
+    @Test
+    void createsADrawableConceptWithItsMetadataAtomically() {
+        CatalogMetadata metadata = new CatalogMetadata(
+                Set.of("VEGETABLE"), Set.of("PICKLED"), Map.of("ACIDITY", 3),
+                Map.of("GEORGIA", CatalogQueries.CatalogAvailability.DIFFICULT,
+                        "TOBIAS", CatalogQueries.CatalogAvailability.PLANNED), Map.of(6, new BigDecimal("1.3")));
+
+        assertThatThrownBy(() -> catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                PREFIX + "CREATE_METADATA", "Issue twenty-four creation", true, true, "OPEN", new BigDecimal("0.50"),
+                null, null, metadata, false, ACTOR)))
+                .isInstanceOf(CatalogDrawWeightWarningException.class);
+
+        var result = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                PREFIX + "CREATE_METADATA", "Issue twenty-four creation", true, true, "OPEN", new BigDecimal("0.50"),
+                null, null, metadata, true, ACTOR));
+
+        CatalogQueries.CatalogConceptDetail detail = catalogQueries.findConcept(result.conceptId()).orElseThrow();
+        assertThat(detail).extracting(CatalogQueries.CatalogConceptDetail::randomDrawEnabled,
+                CatalogQueries.CatalogConceptDetail::challengeSpecificity,
+                CatalogQueries.CatalogConceptDetail::version).containsExactly(true, "OPEN", 0L);
+        assertThat(detail.functionalRoles()).extracting(CatalogQueries.CatalogReferenceValue::code).containsExactly("VEGETABLE");
+        assertThat(detail.availability()).allSatisfy(value -> assertThat(value.level()).isNotNull());
+    }
+
     private CatalogCommands.UpdateIngredientConceptCommand command(
             CatalogQueries.CatalogConceptDetail detail,
             String displayName,
@@ -224,6 +328,19 @@ class CatalogCommandServiceIntegrationTest {
                 detail.id(), detail.version(), displayName, active, randomDrawEnabled, specificity,
                 weight, novelty, note, ACTOR, acknowledgeWarnings
         );
+    }
+
+    private CatalogCommands.UpdateIngredientConceptCommand metadataCommand(
+            CatalogQueries.CatalogConceptDetail detail,
+            boolean randomDrawEnabled,
+            BigDecimal weight,
+            CatalogMetadata metadata,
+            boolean acknowledgeWarnings
+    ) {
+        return new UpdateIngredientConceptCommand(
+                detail.id(), detail.version(), detail.displayName(), detail.active(), randomDrawEnabled,
+                detail.challengeSpecificity(), weight, detail.noveltyLevel(), detail.curatorNote(), ACTOR,
+                acknowledgeWarnings, List.of(), Map.of(), false, metadata);
     }
 
     private long insertConcept(String suffix, String displayName, String specificity, boolean active, boolean drawable, Integer novelty) {
@@ -255,5 +372,33 @@ class CatalogCommandServiceIntegrationTest {
 
     private int auditCount() {
         return jdbcTemplate.queryForObject("select count(*) from catalog_audit_entry where actor_key = ?", Integer.class, ACTOR);
+    }
+
+    private long version(long conceptId) {
+        return jdbcTemplate.queryForObject("select version from ingredient_concept where id = ?", Long.class, conceptId);
+    }
+
+    private String availability(long conceptId, String participantCode) {
+        return jdbcTemplate.queryForObject("""
+                select ia.availability_level from ingredient_availability ia
+                join participant p on p.id = ia.participant_id
+                where ia.ingredient_concept_id = ? and p.code = ?
+                """, String.class, conceptId, participantCode);
+    }
+
+    private Set<String> roleCodes(long conceptId) {
+        return Set.copyOf(jdbcTemplate.queryForList("""
+                select fr.code from ingredient_functional_role ifr
+                join functional_role fr on fr.id = ifr.functional_role_id
+                where ifr.ingredient_concept_id = ?
+                """, String.class, conceptId));
+    }
+
+    private Set<String> flagCodes(long conceptId) {
+        return Set.copyOf(jdbcTemplate.queryForList("""
+                select cf.code from ingredient_culinary_flag icf
+                join culinary_flag cf on cf.id = icf.culinary_flag_id
+                where icf.ingredient_concept_id = ?
+                """, String.class, conceptId));
     }
 }

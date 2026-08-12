@@ -459,6 +459,15 @@
     let pickerTimer = null;
 
     document.addEventListener("click", (event) => {
+        const resetSeasonality = event.target.closest?.("[data-reset-seasonality]");
+        if (resetSeasonality) {
+            const input = resetSeasonality.closest(".season-field")?.querySelector("input");
+            if (input) {
+                input.value = "1.0";
+                input.dispatchEvent(new Event("input", {bubbles: true}));
+            }
+            return;
+        }
         const pickerButton = event.target.closest?.("[data-open-relation-picker]");
         if (pickerButton) {
             const editor = refinementEditor();

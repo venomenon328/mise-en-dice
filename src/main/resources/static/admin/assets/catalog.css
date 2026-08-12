@@ -1364,6 +1364,39 @@ h4 {
     gap: .72rem;
 }
 
+.choice-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: .55rem;
+}
+
+.choice-chip {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .55rem .65rem;
+    border: 1px solid var(--line);
+    border-radius: .55rem;
+    background: var(--surface);
+}
+
+.season-editor-grid {
+    grid-template-columns: repeat(6, minmax(4.5rem, 1fr));
+}
+
+.season-field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .35rem;
+    align-items: center;
+}
+
+.season-field .button {
+    min-height: 2.2rem;
+    padding-inline: .48rem;
+    font-size: .72rem;
+}
+
 .form-grid > label,
 .textarea-field {
     display: grid;
@@ -1402,6 +1435,34 @@ h4 {
     color: var(--ink-soft);
     font-size: .78rem;
     font-weight: 760;
+}
+
+.dimension-editor {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+}
+
+.dimension-unmanaged-choice,
+.dimension-level-choice {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.dimension-level-choice input {
+    position: absolute;
+    opacity: 0;
+}
+
+.dimension-level-choice:has(input:focus-visible) {
+    outline: 2px solid var(--petrol);
+    outline-offset: 2px;
+    border-radius: .32rem;
+}
+
+.dimension-level-choice:has(input:checked) .metric-icon {
+    filter: drop-shadow(0 0 0.22rem var(--metric-color));
 }
 
 .toggle-field,

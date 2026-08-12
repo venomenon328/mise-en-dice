@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.administration.internal;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
+import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogMetadata;
 import io.github.venomenon328.miseendice.catalog.api.CatalogConceptNotFoundException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogDrawWeightWarningException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogRelationWarningException;
@@ -113,6 +114,7 @@ class CatalogAdministrationController {
         model.addAttribute("state", state);
         model.addAttribute("form", CatalogConceptForm.forCreate());
         model.addAttribute("formMode", FormMode.CREATE);
+        populateEditorOptions(model);
         if (isHtmx(htmxRequest)) {
             return "admin/fragments/detail :: form";
         }
@@ -138,6 +140,7 @@ class CatalogAdministrationController {
         model.addAttribute("detail", detail.get());
         model.addAttribute("form", CatalogConceptForm.forEdit(detail.get()));
         model.addAttribute("formMode", FormMode.EDIT);
+        populateEditorOptions(model);
         if (isHtmx(htmxRequest)) {
             return "admin/fragments/detail :: form";
         }
@@ -156,11 +159,14 @@ class CatalogAdministrationController {
             RedirectAttributes redirectAttributes
     ) {
         CatalogState state = CatalogState.from(parameters, null);
-        CatalogConceptForm form = CatalogConceptForm.forCreate(code, displayName);
+        CatalogConceptForm form = CatalogConceptForm.forCreate(code, displayName, parameters);
         try {
             var result = catalogCommands.createIngredientConcept(form.toCreateCommand(actorKey(authentication)));
             redirectAttributes.addFlashAttribute("saveNotice", "Zutatenkonzept angelegt.");
             return "redirect:" + state.detailUrl(result.conceptId());
+        } catch (CatalogDrawWeightWarningException exception) {
+            return renderFormFailure(state, FormMode.CREATE, null, form, Map.of(), exception.warnings(),
+                    authentication, model, response);
         } catch (CatalogCommandValidationException exception) {
             return renderFormFailure(state, FormMode.CREATE, null, form, exception.fieldErrors(), List.of(),
                     authentication, model, response);
@@ -196,7 +202,7 @@ class CatalogAdministrationController {
             CatalogConceptForm malformedForm = CatalogConceptForm.forEdit(
                     conceptId, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
                     noveltyLevel, curatorNote, version, weightWarningsAcknowledged,
-                    inactiveRelationsAcknowledged, List.of()
+                    inactiveRelationsAcknowledged, List.of(), FormMetadata.from(parameters)
             );
             return renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), malformedForm,
                     exception.fieldErrors(), List.of(), authentication, model, response);
@@ -204,7 +210,7 @@ class CatalogAdministrationController {
         CatalogConceptForm form = CatalogConceptForm.forEdit(
                 conceptId, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
                 noveltyLevel, curatorNote, version, weightWarningsAcknowledged,
-                inactiveRelationsAcknowledged, pendingRefinements
+                inactiveRelationsAcknowledged, pendingRefinements, FormMetadata.from(parameters)
         );
         if (parameters.containsKey("code")) {
             return renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), form,
@@ -310,7 +316,7 @@ class CatalogAdministrationController {
                 : wouldBeRedundant ? "bereits transitiv ableitbar"
                 : specificityInvalid ? "Spezifität nicht zulässig"
                 : roleMismatch ? "keine gemeinsame funktionale Rolle" : null;
-        return new RelationPickerItem(candidate, reason == null, reason);
+        return new RelationPickerItem(candidate, reason == null || specificityInvalid || roleMismatch, reason);
     }
 
     private String renderFormFailure(
@@ -412,16 +418,21 @@ class CatalogAdministrationController {
                 && results.items().stream().noneMatch(item -> item.id() == detail.get().id());
         model.addAttribute("state", state);
         model.addAttribute("catalogResults", results);
-        model.addAttribute("filterOptions", catalogQueries.findFilterOptions());
+        populateEditorOptions(model);
         model.addAttribute("catalogSummary", catalogQueries.summarize());
         model.addAttribute("detail", detail.orElse(null));
         model.addAttribute("selectionOutsideResults", selectionOutsideResults);
         model.addAttribute("administratorName", authentication == null ? "Administration" : authentication.getName());
         model.addAttribute("monthNames", monthNames());
         model.addAttribute("quickFilters", List.of(CatalogQuickFilter.values()));
-        model.addAttribute("availabilityLevels", List.of(CatalogAvailability.values()));
         model.addAttribute("sortOptions", List.of(CatalogSort.values()));
         model.addAttribute("pageSizes", List.of(50, 100, 250));
+    }
+
+    private void populateEditorOptions(Model model) {
+        model.addAttribute("filterOptions", catalogQueries.findFilterOptions());
+        model.addAttribute("availabilityLevels", List.of(CatalogAvailability.values()));
+        model.addAttribute("monthNames", monthNames());
     }
 
     private static boolean isHtmx(String htmxRequest) {
@@ -527,19 +538,29 @@ class CatalogAdministrationController {
             String version,
             boolean weightWarningsAcknowledged,
             boolean inactiveRelationsAcknowledged,
-            List<PendingRefinement> pendingRefinements
+            List<PendingRefinement> pendingRefinements,
+            FormMetadata metadata
     ) {
 
         public CatalogConceptForm {
             pendingRefinements = pendingRefinements == null ? List.of() : List.copyOf(pendingRefinements);
+            metadata = metadata == null ? FormMetadata.empty() : metadata;
         }
 
         static CatalogConceptForm forCreate() {
-            return forCreate("", "");
+            return new CatalogConceptForm(0, "", "", true, false, "SPECIFIC", "1.0000", "", "", "", false, false,
+                    List.of(), FormMetadata.empty());
         }
 
-        static CatalogConceptForm forCreate(String code, String displayName) {
-            return new CatalogConceptForm(0, text(code), text(displayName), true, false, "SPECIFIC", "1.0000", "", "", "", false, false, List.of());
+        static CatalogConceptForm forCreate(String code, String displayName, MultiValueMap<String, String> parameters) {
+            return new CatalogConceptForm(
+                    0, text(code), text(displayName), !"false".equalsIgnoreCase(last(parameters, "active")),
+                    "true".equalsIgnoreCase(parameters.getFirst("randomDrawEnabled")),
+                    textOrDefault(parameters.getFirst("challengeSpecificity"), "SPECIFIC"),
+                    textOrDefault(parameters.getFirst("baseDrawWeight"), "1.0000"),
+                    text(parameters.getFirst("noveltyLevel")), text(parameters.getFirst("curatorNote")), "",
+                    "true".equalsIgnoreCase(parameters.getFirst("weightWarningsAcknowledged")), false,
+                    List.of(), FormMetadata.from(parameters));
         }
 
         static CatalogConceptForm forEdit(CatalogConceptDetail detail) {
@@ -547,7 +568,7 @@ class CatalogAdministrationController {
                     detail.id(), detail.displayName(), detail.active(), detail.randomDrawEnabled(),
                     detail.challengeSpecificity(), detail.baseDrawWeight().toPlainString(),
                     detail.noveltyLevel() == null ? "" : detail.noveltyLevel().toString(), detail.curatorNote(),
-                    Long.toString(detail.version()), false, false, List.of()
+                    Long.toString(detail.version()), false, false, List.of(), FormMetadata.from(detail)
             );
         }
 
@@ -563,12 +584,13 @@ class CatalogAdministrationController {
                 String version,
                 boolean weightWarningsAcknowledged,
                 boolean inactiveRelationsAcknowledged,
-                List<PendingRefinement> pendingRefinements
+                List<PendingRefinement> pendingRefinements,
+                FormMetadata metadata
         ) {
             return new CatalogConceptForm(
                     conceptId, "", text(displayName), active, randomDrawEnabled, text(challengeSpecificity),
                     text(baseDrawWeight), text(noveltyLevel), text(curatorNote), text(version), weightWarningsAcknowledged,
-                    inactiveRelationsAcknowledged, pendingRefinements
+                    inactiveRelationsAcknowledged, pendingRefinements, metadata
             );
         }
 
@@ -576,7 +598,7 @@ class CatalogAdministrationController {
             return new CatalogConceptForm(
                     conceptId, code, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
                     noveltyLevel, curatorNote, Long.toString(currentVersion), weightWarningsAcknowledged,
-                    inactiveRelationsAcknowledged, pendingRefinements
+                    inactiveRelationsAcknowledged, pendingRefinements, metadata
             );
         }
 
@@ -588,12 +610,21 @@ class CatalogAdministrationController {
             return new CatalogConceptForm(
                     conceptId, code, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
                     noveltyLevel, curatorNote, Long.toString(currentVersion), false,
-                    false, rebased
+                    false, rebased, metadata
             );
         }
 
         CatalogCommands.CreateIngredientConceptCommand toCreateCommand(String actorKey) {
-            return new CatalogCommands.CreateIngredientConceptCommand(code, displayName, actorKey);
+            Map<String, String> errors = new LinkedHashMap<>();
+            BigDecimal weight = parseWeight(baseDrawWeight, errors);
+            Integer novelty = parseNovelty(noveltyLevel, errors);
+            CatalogMetadata catalogMetadata = metadata.toCatalogMetadata(errors);
+            if (!errors.isEmpty()) {
+                throw new CatalogCommandValidationException(errors);
+            }
+            return new CatalogCommands.CreateIngredientConceptCommand(
+                    code, displayName, active, randomDrawEnabled, challengeSpecificity, weight, novelty, curatorNote,
+                    catalogMetadata, weightWarningsAcknowledged, actorKey);
         }
 
         CatalogCommands.UpdateIngredientConceptCommand toUpdateCommand(String actorKey) {
@@ -601,6 +632,7 @@ class CatalogAdministrationController {
             long expectedVersion = parseLong(version, "version", "Die Formularversion ist ungültig.", errors);
             BigDecimal weight = parseWeight(baseDrawWeight, errors);
             Integer novelty = parseNovelty(noveltyLevel, errors);
+            CatalogMetadata catalogMetadata = metadata.toCatalogMetadata(errors);
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);
             }
@@ -627,7 +659,7 @@ class CatalogAdministrationController {
             return new CatalogCommands.UpdateIngredientConceptCommand(
                     conceptId, expectedVersion, displayName, active, randomDrawEnabled, challengeSpecificity,
                     weight, novelty, curatorNote, actorKey, weightWarningsAcknowledged,
-                    changes, relatedVersions, inactiveRelationsAcknowledged
+                    changes, relatedVersions, inactiveRelationsAcknowledged, catalogMetadata
             );
         }
 
@@ -663,6 +695,171 @@ class CatalogAdministrationController {
                 errors.put("noveltyLevel", "Die Ungewöhnlichkeit muss zwischen 1 und 5 liegen oder leer bleiben.");
                 return null;
             }
+        }
+
+        private static String text(String value) {
+            return value == null ? "" : value.strip();
+        }
+
+        private static String textOrDefault(String value, String fallback) {
+            String text = text(value);
+            return text.isEmpty() ? fallback : text;
+        }
+
+        private static String last(MultiValueMap<String, String> parameters, String name) {
+            List<String> values = parameters.get(name);
+            return values == null || values.isEmpty() ? null : values.getLast();
+        }
+    }
+
+    /** Browser-friendly representation of the complete, replace-on-save metadata state. */
+    record FormMetadata(
+            Set<String> functionalRoleCodes,
+            Set<String> culinaryFlagCodes,
+            Map<String, String> culinaryDimensionLevels,
+            Map<String, String> availabilityByParticipant,
+            Map<String, String> seasonalityByMonth,
+            boolean submitted
+    ) {
+
+        FormMetadata {
+            functionalRoleCodes = normalizedCodes(functionalRoleCodes);
+            culinaryFlagCodes = normalizedCodes(culinaryFlagCodes);
+            culinaryDimensionLevels = immutableTextMap(culinaryDimensionLevels);
+            availabilityByParticipant = immutableTextMap(availabilityByParticipant);
+            seasonalityByMonth = immutableTextMap(seasonalityByMonth);
+        }
+
+        static FormMetadata empty() {
+            Map<String, String> seasonality = new LinkedHashMap<>();
+            for (int month = 1; month <= 12; month++) {
+                seasonality.put(Integer.toString(month), "1.0");
+            }
+            return new FormMetadata(Set.of(), Set.of(), Map.of(), Map.of(), seasonality, false);
+        }
+
+        static FormMetadata from(CatalogConceptDetail detail) {
+            Set<String> roles = detail.functionalRoles().stream()
+                    .map(CatalogQueries.CatalogReferenceValue::code)
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            Set<String> flags = detail.culinaryFlags().stream()
+                    .map(CatalogQueries.CatalogReferenceValue::code)
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            Map<String, String> dimensions = new LinkedHashMap<>();
+            detail.culinaryDimensions().forEach(value -> dimensions.put(value.dimension().code(),
+                    value.level() == null ? "" : value.level().toString()));
+            Map<String, String> availability = new LinkedHashMap<>();
+            detail.availability().forEach(value -> availability.put(value.participant().code(),
+                    value.level() == null ? "" : value.level().name()));
+            Map<String, String> seasonality = new LinkedHashMap<>();
+            detail.seasonality().forEach(value -> seasonality.put(Integer.toString(value.month()),
+                    value.weightMultiplier().toPlainString()));
+            return new FormMetadata(roles, flags, dimensions, availability, seasonality, true);
+        }
+
+        static FormMetadata from(MultiValueMap<String, String> parameters) {
+            Map<String, String> dimensions = indexedValues(parameters, "dimension");
+            Map<String, String> availability = indexedValues(parameters, "availability");
+            Map<String, String> seasonality = indexedValues(parameters, "seasonality");
+            return new FormMetadata(values(parameters, "functionalRole"), values(parameters, "culinaryFlag"),
+                    dimensions, availability, seasonality, hasMetadataFields(parameters));
+        }
+
+        public boolean hasFunctionalRole(String code) {
+            return functionalRoleCodes.contains(code);
+        }
+
+        public boolean hasCulinaryFlag(String code) {
+            return culinaryFlagCodes.contains(code);
+        }
+
+        public String dimensionLevel(String code) {
+            return culinaryDimensionLevels.getOrDefault(code, "");
+        }
+
+        public String availability(String participantCode) {
+            return availabilityByParticipant.getOrDefault(participantCode, "");
+        }
+
+        public String seasonality(int month) {
+            return seasonalityByMonth.getOrDefault(Integer.toString(month), "1.0");
+        }
+
+        CatalogMetadata toCatalogMetadata(Map<String, String> errors) {
+            if (!submitted) {
+                return null;
+            }
+            Map<String, Integer> dimensions = new LinkedHashMap<>();
+            culinaryDimensionLevels.forEach((code, value) -> {
+                if (text(value).isEmpty()) {
+                    return;
+                }
+                try {
+                    dimensions.put(code, Integer.valueOf(text(value)));
+                } catch (NumberFormatException exception) {
+                    errors.put("culinaryDimensions", "Dimensionen müssen Stufen von 1 bis 5 oder nicht gepflegt sein.");
+                }
+            });
+            Map<String, CatalogAvailability> availability = new LinkedHashMap<>();
+            availabilityByParticipant.forEach((code, value) -> {
+                if (text(value).isEmpty()) {
+                    return;
+                }
+                try {
+                    availability.put(code, CatalogAvailability.valueOf(text(value).toUpperCase(Locale.ROOT)));
+                } catch (IllegalArgumentException exception) {
+                    errors.put("availability", "Die Beschaffbarkeitsstufe ist nicht gültig.");
+                }
+            });
+            Map<Integer, BigDecimal> seasonality = new LinkedHashMap<>();
+            seasonalityByMonth.forEach((month, value) -> {
+                try {
+                    seasonality.put(Integer.valueOf(month), new BigDecimal(text(value).replace(',', '.')));
+                } catch (NumberFormatException exception) {
+                    errors.put("seasonality", "Saisonfaktoren müssen positive Zahlen sein.");
+                }
+            });
+            if (!errors.isEmpty()) {
+                return new CatalogMetadata(Set.of(), Set.of(), Map.of(), Map.of(), Map.of());
+            }
+            return new CatalogMetadata(functionalRoleCodes, culinaryFlagCodes, dimensions, availability, seasonality);
+        }
+
+        private static boolean hasMetadataFields(MultiValueMap<String, String> parameters) {
+            return parameters.containsKey("functionalRole") || parameters.containsKey("culinaryFlag")
+                    || parameters.keySet().stream().anyMatch(name -> name.startsWith("dimension[")
+                    || name.startsWith("availability[") || name.startsWith("seasonality["));
+        }
+
+        private static Map<String, String> indexedValues(MultiValueMap<String, String> parameters, String prefix) {
+            Map<String, String> values = new LinkedHashMap<>();
+            parameters.forEach((name, entries) -> {
+                if (name.startsWith(prefix + "[") && name.endsWith("]")) {
+                    String key = name.substring(prefix.length() + 1, name.length() - 1);
+                    values.put(key, entries == null || entries.isEmpty() ? "" : entries.getLast());
+                }
+            });
+            return values;
+        }
+
+        private static Set<String> values(MultiValueMap<String, String> parameters, String name) {
+            return normalizedCodes(parameters.getOrDefault(name, List.of()));
+        }
+
+        private static Set<String> normalizedCodes(Collection<String> values) {
+            return values == null ? Set.of() : values.stream()
+                    .filter(value -> value != null && !value.isBlank())
+                    .map(value -> value.strip().toUpperCase(Locale.ROOT))
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        }
+
+        private static Map<String, String> immutableTextMap(Map<String, String> values) {
+            if (values == null || values.isEmpty()) {
+                return Map.of();
+            }
+            Map<String, String> copy = new LinkedHashMap<>();
+            values.forEach((key, value) -> copy.put(key == null ? "" : key.strip().toUpperCase(Locale.ROOT), text(value)));
+            return Map.copyOf(copy);
         }
 
         private static String text(String value) {

@@ -254,11 +254,16 @@ public interface CatalogQueries {
     record CatalogSeasonValue(int month, BigDecimal weightMultiplier) {
     }
 
-    record CatalogFilterOptions(List<CatalogReferenceValue> functionalRoles, List<CatalogReferenceValue> culinaryFlags) {
+    record CatalogFilterOptions(
+            List<CatalogReferenceValue> functionalRoles,
+            List<CatalogReferenceValue> culinaryFlags,
+            List<CatalogReferenceValue> culinaryDimensions
+    ) {
 
         public CatalogFilterOptions {
             functionalRoles = List.copyOf(functionalRoles);
             culinaryFlags = List.copyOf(culinaryFlags);
+            culinaryDimensions = List.copyOf(culinaryDimensions);
         }
     }
 

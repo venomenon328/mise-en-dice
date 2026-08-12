@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
+import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogMetadata;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.RefinementChange;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.RefinementChangeType;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.UpdateIngredientConceptCommand;
@@ -14,6 +15,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
@@ -163,16 +165,15 @@ class CatalogRefinementIntegrationTest {
     }
 
     @Test
-    void refusesToRemoveTheLastChildOfAnActiveDrawableOpenConcept() {
+    void allowsRemovingTheLastKnownChildOfAnActiveDrawableOpenConcept() {
         long open = concept("LAST_OPEN", "Last open", "OPEN", true, true, "ANIMAL_PROTEIN");
         requiredAvailability(open);
         long child = concept("LAST_CHILD", "Last child", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
         edge(open, child);
 
-        assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(command(open,
-                List.of(remove(open, child, 0)), Map.of(child, 0L))))
-                .isInstanceOf(CatalogCommandValidationException.class);
-        assertThat(edgeExists(open, child)).isTrue();
+        catalogCommands.updateIngredientConcept(command(open,
+                List.of(remove(open, child, 0)), Map.of(child, 0L)));
+        assertThat(edgeExists(open, child)).isFalse();
     }
 
     @Test
@@ -255,6 +256,118 @@ class CatalogRefinementIntegrationTest {
         assertThat(auditCount()).isEqualTo(2);
     }
 
+    @Test
+    void rejectsRoleRemovalThatWouldMakeAnExistingDirectEdgeRoleDisjointWithoutPartialWrites() {
+        long parent = concept("ROLE_PARENT", "Role parent", "OPEN", true, false, "ANIMAL_PROTEIN");
+        long child = concept("ROLE_CHILD", "Role child", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
+        assignRole(parent, "VEGETABLE");
+        edge(parent, child);
+
+        assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(metadataCommand(parent, metadata("VEGETABLE"))))
+                .isInstanceOf(CatalogCommandValidationException.class);
+
+        assertThat(roleCodes(parent)).containsExactlyInAnyOrder("ANIMAL_PROTEIN", "VEGETABLE");
+        assertThat(edgeExists(parent, child)).isTrue();
+        assertThat(version(parent)).isZero();
+        assertThat(auditCount()).isZero();
+    }
+
+    @Test
+    void acceptsCombinedRoleAndRelationSaveAgainstTheResultingGraph() {
+        long parent = concept("COMBINED_PARENT", "Combined parent", "OPEN", true, false, "ANIMAL_PROTEIN");
+        long child = concept("COMBINED_CHILD", "Combined child", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
+        assignRole(parent, "VEGETABLE");
+        edge(parent, child);
+
+        CatalogQueries.CatalogConceptDetail detail = catalogQueries.findConcept(parent).orElseThrow();
+        catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
+                parent, detail.version(), detail.displayName(), detail.active(), detail.randomDrawEnabled(),
+                detail.challengeSpecificity(), detail.baseDrawWeight(), detail.noveltyLevel(), detail.curatorNote(),
+                ACTOR, false, List.of(remove(parent, child, version(child))), Map.of(child, version(child)), false,
+                metadata("VEGETABLE")
+        ));
+
+        assertThat(edgeExists(parent, child)).isFalse();
+        assertThat(roleCodes(parent)).containsExactly("VEGETABLE");
+        assertThat(version(parent)).isEqualTo(1);
+        assertThat(version(child)).isEqualTo(1);
+    }
+
+    @Test
+    void serializesParallelDisjointRoleChangesBeforeTheyCanCommitAnInvalidEdge() throws Exception {
+        long parent = concept("ROLE_SKEW_PARENT", "Role skew parent", "OPEN", true, false, "ANIMAL_PROTEIN");
+        long child = concept("ROLE_SKEW_CHILD", "Role skew child", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
+        assignRole(parent, "VEGETABLE");
+        assignRole(child, "VEGETABLE");
+        edge(parent, child);
+
+        List<Object> outcomes = concurrently(
+                () -> capture(() -> catalogCommands.updateIngredientConcept(metadataCommand(parent, metadata("VEGETABLE")))),
+                () -> capture(() -> catalogCommands.updateIngredientConcept(metadataCommand(child, metadata("ANIMAL_PROTEIN"))))
+        );
+
+        assertThat(outcomes).anyMatch(CatalogCommands.CatalogCommandResult.class::isInstance);
+        assertThat(outcomes).anyMatch(CatalogCommandValidationException.class::isInstance);
+        assertThat(intersection(roleCodes(parent), roleCodes(child))).isNotEmpty();
+    }
+
+    @Test
+    void serializesParallelSpecificityChangesBeforeTheyCanInvertAnExistingEdge() throws Exception {
+        long parent = concept("SPECIFICITY_SKEW_PARENT", "Specificity skew parent", "OPEN", true, false, "ANIMAL_PROTEIN");
+        long child = concept("SPECIFICITY_SKEW_CHILD", "Specificity skew child", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
+        edge(parent, child);
+
+        List<Object> outcomes = concurrently(
+                () -> capture(() -> catalogCommands.updateIngredientConcept(commandWithSpecificity(parent, "SPECIFIC"))),
+                () -> capture(() -> catalogCommands.updateIngredientConcept(commandWithSpecificity(child, "OPEN")))
+        );
+
+        assertThat(outcomes).anyMatch(CatalogCommands.CatalogCommandResult.class::isInstance);
+        assertThat(outcomes).anyMatch(CatalogCommandValidationException.class::isInstance);
+        assertThat(jdbcTemplate.queryForObject("""
+                select not (parent.challenge_specificity = 'SPECIFIC' and child.challenge_specificity = 'OPEN')
+                from ingredient_refinement edge
+                join ingredient_concept parent on parent.id = edge.parent_concept_id
+                join ingredient_concept child on child.id = edge.child_concept_id
+                where edge.parent_concept_id = ? and edge.child_concept_id = ?
+                """, Boolean.class, parent, child)).isTrue();
+    }
+
+    @Test
+    void serializesARoleChangeWithAnOverlappingRelationWrite() throws Exception {
+        long parent = concept("ROLE_RELATION_PARENT", "Role relation parent", "OPEN", true, false, "ANIMAL_PROTEIN");
+        long child = concept("ROLE_RELATION_CHILD", "Role relation child", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
+
+        List<Object> outcomes = concurrently(
+                () -> capture(() -> catalogCommands.updateIngredientConcept(metadataCommand(parent, metadata("VEGETABLE")))),
+                () -> capture(() -> catalogCommands.updateIngredientConcept(
+                        command(child, List.of(add(parent, child, 0)), Map.of(parent, 0L))))
+        );
+
+        assertThat(outcomes).anyMatch(CatalogCommands.CatalogCommandResult.class::isInstance);
+        assertThat(outcomes).anyMatch(outcome -> outcome instanceof CatalogCommandValidationException
+                || outcome instanceof CatalogVersionConflictException);
+        assertThat(edgeExists(parent, child) && intersection(roleCodes(parent), roleCodes(child)).isEmpty()).isFalse();
+    }
+
+    @Test
+    void serializesASpecificityChangeWithAnOverlappingRelationWrite() throws Exception {
+        long parent = concept("SPEC_RELATION_PARENT", "Specificity relation parent", "OPEN", true, false, "ANIMAL_PROTEIN");
+        long child = concept("SPEC_RELATION_CHILD", "Specificity relation child", "OPEN", true, false, "ANIMAL_PROTEIN");
+
+        List<Object> outcomes = concurrently(
+                () -> capture(() -> catalogCommands.updateIngredientConcept(commandWithSpecificity(parent, "SPECIFIC"))),
+                () -> capture(() -> catalogCommands.updateIngredientConcept(
+                        command(child, List.of(add(parent, child, 0)), Map.of(parent, 0L))))
+        );
+
+        assertThat(outcomes).anyMatch(CatalogCommands.CatalogCommandResult.class::isInstance);
+        assertThat(outcomes).anyMatch(outcome -> outcome instanceof CatalogCommandValidationException
+                || outcome instanceof CatalogVersionConflictException);
+        assertThat(edgeExists(parent, child) && "SPECIFIC".equals(specificity(parent))
+                && "OPEN".equals(specificity(child))).isFalse();
+    }
+
     private List<Object> concurrently(Callable<Object> first, Callable<Object> second) throws Exception {
         CyclicBarrier barrier = new CyclicBarrier(2);
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -287,6 +400,25 @@ class CatalogRefinementIntegrationTest {
                 conceptId, detail.version(), detail.displayName(), detail.active(), detail.randomDrawEnabled(),
                 detail.challengeSpecificity(), detail.baseDrawWeight(), detail.noveltyLevel(), detail.curatorNote(),
                 ACTOR, false, changes, relatedVersions, false);
+    }
+
+    private UpdateIngredientConceptCommand metadataCommand(long conceptId, CatalogMetadata metadata) {
+        CatalogQueries.CatalogConceptDetail detail = catalogQueries.findConcept(conceptId).orElseThrow();
+        return new UpdateIngredientConceptCommand(
+                conceptId, detail.version(), detail.displayName(), detail.active(), detail.randomDrawEnabled(),
+                detail.challengeSpecificity(), detail.baseDrawWeight(), detail.noveltyLevel(), detail.curatorNote(),
+                ACTOR, false, List.of(), Map.of(), false, metadata);
+    }
+
+    private UpdateIngredientConceptCommand commandWithSpecificity(long conceptId, String specificity) {
+        CatalogQueries.CatalogConceptDetail detail = catalogQueries.findConcept(conceptId).orElseThrow();
+        return new UpdateIngredientConceptCommand(
+                conceptId, detail.version(), detail.displayName(), detail.active(), detail.randomDrawEnabled(),
+                specificity, detail.baseDrawWeight(), detail.noveltyLevel(), detail.curatorNote(), ACTOR, false);
+    }
+
+    private static CatalogMetadata metadata(String... roles) {
+        return new CatalogMetadata(Set.of(roles), Set.of(), Map.of(), Map.of(), Map.of());
     }
 
     private static UpdateIngredientConceptCommand withInactiveAcknowledgement(UpdateIngredientConceptCommand command) {
@@ -325,6 +457,13 @@ class CatalogRefinementIntegrationTest {
                 """, conceptId);
     }
 
+    private void assignRole(long conceptId, String role) {
+        jdbcTemplate.update("""
+                insert into ingredient_functional_role (ingredient_concept_id, functional_role_id)
+                select ?, id from functional_role where code = ?
+                """, conceptId, role);
+    }
+
     private void edge(long parent, long child) {
         jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", parent, child);
     }
@@ -339,6 +478,25 @@ class CatalogRefinementIntegrationTest {
 
     private long version(long conceptId) {
         return jdbcTemplate.queryForObject("select version from ingredient_concept where id = ?", Long.class, conceptId);
+    }
+
+    private String specificity(long conceptId) {
+        return jdbcTemplate.queryForObject(
+                "select challenge_specificity from ingredient_concept where id = ?", String.class, conceptId);
+    }
+
+    private Set<String> roleCodes(long conceptId) {
+        return Set.copyOf(jdbcTemplate.queryForList("""
+                select fr.code from ingredient_functional_role ifr
+                join functional_role fr on fr.id = ifr.functional_role_id
+                where ifr.ingredient_concept_id = ?
+                """, String.class, conceptId));
+    }
+
+    private static Set<String> intersection(Set<String> first, Set<String> second) {
+        Set<String> result = new java.util.HashSet<>(first);
+        result.retainAll(second);
+        return result;
     }
 
     private int auditCount() {
