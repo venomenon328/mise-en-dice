@@ -91,12 +91,15 @@ class CatalogExclusionCommandServiceIntegrationTest {
                 CatalogExclusionQueries.CatalogExclusionTarget::includeRefinements).containsExactly(tuple(secondTarget, false, false));
         assertThat(jdbcTemplate.queryForObject("select count(*) from exclusion_rule_target where exclusion_rule_id = ?", Integer.class,
                 created.exclusionRuleId())).isEqualTo(1);
-        assertThat(auditLog.findById(latestAuditId()).orElseThrow().beforeState().values()).containsKeys("targets", "code", "active");
-        assertThat(auditLog.findById(latestAuditId()).orElseThrow().afterState().values()).containsKeys("targets", "code", "active");
+        var audit = auditLog.findById(latestAuditId()).orElseThrow();
+        assertThat(audit.beforeState().values()).containsKeys("targets", "code", "active");
+        assertThat(audit.afterState().values()).containsKeys("targets", "code", "active");
+        assertThat(audit.beforeState().values().get("targets").toString()).contains("includeRefinements=true");
+        assertThat(audit.afterState().values().get("targets").toString()).contains("includeRefinements=false");
     }
 
     @Test
-    void allowsTargetlessInactiveRulesButNotActiveRulesAndRejectsStaleVersions() {
+    void allowsTargetlessInactiveRulesButNotActiveRulesAndRejectsStaleVersionsWithoutAudit() {
         var inactive = exclusionCommands.createExclusionRule(new CreateExclusionRuleCommand(
                 PREFIX + "INACTIVE", "Issue thirty inaktiv", false, BigDecimal.ONE, null, List.of(), ACTOR));
         assertThat(exclusionQueries.findExclusionRule(inactive.exclusionRuleId()).orElseThrow().targets()).isEmpty();
@@ -107,9 +110,37 @@ class CatalogExclusionCommandServiceIntegrationTest {
 
         exclusionCommands.updateExclusionRule(new UpdateExclusionRuleCommand(inactive.exclusionRuleId(), 0,
                 "Issue thirty inaktiv geändert", false, BigDecimal.ONE, null, List.of(), ACTOR));
+        int auditCountBeforeStaleWrite = auditCount();
         assertThatThrownBy(() -> exclusionCommands.updateExclusionRule(new UpdateExclusionRuleCommand(inactive.exclusionRuleId(), 0,
                 "veraltet", false, BigDecimal.ONE, null, List.of(), ACTOR)))
                 .isInstanceOf(CatalogExclusionVersionConflictException.class);
+        assertThat(auditCount()).isEqualTo(auditCountBeforeStaleWrite);
+        assertThat(exclusionQueries.findExclusionRule(inactive.exclusionRuleId()).orElseThrow().displayText())
+                .isEqualTo("Issue thirty inaktiv geändert");
+    }
+
+    @Test
+    void rejectsDuplicateAndUnknownTargetsAndClassifiesCaseInsensitiveDisplayUniqueness() {
+        long target = insertTarget("VALIDATION", true);
+        assertThatThrownBy(() -> new CreateExclusionRuleCommand(
+                PREFIX + "DUP_TARGET", "Issue thirty duplicate target", true, BigDecimal.ONE, null,
+                List.of(new ExclusionTarget(target, false), new ExclusionTarget(target, true)), ACTOR))
+                .isInstanceOf(CatalogCommandValidationException.class);
+
+        assertThatThrownBy(() -> exclusionCommands.createExclusionRule(new CreateExclusionRuleCommand(
+                PREFIX + "UNKNOWN_TARGET", "Issue thirty unknown target", true, BigDecimal.ONE, null,
+                List.of(new ExclusionTarget(Long.MAX_VALUE, false)), ACTOR)))
+                .isInstanceOf(CatalogCommandValidationException.class);
+
+        exclusionCommands.createExclusionRule(new CreateExclusionRuleCommand(
+                PREFIX + "DISPLAY_A", "Issue Thirty Case Unique", true, BigDecimal.ONE, null,
+                List.of(new ExclusionTarget(target, false)), ACTOR));
+        assertThatThrownBy(() -> exclusionCommands.createExclusionRule(new CreateExclusionRuleCommand(
+                PREFIX + "DISPLAY_B", "issue thirty case unique", true, BigDecimal.ONE, null,
+                List.of(new ExclusionTarget(target, false)), ACTOR)))
+                .isInstanceOf(CatalogCommandValidationException.class)
+                .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
+                        .containsKey("displayText"));
     }
 
     @Test
@@ -145,6 +176,10 @@ class CatalogExclusionCommandServiceIntegrationTest {
 
     private long latestAuditId() {
         return jdbcTemplate.queryForObject("select id from catalog_audit_entry where actor_key = ? order by id desc limit 1", Long.class, ACTOR);
+    }
+
+    private int auditCount() {
+        return jdbcTemplate.queryForObject("select count(*) from catalog_audit_entry where actor_key = ?", Integer.class, ACTOR);
     }
 
     private static org.assertj.core.groups.Tuple tuple(Object... values) {
