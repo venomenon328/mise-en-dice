@@ -316,7 +316,8 @@ class CatalogAdministrationController {
                 : wouldBeRedundant ? "bereits transitiv ableitbar"
                 : specificityInvalid ? "Spezifität nicht zulässig"
                 : roleMismatch ? "keine gemeinsame funktionale Rolle" : null;
-        return new RelationPickerItem(candidate, reason == null || specificityInvalid || roleMismatch, reason);
+        boolean structurallyBlocked = alreadyDirect || wouldCycle || wouldBeRedundant;
+        return new RelationPickerItem(candidate, !structurallyBlocked, reason);
     }
 
     private String renderFormFailure(
@@ -957,7 +958,12 @@ class CatalogAdministrationController {
         }
 
         public String viewUrl(CatalogView view) {
-            return url("/admin/catalog", view, 0, selectedConceptId, treeParentId);
+            CatalogState changed = new CatalogState(
+                    searchTerm, quickFilter, active, draw, specificity, roles, flags, georgiaAvailability,
+                    tobiasAvailability, novelty, sort, 0, pageSize, CatalogView.LIST,
+                    selectedConceptId, treeParentId
+            );
+            return changed.catalogUrl(0);
         }
 
         public String hierarchyUrl() {
