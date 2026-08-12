@@ -59,7 +59,7 @@ public class JdbcCatalogQueries implements CatalogQueries {
         List<ListItemRow> rows = jdbcTemplate.query(
                 """
                 select ic.id, ic.display_name, ic.code, ic.active, ic.random_draw_enabled,
-                       ic.challenge_specificity, ic.base_draw_weight, ic.novelty_level, ic.updated_at
+                       ic.challenge_specificity, ic.base_draw_weight, ic.novelty_level, ic.version, ic.updated_at
                 from ingredient_concept ic
                 """ + condition.whereClause() + " order by " + sortClause(criteria.sort()) + " limit ? offset ?",
                 this::mapListItemRow,
@@ -77,7 +77,7 @@ public class JdbcCatalogQueries implements CatalogQueries {
         List<CatalogListItem> items = rows.stream()
                 .map(row -> new CatalogListItem(
                         row.id(), row.displayName(), row.code(), row.active(), row.randomDrawEnabled(),
-                        row.challengeSpecificity(), row.baseDrawWeight(), row.noveltyLevel(), row.updatedAt(),
+                        row.challengeSpecificity(), row.baseDrawWeight(), row.noveltyLevel(), row.version(), row.updatedAt(),
                         roles.getOrDefault(row.id(), List.of()),
                         availability.getOrDefault(row.id(), Map.of()),
                         parents.getOrDefault(row.id(), List.of())
@@ -506,7 +506,8 @@ public class JdbcCatalogQueries implements CatalogQueries {
                 resultSet.getLong("id"), resultSet.getString("display_name"), resultSet.getString("code"),
                 resultSet.getBoolean("active"), resultSet.getBoolean("random_draw_enabled"),
                 resultSet.getString("challenge_specificity"), resultSet.getBigDecimal("base_draw_weight"),
-                (Integer) resultSet.getObject("novelty_level"), resultSet.getObject("updated_at", OffsetDateTime.class)
+                (Integer) resultSet.getObject("novelty_level"), resultSet.getLong("version"),
+                resultSet.getObject("updated_at", OffsetDateTime.class)
         );
     }
 
@@ -555,6 +556,7 @@ public class JdbcCatalogQueries implements CatalogQueries {
             String challengeSpecificity,
             BigDecimal baseDrawWeight,
             Integer noveltyLevel,
+            long version,
             OffsetDateTime updatedAt
     ) {
     }

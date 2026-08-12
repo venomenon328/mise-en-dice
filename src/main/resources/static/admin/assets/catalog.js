@@ -540,6 +540,109 @@
 (() => {
     "use strict";
 
+    function exclusionEditor() {
+        return document.querySelector("[data-exclusion-target-list]")?.closest("form");
+    }
+
+    function requestExclusionPicker(query) {
+        const form = exclusionEditor();
+        const picker = form?.querySelector("[data-exclusion-picker]");
+        const results = form?.querySelector("[data-exclusion-picker-results]");
+        if (!picker?.dataset.pickerUrl || !results || !window.htmx) {
+            return;
+        }
+        window.htmx.ajax("GET", `${picker.dataset.pickerUrl}?q=${encodeURIComponent(query || "")}`,
+            {target: results, swap: "innerHTML"});
+    }
+
+    function updateTargetValue(entry) {
+        const hidden = entry.querySelector("[data-exclusion-target-value]");
+        const refinements = entry.querySelector("[data-exclusion-refinements]");
+        if (hidden) {
+            hidden.value = `${entry.dataset.targetId}:${refinements?.checked === true}`;
+        }
+    }
+
+    function appendTarget(button) {
+        const form = exclusionEditor();
+        const list = form?.querySelector("[data-exclusion-target-list]");
+        const id = button.dataset.candidateId;
+        if (!form || !list || !id || list.querySelector(`[data-target-id="${id}"]`)) {
+            return;
+        }
+        list.querySelector("[data-empty-exclusion-targets]")?.remove();
+        const entry = document.createElement("li");
+        entry.dataset.exclusionTargetEntry = "true";
+        entry.dataset.targetId = id;
+        const hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.name = "target";
+        hidden.value = `${id}:false`;
+        hidden.dataset.exclusionTargetValue = "true";
+        const text = document.createElement("span");
+        const name = document.createElement("strong");
+        name.textContent = button.dataset.candidateName || "Zutat";
+        const code = document.createElement("code");
+        code.textContent = button.dataset.candidateCode || "";
+        const status = document.createElement("small");
+        status.textContent = button.dataset.candidateActive === "true" ? " aktiv" : " inaktiv";
+        text.append(name, document.createTextNode(" "), code, status);
+        const label = document.createElement("label");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.dataset.exclusionRefinements = "true";
+        label.append(checkbox, document.createTextNode(" bekannte Konkretisierungen dieses Ziels mit ausschließen"));
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "button button--secondary";
+        remove.dataset.removeExclusionTarget = "true";
+        remove.textContent = "Entfernen";
+        entry.append(hidden, text, label, remove);
+        list.append(entry);
+        form.dataset.dirty = "true";
+    }
+
+    let pickerTimer = null;
+    document.addEventListener("click", (event) => {
+        if (event.target.closest?.("[data-open-exclusion-picker]")) {
+            const form = exclusionEditor();
+            const picker = form?.querySelector("[data-exclusion-picker]");
+            if (!picker) return;
+            picker.hidden = false;
+            const input = picker.querySelector("[data-exclusion-picker-search]");
+            input?.focus();
+            requestExclusionPicker(input?.value || "");
+            return;
+        }
+        const add = event.target.closest?.("[data-add-exclusion-target]");
+        if (add) {
+            appendTarget(add);
+            return;
+        }
+        const remove = event.target.closest?.("[data-remove-exclusion-target]");
+        if (remove) {
+            const entry = remove.closest("[data-exclusion-target-entry]");
+            const form = exclusionEditor();
+            entry?.remove();
+            if (form) form.dataset.dirty = "true";
+        }
+    });
+    document.addEventListener("change", (event) => {
+        const checkbox = event.target.closest?.("[data-exclusion-refinements]");
+        if (!checkbox) return;
+        updateTargetValue(checkbox.closest("[data-exclusion-target-entry]"));
+    });
+    document.addEventListener("input", (event) => {
+        const input = event.target.closest?.("[data-exclusion-picker-search]");
+        if (!input) return;
+        window.clearTimeout(pickerTimer);
+        pickerTimer = window.setTimeout(() => requestExclusionPicker(input.value), 180);
+    });
+})();
+
+(() => {
+    "use strict";
+
     function selectedConceptIdFromLocation() {
         const selected = new URLSearchParams(window.location.search).get("selected");
         if (selected && /^\d+$/.test(selected)) {

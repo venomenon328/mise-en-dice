@@ -235,7 +235,7 @@ Die Stammdaten `functional_role`, `culinary_flag`, `culinary_dimension` und `par
 - fehlende Saisonwerte bleiben semantisch Faktor 1.0,
 - Änderungen sind versionsgesichert und auditiert.
 
-## Phase 8: Ausschlüsse, Bulk und Auditoberfläche
+## Phase 8: Ausschlüsse, Bulk und Auditoberfläche (abgeschlossen mit Issue #30)
 
 Dieses Paket schließt die vollständige Katalogverwaltung ab.
 

@@ -572,6 +572,8 @@ Davon inaktiv: 3
 
 Die Bulk-Operation ist atomar. Scheitert ein Element fachlich, wird die gesamte Operation verworfen und die problematischen Einträge werden benannt.
 
+Die Vorschau und die Ausführung enthalten für jede explizit ausgewählte Zeile die geladene Aggregatversion. Die Ausführung sperrt alle ausgewählten Konzepte in deterministischer ID-Reihenfolge und prüft sämtliche Versionen, bevor sie etwas ändert; ein Konflikt verwirft die gesamte Aktion. Bereits im Zielzustand befindliche Konzepte werden weder versioniert noch auditiert. Rollen-Bulkaktionen verwenden vor jeder Graphprüfung denselben PostgreSQL-Transaktionslock wie Rollen-, Spezifitäts- und Beziehungsänderungen im Einzelsave. Die Prüfung betrachtet den gemeinsamen resultierenden Graphen, nicht einzelne Zeilen nacheinander.
+
 ## 13. Ausschlussregeln
 
 `Ausschlüsse` ist ein eigener Hauptbereich, verwendet aber dasselbe Grundmuster aus Liste und Detailansicht.

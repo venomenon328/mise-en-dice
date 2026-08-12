@@ -6,7 +6,11 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 /** Supplies the configured administration display name to the catalog web shell. */
-@ControllerAdvice(assignableTypes = CatalogAdministrationController.class)
+@ControllerAdvice(assignableTypes = {
+        CatalogAdministrationController.class,
+        CatalogExclusionAdministrationController.class,
+        CatalogAuditAdministrationController.class
+})
 @ConditionalOnProperty(prefix = "mise-en-dice.administration", name = "enabled", havingValue = "true")
 class AdministrationIdentityModelAdvice {
 

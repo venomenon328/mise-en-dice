@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="de" xmlns:th="https://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ausschlüsse · Mise en Dice</title>
+    <link rel="stylesheet" th:href="@{/admin/assets/catalog.css}">
+    <script defer src="/webjars/htmx.org/2.0.4/dist/htmx.min.js"></script>
+    <script defer th:src="@{/admin/assets/catalog.js}"></script>
+</head>
+<body>
+<header class="site-header">
+    <a class="brand" th:href="@{/admin/catalog}"><span>Mise en <strong>Dice</strong></span></a>
+    <nav class="main-nav" aria-label="Administration">
+        <a class="main-nav-link" th:href="@{/admin/catalog}">Katalog</a>
+        <a class="main-nav-link is-active" aria-current="page" th:href="@{/admin/exclusions}">Ausschlüsse</a>
+        <a class="main-nav-link" th:href="@{/admin/audit}">Änderungen</a>
+    </nav>
+    <div class="account"><span class="account-name" th:text="${administratorDisplayName}">Administration</span><form th:action="@{/logout}" method="post"><button class="button button--ghost button--small" type="submit">Abmelden</button></form></div>
+</header>
+<main class="catalog-shell">
+    <section class="catalog-navigation" aria-label="Ausschlussnavigation">
+        <div class="section-title"><div><p class="eyebrow">Kuratierte Regeln</p><h1>Ausschlüsse</h1></div><a class="button button--primary button--small" th:href="${state.newUrl()}" th:hx-get="${state.newUrl()}" hx-target="#exclusion-detail" hx-swap="outerHTML" hx-push-url="true">+ Neue Ausschlussregel</a></div>
+        <form class="catalog-filters" method="get" th:action="@{/admin/exclusions}">
+            <input th:if="${state.selectedExclusionRuleId != null}" type="hidden" name="selected" th:value="${state.selectedExclusionRuleId}">
+            <div class="advanced-filter-grid">
+                <fieldset><legend>Status</legend><label><input type="radio" name="active" value="" th:checked="${state.active == null}"> alle</label><label><input type="radio" name="active" value="true" th:checked="${state.active == true}"> aktiv</label><label><input type="radio" name="active" value="false" th:checked="${state.active == false}"> inaktiv</label></fieldset>
+                <fieldset><legend>Konkretisierungen</legend><label><input type="radio" name="refinements" value="" th:checked="${state.includeRefinements == null}"> alle</label><label><input type="radio" name="refinements" value="true" th:checked="${state.includeRefinements == true}"> vorhanden</label><label><input type="radio" name="refinements" value="false" th:checked="${state.includeRefinements == false}"> nicht vorhanden</label></fieldset>
+                <label>Ziel-Konzept-ID <input type="number" min="1" name="target" th:value="${state.targetConceptId}"></label>
+            </div>
+            <button class="button button--primary" type="submit">Filter anwenden</button>
+        </form>
+        <ol class="catalog-list" data-testid="exclusion-list">
+            <li th:each="item : ${exclusionResults.items}" th:classappend="${state.selectedExclusionRuleId == item.id} ? ' selected'">
+                <div class="list-entry-heading"><a th:href="${state.detailUrl(item.id)}" th:hx-get="${state.detailUrl(item.id)}" hx-target="#exclusion-detail" hx-swap="outerHTML" hx-push-url="true"><strong th:text="${item.displayText}">keine Kokosmilch</strong><code th:text="${item.code}">NO_COCONUT_MILK</code></a><span class="status-badge" th:classappend="${item.active} ? ' status-badge--positive' : ' status-badge--muted'" th:text="${item.active ? 'aktiv' : 'inaktiv'}">aktiv</span></div>
+                <div class="list-entry-meta"><span>Gewicht: <strong th:text="${item.baseDrawWeight}">1.0</strong></span><span th:text="|${item.targetCount} Ziele|">1 Ziel</span><span th:text="|zuletzt geändert ${#temporals.format(item.updatedAt, 'dd.MM.yyyy HH:mm')}|">zuletzt geändert</span></div>
+            </li>
+            <li th:if="${exclusionResults.items.isEmpty()}" class="empty-state"><h2>Keine Ausschlussregeln gefunden</h2><p>Die aktuellen Filter liefern keine Regel.</p></li>
+        </ol>
+        <nav th:if="${exclusionResults.pageCount > 1}" class="pagination"><a th:if="${exclusionResults.page > 0}" class="button button--secondary button--small" th:href="${state.listUrl(exclusionResults.page - 1)}">Zurück</a><span th:text="|Seite ${exclusionResults.page + 1} von ${exclusionResults.pageCount}|">Seite</span><a th:if="${exclusionResults.page + 1 < exclusionResults.pageCount}" class="button button--secondary button--small" th:href="${state.listUrl(exclusionResults.page + 1)}">Weiter</a></nav>
+    </section>
+    <section class="catalog-detail-column" aria-live="polite">
+        <section th:if="${exclusionForm != null}" th:replace="~{admin/fragments/exclusion :: form}"></section>
+        <section th:if="${exclusionForm == null and missingExclusionRuleId != null}" th:replace="~{admin/fragments/exclusion :: missing}"></section>
+        <section th:if="${exclusionForm == null and exclusionDetail != null}" th:replace="~{admin/fragments/exclusion :: panel}"></section>
+        <section th:if="${exclusionForm == null and exclusionDetail == null and missingExclusionRuleId == null}" id="exclusion-detail" class="detail-empty"><h2>Ausschlussregel auswählen</h2><p>Wähle links eine Regel aus oder lege eine neue an.</p></section>
+    </section>
+</main>
+</body>
+</html>

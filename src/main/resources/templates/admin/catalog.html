@@ -18,8 +18,8 @@
     </a>
     <nav class="main-nav" aria-label="Administration">
         <a class="main-nav-link is-active" aria-current="page" th:href="@{/admin/catalog}">Katalog</a>
-        <span class="main-nav-link is-disabled" aria-disabled="true">Ausschlüsse <small>später</small></span>
-        <span class="main-nav-link is-disabled" aria-disabled="true">Änderungen <small>später</small></span>
+        <a class="main-nav-link" th:href="@{/admin/exclusions}">Ausschlüsse</a>
+        <a class="main-nav-link" th:href="@{/admin/audit}">Änderungen</a>
     </nav>
     <div class="account">
         <span class="account-name" th:text="${administratorDisplayName}">Administration</span>
@@ -176,9 +176,26 @@
                 <p>Die Kombination aus Suche und Filtern liefert derzeit keine Treffer.</p>
                 <a class="button button--secondary" th:href="${state.resetUrl()}">Filter zurücksetzen</a>
             </div>
-            <ol th:unless="${catalogResults.items.isEmpty()}" class="catalog-list">
+            <form th:unless="${catalogResults.items.isEmpty()}" class="bulk-selection-form" method="post"
+                  th:action="@{/admin/catalog/bulk/preview}" hx-post="/admin/catalog/bulk/preview"
+                  hx-target="#bulk-preview" hx-swap="outerHTML" data-testid="bulk-selection-form">
+                <div class="bulk-controls">
+                    <strong>Ausgewählte Konzepte bearbeiten</strong>
+                    <label>Aktion <select name="action" required>
+                        <option value="">Aktion wählen</option><option value="ACTIVATE">aktivieren</option>
+                        <option value="DEACTIVATE">deaktivieren</option><option value="ENABLE_RANDOM_DRAW">Ziehbarkeit aktivieren</option>
+                        <option value="DISABLE_RANDOM_DRAW">Ziehbarkeit deaktivieren</option><option value="ADD_FUNCTIONAL_ROLE">funktionale Rolle hinzufügen</option>
+                        <option value="REMOVE_FUNCTIONAL_ROLE">funktionale Rolle entfernen</option><option value="SET_GEORGIA_AVAILABILITY">Beschaffbarkeit Georgia setzen</option>
+                        <option value="SET_TOBIAS_AVAILABILITY">Beschaffbarkeit Tobias setzen</option>
+                    </select></label>
+                    <label>Rolle <select name="functionalRole"><option value="">nur für Rollenaktionen</option><option th:each="role : ${filterOptions.functionalRoles}" th:value="${role.code}" th:text="${role.displayName}">Rolle</option></select></label>
+                    <label>Beschaffbarkeit <select name="availability"><option value="">nur für Beschaffbarkeit</option><option th:each="level : ${availabilityLevels}" th:value="${level.name()}" th:text="${availabilityLabels.get(level)}">einfach</option></select></label>
+                    <button class="button button--secondary" type="submit">Vorschau anzeigen</button>
+                </div>
+            <ol class="catalog-list">
                 <li th:each="item : ${catalogResults.items}" th:classappend="${state.selectedConceptId == item.id} ? ' selected'">
                     <div class="list-entry-heading">
+                        <label class="bulk-selection"><input type="checkbox" name="selection" th:value="|${item.id}:${item.version}|" th:aria-label="|${item.displayName} für Bulk-Aktion auswählen|"></label>
                         <a th:href="${state.detailUrl(item.id)}" th:hx-get="${state.detailUrl(item.id)}"
                            hx-target="#catalog-detail" hx-swap="outerHTML" hx-push-url="true">
                             <strong th:text="${item.displayName}">Kabeljau</strong>
@@ -220,6 +237,8 @@
                    th:if="${catalogResults.page + 1 < catalogResults.pageCount}"
                    th:href="${state.catalogUrl(catalogResults.page + 1)}">Weiter</a>
             </nav>
+            </form>
+            <section id="bulk-preview"></section>
         </section>
     </section>
 

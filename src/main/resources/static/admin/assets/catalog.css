@@ -1719,6 +1719,64 @@ h4 {
     color: var(--muted);
 }
 
+.bulk-selection-form {
+    display: grid;
+    gap: .85rem;
+}
+
+.bulk-controls,
+.audit-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: .65rem;
+    padding: .75rem;
+    border: 1px solid var(--line);
+    border-radius: .65rem;
+    background: var(--surface-raised, #fffaf3);
+}
+
+.bulk-controls strong {
+    flex: 1 0 100%;
+}
+
+.bulk-controls label,
+.audit-filters label {
+    display: grid;
+    gap: .25rem;
+    color: var(--ink-soft);
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.bulk-selection {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.4rem;
+}
+
+.bulk-preview,
+.audit-diff {
+    margin-top: 1rem;
+    padding: .85rem;
+    border: 1px solid var(--line);
+    border-radius: .65rem;
+    background: var(--surface-raised, #fffaf3);
+}
+
+.audit-diff {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.audit-diff th,
+.audit-diff td {
+    padding: .5rem;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
