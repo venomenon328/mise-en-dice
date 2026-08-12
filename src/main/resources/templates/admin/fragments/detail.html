@@ -208,7 +208,7 @@
         <p class="eyebrow">Gleichzeitige Änderung</p>
         <h2>Dein Stand wurde nicht gespeichert</h2>
         <p th:if="${conflictingConceptId != null and conflictingConceptId != form.conceptId}" class="field-error"
-           th:text="|Eine beteiligte Zutat (ID ${conflictingConceptId}) wurde zwischenzeitlich geändert. Prüfe die vorgemerkte Beziehung erneut.|">
+           th:text="|„${conflictingConceptName}“ wurde zwischenzeitlich geändert. Prüfe die vorgemerkte Beziehung erneut.|">
             Eine beteiligte Zutat wurde zwischenzeitlich geändert.
         </p>
         <p>Das Zutatenkonzept wurde seit dem Laden geändert. Nichts wurde überschrieben.</p>
@@ -224,6 +224,12 @@
                     <div th:classappend="${form.noveltyLevel != (currentDetail.noveltyLevel == null ? '' : currentDetail.noveltyLevel.toString())} ? ' is-different'"><dt>Ungewöhnlichkeit</dt><dd th:text="${form.noveltyLevel.isEmpty() ? 'nicht gepflegt' : form.noveltyLevel}">nicht gepflegt</dd></div>
                     <div th:classappend="${form.curatorNote != (currentDetail.curatorNote ?: '')} ? ' is-different'"><dt>Kuratornotiz</dt><dd th:text="${form.curatorNote.isEmpty() ? 'keine' : form.curatorNote}">keine</dd></div>
                 </dl>
+                <div th:if="${pendingRelationSummaries != null and !pendingRelationSummaries.isEmpty()}" class="conflict-relations" data-testid="pending-relation-conflict-summary">
+                    <h4>Vorgemerkte Beziehungen</h4>
+                    <ul>
+                        <li th:each="summary : ${pendingRelationSummaries}" th:text="${summary}">Oberbegriff hinzufügen</li>
+                    </ul>
+                </div>
             </section>
             <section>
                 <h3>Aktueller Datenbankstand</h3>
@@ -252,7 +258,6 @@
                 <input type="hidden" name="curatorNote" th:value="${form.curatorNote}">
                 <input type="hidden" name="version" th:value="${currentDetail.version}">
                 <input th:each="pending : ${form.pendingRefinements}" type="hidden" name="relationChange" th:value="${pending.encoded()}">
-                <input th:if="${form.inactiveRelationsAcknowledged}" type="hidden" name="inactiveRelationsAcknowledged" value="true">
                 <input type="hidden" name="continueEditing" value="true">
                 <button class="button button--primary" type="submit">Mit aktuellem Stand weiterbearbeiten</button>
             </form>
