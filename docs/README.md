@@ -9,6 +9,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
 - [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md): verbindliche Bedien-, Interaktions-, Locking-, Audit- und Sicherheitsentscheidungen für die private Katalogverwaltung
 - [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md): verbindliche Regeln für Gewichtung, harte Kandidatengültigkeit, Scores, Diversität, Determinismus, Replay und Simulation
+- [`CANDIDATE_GENERATOR_9C2_REVIEW_CLARIFICATION.md`](CANDIDATE_GENERATOR_9C2_REVIEW_CLARIFICATION.md): verbindliche Nachschärfung aus dem Review von PR #49 zu tatsächlichen Neuigkeitsquoten und zur ausschließlich expliziten großen Baselinesimulation; ersetzt für Issue #47 widersprechende ältere 9C2-Formulierungen
 - [`CANDIDATE_GENERATOR_DATA_READINESS.md`](CANDIDATE_GENERATOR_DATA_READINESS.md): gemessene Metadatenabdeckung und Gate für den Generatorstart
 - [`analysis/candidate-generator-data-readiness.sql`](analysis/candidate-generator-data-readiness.sql): reproduzierbare PostgreSQL-Auswertung des aktiven Ziehpools
 
@@ -33,4 +34,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Die vollständige Katalogverwaltung aus Phase 8 ist umgesetzt. Phase 9A spezifiziert gegenwärtig den Kandidatengenerator und sein Datenreife-Gate. Nach deren Abnahme folgt Phase 9B mit dem rein fachlichen, seedbaren Einzelkandidaten-Kern; OpenAI- und Discord-Adapter bleiben weiterhin nachgelagert.
+Phase 9A, 9B und 9C1 sind abgeschlossen. Phase 9C2 / Issue #47 implementiert derzeit die diverse, reproduzierbare Zwölfer-Auswahl auf dem bereits deterministischen Reservoir. Danach folgt Phase 9D / Issue #36 mit Persistenz, historischer Snapshotmaterialisierung, Lifecycle, Replay, Konkurrenz und Restart. OpenAI- und Discord-Adapter bleiben weiterhin nachgelagert.
