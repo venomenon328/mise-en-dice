@@ -5,10 +5,12 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationExc
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogConceptNotFoundException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogDrawWeightWarningException;
+import io.github.venomenon328.miseendice.catalog.api.CatalogRelationWarningException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogVersionConflictException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvailability;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvailabilityFilter;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogConceptDetail;
+import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogRelationCandidate;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogQuickFilter;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogNoveltyFilter;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogSearchCriteria;
@@ -38,7 +40,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
 
-/** Spring MVC adapter for catalog navigation and the Phase-5 base editing flows. */
+/** Spring MVC adapter for catalog navigation and the current catalog editing flows. */
 @Controller
 @RequestMapping("/admin")
 @ConditionalOnProperty(prefix = "mise-en-dice.administration", name = "enabled", havingValue = "true")
@@ -177,7 +179,9 @@ class CatalogAdministrationController {
             @RequestParam(required = false) String noveltyLevel,
             @RequestParam(required = false) String curatorNote,
             @RequestParam(required = false) String version,
+            @RequestParam(name = "relationChange", required = false) List<String> relationChanges,
             @RequestParam(defaultValue = "false") boolean weightWarningsAcknowledged,
+            @RequestParam(defaultValue = "false") boolean inactiveRelationsAcknowledged,
             @RequestParam(defaultValue = "false") boolean continueEditing,
             Authentication authentication,
             Model model,
@@ -185,9 +189,22 @@ class CatalogAdministrationController {
             RedirectAttributes redirectAttributes
     ) {
         CatalogState state = CatalogState.from(parameters, conceptId);
+        List<PendingRefinement> pendingRefinements;
+        try {
+            pendingRefinements = PendingRefinement.parseAll(relationChanges);
+        } catch (CatalogCommandValidationException exception) {
+            CatalogConceptForm malformedForm = CatalogConceptForm.forEdit(
+                    conceptId, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
+                    noveltyLevel, curatorNote, version, weightWarningsAcknowledged,
+                    inactiveRelationsAcknowledged, List.of()
+            );
+            return renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), malformedForm,
+                    exception.fieldErrors(), List.of(), authentication, model, response);
+        }
         CatalogConceptForm form = CatalogConceptForm.forEdit(
                 conceptId, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
-                noveltyLevel, curatorNote, version, weightWarningsAcknowledged
+                noveltyLevel, curatorNote, version, weightWarningsAcknowledged,
+                inactiveRelationsAcknowledged, pendingRefinements
         );
         if (parameters.containsKey("code")) {
             return renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), form,
@@ -201,7 +218,7 @@ class CatalogAdministrationController {
             }
             model.addAttribute("state", state);
             model.addAttribute("detail", current.get());
-            model.addAttribute("form", form.withVersion(current.get().version()));
+            model.addAttribute("form", form.withCurrentVersions(catalogQueries, current.get().version()));
             model.addAttribute("formMode", FormMode.EDIT);
             populateCatalogPage(state, authentication, model, response);
             return "admin/catalog";
@@ -213,11 +230,16 @@ class CatalogAdministrationController {
         } catch (CatalogDrawWeightWarningException exception) {
             return renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), form,
                     Map.of(), exception.warnings(), authentication, model, response);
+        } catch (CatalogRelationWarningException exception) {
+            String view = renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), form,
+                    Map.of(), List.of(), authentication, model, response);
+            model.addAttribute("relationWarnings", exception.warnings());
+            return view;
         } catch (CatalogCommandValidationException exception) {
             return renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), form,
                     exception.fieldErrors(), List.of(), authentication, model, response);
         } catch (CatalogVersionConflictException exception) {
-            return renderConflict(state, form, authentication, model, response, conceptId);
+            return renderConflict(state, form, authentication, model, response, conceptId, exception.conceptId());
         } catch (CatalogConceptNotFoundException exception) {
             return renderMissing(state, null, authentication, model, response, conceptId);
         }
@@ -244,6 +266,51 @@ class CatalogAdministrationController {
         model.addAttribute("nodes", catalogQueries.findDirectChildren(conceptId));
         model.addAttribute("state", state);
         return "admin/fragments/hierarchy :: nodes";
+    }
+
+    @GetMapping("/catalog/{conceptId}/relations/picker")
+    String relationPicker(
+            @PathVariable long conceptId,
+            @RequestParam(required = false) String q,
+            @RequestParam RelationDirection direction,
+            Model model
+    ) {
+        CatalogConceptDetail detail = catalogQueries.findConcept(conceptId)
+                .orElseThrow(() -> new CatalogConceptNotFoundException(conceptId));
+        model.addAttribute("direction", direction);
+        model.addAttribute("detail", detail);
+        model.addAttribute("relationCandidates", catalogQueries.searchRelationCandidates(q, conceptId).stream()
+                .map(candidate -> relationPickerItem(detail, candidate, direction)).toList());
+        return "admin/fragments/detail :: relationPickerResults";
+    }
+
+    private static RelationPickerItem relationPickerItem(
+            CatalogConceptDetail edited,
+            CatalogRelationCandidate candidate,
+            RelationDirection direction
+    ) {
+        boolean alreadyDirect = direction == RelationDirection.PARENT
+                ? edited.directParents().stream().anyMatch(relation -> relation.id() == candidate.id())
+                : edited.directChildren().stream().anyMatch(relation -> relation.id() == candidate.id());
+        boolean specificityInvalid = direction == RelationDirection.PARENT
+                ? "SPECIFIC".equals(candidate.challengeSpecificity()) && "OPEN".equals(edited.challengeSpecificity())
+                : "SPECIFIC".equals(edited.challengeSpecificity()) && "OPEN".equals(candidate.challengeSpecificity());
+        boolean wouldCycle = direction == RelationDirection.PARENT
+                ? edited.transitiveDescendants().stream().anyMatch(relation -> relation.id() == candidate.id())
+                : edited.transitiveAncestors().stream().anyMatch(relation -> relation.id() == candidate.id());
+        boolean wouldBeRedundant = direction == RelationDirection.PARENT
+                ? edited.transitiveAncestors().stream().anyMatch(relation -> relation.id() == candidate.id())
+                : edited.transitiveDescendants().stream().anyMatch(relation -> relation.id() == candidate.id());
+        Set<String> editedRoles = edited.functionalRoles().stream()
+                .map(value -> value.displayName())
+                .collect(java.util.stream.Collectors.toSet());
+        boolean roleMismatch = candidate.functionalRoles().stream().noneMatch(editedRoles::contains);
+        String reason = alreadyDirect ? "bereits direkte Beziehung"
+                : wouldCycle ? "würde einen Zyklus bilden"
+                : wouldBeRedundant ? "bereits transitiv ableitbar"
+                : specificityInvalid ? "Spezifität nicht zulässig"
+                : roleMismatch ? "keine gemeinsame funktionale Rolle" : null;
+        return new RelationPickerItem(candidate, reason == null, reason);
     }
 
     private String renderFormFailure(
@@ -274,7 +341,8 @@ class CatalogAdministrationController {
             Authentication authentication,
             Model model,
             HttpServletResponse response,
-            long conceptId
+            long conceptId,
+            long conflictingConceptId
     ) {
         Optional<CatalogConceptDetail> current = catalogQueries.findConcept(conceptId);
         if (current.isEmpty()) {
@@ -285,9 +353,28 @@ class CatalogAdministrationController {
         model.addAttribute("detail", current.get());
         model.addAttribute("form", form);
         model.addAttribute("currentDetail", current.get());
+        model.addAttribute("conflictingConceptId", conflictingConceptId);
+        model.addAttribute("conflictingConceptName", catalogQueries.findConcept(conflictingConceptId)
+                .map(CatalogConceptDetail::displayName)
+                .orElse("Konzept #" + conflictingConceptId));
+        model.addAttribute("pendingRelationSummaries", pendingRelationSummaries(form));
         model.addAttribute("formMode", FormMode.CONFLICT);
         populateCatalogPage(state, authentication, model, response);
         return "admin/catalog";
+    }
+
+    private List<String> pendingRelationSummaries(CatalogConceptForm form) {
+        return form.pendingRefinements().stream().map(pending -> {
+            long relatedId = pending.relatedConceptId(form.conceptId());
+            String relatedName = catalogQueries.findConcept(relatedId)
+                    .map(CatalogConceptDetail::displayName)
+                    .orElse("Konzept #" + relatedId);
+            String direction = pending.parentConceptId() == form.conceptId()
+                    ? "Konkretisierung" : "Oberbegriff";
+            String action = pending.type() == CatalogCommands.RefinementChangeType.ADD
+                    ? "hinzufügen" : "entfernen";
+            return direction + " „" + relatedName + "“ " + action;
+        }).toList();
     }
 
     private String renderMissing(
@@ -363,6 +450,70 @@ class CatalogAdministrationController {
         CONFLICT
     }
 
+    enum RelationDirection {
+        PARENT,
+        CHILD
+    }
+
+    public record RelationPickerItem(CatalogRelationCandidate candidate, boolean selectable, String reason) {
+    }
+
+    public record PendingRefinement(
+            CatalogCommands.RefinementChangeType type,
+            long parentConceptId,
+            long childConceptId,
+            long relatedVersion
+    ) {
+
+        static List<PendingRefinement> parseAll(List<String> encoded) {
+            if (encoded == null || encoded.isEmpty()) {
+                return List.of();
+            }
+            List<PendingRefinement> parsed = new java.util.ArrayList<>();
+            Map<String, String> errors = new LinkedHashMap<>();
+            for (String value : encoded) {
+                String[] parts = value == null ? new String[0] : value.split(":", -1);
+                try {
+                    if (parts.length != 4) {
+                        throw new IllegalArgumentException();
+                    }
+                    CatalogCommands.RefinementChangeType type = CatalogCommands.RefinementChangeType.valueOf(parts[0]);
+                    long parentId = Long.parseLong(parts[1]);
+                    long childId = Long.parseLong(parts[2]);
+                    long version = Long.parseLong(parts[3]);
+                    if (parentId <= 0 || childId <= 0 || version < 0) {
+                        throw new IllegalArgumentException();
+                    }
+                    parsed.add(new PendingRefinement(type, parentId, childId, version));
+                } catch (RuntimeException exception) {
+                    errors.put("relations", "Die vorgemerkte Beziehung ist ungültig.");
+                }
+            }
+            if (!errors.isEmpty()) {
+                throw new CatalogCommandValidationException(errors);
+            }
+            return List.copyOf(parsed);
+        }
+
+        public String encoded() {
+            return type.name() + ":" + parentConceptId + ":" + childConceptId + ":" + relatedVersion;
+        }
+
+        long relatedConceptId(long currentConceptId) {
+            if (parentConceptId == currentConceptId) {
+                return childConceptId;
+            }
+            if (childConceptId == currentConceptId) {
+                return parentConceptId;
+            }
+            throw new IllegalArgumentException("Pending relationship does not belong to the edited concept");
+        }
+
+        PendingRefinement withRelatedVersion(long version) {
+            return new PendingRefinement(type, parentConceptId, childConceptId, version);
+        }
+    }
+
     record CatalogConceptForm(
             long conceptId,
             String code,
@@ -374,15 +525,21 @@ class CatalogAdministrationController {
             String noveltyLevel,
             String curatorNote,
             String version,
-            boolean weightWarningsAcknowledged
+            boolean weightWarningsAcknowledged,
+            boolean inactiveRelationsAcknowledged,
+            List<PendingRefinement> pendingRefinements
     ) {
+
+        public CatalogConceptForm {
+            pendingRefinements = pendingRefinements == null ? List.of() : List.copyOf(pendingRefinements);
+        }
 
         static CatalogConceptForm forCreate() {
             return forCreate("", "");
         }
 
         static CatalogConceptForm forCreate(String code, String displayName) {
-            return new CatalogConceptForm(0, text(code), text(displayName), true, false, "SPECIFIC", "1.0000", "", "", "", false);
+            return new CatalogConceptForm(0, text(code), text(displayName), true, false, "SPECIFIC", "1.0000", "", "", "", false, false, List.of());
         }
 
         static CatalogConceptForm forEdit(CatalogConceptDetail detail) {
@@ -390,7 +547,7 @@ class CatalogAdministrationController {
                     detail.id(), detail.displayName(), detail.active(), detail.randomDrawEnabled(),
                     detail.challengeSpecificity(), detail.baseDrawWeight().toPlainString(),
                     detail.noveltyLevel() == null ? "" : detail.noveltyLevel().toString(), detail.curatorNote(),
-                    Long.toString(detail.version()), false
+                    Long.toString(detail.version()), false, false, List.of()
             );
         }
 
@@ -404,18 +561,34 @@ class CatalogAdministrationController {
                 String noveltyLevel,
                 String curatorNote,
                 String version,
-                boolean weightWarningsAcknowledged
+                boolean weightWarningsAcknowledged,
+                boolean inactiveRelationsAcknowledged,
+                List<PendingRefinement> pendingRefinements
         ) {
             return new CatalogConceptForm(
                     conceptId, "", text(displayName), active, randomDrawEnabled, text(challengeSpecificity),
-                    text(baseDrawWeight), text(noveltyLevel), text(curatorNote), text(version), weightWarningsAcknowledged
+                    text(baseDrawWeight), text(noveltyLevel), text(curatorNote), text(version), weightWarningsAcknowledged,
+                    inactiveRelationsAcknowledged, pendingRefinements
             );
         }
 
         CatalogConceptForm withVersion(long currentVersion) {
             return new CatalogConceptForm(
                     conceptId, code, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
-                    noveltyLevel, curatorNote, Long.toString(currentVersion), weightWarningsAcknowledged
+                    noveltyLevel, curatorNote, Long.toString(currentVersion), weightWarningsAcknowledged,
+                    inactiveRelationsAcknowledged, pendingRefinements
+            );
+        }
+
+        CatalogConceptForm withCurrentVersions(CatalogQueries queries, long currentVersion) {
+            List<PendingRefinement> rebased = pendingRefinements.stream().map(pending -> queries
+                    .findConcept(pending.relatedConceptId(conceptId))
+                    .map(detail -> pending.withRelatedVersion(detail.version()))
+                    .orElse(pending)).toList();
+            return new CatalogConceptForm(
+                    conceptId, code, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
+                    noveltyLevel, curatorNote, Long.toString(currentVersion), false,
+                    false, rebased
             );
         }
 
@@ -431,9 +604,30 @@ class CatalogAdministrationController {
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);
             }
+            Map<Long, Long> relatedVersions = new LinkedHashMap<>();
+            List<CatalogCommands.RefinementChange> changes = new java.util.ArrayList<>();
+            for (PendingRefinement pending : pendingRefinements) {
+                long relatedId;
+                try {
+                    relatedId = pending.relatedConceptId(conceptId);
+                } catch (IllegalArgumentException exception) {
+                    errors.put("relations", "Eine vorgemerkte Beziehung gehört nicht zu diesem Konzept.");
+                    continue;
+                }
+                Long previous = relatedVersions.putIfAbsent(relatedId, pending.relatedVersion());
+                if (previous != null && previous.longValue() != pending.relatedVersion()) {
+                    errors.put("relations", "Die Versionsdaten derselben beteiligten Zutat widersprechen sich.");
+                }
+                changes.add(new CatalogCommands.RefinementChange(
+                        pending.parentConceptId(), pending.childConceptId(), pending.type()));
+            }
+            if (!errors.isEmpty()) {
+                throw new CatalogCommandValidationException(errors);
+            }
             return new CatalogCommands.UpdateIngredientConceptCommand(
                     conceptId, expectedVersion, displayName, active, randomDrawEnabled, challengeSpecificity,
-                    weight, novelty, curatorNote, actorKey, weightWarningsAcknowledged
+                    weight, novelty, curatorNote, actorKey, weightWarningsAcknowledged,
+                    changes, relatedVersions, inactiveRelationsAcknowledged
             );
         }
 

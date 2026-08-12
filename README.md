@@ -88,4 +88,4 @@ Der initiale Katalog umfasst **642 Zutatenkonzepte**, davon **640 zufällig zieh
 
 ## Status
 
-Produktvision, Datenmodell, Anwendungsfundament, umfangreicher initialer Zutatenkatalog, Administrationssicherheit, die konsolidierte Katalogoberfläche, die erste schreibende Basisbearbeitung sowie das Produktions- und Branch-Preview-Deployment sind umgesetzt. Als nächster fachlicher Schritt folgt die Pflege direkter Konkretisierungsbeziehungen.
+Produktvision, Datenmodell, Anwendungsfundament, umfangreicher initialer Zutatenkatalog, Administrationssicherheit, die konsolidierte Katalogoberfläche, Basisbearbeitung und die Pflege direkter Konkretisierungsbeziehungen sowie das Produktions- und Branch-Preview-Deployment sind umgesetzt. Direkte Parent-/Child-Kanten werden im bestehenden Editor vorgemerkt und gemeinsam gespeichert; Mehrfach-Eltern bleiben erhalten. Als nächster fachlicher Schritt folgen Rollen, Eigenschaften, Beschaffbarkeit und Saison.
