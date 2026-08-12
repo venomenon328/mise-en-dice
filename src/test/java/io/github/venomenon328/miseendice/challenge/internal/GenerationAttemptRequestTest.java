@@ -21,17 +21,13 @@ import org.junit.jupiter.api.Test;
 class GenerationAttemptRequestTest {
 
     @Test
-    void rerollRequiresExactlyFourFrozenCatalogConcepts() {
-        assertThatThrownBy(() -> request(Set.of("A", "B", "C")))
-                .isInstanceOf(GeneratorValidationException.class)
-                .hasMessageContaining("exactly four");
-
-        assertThatThrownBy(() -> request(Set.of("A", "B", "C", "UNKNOWN")))
+    void rerollBlockRejectsCodesOutsideTheFrozenCatalogWithoutRequiringFourCatalogBackedRequirements() {
+        assertThatThrownBy(() -> request(Set.of("A", "B", "UNKNOWN")))
                 .isInstanceOf(GeneratorValidationException.class)
                 .hasMessageContaining("frozen catalog snapshot");
 
-        GenerationAttemptRequest request = request(Set.of("A", "B", "C", "D"));
-        assertThat(request.rerollBlockedConceptCodes()).containsExactlyInAnyOrder("A", "B", "C", "D");
+        GenerationAttemptRequest partialCatalogBlock = request(Set.of("A", "B"));
+        assertThat(partialCatalogBlock.rerollBlockedConceptCodes()).containsExactlyInAnyOrder("A", "B");
     }
 
     private static GenerationAttemptRequest request(Set<String> block) {

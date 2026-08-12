@@ -50,8 +50,8 @@ public record GenerationAttemptRequest(
             throw invalid("INITIAL request must not contain a REROLL block");
         }
         if (attemptType == AttemptType.REROLL) {
-            if (rerollBlockedConceptCodes.size() != 4) {
-                throw invalid("REROLL must block exactly four previously visible catalog concepts");
+            if (rerollBlockedConceptCodes.size() > 4) {
+                throw invalid("REROLL may block at most four catalog concepts");
             }
             if (rerollBlockedConceptCodes.stream().anyMatch(code -> catalog.conceptByCode(code).isEmpty())) {
                 throw invalid("REROLL block must contain only concepts from the frozen catalog snapshot");
