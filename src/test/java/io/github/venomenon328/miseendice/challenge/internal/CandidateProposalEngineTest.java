@@ -113,6 +113,78 @@ class CandidateProposalEngineTest {
     }
 
     @Test
+    void matchedManualTextIsPartOfCanonicalCandidateIdentity() {
+        CatalogGeneratorSnapshot catalog = catalog(false);
+        GeneratorConcept matched = catalog.conceptByCode("ANIMAL_A").orElseThrow();
+        GenerationContext first = context(catalog,
+                List.of(new ManualRequirement(1, "Animal protein", matched)), 321L);
+        GenerationContext second = context(catalog,
+                List.of(new ManualRequirement(1, "Animal protein, served minced", matched)), 321L);
+
+        AcceptedProposal firstProposal = findAccepted(first);
+        AcceptedProposal secondProposal = findAccepted(second);
+
+        assertThat(firstProposal.requirements()).filteredOn(r -> r.source() == RequirementSource.RANDOM)
+                .extracting(r -> r.concept().code())
+                .containsExactlyElementsOf(secondProposal.requirements().stream()
+                        .filter(r -> r.source() == RequirementSource.RANDOM)
+                        .map(r -> r.concept().code()).toList());
+        assertThat(firstProposal.canonicalSignature()).isNotEqualTo(secondProposal.canonicalSignature());
+    }
+
+    @Test
+    void rejectsManualMatchThatDoesNotEqualTheCatalogSnapshot() {
+        CatalogGeneratorSnapshot catalog = catalog(false);
+        GeneratorConcept original = catalog.conceptByCode("ANIMAL_A").orElseThrow();
+        GeneratorConcept tampered = new GeneratorConcept(
+                original.id(), original.code(), original.displayName(), original.active(), original.randomDrawEnabled(),
+                original.specificity(), original.baseDrawWeight(), original.noveltyLevel(), Set.of("SEASONING"),
+                original.culinaryFlags(), original.culinaryDimensions(), original.availabilityByParticipant(),
+                original.seasonMultiplier(), original.directAncestorCodes(), original.directDescendantCodes(),
+                original.transitiveAncestorCodes(), original.transitiveDescendantCodes());
+        GenerationContext context = context(catalog,
+                List.of(new ManualRequirement(1, "Animal protein", tampered)), 82L);
+
+        assertThat(engine.validateAndPlan(context).validationErrors())
+                .containsExactly(GeneratorReasonCode.CONTEXT_SNAPSHOT_INVALID);
+    }
+
+    @Test
+    void rejectsSelectedExclusionThatDoesNotEqualTheCatalogSnapshot() {
+        CatalogGeneratorSnapshot catalog = catalog(false);
+        GeneratorExclusionRule original = catalog.exclusionRules().getFirst();
+        GeneratorExclusionRule tampered = new GeneratorExclusionRule(
+                original.id(), original.code(), original.displayText(), original.baseDrawWeight(), original.targets(),
+                Set.of("ANIMAL_A"));
+        GenerationContext context = new GenerationContext(AttemptType.INITIAL, LocalDate.of(2026, 8, 12), 8,
+                catalog, VisibleHistorySnapshot.empty(), List.of(), Set.of(), AttemptExclusionDecision.selected(tampered),
+                NoveltyCadence.NEUTRAL,
+                Map.of(NoveltyBand.FAMILIAR, 3, NoveltyBand.BALANCED, 7, NoveltyBand.ADVENTUROUS, 2),
+                configuration, 83L, 1);
+
+        assertThat(engine.validateAndPlan(context).validationErrors())
+                .containsExactly(GeneratorReasonCode.CONTEXT_SNAPSHOT_INVALID);
+    }
+
+    @Test
+    void projectedProfilesRequireDistinctDrawableRequirements() {
+        CatalogGeneratorSnapshot base = catalog(false);
+        Set<String> disabledProduce = Set.of("VEGETABLE_B", "FRUIT_A", "VEGETABLE_OPEN", "FRUIT_OPEN");
+        List<GeneratorConcept> concepts = base.concepts().stream()
+                .map(concept -> disabledProduce.contains(concept.code())
+                        ? withRandomDrawEnabled(concept, false) : concept)
+                .toList();
+        CatalogGeneratorSnapshot thin = new CatalogGeneratorSnapshot(
+                base.seasonMonth(), base.activeParticipantCodes(), concepts, base.exclusionRules());
+
+        GenerationPlan plan = engine.validateAndPlan(context(thin, List.of(), 84L));
+
+        assertThat(plan.valid()).isTrue();
+        assertThat(plan.profiles().normalizedWeights()).doesNotContainKey(CandidateProfile.PRODUCE_DUO);
+        assertThat(plan.diagnostics()).contains(GeneratorReasonCode.PROFILE_TARGET_PROJECTED);
+    }
+
+    @Test
     void culinaryDimensionsNeverBecomeHardRulesAndMissingValuesReduceOnlyConfidence() {
         GenerationContext context = context(catalog(false), List.of(), 5L);
 
@@ -231,6 +303,15 @@ class CandidateProposalEngineTest {
         return new GeneratorConcept(id, code, code.replace('_', ' '), true, true, specificity,
                 BigDecimal.ONE, novelty, roles, Set.of(), Map.of(), availability(), BigDecimal.ONE,
                 Set.of(), Set.of(), Set.of(), Set.of());
+    }
+
+    private GeneratorConcept withRandomDrawEnabled(GeneratorConcept concept, boolean enabled) {
+        return new GeneratorConcept(
+                concept.id(), concept.code(), concept.displayName(), concept.active(), enabled, concept.specificity(),
+                concept.baseDrawWeight(), concept.noveltyLevel(), concept.functionalRoles(), concept.culinaryFlags(),
+                concept.culinaryDimensions(), concept.availabilityByParticipant(), concept.seasonMultiplier(),
+                concept.directAncestorCodes(), concept.directDescendantCodes(), concept.transitiveAncestorCodes(),
+                concept.transitiveDescendantCodes());
     }
 
     private Map<String, Availability> availability() {

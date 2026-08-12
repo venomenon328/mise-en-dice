@@ -19,13 +19,36 @@ final class ProfileMatcher {
             List<RoleRequirement> requirements,
             GeneratorConfiguration configuration
     ) {
-        List<ProfileSlot> slots = configuration.profiles().get(profile).requiredSlots().stream()
-                .sorted(Comparator.comparing(Enum::name)).toList();
+        List<ProfileSlot> slots = slots(profile, configuration);
         List<RoleRequirement> ordered = requirements.stream().sorted(RoleRequirement.CANONICAL_ORDER).toList();
         Search search = new Search(slots, ordered, configuration);
         search.visit(0, new HashSet<>(), new ArrayList<>());
         return new Match(search.best.size() == slots.size(), List.copyOf(search.best),
                 slots.stream().filter(slot -> search.best.stream().noneMatch(item -> item.slot() == slot)).toList());
+    }
+
+    static boolean canComplete(
+            CandidateProfile profile,
+            List<RoleRequirement> fixedRequirements,
+            List<RoleRequirement> additionalRequirements,
+            int maxAdditionalRequirements,
+            GeneratorConfiguration configuration
+    ) {
+        if (maxAdditionalRequirements < 0) {
+            return false;
+        }
+        CompletionSearch search = new CompletionSearch(
+                slots(profile, configuration),
+                fixedRequirements.stream().sorted(RoleRequirement.CANONICAL_ORDER).toList(),
+                additionalRequirements.stream().sorted(RoleRequirement.CANONICAL_ORDER).toList(),
+                maxAdditionalRequirements,
+                configuration);
+        return search.visit(0, new HashSet<>(), new HashSet<>(), 0);
+    }
+
+    private static List<ProfileSlot> slots(CandidateProfile profile, GeneratorConfiguration configuration) {
+        return configuration.profiles().get(profile).requiredSlots().stream()
+                .sorted(Comparator.comparing(Enum::name)).toList();
     }
 
     static boolean supports(ProfileSlot slot, Set<String> roles, GeneratorConfiguration configuration) {
@@ -97,6 +120,60 @@ final class ProfileMatcher {
             if (candidate.size() > best.size()) {
                 best = List.copyOf(candidate);
             }
+        }
+    }
+
+    private static final class CompletionSearch {
+        private final List<ProfileSlot> slots;
+        private final List<RoleRequirement> fixedRequirements;
+        private final List<RoleRequirement> additionalRequirements;
+        private final int maxAdditionalRequirements;
+        private final GeneratorConfiguration configuration;
+
+        private CompletionSearch(List<ProfileSlot> slots,
+                                 List<RoleRequirement> fixedRequirements,
+                                 List<RoleRequirement> additionalRequirements,
+                                 int maxAdditionalRequirements,
+                                 GeneratorConfiguration configuration) {
+            this.slots = slots;
+            this.fixedRequirements = fixedRequirements;
+            this.additionalRequirements = additionalRequirements;
+            this.maxAdditionalRequirements = maxAdditionalRequirements;
+            this.configuration = configuration;
+        }
+
+        private boolean visit(int slotIndex,
+                              Set<Integer> usedFixed,
+                              Set<Integer> usedAdditional,
+                              int additionalUsed) {
+            if (slotIndex == slots.size()) {
+                return true;
+            }
+            ProfileSlot slot = slots.get(slotIndex);
+            for (int index = 0; index < fixedRequirements.size(); index++) {
+                RoleRequirement requirement = fixedRequirements.get(index);
+                if (!usedFixed.contains(index) && supports(slot, requirement.roles(), configuration)) {
+                    usedFixed.add(index);
+                    if (visit(slotIndex + 1, usedFixed, usedAdditional, additionalUsed)) {
+                        return true;
+                    }
+                    usedFixed.remove(index);
+                }
+            }
+            if (additionalUsed >= maxAdditionalRequirements) {
+                return false;
+            }
+            for (int index = 0; index < additionalRequirements.size(); index++) {
+                RoleRequirement requirement = additionalRequirements.get(index);
+                if (!usedAdditional.contains(index) && supports(slot, requirement.roles(), configuration)) {
+                    usedAdditional.add(index);
+                    if (visit(slotIndex + 1, usedFixed, usedAdditional, additionalUsed + 1)) {
+                        return true;
+                    }
+                    usedAdditional.remove(index);
+                }
+            }
+            return false;
         }
     }
 }

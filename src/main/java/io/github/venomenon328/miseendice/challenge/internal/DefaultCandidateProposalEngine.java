@@ -616,16 +616,18 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
 
     private String signature(List<WorkRequirement> requirements, GenerationContext context) {
         List<String> identities = requirements.stream().map(requirement -> {
-            String identity = requirement.source() == RequirementSource.RANDOM
-                    ? "R:" + requirement.concept().code()
-                    : requirement.concept() == null
-                    ? "M:" + Normalizer.normalize(requirement.displayText().toLowerCase(Locale.ROOT), Normalizer.Form.NFC)
-                    : "M#" + requirement.concept().code();
-            return identity + ":" + requirement.specificity().name();
+            if (requirement.source() == RequirementSource.RANDOM) {
+                return String.join("\0", "R", requirement.concept().code(), requirement.specificity().name());
+            }
+            String normalizedText = Normalizer.normalize(
+                    requirement.displayText().toLowerCase(Locale.ROOT), Normalizer.Form.NFC);
+            String matchIdentity = requirement.concept() == null
+                    ? "UNMATCHED" : "MATCH:" + requirement.concept().code();
+            return String.join("\0", "M", normalizedText, matchIdentity, requirement.specificity().name());
         }).sorted().toList();
         String exclusion = context.exclusionDecision() instanceof AttemptExclusionDecision.Selected selected
                 ? selected.rule().code() : "NONE";
-        String payload = String.join("\0", identities) + "\0EXCLUSION:" + exclusion;
+        String payload = String.join("\0\0", identities) + "\0\0EXCLUSION\0" + exclusion;
         try {
             return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(payload.getBytes(StandardCharsets.UTF_8)));
@@ -633,7 +635,6 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
             throw new IllegalStateException(exception);
         }
     }
-
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static <T> Comparator<T> canonicalComparator() {
         return (left, right) -> {

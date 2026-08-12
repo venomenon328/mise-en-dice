@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Specificity;
+import io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext;
 import io.github.venomenon328.miseendice.challenge.api.GenerationPlan;
 import io.github.venomenon328.miseendice.challenge.api.GenerationPlan.ProjectedDistribution;
@@ -14,7 +15,6 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,20 +27,20 @@ final class GenerationPlanProjector {
         Set<GeneratorReasonCode> diagnostics = EnumSet.noneOf(GeneratorReasonCode.class);
         List<GeneratorReasonCode> errors = new ArrayList<>();
 
+        validateContextReferences(context, errors, diagnostics);
         List<GeneratorConcept> drawable = context.catalog().concepts().stream()
                 .filter(concept -> basicallyDrawable(concept, context)).toList();
-        validateManualMatches(context, errors, diagnostics);
 
         int manualSpecific = (int) context.manualRequirements().stream()
                 .filter(manual -> manual.matchedConcept() != null
                         && manual.matchedConcept().specificity() == Specificity.SPECIFIC).count();
         int randomSlots = 4 - context.manualRequirements().size();
         Set<Integer> reachableSpecificity = new HashSet<>();
+        long specificPool = drawable.stream().filter(c -> c.specificity() == Specificity.SPECIFIC).count();
+        long openPool = drawable.stream().filter(c -> c.specificity() == Specificity.OPEN).count();
         for (int total : List.of(2, 3, 4)) {
             int randomSpecific = total - manualSpecific;
             int randomOpen = randomSlots - randomSpecific;
-            long specificPool = drawable.stream().filter(c -> c.specificity() == Specificity.SPECIFIC).count();
-            long openPool = drawable.stream().filter(c -> c.specificity() == Specificity.OPEN).count();
             if (randomSpecific >= 0 && randomOpen >= 0 && specificPool >= randomSpecific && openPool >= randomOpen) {
                 reachableSpecificity.add(total);
             }
@@ -54,12 +54,13 @@ final class GenerationPlanProjector {
                 .filter(manual -> manual.matchedConcept() != null)
                 .map(manual -> new ProfileMatcher.RoleRequirement(manual.matchedConcept().code(),
                         manual.matchedConcept().id(), manual.matchedConcept().functionalRoles())).toList();
+        List<ProfileMatcher.RoleRequirement> randomRoleCandidates = drawable.stream()
+                .map(concept -> new ProfileMatcher.RoleRequirement(
+                        concept.code(), concept.id(), concept.functionalRoles()))
+                .toList();
         for (CandidateProfile profile : CandidateProfile.values()) {
-            ProfileMatcher.Match partial = ProfileMatcher.match(profile, manuals, config);
-            if (partial.unfilledSlots().size() <= randomSlots
-                    && partial.unfilledSlots().stream().allMatch(slot -> drawable.stream()
-                    .anyMatch(concept -> ProfileMatcher.supports(slot, concept.functionalRoles(), config)))
-                    && possibleAnchorCount(manuals, drawable, randomSlots, config) >= 2) {
+            if (ProfileMatcher.canComplete(profile, manuals, randomRoleCandidates, randomSlots, config)
+                    && anchorStructureReachable(manuals, drawable, randomSlots, config)) {
                 reachableProfiles.add(profile);
             }
         }
@@ -76,7 +77,7 @@ final class GenerationPlanProjector {
             diagnostics.add(GeneratorReasonCode.NOVELTY_TARGET_PROJECTED);
         }
 
-        if (reachableSpecificity.isEmpty() || reachableProfiles.isEmpty() || reachableNovelty.isEmpty()) {
+        if (errors.isEmpty() && (reachableSpecificity.isEmpty() || reachableProfiles.isEmpty() || reachableNovelty.isEmpty())) {
             errors.add(GeneratorReasonCode.GENERATION_EXHAUSTED);
         }
 
@@ -89,21 +90,26 @@ final class GenerationPlanProjector {
         );
     }
 
-    private void validateManualMatches(GenerationContext context, List<GeneratorReasonCode> errors,
-                                       Set<GeneratorReasonCode> diagnostics) {
+    private void validateContextReferences(GenerationContext context, List<GeneratorReasonCode> errors,
+                                           Set<GeneratorReasonCode> diagnostics) {
+        if (context.exclusionDecision() instanceof AttemptExclusionDecision.Selected selected
+                && context.catalog().exclusionRules().stream().noneMatch(selected.rule()::equals)) {
+            addError(errors, GeneratorReasonCode.CONTEXT_SNAPSHOT_INVALID);
+        }
         for (GenerationContext.ManualRequirement manual : context.manualRequirements()) {
             if (manual.matchedConcept() == null) {
                 diagnostics.add(GeneratorReasonCode.UNCLASSIFIED_MANUAL_REQUIREMENT);
                 continue;
             }
-            boolean present = context.catalog().concepts().stream().anyMatch(concept ->
-                    concept.id() == manual.matchedConcept().id() && concept.code().equals(manual.matchedConcept().code()));
-            if (!present) {
-                errors.add(GeneratorReasonCode.CONTEXT_SNAPSHOT_INVALID);
+            boolean exactSnapshotMatch = context.catalog().conceptById(manual.matchedConcept().id())
+                    .filter(manual.matchedConcept()::equals)
+                    .isPresent();
+            if (!exactSnapshotMatch) {
+                addError(errors, GeneratorReasonCode.CONTEXT_SNAPSHOT_INVALID);
             }
-            if (context.exclusionDecision() instanceof io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision.Selected selected
+            if (context.exclusionDecision() instanceof AttemptExclusionDecision.Selected selected
                     && selected.rule().expandedTargetCodes().contains(manual.matchedConcept().code())) {
-                errors.add(GeneratorReasonCode.CANDIDATE_EXCLUSION_CONFLICT);
+                addError(errors, GeneratorReasonCode.CANDIDATE_EXCLUSION_CONFLICT);
             }
         }
         List<GeneratorConcept> matched = context.manualRequirements().stream()
@@ -111,6 +117,12 @@ final class GenerationPlanProjector {
         if (matched.size() == 2 && (matched.get(0).code().equals(matched.get(1).code())
                 || related(matched.get(0), matched.get(1)))) {
             diagnostics.add(GeneratorReasonCode.MANUAL_REQUIREMENT_REDUNDANCY);
+        }
+    }
+
+    private static void addError(List<GeneratorReasonCode> errors, GeneratorReasonCode reason) {
+        if (!errors.contains(reason)) {
+            errors.add(reason);
         }
     }
 
@@ -125,7 +137,7 @@ final class GenerationPlanProjector {
                 && context.manualRequirements().stream().filter(manual -> manual.matchedConcept() != null)
                 .noneMatch(manual -> manual.matchedConcept().code().equals(concept.code())
                         || related(manual.matchedConcept(), concept))
-                && !(context.exclusionDecision() instanceof io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision.Selected selected
+                && !(context.exclusionDecision() instanceof AttemptExclusionDecision.Selected selected
                 && selected.rule().expandedTargetCodes().contains(concept.code()));
     }
 
@@ -139,13 +151,25 @@ final class GenerationPlanProjector {
         return Integer.MAX_VALUE;
     }
 
-    private int possibleAnchorCount(List<ProfileMatcher.RoleRequirement> manuals, List<GeneratorConcept> drawable,
-                                    int randomSlots, GeneratorConfiguration config) {
-        int manualAnchors = (int) manuals.stream()
+    private boolean anchorStructureReachable(List<ProfileMatcher.RoleRequirement> manuals,
+                                             List<GeneratorConcept> drawable,
+                                             int randomSlots,
+                                             GeneratorConfiguration config) {
+        int manualAnchorRequirements = (int) manuals.stream()
                 .filter(item -> item.roles().stream().anyMatch(config.anchorRoles()::contains)).count();
-        int randomAnchors = drawable.stream().anyMatch(item -> item.functionalRoles().stream()
-                .anyMatch(config.anchorRoles()::contains)) ? randomSlots : 0;
-        return manualAnchors + randomAnchors;
+        List<GeneratorConcept> randomAnchors = drawable.stream()
+                .filter(item -> item.functionalRoles().stream().anyMatch(config.anchorRoles()::contains)).toList();
+        if (manualAnchorRequirements + Math.min(randomSlots, randomAnchors.size()) < 2) {
+            return false;
+        }
+        Set<String> reachableAnchorRoles = new HashSet<>();
+        manuals.forEach(item -> item.roles().stream().filter(config.anchorRoles()::contains)
+                .forEach(reachableAnchorRoles::add));
+        if (randomSlots > 0) {
+            randomAnchors.forEach(item -> item.functionalRoles().stream().filter(config.anchorRoles()::contains)
+                    .forEach(reachableAnchorRoles::add));
+        }
+        return reachableAnchorRoles.size() >= 2;
     }
 
     private Set<NoveltyBand> reachableNoveltyBands(GenerationContext context, List<GeneratorConcept> drawable,
@@ -156,33 +180,49 @@ final class GenerationPlanProjector {
                 .filter(c -> c.noveltyLevel() != null)
                 .mapToInt(c -> config.novelty().loadPoints().get(c.noveltyLevel())).sum();
         int manualFive = (int) context.manualRequirements().stream().filter(m -> m.matchedConcept() != null)
-                .map(GenerationContext.ManualRequirement::matchedConcept).filter(c -> Integer.valueOf(5).equals(c.noveltyLevel())).count();
+                .map(GenerationContext.ManualRequirement::matchedConcept)
+                .filter(c -> Integer.valueOf(5).equals(c.noveltyLevel())).count();
         int manualHigh = (int) context.manualRequirements().stream().filter(m -> m.matchedConcept() != null)
-                .map(GenerationContext.ManualRequirement::matchedConcept).filter(c -> c.noveltyLevel() != null && c.noveltyLevel() >= 4).count();
-        Set<Integer> levels = new HashSet<>();
-        drawable.forEach(concept -> levels.add(concept.noveltyLevel()));
-        Set<State> states = Set.of(new State(0, manualLoad, manualFive, manualHigh));
-        for (int slot = 0; slot < randomSlots; slot++) {
-            Set<State> next = new HashSet<>();
+                .map(GenerationContext.ManualRequirement::matchedConcept)
+                .filter(c -> c.noveltyLevel() != null && c.noveltyLevel() >= 4).count();
+        boolean manualForced = manualFive > config.novelty().levelFiveCap()
+                || manualHigh > config.novelty().highLevelCap() || manualLoad > config.novelty().loadCap();
+
+        Set<State> states = new HashSet<>();
+        states.add(new State(0, manualLoad, manualFive, manualHigh));
+        for (GeneratorConcept concept : drawable.stream().sorted(GeneratorConcept.CANONICAL_ORDER).toList()) {
+            int level = concept.noveltyLevel();
+            if (manualForced && level >= 4) {
+                continue;
+            }
+            Set<State> next = new HashSet<>(states);
             for (State state : states) {
-                for (int level : levels) {
-                    next.add(new State(state.slots() + 1,
-                            state.load() + config.novelty().loadPoints().get(level),
-                            state.fives() + (level == 5 ? 1 : 0), state.highs() + (level >= 4 ? 1 : 0)));
+                if (state.slots() >= randomSlots) {
+                    continue;
+                }
+                State added = new State(
+                        state.slots() + 1,
+                        state.load() + config.novelty().loadPoints().get(level),
+                        state.fives() + (level == 5 ? 1 : 0),
+                        state.highs() + (level >= 4 ? 1 : 0));
+                if (manualForced || withinNoveltyCaps(added, config)) {
+                    next.add(added);
                 }
             }
             states = next;
         }
-        boolean manualForced = manualFive > config.novelty().levelFiveCap()
-                || manualHigh > config.novelty().highLevelCap() || manualLoad > config.novelty().loadCap();
+
         Set<NoveltyBand> result = EnumSet.noneOf(NoveltyBand.class);
-        for (State state : states) {
-            if (manualForced || (state.fives() <= config.novelty().levelFiveCap()
-                    && state.highs() <= config.novelty().highLevelCap() && state.load() <= config.novelty().loadCap())) {
-                result.add(DefaultCandidateProposalEngine.classifyNovelty(state.load(), state.fives(), state.highs(), manualForced));
-            }
-        }
+        states.stream().filter(state -> state.slots() == randomSlots)
+                .forEach(state -> result.add(DefaultCandidateProposalEngine.classifyNovelty(
+                        state.load(), state.fives(), state.highs(), manualForced)));
         return result;
+    }
+
+    private boolean withinNoveltyCaps(State state, GeneratorConfiguration config) {
+        return state.fives() <= config.novelty().levelFiveCap()
+                && state.highs() <= config.novelty().highLevelCap()
+                && state.load() <= config.novelty().loadCap();
     }
 
     private static boolean related(GeneratorConcept first, GeneratorConcept second) {
