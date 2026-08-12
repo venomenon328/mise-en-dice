@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.venomenon328.miseendice.catalog.api.CatalogAggregateSnapshot;
 import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.CatalogAuditEntityType;
 import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.ChangeKind;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,28 @@ class CatalogAuditDiffFactoryTest {
                     assertThat(diff.label()).isEqualTo("Ausschlussziele");
                     assertThat(diff.beforeValue()).contains("nur dieses Ziel");
                     assertThat(diff.afterValue()).contains("bekannte Konkretisierungen eingeschlossen");
+                });
+    }
+
+    @Test
+    void acceptsNullableValuesFromPersistedIngredientSnapshots() {
+        Map<String, Object> beforeAvailability = new LinkedHashMap<>();
+        beforeAvailability.put("code", "GEORGIA");
+        beforeAvailability.put("displayName", "Georgia");
+        beforeAvailability.put("description", null);
+        beforeAvailability.put("level", "EASY");
+        Map<String, Object> afterAvailability = new LinkedHashMap<>(beforeAvailability);
+        afterAvailability.put("level", "DIFFICULT");
+
+        var before = new CatalogAggregateSnapshot(Map.of("availability", List.of(beforeAvailability)));
+        var after = new CatalogAggregateSnapshot(Map.of("availability", List.of(afterAvailability)));
+
+        assertThat(CatalogAuditDiffFactory.diff(CatalogAuditEntityType.INGREDIENT_CONCEPT, before, after))
+                .singleElement()
+                .satisfies(diff -> {
+                    assertThat(diff.label()).isEqualTo("Beschaffbarkeit");
+                    assertThat(diff.beforeValue()).contains("Georgia", "EASY");
+                    assertThat(diff.afterValue()).contains("Georgia", "DIFFICULT");
                 });
     }
 }
