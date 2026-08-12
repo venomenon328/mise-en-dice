@@ -1,6 +1,7 @@
 package io.github.venomenon328.miseendice.challenge.internal;
 
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine;
+import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
 import io.github.venomenon328.miseendice.challenge.api.SeedSource;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -15,6 +16,11 @@ class GeneratorConfigurationModule {
     CandidateProposalEngine candidateProposalEngine(GeneratorProperties properties, ObjectMapper objectMapper) {
         String snapshot = new CanonicalConfigurationSnapshot(objectMapper).serialize(properties.configuration());
         return new DefaultCandidateProposalEngine(properties.configuration(), snapshot);
+    }
+
+    @Bean
+    CandidateReservoirEngine candidateReservoirEngine(CandidateProposalEngine candidateProposalEngine) {
+        return new DefaultCandidateReservoirEngine(candidateProposalEngine);
     }
 
     @Bean

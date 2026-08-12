@@ -72,5 +72,24 @@ final class TestGeneratorConfiguration {
                 Duration.ofMinutes(15));
     }
 
+    static GeneratorConfiguration withLimitsAndExclusion(
+            int reservoirTarget,
+            int reservoirStrictMinimum,
+            int maximumProposalAttempts,
+            String exclusionProbability
+    ) {
+        GeneratorConfiguration defaults = defaults();
+        return new GeneratorConfiguration(
+                defaults.generatorVersion(), defaults.configurationVersion(), defaults.rngAlgorithm(),
+                defaults.canonicalPayloadVersion(), defaults.candidateSetSize(), reservoirTarget,
+                reservoirStrictMinimum, maximumProposalAttempts, defaults.weightQuantization(),
+                bd(exclusionProbability), defaults.availabilityFactors(), defaults.cooldown(), defaults.exclusion(),
+                defaults.novelty(), defaults.anchorRoles(), defaults.supportRoles(), defaults.flavorRoles(),
+                defaults.profiles(), defaults.profileWeights(), defaults.profileSetTargets(),
+                defaults.specificityWeights(), defaults.specificitySetTargets(), defaults.cadenceSetTargets(),
+                defaults.scoreWeights(), defaults.similarityWeights(), defaults.selection(), defaults.fallbacks(),
+                defaults.processingLease());
+    }
+
     private static BigDecimal bd(String value) { return new BigDecimal(value); }
 }
