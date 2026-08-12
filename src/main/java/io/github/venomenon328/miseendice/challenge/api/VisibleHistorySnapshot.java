@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
-/** Already prepared visible-exposure history; database projection belongs to phase 9C. */
+/** Already materialized visible-exposure history; PostgreSQL projection belongs to phase 9D. */
 public record VisibleHistorySnapshot(List<VisibleChallenge> challengesNewestFirst) {
     private static final Set<String> VISIBLE_STATUSES = Set.of("ACTIVE", "COMPLETED", "REROLLED", "ABANDONED");
 
