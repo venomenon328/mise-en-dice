@@ -135,6 +135,15 @@
         const form = event.target.closest?.("[data-catalog-concept-form]");
         if (form) {
             form.dataset.dirty = "true";
+            const targetName = event.target?.name;
+            if (targetName
+                    && targetName !== "weightWarningsAcknowledged"
+                    && targetName !== "inactiveRelationsAcknowledged") {
+                const acknowledgement = form.querySelector("input[name='weightWarningsAcknowledged']");
+                if (acknowledgement) {
+                    acknowledgement.checked = false;
+                }
+            }
         }
     }
 
