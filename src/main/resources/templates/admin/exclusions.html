@@ -40,7 +40,6 @@
         <nav th:if="${exclusionResults.pageCount > 1}" class="pagination"><a th:if="${exclusionResults.page > 0}" class="button button--secondary button--small" th:href="${state.listUrl(exclusionResults.page - 1)}">Zurück</a><span th:text="|Seite ${exclusionResults.page + 1} von ${exclusionResults.pageCount}|">Seite</span><a th:if="${exclusionResults.page + 1 < exclusionResults.pageCount}" class="button button--secondary button--small" th:href="${state.listUrl(exclusionResults.page + 1)}">Weiter</a></nav>
     </section>
     <section class="catalog-detail-column" aria-live="polite">
-        <p th:if="${saveNotice != null}" class="save-notice" role="status" th:text="${saveNotice}">Gespeichert.</p>
         <section th:if="${exclusionForm != null}" th:replace="~{admin/fragments/exclusion :: form}"></section>
         <section th:if="${exclusionForm == null and missingExclusionRuleId != null}" th:replace="~{admin/fragments/exclusion :: missing}"></section>
         <section th:if="${exclusionForm == null and exclusionDetail != null}" th:replace="~{admin/fragments/exclusion :: panel}"></section>
