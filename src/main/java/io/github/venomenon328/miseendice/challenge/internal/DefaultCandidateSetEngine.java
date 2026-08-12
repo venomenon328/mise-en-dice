@@ -215,11 +215,16 @@ final class DefaultCandidateSetEngine implements CandidateSetEngine {
                 AcceptedProposal::profile)) {
             reasons.add(GeneratorReasonCode.PROFILE_TARGET_DEVIATION);
         }
-        if (!quotaFeasible(candidate, selected, reservoir, plan.novelty().setTargets(), fallback,
-                item -> item.evaluation().actualNoveltyBand())) {
+        if (recoveryForbidsAdventurous(candidate, plan)) {
             reasons.add(GeneratorReasonCode.NOVELTY_TARGET_DEVIATION);
         }
         return reasons;
+    }
+
+    private static boolean recoveryForbidsAdventurous(AcceptedProposal candidate, GenerationPlan plan) {
+        return plan.novelty().setTargets().getOrDefault(NoveltyBand.ADVENTUROUS, 0) == 0
+                && candidate.evaluation().actualNoveltyBand() == NoveltyBand.ADVENTUROUS
+                && !candidate.evaluation().reasonCodes().contains(GeneratorReasonCode.MANUAL_NOVELTY_FORCED);
     }
 
     private <T> boolean quotaFeasible(
