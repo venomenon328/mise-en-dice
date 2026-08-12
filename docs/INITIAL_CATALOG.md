@@ -1,6 +1,6 @@
 # Initialer Zutatenkatalog
 
-Stand: 11. August 2026
+Stand: 12. August 2026
 
 Dieses Dokument beschreibt die kuratierte Erstbefüllung der Zutatenbasis. Das fachliche Datenmodell selbst ist in [`DATA_MODEL.md`](DATA_MODEL.md) beschrieben; die konkreten Baseline-Changesets liegen unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog).
 
@@ -22,12 +22,12 @@ Eine fehlende Zutat oder Konkretisierung bedeutet weiterhin nicht, dass sie beim
 
 Die Befüllung enthält:
 
-- **642 Zutatenkonzepte** insgesamt,
-- davon **640 zufällig ziehbar**,
-- **78 offene** ziehbare Vorgaben,
-- **562 spezifische** ziehbare Vorgaben,
+- **665 Zutatenkonzepte** insgesamt,
+- davon **663 zufällig ziehbar**,
+- **87 offene** ziehbare Vorgaben,
+- **576 spezifische** ziehbare Vorgaben,
 - **2 nicht ziehbare Strukturknoten**,
-- **711 bekannte Konkretisierungsbeziehungen**,
+- **735 bekannte Konkretisierungsbeziehungen**,
 - **9 funktionale Rollen**,
 - **7 fünfstufige kulinarische Dimensionen**,
 - **5 binäre kulinarische Flags**,
@@ -37,6 +37,8 @@ Die Befüllung enthält:
 Die beiden nicht ziehbaren Strukturknoten bleiben `Milchprodukte` und `fertige Currypaste`. Sie werden für Klassifikation und Ausschlussregeln benötigt, ohne selbst als Challenge-Vorgabe ausgelost zu werden.
 
 Nach der Konsolidierung besitzt der aktive Katalog **24 Root-Konzepte**. Davon ist nur `Kaffee` eine spezifische Vorgabe; alle übrigen Wurzeln sind bewusst breite Familien wie `Fleisch`, `Gemüse`, `Obst`, `Gewürz` oder `Kochalkohol`. Ein universeller Oberknoten namens „Zutat“ wurde nicht ergänzt, weil er zwar die Baumansicht beruhigen, fachlich aber ungefähr so viel erklären würde wie ein Ordner namens „Sonstiges“.
+
+`Kokosnuss oder Kokosprodukt` bleibt trotz erneuter Prüfung bewusst ein Root-Konzept. Kokosnuss, Kokoswasser, Kokosraspeln und Kokosöl unter `Tropenfrucht`, `Kochfett` oder einer ähnlich hübsch aussehenden Sammelkategorie zu hängen, würde über die transitive Konkretisierung falsche Challenge-Alternativen erzeugen. Die Bezeichnung wurde geschärft; der Graph wurde nicht nur deshalb verbogen, damit die Baumansicht beim Frühstück weniger unangenehme Fragen stellt.
 
 ## 3. Offene und konkrete Vorgaben
 
@@ -58,6 +60,8 @@ Der Konkretisierungsgraph bildet dabei gültige Alternativen für eine Vorgabe a
 
 Die Relation wird transitiv ausgewertet. Deshalb enthält die konsolidierte Baseline keine direkte Kante, wenn dasselbe Ziel bereits über einen fachlich sinnvollen Zwischenknoten erreichbar ist. Die Meeresfrüchte-Hierarchie folgt beispielsweise dem kanonischen Pfad `Fisch und Meeresfrüchte → Schalen- und Krustentiere → Krustentiere → Garnelen`; parallele Abkürzungen wie `Fisch und Meeresfrüchte → Krustentiere` wurden entfernt. Mehrfach-Eltern bleiben dort erlaubt, wo sie unterschiedliche, nicht voneinander ableitbare Einordnungen ausdrücken.
 
+Die zweite Plausibilitätsrunde trennt außerdem Formen, die beim Kochen nicht beliebig austauschbar sind: `frische Chili` liegt unter `Fruchtgemüse`; getrocknete Chili, Chiliflocken, Chilipulver und eingelegte Chili besitzen eigene Äste. `Pfeffer`, `Paprikapulver`, `Blütengemüse` und `Champignons` erhielten belastbare Zwischenkonzepte. Fertige Thai-Currypasten werden einheitlich ausschließlich als `fertige Currypaste` geführt und nicht zusätzlich als generische Chilipaste. Darüber hinaus liegt Surimi nicht länger fälschlich unter konserviertem Fisch, Polenta hängt nachvollziehbar unter Mais und geröstete rote Paprika unter roter Paprika.
+
 ## 4. Inhaltliche Breite
 
 Die Erweiterung ergänzt unter anderem:
@@ -72,6 +76,7 @@ Die Erweiterung ergänzt unter anderem:
 - Kräuter, Einzelgewürze, Gewürzmischungen, Essige und Süßungsmittel,
 - asiatische und südostasiatische Würzmittel ebenso wie europäische und amerikanische Saucen,
 - Spezialzutaten wie Ube, Calamansi, Bagoong, Aligue, Mắm ruốc, stinkender Tofu, Egusi, Trüffel und Safran.
+- alltagsnahe Lücken wie Maggi-Würze, Knoblauch- und Zwiebelpulver, Kräuter- und Knoblauchbutter sowie rote, gelbe und grüne Paprika.
 
 Nicht jede Zutat ist gleich häufig oder gleich spontan beschaffbar. Ein Katalog darf Hummer kennen, ohne deshalb so zu tun, als läge er neben den Kartoffeln im Discounter.
 
@@ -91,7 +96,7 @@ Vorhanden sind:
 - Aromat
 - Würzkomponente
 
-Mehrfachzuordnungen sind ausdrücklich normal. Rollen werden explizit gepflegt und nicht automatisch aus dem Konkretisierungsgraphen vererbt. Jeder der 640 aktiven Zieh-Kandidaten besitzt mindestens eine Rolle.
+Mehrfachzuordnungen sind ausdrücklich normal. Rollen werden explizit gepflegt und nicht automatisch aus dem Konkretisierungsgraphen vererbt. Jeder der 663 aktiven Zieh-Kandidaten besitzt mindestens eine Rolle.
 
 ## 6. Kulinarische Eigenschaften
 
@@ -107,17 +112,17 @@ Die fünfstufigen Dimensionen sind:
 
 Die Stufen reichen von `1` = sehr niedrig bis `5` = sehr hoch. Ein fehlender Eintrag bedeutet „nicht kuratiert beziehungsweise derzeit nicht relevant“ und nicht den niedrigsten Wert.
 
-Binäre Flags kennzeichnen Fermentation, Einlegen, Räuchern, Pökeln/Reifen und Trocknung. Auch diese Werte werden bewusst sparsam gesetzt. Die Erweiterung fügt **80 Flag-Zuordnungen** und **862 Dimensionswerte** hinzu.
+Binäre Flags kennzeichnen Fermentation, Einlegen, Räuchern, Pökeln/Reifen und Trocknung. Auch diese Werte werden bewusst sparsam gesetzt. Insgesamt sind **111 Flag-Zuordnungen** und **1.057 Dimensionswerte** gepflegt.
 
 ## 7. Beschaffbarkeit
 
-Jeder der 640 zufällig ziehbaren Einträge besitzt einen separaten Beschaffbarkeitswert für Georgia und Tobias. Die Einschätzungen sind pragmatische Startwerte und dürfen anhand realer Einkaufserfahrungen korrigiert werden.
+Jeder der 663 zufällig ziehbaren Einträge besitzt einen separaten Beschaffbarkeitswert für Georgia und Tobias. Die Einschätzungen sind pragmatische Startwerte und dürfen anhand realer Einkaufserfahrungen korrigiert werden.
 
 | Stufe | Tobias | Georgia |
 |---|---:|---:|
-| EASY | 405 | 445 |
-| PLANNED | 167 | 178 |
-| DIFFICULT | 68 | 17 |
+| EASY | 462 | 486 |
+| PLANNED | 137 | 161 |
+| DIFFICULT | 64 | 16 |
 | UNAVAILABLE | 0 | 0 |
 
 Die deutlich höhere Zahl geplanter oder schwieriger Einträge bei Tobias berücksichtigt insbesondere Spezialgeschäfte und das regional unterschiedliche Angebot. Die Werte werden direkt pro Konzept gepflegt und nicht aus Eltern- oder Kindknoten abgeleitet.
@@ -202,6 +207,8 @@ Die Befüllung ist als einmalige Baseline in den explizit geordneten Master-Chan
 13. `catalog/013-exclusion-rules-expansion.sql` – zusätzliche Ausschlussregeln
 14. `catalog/014-catalog-consolidation.sql` – einmalige Hierarchie-, Rollen- und Gewichtskorrekturen
 15. `checks/002-final-catalog-sanity.sql` – Plausibilitätsprüfung des konsolidierten, unberührten Baseline-Zustands
+16. `catalog/015-catalog-gap-review.sql` – zweite fachliche Plausibilisierung, zusätzliche Zwischenkonzepte und Alltagsergänzungen
+17. `checks/003-catalog-gap-sanity.sql` – exakte Prüfung des nachgeschärften Ausgangskatalogs
 
 Die Erweiterung hält die Pflichtmetadaten pro Konzept in drei kompakten, dokumentierten Manifesten zusammen und überführt sie über kurzlebige `DO`-Blöcke in temporäre Quelltabellen. Dadurch existieren Code, Rolle und Beschaffbarkeit nicht in mehreren unabhängig zu synchronisierenden Listen. Die Dateien sind Liquibase-Changesets ohne `runAlways`: Die Baseline wird nur auf eine leere Datenbank angewandt und überschreibt bei späteren Starts keine kuratierten Laufzeitdaten.
 
@@ -222,12 +229,14 @@ Die Erweiterung hält die Pflichtmetadaten pro Konzept in drei kompakten, dokume
 Anschließend reduziert `catalog/014-catalog-consolidation.sql` den Graphen auf seine fachlich notwendigen direkten Kanten. [`checks/002-final-catalog-sanity.sql`](../src/main/resources/db/changelog/checks/002-final-catalog-sanity.sql) prüft den resultierenden Startzustand zusätzlich auf:
 
 - exakt 24 aktive Wurzelkonzepte und `Kaffee` als einziges spezifisches Root-Konzept,
-- exakt 711 direkte Konkretisierungsbeziehungen,
+- exakt 711 direkte Konkretisierungsbeziehungen im ersten konsolidierten Zwischenstand,
 - keine transitiv redundanten Direktkanten,
 - mindestens eine gemeinsame funktionale Rolle je direkter Parent-Child-Beziehung,
 - keine offene Vorgabe unter einem spezifischen Parent,
 - die kanonische Meeresfrüchte-Hierarchie,
 - sowie die festgelegten Gewichtsobergrenzen für ungewöhnliche, schwer beschaffbare und alkoholische Kochzutaten.
+
+Nach dieser ersten Konsolidierung ergänzt [`checks/003-catalog-gap-sanity.sql`](../src/main/resources/db/changelog/checks/003-catalog-gap-sanity.sql) exakte Prüfungen für 665 Konzepte, 735 Direktbeziehungen und die nachgeschärften Chili-, Paprika-, Pfeffer-, Gemüse-, Champignon-, Butter- und Currypastenfamilien. Auch die neuen Ausschlussziele für Chili- und Lauchgewächsprodukte werden dort abgesichert.
 
 Die exakten Baseline-Prüfungen werden bewusst übersprungen, sobald bereits versionierte redaktionelle Änderungen vorliegen. Ein Upgrade soll kuratierte Laufzeitdaten nicht nachträglich zu einer unveränderten Seed-Datei umerziehen. Der Check prüft weiterhin keine kulinarische Qualität einzelner Kombinationen; dafür sind Generatorregeln und Kurator zuständig.
 

@@ -64,17 +64,17 @@ class CatalogBaselineConsistencyTest {
 
     @Test
     void consolidatedBaselineHasTheDocumentedSizeAndDeliberateRoots() {
-        assertThat(count("ingredient_concept")).isEqualTo(642);
-        assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(640);
+        assertThat(count("ingredient_concept")).isEqualTo(665);
+        assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(663);
         assertThat(countWhere(
                 "ingredient_concept",
                 "active and random_draw_enabled and challenge_specificity = 'OPEN'"
-        )).isEqualTo(78);
+        )).isEqualTo(87);
         assertThat(countWhere(
                 "ingredient_concept",
                 "active and random_draw_enabled and challenge_specificity = 'SPECIFIC'"
-        )).isEqualTo(562);
-        assertThat(count("ingredient_refinement")).isEqualTo(711);
+        )).isEqualTo(576);
+        assertThat(count("ingredient_refinement")).isEqualTo(735);
 
         Set<String> activeRoots = Set.copyOf(jdbcTemplate.queryForList(
                 """

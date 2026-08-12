@@ -37,7 +37,3 @@ databaseChangeLog:
       file: db/changelog/catalog/014-catalog-consolidation.sql
   - include:
       file: db/changelog/checks/002-final-catalog-sanity.sql
-  - include:
-      file: db/changelog/catalog/015-catalog-gap-review.sql
-  - include:
-      file: db/changelog/checks/003-catalog-gap-sanity.sql

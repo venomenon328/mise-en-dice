@@ -1,6 +1,6 @@
 # Datenmodell
 
-Stand: 11. August 2026
+Stand: 12. August 2026
 
 Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt als explizit geordnete Liquibase-Changesets vor:
 
@@ -20,7 +20,7 @@ Die erste Struktur konzentriert sich auf die Erzeugung von Challenges. Persönli
 
 ## 2. Zutatenkonzepte statt Zutat/Kategorie-Dichotomie
 
-`ingredient_concept` ist die zentrale Entität. Sie enthält sowohl offene Vorgaben wie `Fisch` als auch spezifische Vorgaben wie `Kabeljau`, `Hähnchen`, `Chili` oder `Habanero`.
+`ingredient_concept` ist die zentrale Entität. Sie enthält sowohl offene Vorgaben wie `Fisch` oder `frische Chili` als auch spezifische Vorgaben wie `Kabeljau`, `Hähnchen` oder `Habanero`.
 
 Es gibt bewusst keinen festen Typ `INGREDIENT` oder `CATEGORY`.
 
@@ -32,7 +32,7 @@ Drei voneinander unabhängige Fragen werden getrennt behandelt:
 2. **Ziehbarkeit** (`random_draw_enabled`): Darf der Zufallsgenerator den Eintrag auswählen?
 3. **Bekannte Konkretisierungen** (`ingredient_refinement`): Welche spezielleren Konzepte kennt die Datenbasis?
 
-Damit kann `Hähnchen` eine spezifische, zufällig ziehbare Vorgabe sein und gleichzeitig bekannte Konkretisierungen wie `Hähnchenbrust` und `Hähnchenschenkel` besitzen. Ebenso gilt `Chili` als spezifische Vorgabe, obwohl feinere Sorten hinterlegt werden können.
+Damit kann `Hähnchen` eine spezifische, zufällig ziehbare Vorgabe sein und gleichzeitig bekannte Konkretisierungen wie `Hähnchenbrust` und `Hähnchenschenkel` besitzen. Umgekehrt ist `frische Chili` eine offene Vorgabe, weil Jalapeño, Habanero oder Bird’s-Eye-Chili echte unterschiedliche Auswahlentscheidungen darstellen.
 
 Ein nicht ziehbares Konzept wird nur gepflegt, wenn es fachlich tatsächlich benötigt wird, etwa als Gruppenknoten für eine Ausschlussregel. `active = false` nimmt einen Eintrag aus der normalen operativen Nutzung, ohne historische Referenzen zu verlieren; `random_draw_enabled = false` lässt einen aktiven Eintrag für Klassifikation oder Regeln bestehen, schließt ihn aber aus der Zufallsauswahl aus.
 
@@ -45,6 +45,8 @@ Es besteht kein Anspruch, jede theoretisch mögliche Unterform zu speichern.
 > Der Child-Eintrag ist im Sinne von Mise en Dice eine gültige bekannte Konkretisierung des Parent-Eintrags.
 
 Die Relation darf mehrere Eltern besitzen und ist transitiv zu verstehen. Wenn `Kabeljau` eine Konkretisierung von `weißfleischiger Fisch` und dieser wiederum eine Konkretisierung von `Fisch` ist, erfüllt Kabeljau auch die Vorgabe Fisch.
+
+Verarbeitungsherkunft allein reicht für eine Kante nicht aus. Getrocknete Chili, Chilipulver und eingelegte Chili sind deshalb keine Konkretisierungen der Vorgabe `frische Chili`; sie werden als eigenständige Formen modelliert. Ebenso bleibt `Kokosnuss oder Kokosprodukt` ein bewusstes Root-Konzept, weil Kokoswasser, Kokosöl und Kokosraspeln keinen gemeinsamen Parent besitzen, dessen Challenge-Vorgabe sie allesamt sinnvoll erfüllen würden.
 
 Der Graph ist bewusst **unvollständig**. Fehlt eine denkbare Konkretisierung in der Datenbank, ist sie dadurch nicht automatisch unzulässig. Die Datenbank bildet kuratiertes Systemwissen ab, keine Whitelist sämtlicher Entscheidungen beim Kochen.
 
