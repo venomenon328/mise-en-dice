@@ -70,8 +70,22 @@ class AdministrationSecurityIntegrationTest {
     }
 
     @Test
+    void unauthenticatedAdministrationRequestsWithTrailingSlashAreRedirectedToTheFormLogin() throws Exception {
+        mockMvc.perform(get("/admin/"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
     void correctlyAuthenticatedAdministrationRequestsPassTheSecurityLayer() throws Exception {
         mockMvc.perform(get("/admin").session(authenticate()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/catalog"));
+    }
+
+    @Test
+    void correctlyAuthenticatedTrailingSlashAdministrationRequestsRedirectToTheCatalog() throws Exception {
+        mockMvc.perform(get("/admin/").session(authenticate()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/catalog"));
     }
