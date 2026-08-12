@@ -3,71 +3,52 @@ package io.github.venomenon328.miseendice.challenge.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Availability;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.CatalogGeneratorSnapshot;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Specificity;
 import io.github.venomenon328.miseendice.challenge.api.GenerationAttemptRequest;
-import io.github.venomenon328.miseendice.challenge.api.GenerationContext.ManualRequirement;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
-import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.CandidateProfile;
-import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyBand;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorValidationException;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
-import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleChallenge;
-import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleRequirement;
-import java.time.Instant;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class GenerationAttemptRequestTest {
 
     @Test
-    void rerollBlockMustMatchTheImmediatelyPreviousVisibleChallenge() {
-        VisibleHistorySnapshot history = history(requirement("A"), requirement("B"), requirement("C"), requirement("D"));
-
-        assertThatThrownBy(() -> request(history, List.of(), Set.of("A", "B", "C")))
+    void rerollRequiresExactlyFourFrozenCatalogConcepts() {
+        assertThatThrownBy(() -> request(Set.of("A", "B", "C")))
                 .isInstanceOf(GeneratorValidationException.class)
-                .hasMessageContaining("REROLL block must match");
+                .hasMessageContaining("exactly four");
 
-        GenerationAttemptRequest request = request(history, List.of(), Set.of("A", "B", "C", "D"));
+        assertThatThrownBy(() -> request(Set.of("A", "B", "C", "UNKNOWN")))
+                .isInstanceOf(GeneratorValidationException.class)
+                .hasMessageContaining("frozen catalog snapshot");
+
+        GenerationAttemptRequest request = request(Set.of("A", "B", "C", "D"));
         assertThat(request.rerollBlockedConceptCodes()).containsExactlyInAnyOrder("A", "B", "C", "D");
     }
 
-    @Test
-    void rerollBlockIgnoresUnclassifiedManualRequirementsWithoutCatalogIdentity() {
-        VisibleHistorySnapshot history = history(requirement("A"), requirement("B"), requirement(null), requirement(null));
-        List<ManualRequirement> manuals = List.of(
-                new ManualRequirement(1, "first free text", null),
-                new ManualRequirement(2, "second free text", null));
-
-        GenerationAttemptRequest request = request(history, manuals, Set.of("A", "B"));
-        assertThat(request.rerollBlockedConceptCodes()).containsExactlyInAnyOrder("A", "B");
-    }
-
-    @Test
-    void rerollRequiresVisibleChallengeContext() {
-        assertThatThrownBy(() -> request(VisibleHistorySnapshot.empty(), List.of(), Set.of()))
-                .isInstanceOf(GeneratorValidationException.class)
-                .hasMessageContaining("immediately previous visible challenge");
-    }
-
-    private static GenerationAttemptRequest request(
-            VisibleHistorySnapshot history,
-            List<ManualRequirement> manuals,
-            Set<String> block
-    ) {
+    private static GenerationAttemptRequest request(Set<String> block) {
         return new GenerationAttemptRequest(AttemptType.REROLL, LocalDate.of(2026, 8, 12), 8,
-                new CatalogGeneratorSnapshot(8, List.of(), List.of(), List.of()), history, manuals, block,
+                catalog(), VisibleHistorySnapshot.empty(), List.of(), block,
                 TestGeneratorConfiguration.defaults(), 35L);
     }
 
-    private static VisibleHistorySnapshot history(VisibleRequirement... requirements) {
-        return new VisibleHistorySnapshot(List.of(new VisibleChallenge(
-                Instant.parse("2026-08-12T12:00:00Z"), "session-35", AttemptType.INITIAL, "REROLLED",
-                List.of(requirements), CandidateProfile.FLEXIBLE_BALANCED, NoveltyBand.BALANCED, null)));
+    private static CatalogGeneratorSnapshot catalog() {
+        return new CatalogGeneratorSnapshot(8, List.of("GEORGIA", "TOBIAS"), List.of(
+                concept(1, "A"), concept(2, "B"), concept(3, "C"), concept(4, "D")), List.of());
     }
 
-    private static VisibleRequirement requirement(String conceptCode) {
-        return new VisibleRequirement(conceptCode, conceptCode == null ? null : 1, Set.of(), Set.of(), Set.of());
+    private static GeneratorConcept concept(long id, String code) {
+        return new GeneratorConcept(id, code, code, true, true, Specificity.SPECIFIC, BigDecimal.ONE, 1,
+                Set.of("VEGETABLE"), Set.of(), Map.of(),
+                Map.of("GEORGIA", Availability.EASY, "TOBIAS", Availability.EASY), BigDecimal.ONE,
+                Set.of(), Set.of(), Set.of(), Set.of());
     }
 }

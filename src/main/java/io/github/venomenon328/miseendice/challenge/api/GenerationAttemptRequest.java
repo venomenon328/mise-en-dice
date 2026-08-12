@@ -50,16 +50,11 @@ public record GenerationAttemptRequest(
             throw invalid("INITIAL request must not contain a REROLL block");
         }
         if (attemptType == AttemptType.REROLL) {
-            if (visibleHistory.challengesNewestFirst().isEmpty()) {
-                throw invalid("REROLL requires the immediately previous visible challenge");
+            if (rerollBlockedConceptCodes.size() != 4) {
+                throw invalid("REROLL must block exactly four previously visible catalog concepts");
             }
-            Set<String> expectedBlock = new HashSet<>();
-            visibleHistory.challengesNewestFirst().getFirst().requirements().stream()
-                    .map(VisibleHistorySnapshot.VisibleRequirement::conceptCode)
-                    .filter(Objects::nonNull)
-                    .forEach(expectedBlock::add);
-            if (!rerollBlockedConceptCodes.equals(expectedBlock)) {
-                throw invalid("REROLL block must match the catalog-backed requirements of the immediately previous visible challenge");
+            if (rerollBlockedConceptCodes.stream().anyMatch(code -> catalog.conceptByCode(code).isEmpty())) {
+                throw invalid("REROLL block must contain only concepts from the frozen catalog snapshot");
             }
         }
     }
