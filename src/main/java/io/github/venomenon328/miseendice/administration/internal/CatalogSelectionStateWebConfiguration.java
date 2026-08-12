@@ -61,7 +61,7 @@ class CatalogSelectionStateWebConfiguration implements WebMvcConfigurer {
             modelAndView.addObject("selectionOutsideResults", selectionOutsideResults);
 
             if (isHtmx(request) && isSelectionFragment(modelAndView.getViewName())) {
-                Long selectedConceptId = detail == null ? state.selectedConceptId() : detail.id();
+                Long selectedConceptId = detail == null ? state.selectedConceptId() : Long.valueOf(detail.id());
                 response.setHeader(
                         "HX-Trigger-After-Swap",
                         selectionStateEvent(selectedConceptId, selectionOutsideResults)
