@@ -223,6 +223,11 @@
                     <div th:classappend="${form.baseDrawWeight != currentDetail.baseDrawWeight.toPlainString()} ? ' is-different'"><dt>Gewicht</dt><dd th:text="${form.baseDrawWeight}">1.0000</dd></div>
                     <div th:classappend="${form.noveltyLevel != (currentDetail.noveltyLevel == null ? '' : currentDetail.noveltyLevel.toString())} ? ' is-different'"><dt>Ungewöhnlichkeit</dt><dd th:text="${form.noveltyLevel.isEmpty() ? 'nicht gepflegt' : form.noveltyLevel}">nicht gepflegt</dd></div>
                     <div th:classappend="${form.curatorNote != (currentDetail.curatorNote ?: '')} ? ' is-different'"><dt>Kuratornotiz</dt><dd th:text="${form.curatorNote.isEmpty() ? 'keine' : form.curatorNote}">keine</dd></div>
+                    <div><dt>Rollen</dt><dd th:text="${#strings.listJoin(form.metadata.functionalRoleCodes, ', ')} ?: 'nicht gepflegt'">nicht gepflegt</dd></div>
+                    <div><dt>Flags</dt><dd th:text="${#strings.listJoin(form.metadata.culinaryFlagCodes, ', ')} ?: 'keine'">keine</dd></div>
+                    <div><dt>Dimensionen</dt><dd th:text="${form.metadata.culinaryDimensionLevels}">nicht gepflegt</dd></div>
+                    <div><dt>Beschaffbarkeit</dt><dd th:text="${form.metadata.availabilityByParticipant}">nicht gepflegt</dd></div>
+                    <div><dt>Saison</dt><dd th:text="${form.metadata.seasonalityByMonth}">1.0</dd></div>
                 </dl>
                 <div th:if="${pendingRelationSummaries != null and !pendingRelationSummaries.isEmpty()}" class="conflict-relations" data-testid="pending-relation-conflict-summary">
                     <h4>Vorgemerkte Beziehungen</h4>
@@ -241,6 +246,11 @@
                     <div th:classappend="${form.baseDrawWeight != currentDetail.baseDrawWeight.toPlainString()} ? ' is-different'"><dt>Gewicht</dt><dd th:text="${currentDetail.baseDrawWeight}">1.0000</dd></div>
                     <div th:classappend="${form.noveltyLevel != (currentDetail.noveltyLevel == null ? '' : currentDetail.noveltyLevel.toString())} ? ' is-different'"><dt>Ungewöhnlichkeit</dt><dd th:text="${currentDetail.noveltyLevel ?: 'nicht gepflegt'}">nicht gepflegt</dd></div>
                     <div th:classappend="${form.curatorNote != (currentDetail.curatorNote ?: '')} ? ' is-different'"><dt>Kuratornotiz</dt><dd th:text="${currentDetail.curatorNote ?: 'keine'}">keine</dd></div>
+                    <div><dt>Rollen</dt><dd th:text="${#strings.listJoin(currentDetail.functionalRoles.![code], ', ')} ?: 'nicht gepflegt'">nicht gepflegt</dd></div>
+                    <div><dt>Flags</dt><dd th:text="${#strings.listJoin(currentDetail.culinaryFlags.![code], ', ')} ?: 'keine'">keine</dd></div>
+                    <div><dt>Dimensionen</dt><dd th:text="${currentDetail.culinaryDimensions}">nicht gepflegt</dd></div>
+                    <div><dt>Beschaffbarkeit</dt><dd th:text="${currentDetail.availability}">nicht gepflegt</dd></div>
+                    <div><dt>Saison</dt><dd th:text="${currentDetail.seasonality}">1.0</dd></div>
                     <div><dt>Direkte Eltern</dt><dd th:text="${#strings.listJoin(currentDetail.directParents.![displayName], ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Direkte Kinder</dt><dd th:text="${#strings.listJoin(currentDetail.directChildren.![displayName], ', ')} ?: 'keine'">keine</dd></div>
                 </dl>
@@ -257,6 +267,11 @@
                 <input type="hidden" name="noveltyLevel" th:value="${form.noveltyLevel}">
                 <input type="hidden" name="curatorNote" th:value="${form.curatorNote}">
                 <input type="hidden" name="version" th:value="${currentDetail.version}">
+                <input th:each="role : ${form.metadata.functionalRoleCodes}" type="hidden" name="functionalRole" th:value="${role}">
+                <input th:each="flag : ${form.metadata.culinaryFlagCodes}" type="hidden" name="culinaryFlag" th:value="${flag}">
+                <input th:each="dimension : ${form.metadata.culinaryDimensionLevels}" type="hidden" th:name="|dimension[${dimension.key}]|" th:value="${dimension.value}">
+                <input th:each="availability : ${form.metadata.availabilityByParticipant}" type="hidden" th:name="|availability[${availability.key}]|" th:value="${availability.value}">
+                <input th:each="season : ${form.metadata.seasonalityByMonth}" type="hidden" th:name="|seasonality[${season.key}]|" th:value="${season.value}">
                 <input th:each="pending : ${form.pendingRefinements}" type="hidden" name="relationChange" th:value="${pending.encoded()}">
                 <input type="hidden" name="continueEditing" value="true">
                 <button class="button button--primary" type="submit">Mit aktuellem Stand weiterbearbeiten</button>
@@ -305,17 +320,12 @@
                     <p th:if="${formMode.name() == 'CREATE' and formErrors != null and formErrors.get('code') != null}" class="field-error" th:text="${formErrors.get('code')}">Fehler</p>
                     <p th:if="${formMode.name() != 'CREATE'}" class="read-only-field">Code <code th:text="${detail.code}">COD</code> bleibt nach der Anlage unveränderlich.</p>
                     <p th:if="${formMode.name() != 'CREATE' and formErrors != null and formErrors.get('code') != null}" class="field-error" th:text="${formErrors.get('code')}">Fehler</p>
-                    <label th:if="${formMode.name() != 'CREATE'}" class="toggle-field"><input type="checkbox" name="active" value="true" th:checked="${form.active}"> Aktiv</label>
-                    <p th:if="${formMode.name() == 'CREATE'}" class="read-only-field">Neue Konzepte starten aktiv. Weitere Basisfelder können nach der Anlage bewusst bearbeitet werden.</p>
+                    <input th:if="${formMode.name() == 'CREATE'}" type="hidden" name="active" value="false">
+                    <label class="toggle-field"><input type="checkbox" name="active" value="true" th:checked="${form.active}"> Aktiv</label>
                 </div>
             </section>
 
-            <section th:if="${formMode.name() == 'CREATE'}" class="detail-section read-only-section">
-                <div class="detail-section-heading"><p class="section-kicker">Konservative Vorgaben</p><h3>Ziehung</h3></div>
-                <p>Neue Konzepte sind zunächst nicht ziehbar, spezifisch, mit Gewicht <strong>1.0000</strong> und ohne gepflegte Ungewöhnlichkeit oder Kuratornotiz angelegt.</p>
-            </section>
-
-            <section th:if="${formMode.name() != 'CREATE'}" class="detail-section">
+            <section class="detail-section">
                 <div class="detail-section-heading"><p class="section-kicker">Challenge</p><h3>Ziehung</h3></div>
                 <div class="form-grid">
                     <label class="toggle-field"><input type="checkbox" name="randomDrawEnabled" value="true" th:checked="${form.randomDrawEnabled}"> Für Zufallsziehungen aktivieren</label>
@@ -386,21 +396,90 @@
                 </div>
             </section>
 
-            <section th:if="${detail != null}" class="detail-section read-only-section">
-                <div class="detail-section-heading"><p class="section-kicker">Kontext</p><h3>Rollen und direkte Beziehungen</h3></div>
-                <p><strong>Direkte Eltern:</strong> <span th:text="${#strings.listJoin(detail.directParents.![displayName], ', ')} ?: 'keine'">keine</span></p>
-                <p><strong>Direkte Kinder:</strong> <span th:text="${#strings.listJoin(detail.directChildren.![displayName], ', ')} ?: 'keine'">keine</span></p>
-                <p><strong>Funktionale Rollen:</strong> <span th:text="${#strings.listJoin(detail.functionalRoles.![displayName], ', ')} ?: 'nicht gepflegt'">nicht gepflegt</span></p>
+            <section class="detail-section" data-testid="functional-role-editor">
+                <div class="detail-section-heading"><p class="section-kicker">Struktur</p><h3>Funktionale Rollen</h3></div>
+                <p class="muted-copy">Mehrere Rollen sind normal. Direkte Beziehungen brauchen im resultierenden Graphen mindestens eine gemeinsame Rolle.</p>
+                <div class="choice-grid">
+                    <label th:each="role : ${filterOptions.functionalRoles}" class="choice-chip">
+                        <input type="checkbox" name="functionalRole" th:value="${role.code}" th:checked="${form.metadata.hasFunctionalRole(role.code)}">
+                        <span th:text="${role.displayName}">Gemüse</span>
+                    </label>
+                </div>
                 <p th:if="${formErrors != null and formErrors.get('functionalRoles') != null}" class="field-error" th:text="${formErrors.get('functionalRoles')}">Fehler</p>
             </section>
-            <section th:if="${detail != null}" class="detail-section read-only-section">
-                <div class="detail-section-heading"><p class="section-kicker">Read-only in diesem Paket</p><h3>Eigenschaften, Beschaffbarkeit und Saison</h3></div>
-                <p><strong>Flags:</strong> <span th:text="${#strings.listJoin(detail.culinaryFlags.![displayName], ', ')} ?: 'nicht gepflegt'">nicht gepflegt</span></p>
-                <p><strong>Dimensionen:</strong> <span th:each="dimension : ${detail.culinaryDimensions}" th:text="|${dimension.dimension.displayName}: ${dimension.level ?: 'nicht gepflegt'}|">Umami</span></p>
-                <p th:each="availability : ${detail.availability}"><strong th:text="${availability.participant.displayName}">Georgia</strong>: <span th:text="${availability.level == null ? 'nicht gepflegt' : availabilityLabels.get(availability.level)}">nicht gepflegt</span></p>
+
+            <section class="detail-section" data-testid="culinary-property-editor">
+                <div class="detail-section-heading"><p class="section-kicker">Kulinarik</p><h3>Flags und Dimensionen</h3></div>
+                <h4>Flags</h4>
+                <div class="choice-grid">
+                    <label th:each="flag : ${filterOptions.culinaryFlags}" class="choice-chip">
+                        <input type="checkbox" name="culinaryFlag" th:value="${flag.code}" th:checked="${form.metadata.hasCulinaryFlag(flag.code)}">
+                        <span th:text="${flag.displayName}">fermentiert</span>
+                    </label>
+                </div>
+                <p th:if="${formErrors != null and formErrors.get('culinaryFlags') != null}" class="field-error" th:text="${formErrors.get('culinaryFlags')}">Fehler</p>
+                <h4>Dimensionen</h4>
+                <div class="form-grid">
+                    <fieldset th:each="dimension : ${filterOptions.culinaryDimensions}" class="dimension-editor">
+                        <legend th:text="${dimension.displayName}">Umami</legend>
+                        <label class="dimension-unmanaged-choice">
+                            <input type="radio" th:name="|dimension[${dimension.code}]|" value=""
+                                   th:checked="${form.metadata.dimensionLevel(dimension.code).isEmpty()}"
+                                   th:aria-label="|${dimension.displayName}: nicht gepflegt|">
+                            nicht gepflegt
+                        </label>
+                        <span class="metric-scale" th:attr="data-dimension=${dimension.code}">
+                            <label th:each="level : ${#numbers.sequence(1, 5)}" class="dimension-level-choice">
+                                <input type="radio" th:name="|dimension[${dimension.code}]|" th:value="${level}"
+                                       th:checked="${form.metadata.dimensionLevel(dimension.code) == level.toString()}"
+                                       th:aria-label="|${dimension.displayName}: Stufe ${level} von 5|">
+                                <svg class="metric-icon" th:classappend="${form.metadata.dimensionLevel(dimension.code) != '' and level <= form.metadata.dimensionLevel(dimension.code)} ? ' is-active' : ' is-inactive'"
+                                     aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+                                    <use th:attr="href=|/admin/assets/catalog-icons.svg#icon-${#strings.toLowerCase(dimension.code)}|"></use>
+                                </svg>
+                            </label>
+                        </span>
+                    </fieldset>
+                </div>
+                <p th:if="${formErrors != null and formErrors.get('culinaryDimensions') != null}" class="field-error" th:text="${formErrors.get('culinaryDimensions')}">Fehler</p>
+            </section>
+
+            <section class="detail-section" data-testid="availability-editor">
+                <div class="detail-section-heading"><p class="section-kicker">Beschaffung</p><h3>Georgia und Tobias</h3></div>
+                <div class="form-grid">
+                    <label>Georgia
+                        <select name="availability[GEORGIA]">
+                            <option value="" th:selected="${form.metadata.availability('GEORGIA').isEmpty()}">nicht gepflegt</option>
+                            <option th:each="level : ${availabilityLevels}" th:value="${level.name()}"
+                                    th:selected="${form.metadata.availability('GEORGIA') == level.name()}" th:text="${availabilityLabels.get(level)}">einfach</option>
+                        </select>
+                    </label>
+                    <label>Tobias
+                        <select name="availability[TOBIAS]">
+                            <option value="" th:selected="${form.metadata.availability('TOBIAS').isEmpty()}">nicht gepflegt</option>
+                            <option th:each="level : ${availabilityLevels}" th:value="${level.name()}"
+                                    th:selected="${form.metadata.availability('TOBIAS') == level.name()}" th:text="${availabilityLabels.get(level)}">einfach</option>
+                        </select>
+                    </label>
+                </div>
                 <p th:if="${formErrors != null and formErrors.get('availabilityGeorgia') != null}" class="field-error" th:text="${formErrors.get('availabilityGeorgia')}">Fehler</p>
                 <p th:if="${formErrors != null and formErrors.get('availabilityTobias') != null}" class="field-error" th:text="${formErrors.get('availabilityTobias')}">Fehler</p>
-                <p><strong>Saison:</strong> Die bestehende saisonale Pflege bleibt unverändert.</p>
+                <p th:if="${formErrors != null and formErrors.get('availability') != null}" class="field-error" th:text="${formErrors.get('availability')}">Fehler</p>
+            </section>
+
+            <section class="detail-section" data-testid="seasonality-editor">
+                <div class="detail-section-heading"><p class="section-kicker">Saison</p><h3>Monatsfaktoren</h3></div>
+                <p class="muted-copy">1.0 ist der Standard und wird ohne Datenbankzeile gespeichert.</p>
+                <div class="form-grid season-editor-grid">
+                    <label th:each="month : ${#numbers.sequence(1, 12)}">
+                        <span th:text="${monthNames.get(month - 1)}">Jan</span>
+                        <span class="season-field">
+                            <input inputmode="decimal" th:name="|seasonality[${month}]|" th:value="${form.metadata.seasonality(month)}">
+                            <button type="button" class="button button--secondary" data-reset-seasonality>1.0</button>
+                        </span>
+                    </label>
+                </div>
+                <p th:if="${formErrors != null and formErrors.get('seasonality') != null}" class="field-error" th:text="${formErrors.get('seasonality')}">Fehler</p>
             </section>
 
             <input th:if="${formMode.name() != 'CREATE'}" type="hidden" name="version" th:value="${form.version}">

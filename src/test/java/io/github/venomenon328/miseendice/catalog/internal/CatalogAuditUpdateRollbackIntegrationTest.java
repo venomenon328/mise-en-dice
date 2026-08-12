@@ -8,11 +8,13 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogAuditEntry;
 import io.github.venomenon328.miseendice.catalog.api.CatalogAuditEntryDraft;
 import io.github.venomenon328.miseendice.catalog.api.CatalogAuditLog;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
+import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogMetadata;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.UpdateIngredientConceptCommand;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,7 +88,15 @@ class CatalogAuditUpdateRollbackIntegrationTest {
                 2,
                 "must roll back",
                 "issue11-audit-update-admin",
-                false
+                false,
+                List.of(),
+                Map.of(),
+                false,
+                new CatalogMetadata(
+                        Set.of("VEGETABLE"), Set.of("FERMENTED"), Map.of("HEAT", 4),
+                        Map.of("GEORGIA", io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvailability.EASY,
+                                "TOBIAS", io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvailability.PLANNED),
+                        Map.of(1, new BigDecimal("1.4")))
         )))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("deliberate audit failure");
@@ -101,6 +111,11 @@ class CatalogAuditUpdateRollbackIntegrationTest {
                 .containsEntry("base_draw_weight", new BigDecimal("1.0000"))
                 .containsEntry("novelty_level", null)
                 .containsEntry("curator_note", null);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_functional_role where ingredient_concept_id = ?", Integer.class, conceptId)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_culinary_flag where ingredient_concept_id = ?", Integer.class, conceptId)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_culinary_dimension where ingredient_concept_id = ?", Integer.class, conceptId)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_availability where ingredient_concept_id = ?", Integer.class, conceptId)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_seasonality where ingredient_concept_id = ?", Integer.class, conceptId)).isZero();
     }
 
     @Test

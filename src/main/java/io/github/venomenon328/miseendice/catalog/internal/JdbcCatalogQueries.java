@@ -161,7 +161,8 @@ public class JdbcCatalogQueries implements CatalogQueries {
     public CatalogFilterOptions findFilterOptions() {
         return new CatalogFilterOptions(
                 findReferences("select code, display_name, description from functional_role order by lower(display_name), id"),
-                findReferences("select code, display_name, description from culinary_flag order by lower(display_name), id")
+                findReferences("select code, display_name, description from culinary_flag order by lower(display_name), id"),
+                findReferences("select code, display_name, description from culinary_dimension order by id")
         );
     }
 
@@ -320,9 +321,7 @@ public class JdbcCatalogQueries implements CatalogQueries {
                             + "or not exists (select 1 from ingredient_availability ia join participant p "
                             + "on p.id = ia.participant_id where ia.ingredient_concept_id = ic.id and p.code = 'GEORGIA') "
                             + "or not exists (select 1 from ingredient_availability ia join participant p "
-                            + "on p.id = ia.participant_id where ia.ingredient_concept_id = ic.id and p.code = 'TOBIAS') "
-                            + "or (ic.challenge_specificity = 'OPEN' and not exists "
-                            + "(select 1 from ingredient_refinement ir where ir.parent_concept_id = ic.id))"
+                            + "on p.id = ia.participant_id where ia.ingredient_concept_id = ic.id and p.code = 'TOBIAS')"
                             + ")"
             );
         }

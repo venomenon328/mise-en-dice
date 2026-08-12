@@ -1,16 +1,20 @@
 package io.github.venomenon328.miseendice.catalog.api;
 
 import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
  * Public application commands for the currently supported ingredient-concept writing use cases.
  *
- * <p>Base fields and pending direct-refinement changes deliberately share one update command. This
- * keeps an editor save atomic and makes the full resulting graph available for validation.</p>
+ * <p>Base fields, metadata and pending direct-refinement changes deliberately share one update
+ * command. This keeps an editor save atomic and makes the full resulting aggregate and graph
+ * available for validation.</p>
  */
 public interface CatalogCommands {
 
@@ -32,11 +36,29 @@ public interface CatalogCommands {
         }
     }
 
-    record CreateIngredientConceptCommand(String code, String displayName, String actorKey) {
+    record CreateIngredientConceptCommand(
+            String code,
+            String displayName,
+            boolean active,
+            boolean randomDrawEnabled,
+            String challengeSpecificity,
+            BigDecimal baseDrawWeight,
+            Integer noveltyLevel,
+            String curatorNote,
+            CatalogMetadata metadata,
+            boolean weightWarningsAcknowledged,
+            String actorKey
+    ) {
+
+        public CreateIngredientConceptCommand(String code, String displayName, String actorKey) {
+            this(code, displayName, true, false, "SPECIFIC", new BigDecimal("1.0000"), null, null, null, false, actorKey);
+        }
 
         public CreateIngredientConceptCommand {
             code = normalized(code);
             displayName = normalized(displayName);
+            challengeSpecificity = normalized(challengeSpecificity);
+            curatorNote = nullableNormalized(curatorNote);
             actorKey = normalized(actorKey);
             Map<String, String> errors = new LinkedHashMap<>();
             if (!Pattern.matches(INGREDIENT_CONCEPT_CODE_PATTERN, code)) {
@@ -44,6 +66,15 @@ public interface CatalogCommands {
             }
             if (displayName.isEmpty()) {
                 errors.put("displayName", "Der Anzeigename darf nicht leer sein.");
+            }
+            if (!"SPECIFIC".equals(challengeSpecificity) && !"OPEN".equals(challengeSpecificity)) {
+                errors.put("challengeSpecificity", "Wähle spezifisch oder offen.");
+            }
+            if (baseDrawWeight == null || baseDrawWeight.signum() <= 0) {
+                errors.put("baseDrawWeight", "Das Ziehungsgewicht muss größer als 0 sein.");
+            }
+            if (noveltyLevel != null && (noveltyLevel < 1 || noveltyLevel > 5)) {
+                errors.put("noveltyLevel", "Die Ungewöhnlichkeit muss zwischen 1 und 5 liegen oder leer bleiben.");
             }
             if (actorKey.isEmpty()) {
                 errors.put("actorKey", "Für die Auditierung ist ein Administrationsschlüssel erforderlich.");
@@ -68,7 +99,8 @@ public interface CatalogCommands {
             boolean weightWarningsAcknowledged,
             List<RefinementChange> refinementChanges,
             Map<Long, Long> expectedRelatedVersions,
-            boolean inactiveRelationsAcknowledged
+            boolean inactiveRelationsAcknowledged,
+            CatalogMetadata metadata
     ) {
 
         public UpdateIngredientConceptCommand(
@@ -86,7 +118,28 @@ public interface CatalogCommands {
         ) {
             this(conceptId, expectedVersion, displayName, active, randomDrawEnabled, challengeSpecificity,
                     baseDrawWeight, noveltyLevel, curatorNote, actorKey, weightWarningsAcknowledged,
-                    List.of(), Map.of(), false);
+                    List.of(), Map.of(), false, null);
+        }
+
+        public UpdateIngredientConceptCommand(
+                long conceptId,
+                long expectedVersion,
+                String displayName,
+                boolean active,
+                boolean randomDrawEnabled,
+                String challengeSpecificity,
+                BigDecimal baseDrawWeight,
+                Integer noveltyLevel,
+                String curatorNote,
+                String actorKey,
+                boolean weightWarningsAcknowledged,
+                List<RefinementChange> refinementChanges,
+                Map<Long, Long> expectedRelatedVersions,
+                boolean inactiveRelationsAcknowledged
+        ) {
+            this(conceptId, expectedVersion, displayName, active, randomDrawEnabled, challengeSpecificity,
+                    baseDrawWeight, noveltyLevel, curatorNote, actorKey, weightWarningsAcknowledged,
+                    refinementChanges, expectedRelatedVersions, inactiveRelationsAcknowledged, null);
         }
 
         public UpdateIngredientConceptCommand {
@@ -141,6 +194,63 @@ public interface CatalogCommands {
     enum RefinementChangeType {
         ADD,
         REMOVE
+    }
+
+    /**
+     * The complete editable metadata state of one ingredient aggregate. A missing metadata object
+     * keeps the compatibility behaviour of older base-field-only callers; a present object is
+     * persisted as an exact replacement of all four association groups.
+     */
+    record CatalogMetadata(
+            Set<String> functionalRoleCodes,
+            Set<String> culinaryFlagCodes,
+            Map<String, Integer> culinaryDimensionLevels,
+            Map<String, CatalogQueries.CatalogAvailability> availabilityByParticipant,
+            Map<Integer, BigDecimal> seasonalityByMonth
+    ) {
+
+        public CatalogMetadata {
+            functionalRoleCodes = normalizedCodes(functionalRoleCodes);
+            culinaryFlagCodes = normalizedCodes(culinaryFlagCodes);
+            culinaryDimensionLevels = immutableMap(culinaryDimensionLevels);
+            availabilityByParticipant = immutableMap(availabilityByParticipant);
+            seasonalityByMonth = immutableMap(seasonalityByMonth);
+            Map<String, String> errors = new LinkedHashMap<>();
+            if (culinaryDimensionLevels.entrySet().stream().anyMatch(entry -> entry.getKey() == null
+                    || entry.getKey().isBlank() || entry.getValue() == null || entry.getValue() < 1 || entry.getValue() > 5)) {
+                errors.put("culinaryDimensions", "Kulinarische Dimensionen müssen zwischen 1 und 5 liegen.");
+            }
+            if (availabilityByParticipant.entrySet().stream().anyMatch(entry -> entry.getKey() == null
+                    || entry.getKey().isBlank() || entry.getValue() == null)) {
+                errors.put("availability", "Beschaffbarkeiten müssen gültige Teilnehmer und Stufen enthalten.");
+            }
+            if (seasonalityByMonth.entrySet().stream().anyMatch(entry -> entry.getKey() == null
+                    || entry.getKey() < 1 || entry.getKey() > 12 || entry.getValue() == null
+                    || entry.getValue().signum() <= 0)) {
+                errors.put("seasonality", "Saisonfaktoren müssen für Monate 1 bis 12 größer als 0 sein.");
+            }
+            if (!errors.isEmpty()) {
+                throw new CatalogCommandValidationException(errors);
+            }
+        }
+
+        private static Set<String> normalizedCodes(Set<String> codes) {
+            if (codes == null || codes.isEmpty()) {
+                return Set.of();
+            }
+            Set<String> normalized = new LinkedHashSet<>();
+            codes.forEach(code -> normalized.add(normalized(code)));
+            if (normalized.contains("")) {
+                throw new CatalogCommandValidationException(Map.of("metadata", "Referenzcodes dürfen nicht leer sein."));
+            }
+            return Set.copyOf(normalized);
+        }
+
+        private static <K, V> Map<K, V> immutableMap(Map<K, V> values) {
+            return values == null || values.isEmpty()
+                    ? Map.of()
+                    : Collections.unmodifiableMap(new LinkedHashMap<>(values));
+        }
     }
 
     private static String normalized(String value) {

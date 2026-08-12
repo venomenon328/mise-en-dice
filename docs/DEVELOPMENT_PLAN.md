@@ -1,6 +1,6 @@
 # Entwicklungsplan
 
-Stand: 11. August 2026
+Stand: 12. August 2026
 
 Dieses Dokument beschreibt die aktuelle Umsetzungsreihenfolge. Die [`VISION.md`](VISION.md) beschreibt das gewünschte Produkt; dieser Plan legt fest, in welcher technischen Reihenfolge die dafür notwendigen Bausteine entstehen. Die konkrete Webspezifikation steht in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md).
 
@@ -209,7 +209,7 @@ Dieses Paket macht den Graphen schreibend pflegbar.
 - inaktive Konzepte können nach sichtbarer Bestätigung in Beziehungen verbleiben,
 - die UI unterscheidet direkte und transitive Beziehungen eindeutig.
 
-## Phase 7: Rollen, Eigenschaften, Beschaffbarkeit und Saison
+## Phase 7: Rollen, Eigenschaften, Beschaffbarkeit und Saison (abgeschlossen mit Issue #24)
 
 Dieses Paket vervollständigt die Zutatenpflege.
 
@@ -221,14 +221,16 @@ Dieses Paket vervollständigt die Zutatenpflege.
 - Beschaffbarkeit für Georgia und Tobias,
 - Saisonmultiplikatoren,
 - vollständige Pflichtvalidierung aktiver Ziehkandidaten,
-- `Pflegebedarf`-Filter.
+- `Pflegebedarf`-Filter,
+- gemeinsamer atomarer Save mit Basisfeldern und vorgemerkten Beziehungen,
+- PostgreSQL-Graphlock für Relations-, Rollen- und Spezifitätswrites.
 
 Die Stammdaten `functional_role`, `culinary_flag`, `culinary_dimension` und `participant` bleiben in dieser Phase migrationsgeführt und werden nicht selbst per Web administriert.
 
 ### Gate
 
 - aktive ziehbare Konzepte können nicht ohne Rolle und vollständige Beschaffbarkeit gespeichert werden,
-- aktive ziehbare offene Konzepte benötigen mindestens eine direkte bekannte Konkretisierung,
+- aktive ziehbare offene Konzepte dürfen ohne bekannte direkte Konkretisierung gespeichert werden,
 - fehlende Dimensionswerte bleiben semantisch `nicht gepflegt`,
 - fehlende Saisonwerte bleiben semantisch Faktor 1.0,
 - Änderungen sind versionsgesichert und auditiert.

@@ -34,6 +34,8 @@ Drei voneinander unabhängige Fragen werden getrennt behandelt:
 
 Damit kann `Hähnchen` eine spezifische, zufällig ziehbare Vorgabe sein und gleichzeitig bekannte Konkretisierungen wie `Hähnchenbrust` und `Hähnchenschenkel` besitzen. Umgekehrt ist `frische Chili` eine offene Vorgabe, weil Jalapeño, Habanero oder Bird’s-Eye-Chili echte unterschiedliche Auswahlentscheidungen darstellen.
 
+Ein aktives ziehbares `OPEN`-Konzept benötigt keine direkt gespeicherte Konkretisierung. `OPEN` ist die Semantik der Challenge-Vorgabe, nicht eine Vollständigkeitsbehauptung über den kuratierten Graphen. Fehlende Kanten oder Kinder schließen weitere sinnvolle Kochentscheidungen nicht aus.
+
 Ein nicht ziehbares Konzept wird nur gepflegt, wenn es fachlich tatsächlich benötigt wird, etwa als Gruppenknoten für eine Ausschlussregel. `active = false` nimmt einen Eintrag aus der normalen operativen Nutzung, ohne historische Referenzen zu verlieren; `random_draw_enabled = false` lässt einen aktiven Eintrag für Klassifikation oder Regeln bestehen, schließt ihn aber aus der Zufallsauswahl aus.
 
 Es besteht kein Anspruch, jede theoretisch mögliche Unterform zu speichern.
@@ -50,7 +52,7 @@ Verarbeitungsherkunft allein reicht für eine Kante nicht aus. Getrocknete Chili
 
 Der Graph ist bewusst **unvollständig**. Fehlt eine denkbare Konkretisierung in der Datenbank, ist sie dadurch nicht automatisch unzulässig. Die Datenbank bildet kuratiertes Systemwissen ab, keine Whitelist sämtlicher Entscheidungen beim Kochen.
 
-Die Migration verhindert Zyklen im Konkretisierungsgraphen per Trigger. Für redaktionelle Writes serialisiert der Catalog-Application-Service zusätzlich sämtliche `ingredient_refinement`-Mutationen mit einem stabilen transaktionsgebundenen PostgreSQL-Advisory-Lock, bevor er den resultierenden Graphen liest und validiert. So können zwei disjunkte, gleichzeitig geschriebene Kanten nicht als Write-Skew gemeinsam einen Zyklus schließen. Der Lock wird beim Transaktionsende freigegeben; der Zyklus-Trigger bleibt die letzte Sicherung.
+Die Migration verhindert Zyklen im Konkretisierungsgraphen per Trigger. Für redaktionelle Writes serialisiert der Catalog-Application-Service zusätzlich sämtliche `ingredient_refinement`-Mutationen sowie Rollen- und Spezifitätsänderungen mit einem stabilen transaktionsgebundenen PostgreSQL-Advisory-Lock, bevor er den resultierenden Graphen liest und validiert. So können weder zwei disjunkte Kanten noch eine Kante zusammen mit einer Rollen- oder Spezifitätsänderung als Write-Skew eine ungültige Struktur erzeugen. Der Lock wird beim Transaktionsende freigegeben; der Zyklus-Trigger bleibt die letzte Sicherung.
 
 ## 4. Funktionale Rollen
 

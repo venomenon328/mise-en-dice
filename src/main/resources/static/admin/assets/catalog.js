@@ -135,6 +135,15 @@
         const form = event.target.closest?.("[data-catalog-concept-form]");
         if (form) {
             form.dataset.dirty = "true";
+            const targetName = event.target?.name;
+            if (targetName
+                    && targetName !== "weightWarningsAcknowledged"
+                    && targetName !== "inactiveRelationsAcknowledged") {
+                const acknowledgement = form.querySelector("input[name='weightWarningsAcknowledged']");
+                if (acknowledgement) {
+                    acknowledgement.checked = false;
+                }
+            }
         }
     }
 
@@ -459,6 +468,15 @@
     let pickerTimer = null;
 
     document.addEventListener("click", (event) => {
+        const resetSeasonality = event.target.closest?.("[data-reset-seasonality]");
+        if (resetSeasonality) {
+            const input = resetSeasonality.closest(".season-field")?.querySelector("input");
+            if (input) {
+                input.value = "1.0";
+                input.dispatchEvent(new Event("input", {bubbles: true}));
+            }
+            return;
+        }
         const pickerButton = event.target.closest?.("[data-open-relation-picker]");
         if (pickerButton) {
             const editor = refinementEditor();

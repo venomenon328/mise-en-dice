@@ -6,6 +6,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogAuditLog;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogCommandResult;
+import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogMetadata;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CreateIngredientConceptCommand;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.UpdateIngredientConceptCommand;
 import io.github.venomenon328.miseendice.catalog.api.CatalogConceptNotFoundException;
@@ -37,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 class CatalogCommandService implements CatalogCommands {
 
     private static final String ENTITY_TYPE = "INGREDIENT_CONCEPT";
-    /** Stable, transaction-scoped PostgreSQL lock key for every refinement-graph mutation. */
+    /** Stable, transaction-scoped PostgreSQL lock key for every graph-semantic catalog mutation. */
     private static final long REFINEMENT_GRAPH_LOCK_KEY = 6_241_884_431_947_221L;
 
     private final JdbcTemplate jdbcTemplate;
@@ -53,6 +54,17 @@ class CatalogCommandService implements CatalogCommands {
     @Override
     @Transactional
     public CatalogCommandResult createIngredientConcept(CreateIngredientConceptCommand command) {
+        validateMetadataReferences(command.metadata());
+        MetadataState metadata = command.metadata() == null
+                ? MetadataState.empty()
+                : MetadataState.from(command.metadata());
+        validateDrawability(command.active(), command.randomDrawEnabled(), metadata);
+        List<String> weightWarnings = drawWeightWarnings(
+                command.active(), command.randomDrawEnabled(), command.baseDrawWeight(), command.noveltyLevel(),
+                metadata, false);
+        if (!weightWarnings.isEmpty() && !command.weightWarningsAcknowledged()) {
+            throw new CatalogDrawWeightWarningException(weightWarnings);
+        }
         long conceptId;
         try {
             conceptId = jdbcTemplate.queryForObject(
@@ -60,16 +72,20 @@ class CatalogCommandService implements CatalogCommands {
                     insert into ingredient_concept (
                         code, display_name, active, random_draw_enabled, challenge_specificity,
                         base_draw_weight, novelty_level, curator_note
-                    ) values (?, ?, true, false, 'SPECIFIC', 1.0000, null, null)
+                    ) values (?, ?, ?, ?, ?, ?, ?, ?)
                     returning id
                     """,
                     Long.class,
-                    command.code(), command.displayName()
+                    command.code(), command.displayName(), command.active(), command.randomDrawEnabled(),
+                    command.challengeSpecificity(), command.baseDrawWeight(), command.noveltyLevel(), command.curatorNote()
             );
         } catch (DataIntegrityViolationException exception) {
             throw knownUniqueConstraintOrRethrow(exception);
         }
 
+        if (command.metadata() != null) {
+            replaceMetadata(conceptId, command.metadata());
+        }
         CatalogConceptDetail after = findRequired(conceptId);
         auditLog.append(new CatalogAuditEntryDraft(
                 UUID.randomUUID(), command.actorKey(), ENTITY_TYPE, conceptId, "CREATE", null, snapshot(after)
@@ -80,46 +96,7 @@ class CatalogCommandService implements CatalogCommands {
     @Override
     @Transactional
     public CatalogCommandResult updateIngredientConcept(UpdateIngredientConceptCommand command) {
-        if (!command.refinementChanges().isEmpty()) {
-            return updateIngredientConceptWithRefinements(command);
-        }
-        CatalogConceptDetail before = findRequired(command.conceptId());
-        validateDrawability(command, before);
-        validateSpecificityGraph(command, before);
-
-        List<String> warnings = drawWeightWarnings(command, before);
-        if (!warnings.isEmpty() && !command.weightWarningsAcknowledged()) {
-            throw new CatalogDrawWeightWarningException(warnings);
-        }
-
-        int updated;
-        try {
-            updated = jdbcTemplate.update(
-                    """
-                    update ingredient_concept
-                    set display_name = ?, active = ?, random_draw_enabled = ?, challenge_specificity = ?,
-                        base_draw_weight = ?, novelty_level = ?, curator_note = ?, version = version + 1
-                    where id = ? and version = ?
-                    """,
-                    command.displayName(), command.active(), command.randomDrawEnabled(), command.challengeSpecificity(),
-                    command.baseDrawWeight(), command.noveltyLevel(), command.curatorNote(),
-                    command.conceptId(), command.expectedVersion()
-            );
-        } catch (DataIntegrityViolationException exception) {
-            throw knownUniqueConstraintOrRethrow(exception);
-        }
-        if (updated == 0) {
-            if (conceptExists(command.conceptId())) {
-                throw new CatalogVersionConflictException(command.conceptId(), command.expectedVersion());
-            }
-            throw new CatalogConceptNotFoundException(command.conceptId());
-        }
-
-        CatalogConceptDetail after = findRequired(command.conceptId());
-        auditLog.append(new CatalogAuditEntryDraft(
-                UUID.randomUUID(), command.actorKey(), ENTITY_TYPE, after.id(), "UPDATE", snapshot(before), snapshot(after)
-        ));
-        return new CatalogCommandResult(after.id(), after.version());
+        return updateIngredientConceptAggregate(command);
     }
 
     /**
@@ -127,9 +104,10 @@ class CatalogCommandService implements CatalogCommands {
      * deliberately obtained before even reading the graph: version checks alone cannot prevent a
      * disjoint write-skew cycle in two application processes.
      */
-    private CatalogCommandResult updateIngredientConceptWithRefinements(UpdateIngredientConceptCommand command) {
+    private CatalogCommandResult updateIngredientConceptAggregate(UpdateIngredientConceptCommand command) {
         jdbcTemplate.execute("select pg_advisory_xact_lock(" + REFINEMENT_GRAPH_LOCK_KEY + ")");
 
+        validateMetadataReferences(command.metadata());
         Set<Long> affectedIds = affectedConceptIds(command);
         Map<Long, LockedConcept> locked = lockAndCheckVersions(command, affectedIds);
         Map<Long, CatalogConceptDetail> before = new LinkedHashMap<>();
@@ -140,9 +118,19 @@ class CatalogCommandService implements CatalogCommands {
                 command.conceptId(), command.displayName(), command.challengeSpecificity(),
                 command.active(), command.randomDrawEnabled()
         );
+        if (command.metadata() != null) {
+            graph.replaceRoles(command.conceptId(), command.metadata().functionalRoleCodes());
+        }
         applyPendingRefinements(graph, command);
-        validateGraph(graph);
-        validateDrawability(command, before.get(command.conceptId()), graph.directChildCount(command.conceptId()));
+        if (!command.refinementChanges().isEmpty()
+                || command.metadata() != null
+                || !command.challengeSpecificity().equals(before.get(command.conceptId()).challengeSpecificity())) {
+            validateGraph(graph);
+        }
+        MetadataState resultingMetadata = command.metadata() == null
+                ? MetadataState.from(before.get(command.conceptId()))
+                : MetadataState.from(command.metadata());
+        validateDrawability(command.active(), command.randomDrawEnabled(), resultingMetadata);
 
         List<String> inactiveWarnings = inactiveRelationWarnings(command, graph);
         if (!inactiveWarnings.isEmpty() && !command.inactiveRelationsAcknowledged()) {
@@ -150,7 +138,7 @@ class CatalogCommandService implements CatalogCommands {
         }
         List<String> weightWarnings = drawWeightWarnings(
                 command,
-                before.get(command.conceptId()),
+                resultingMetadata,
                 graph.hasDirectParentCode(command.conceptId(), "COOKING_ALCOHOL")
         );
         if (!weightWarnings.isEmpty() && !command.weightWarningsAcknowledged()) {
@@ -158,6 +146,9 @@ class CatalogCommandService implements CatalogCommands {
         }
 
         persistPendingRefinements(command);
+        if (command.metadata() != null) {
+            replaceMetadata(command.conceptId(), command.metadata());
+        }
         updateAffectedVersionsAndBaseFields(command, locked);
 
         UUID changeGroupId = UUID.randomUUID();
@@ -165,7 +156,8 @@ class CatalogCommandService implements CatalogCommands {
         affectedIds.stream().sorted().forEach(id -> after.put(id, findRequired(id)));
         for (long conceptId : affectedIds.stream().sorted().toList()) {
             auditLog.append(new CatalogAuditEntryDraft(
-                    changeGroupId, command.actorKey(), ENTITY_TYPE, conceptId, "UPDATE_REFINEMENTS",
+                    changeGroupId, command.actorKey(), ENTITY_TYPE, conceptId,
+                    command.refinementChanges().isEmpty() ? "UPDATE" : "UPDATE_REFINEMENTS",
                     snapshot(before.get(conceptId)), snapshot(after.get(conceptId))
             ));
         }
@@ -291,13 +283,6 @@ class CatalogCommandService implements CatalogCommands {
                         + " ist über einen anderen Pfad bereits transitiv ableitbar. Entferne bewusst eine der Kanten.");
             }
         }
-        for (GraphNode node : graph.nodes().values()) {
-            if (node.active() && node.randomDrawEnabled() && "OPEN".equals(node.challengeSpecificity())
-                    && graph.directChildCount(node.id()) == 0) {
-                throw relationError("Die aktive ziehbare offene Vorgabe „" + node.displayName()
-                        + "“ benötigt mindestens eine direkte Konkretisierung.");
-            }
-        }
     }
 
     private List<String> inactiveRelationWarnings(UpdateIngredientConceptCommand command, GraphState graph) {
@@ -363,30 +348,19 @@ class CatalogCommandService implements CatalogCommands {
         });
     }
 
-    private void validateDrawability(
-            UpdateIngredientConceptCommand command,
-            CatalogConceptDetail current,
-            int directChildren
-    ) {
-        if (!command.active() || !command.randomDrawEnabled()) {
+    private void validateDrawability(boolean active, boolean randomDrawEnabled, MetadataState metadata) {
+        if (!active || !randomDrawEnabled) {
             return;
         }
         Map<String, String> errors = new LinkedHashMap<>();
-        if (current.functionalRoles().isEmpty()) {
+        if (metadata.functionalRoleCodes().isEmpty()) {
             errors.put("functionalRoles", "Ziehbare aktive Konzepte benötigen mindestens eine funktionale Rolle.");
         }
-        boolean georgiaAvailable = current.availability().stream()
-                .anyMatch(entry -> entry.participant().code().equals("GEORGIA") && entry.level() != null);
-        if (!georgiaAvailable) {
+        if (!metadata.availabilityByParticipant().containsKey("GEORGIA")) {
             errors.put("availabilityGeorgia", "Ziehbare aktive Konzepte benötigen eine Beschaffbarkeit für Georgia.");
         }
-        boolean tobiasAvailable = current.availability().stream()
-                .anyMatch(entry -> entry.participant().code().equals("TOBIAS") && entry.level() != null);
-        if (!tobiasAvailable) {
+        if (!metadata.availabilityByParticipant().containsKey("TOBIAS")) {
             errors.put("availabilityTobias", "Ziehbare aktive Konzepte benötigen eine Beschaffbarkeit für Tobias.");
-        }
-        if ("OPEN".equals(command.challengeSpecificity()) && directChildren == 0) {
-            errors.put("challengeSpecificity", "Eine offene ziehbare Vorgabe benötigt mindestens eine direkte Konkretisierung.");
         }
         if (!errors.isEmpty()) {
             throw new CatalogCommandValidationException(errors);
@@ -402,87 +376,30 @@ class CatalogCommandService implements CatalogCommands {
                 .orElseThrow(() -> new CatalogConceptNotFoundException(conceptId));
     }
 
-    private void validateDrawability(UpdateIngredientConceptCommand command, CatalogConceptDetail current) {
-        if (!command.active() || !command.randomDrawEnabled()) {
-            return;
-        }
-        Map<String, String> errors = new LinkedHashMap<>();
-        if (current.functionalRoles().isEmpty()) {
-            errors.put("functionalRoles", "Ziehbare aktive Konzepte benötigen mindestens eine funktionale Rolle.");
-        }
-        boolean georgiaAvailable = current.availability().stream()
-                .anyMatch(entry -> entry.participant().code().equals("GEORGIA") && entry.level() != null);
-        if (!georgiaAvailable) {
-            errors.put("availabilityGeorgia", "Ziehbare aktive Konzepte benötigen eine Beschaffbarkeit für Georgia.");
-        }
-        boolean tobiasAvailable = current.availability().stream()
-                .anyMatch(entry -> entry.participant().code().equals("TOBIAS") && entry.level() != null);
-        if (!tobiasAvailable) {
-            errors.put("availabilityTobias", "Ziehbare aktive Konzepte benötigen eine Beschaffbarkeit für Tobias.");
-        }
-        if ("OPEN".equals(command.challengeSpecificity()) && current.directChildren().isEmpty()) {
-            errors.put("challengeSpecificity", "Eine offene ziehbare Vorgabe benötigt mindestens eine direkte Konkretisierung.");
-        }
-        if (!errors.isEmpty()) {
-            throw new CatalogCommandValidationException(errors);
-        }
-    }
-
-    private void validateSpecificityGraph(UpdateIngredientConceptCommand command, CatalogConceptDetail current) {
-        Map<String, String> errors = new LinkedHashMap<>();
-        if ("OPEN".equals(command.challengeSpecificity()) && jdbcTemplate.queryForObject(
-                """
-                select exists (
-                    select 1
-                    from ingredient_refinement relation
-                    join ingredient_concept parent on parent.id = relation.parent_concept_id
-                    where relation.child_concept_id = ? and parent.challenge_specificity = 'SPECIFIC'
-                )
-                """, Boolean.class, current.id())) {
-            errors.put("challengeSpecificity", "Offene Konzepte dürfen keinen direkten spezifischen Oberbegriff haben.");
-        }
-        if ("SPECIFIC".equals(command.challengeSpecificity()) && jdbcTemplate.queryForObject(
-                """
-                select exists (
-                    select 1
-                    from ingredient_refinement relation
-                    join ingredient_concept child on child.id = relation.child_concept_id
-                    where relation.parent_concept_id = ? and child.challenge_specificity = 'OPEN'
-                )
-                """, Boolean.class, current.id())) {
-            errors.put("challengeSpecificity", "Spezifische Konzepte dürfen keine direkten offenen Konkretisierungen haben.");
-        }
-        if (!errors.isEmpty()) {
-            throw new CatalogCommandValidationException(errors);
-        }
-    }
-
-    private List<String> drawWeightWarnings(UpdateIngredientConceptCommand command, CatalogConceptDetail current) {
-        boolean directCookingAlcoholParent = Boolean.TRUE.equals(jdbcTemplate.queryForObject(
-                """
-                select exists (
-                    select 1
-                    from ingredient_refinement relation
-                    join ingredient_concept parent on parent.id = relation.parent_concept_id
-                    where relation.child_concept_id = ? and parent.code = 'COOKING_ALCOHOL'
-                )
-                """, Boolean.class, current.id()
-        ));
-        return drawWeightWarnings(command, current, directCookingAlcoholParent);
+    private List<String> drawWeightWarnings(
+            UpdateIngredientConceptCommand command,
+            MetadataState metadata,
+            boolean directCookingAlcoholParent
+    ) {
+        return drawWeightWarnings(
+                command.active(), command.randomDrawEnabled(), command.baseDrawWeight(), command.noveltyLevel(),
+                metadata, directCookingAlcoholParent);
     }
 
     private List<String> drawWeightWarnings(
-            UpdateIngredientConceptCommand command,
-            CatalogConceptDetail current,
+            boolean active,
+            boolean randomDrawEnabled,
+            BigDecimal weight,
+            Integer noveltyLevel,
+            MetadataState metadata,
             boolean directCookingAlcoholParent
     ) {
-        if (!command.active() || !command.randomDrawEnabled()) {
+        if (!active || !randomDrawEnabled) {
             return List.of();
         }
         List<String> warnings = new ArrayList<>();
-        BigDecimal weight = command.baseDrawWeight();
-        if (command.noveltyLevel() != null) {
-            BigDecimal cap = switch (command.noveltyLevel()) {
+        if (noveltyLevel != null) {
+            BigDecimal cap = switch (noveltyLevel) {
                 case 5 -> new BigDecimal("0.25");
                 case 4 -> new BigDecimal("0.35");
                 case 3 -> new BigDecimal("0.55");
@@ -490,10 +407,10 @@ class CatalogCommandService implements CatalogCommands {
             };
             if (cap != null && weight.compareTo(cap) > 0) {
                 warnings.add("Die Ungewöhnlichkeit Stufe %d hat in der Baseline einen Richtwert von höchstens %s."
-                        .formatted(command.noveltyLevel(), cap));
+                        .formatted(noveltyLevel, cap));
             }
         }
-        if (current.availability().stream().anyMatch(entry -> entry.level() == CatalogQueries.CatalogAvailability.DIFFICULT)
+        if (metadata.availabilityByParticipant().containsValue(CatalogQueries.CatalogAvailability.DIFFICULT)
                 && weight.compareTo(new BigDecimal("0.35")) > 0) {
             warnings.add("Schwierig beschaffbare Konzepte haben in der Baseline einen Richtwert von höchstens 0.35.");
         }
@@ -503,10 +420,69 @@ class CatalogCommandService implements CatalogCommands {
         return List.copyOf(warnings);
     }
 
-    private boolean conceptExists(long conceptId) {
-        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(
-                "select exists (select 1 from ingredient_concept where id = ?)", Boolean.class, conceptId
-        ));
+    private void validateMetadataReferences(CatalogMetadata metadata) {
+        if (metadata == null) {
+            return;
+        }
+        requireKnownCodes("functionalRoles", metadata.functionalRoleCodes(), "functional_role");
+        requireKnownCodes("culinaryFlags", metadata.culinaryFlagCodes(), "culinary_flag");
+        requireKnownCodes("culinaryDimensions", metadata.culinaryDimensionLevels().keySet(), "culinary_dimension");
+        Set<String> participantCodes = metadata.availabilityByParticipant().keySet();
+        requireKnownCodes("availability", participantCodes, "participant");
+        if (!Set.of("GEORGIA", "TOBIAS").containsAll(participantCodes)) {
+            throw new CatalogCommandValidationException(Map.of(
+                    "availability", "Beschaffbarkeit darf nur für Georgia und Tobias gepflegt werden."));
+        }
+    }
+
+    private void requireKnownCodes(String field, Set<String> codes, String table) {
+        if (codes.isEmpty()) {
+            return;
+        }
+        List<String> known = jdbcTemplate.queryForList(
+                "select code from " + table + " where code in (" + placeholders(codes.size()) + ")",
+                String.class,
+                codes.toArray());
+        if (known.size() != codes.size()) {
+            throw new CatalogCommandValidationException(Map.of(field, "Eine übermittelte Referenz ist nicht bekannt."));
+        }
+    }
+
+    private void replaceMetadata(long conceptId, CatalogMetadata metadata) {
+        jdbcTemplate.update("delete from ingredient_functional_role where ingredient_concept_id = ?", conceptId);
+        metadata.functionalRoleCodes().stream().sorted().forEach(code -> jdbcTemplate.update(
+                "insert into ingredient_functional_role (ingredient_concept_id, functional_role_id) "
+                        + "select ?, id from functional_role where code = ?", conceptId, code));
+
+        jdbcTemplate.update("delete from ingredient_culinary_flag where ingredient_concept_id = ?", conceptId);
+        metadata.culinaryFlagCodes().stream().sorted().forEach(code -> jdbcTemplate.update(
+                "insert into ingredient_culinary_flag (ingredient_concept_id, culinary_flag_id) "
+                        + "select ?, id from culinary_flag where code = ?", conceptId, code));
+
+        jdbcTemplate.update("delete from ingredient_culinary_dimension where ingredient_concept_id = ?", conceptId);
+        metadata.culinaryDimensionLevels().entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> jdbcTemplate.update(
+                "insert into ingredient_culinary_dimension (ingredient_concept_id, culinary_dimension_id, level) "
+                        + "select ?, id, ? from culinary_dimension where code = ?",
+                conceptId, entry.getValue(), entry.getKey()));
+
+        jdbcTemplate.update("delete from ingredient_availability where ingredient_concept_id = ? "
+                + "and participant_id in (select id from participant where code in ('GEORGIA', 'TOBIAS'))", conceptId);
+        metadata.availabilityByParticipant().entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> jdbcTemplate.update(
+                "insert into ingredient_availability (ingredient_concept_id, participant_id, availability_level) "
+                        + "select ?, id, ? from participant where code = ?",
+                conceptId, entry.getValue().name(), entry.getKey()));
+
+        jdbcTemplate.update("delete from ingredient_seasonality where ingredient_concept_id = ?", conceptId);
+        metadata.seasonalityByMonth().entrySet().stream()
+                .filter(entry -> entry.getValue().compareTo(BigDecimal.ONE) != 0)
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> jdbcTemplate.update(
+                        "insert into ingredient_seasonality (ingredient_concept_id, month, weight_multiplier) values (?, ?, ?)",
+                        conceptId, entry.getKey(), entry.getValue()));
+    }
+
+    private static String placeholders(int count) {
+        return String.join(", ", java.util.Collections.nCopies(count, "?"));
     }
 
     private RuntimeException knownUniqueConstraintOrRethrow(DataIntegrityViolationException exception) {
@@ -576,6 +552,33 @@ class CatalogCommandService implements CatalogCommands {
     private record LockedConcept(long id, long version) {
     }
 
+    private record MetadataState(
+            Set<String> functionalRoleCodes,
+            Map<String, CatalogQueries.CatalogAvailability> availabilityByParticipant
+    ) {
+
+        private static MetadataState empty() {
+            return new MetadataState(Set.of(), Map.of());
+        }
+
+        private static MetadataState from(CatalogMetadata metadata) {
+            return new MetadataState(metadata.functionalRoleCodes(), metadata.availabilityByParticipant());
+        }
+
+        private static MetadataState from(CatalogConceptDetail detail) {
+            Set<String> roles = detail.functionalRoles().stream()
+                    .map(CatalogQueries.CatalogReferenceValue::code)
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            Map<String, CatalogQueries.CatalogAvailability> availability = new LinkedHashMap<>();
+            detail.availability().forEach(entry -> {
+                if (entry.level() != null) {
+                    availability.put(entry.participant().code(), entry.level());
+                }
+            });
+            return new MetadataState(roles, Map.copyOf(availability));
+        }
+    }
+
     private record GraphNode(
             long id,
             String code,
@@ -635,8 +638,8 @@ class CatalogCommandService implements CatalogCommands {
             return roles.getOrDefault(conceptId, Set.of());
         }
 
-        private int directChildCount(long parentId) {
-            return Math.toIntExact(edges.stream().filter(edge -> edge.parentId() == parentId).count());
+        private void replaceRoles(long conceptId, Set<String> replacement) {
+            roles.put(conceptId, Set.copyOf(replacement));
         }
 
         private boolean hasDirectParentCode(long childId, String parentCode) {
