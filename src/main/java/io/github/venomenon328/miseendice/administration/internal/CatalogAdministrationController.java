@@ -40,7 +40,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
 
-/** Spring MVC adapter for catalog navigation and the Phase-5 base editing flows. */
+/** Spring MVC adapter for catalog navigation and the current catalog editing flows. */
 @Controller
 @RequestMapping("/admin")
 @ConditionalOnProperty(prefix = "mise-en-dice.administration", name = "enabled", havingValue = "true")
@@ -301,12 +301,14 @@ class CatalogAdministrationController {
         boolean wouldBeRedundant = direction == RelationDirection.PARENT
                 ? edited.transitiveAncestors().stream().anyMatch(relation -> relation.id() == candidate.id())
                 : edited.transitiveDescendants().stream().anyMatch(relation -> relation.id() == candidate.id());
-        Set<String> editedRoles = edited.functionalRoles().stream().map(value -> value.code()).collect(java.util.stream.Collectors.toSet());
+        Set<String> editedRoles = edited.functionalRoles().stream()
+                .map(value -> value.displayName())
+                .collect(java.util.stream.Collectors.toSet());
         boolean roleMismatch = candidate.functionalRoles().stream().noneMatch(editedRoles::contains);
         String reason = alreadyDirect ? "bereits direkte Beziehung"
                 : wouldCycle ? "würde einen Zyklus bilden"
                 : wouldBeRedundant ? "bereits transitiv ableitbar"
-                : specificityInvalid ? "SpezifitÃ¤t nicht zulässig"
+                : specificityInvalid ? "Spezifität nicht zulässig"
                 : roleMismatch ? "keine gemeinsame funktionale Rolle" : null;
         return new RelationPickerItem(candidate, reason == null, reason);
     }
@@ -352,9 +354,27 @@ class CatalogAdministrationController {
         model.addAttribute("form", form);
         model.addAttribute("currentDetail", current.get());
         model.addAttribute("conflictingConceptId", conflictingConceptId);
+        model.addAttribute("conflictingConceptName", catalogQueries.findConcept(conflictingConceptId)
+                .map(CatalogConceptDetail::displayName)
+                .orElse("Konzept #" + conflictingConceptId));
+        model.addAttribute("pendingRelationSummaries", pendingRelationSummaries(form));
         model.addAttribute("formMode", FormMode.CONFLICT);
         populateCatalogPage(state, authentication, model, response);
         return "admin/catalog";
+    }
+
+    private List<String> pendingRelationSummaries(CatalogConceptForm form) {
+        return form.pendingRefinements().stream().map(pending -> {
+            long relatedId = pending.relatedConceptId(form.conceptId());
+            String relatedName = catalogQueries.findConcept(relatedId)
+                    .map(CatalogConceptDetail::displayName)
+                    .orElse("Konzept #" + relatedId);
+            String direction = pending.parentConceptId() == form.conceptId()
+                    ? "Konkretisierung" : "Oberbegriff";
+            String action = pending.type() == CatalogCommands.RefinementChangeType.ADD
+                    ? "hinzufügen" : "entfernen";
+            return direction + " „" + relatedName + "“ " + action;
+        }).toList();
     }
 
     private String renderMissing(
@@ -466,7 +486,7 @@ class CatalogAdministrationController {
                     }
                     parsed.add(new PendingRefinement(type, parentId, childId, version));
                 } catch (RuntimeException exception) {
-                    errors.put("relations", "Die vorgemerkte Beziehung ist ungÃ¼ltig.");
+                    errors.put("relations", "Die vorgemerkte Beziehung ist ungültig.");
                 }
             }
             if (!errors.isEmpty()) {
@@ -567,8 +587,8 @@ class CatalogAdministrationController {
                     .orElse(pending)).toList();
             return new CatalogConceptForm(
                     conceptId, code, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
-                    noveltyLevel, curatorNote, Long.toString(currentVersion), weightWarningsAcknowledged,
-                    inactiveRelationsAcknowledged, rebased
+                    noveltyLevel, curatorNote, Long.toString(currentVersion), false,
+                    false, rebased
             );
         }
 
@@ -591,7 +611,7 @@ class CatalogAdministrationController {
                 try {
                     relatedId = pending.relatedConceptId(conceptId);
                 } catch (IllegalArgumentException exception) {
-                    errors.put("relations", "Eine vorgemerkte Beziehung gehÃ¶rt nicht zu diesem Konzept.");
+                    errors.put("relations", "Eine vorgemerkte Beziehung gehört nicht zu diesem Konzept.");
                     continue;
                 }
                 Long previous = relatedVersions.putIfAbsent(relatedId, pending.relatedVersion());
