@@ -150,6 +150,7 @@ public interface CatalogQueries {
             String challengeSpecificity,
             BigDecimal baseDrawWeight,
             Integer noveltyLevel,
+            long version,
             OffsetDateTime updatedAt,
             List<String> functionalRoles,
             Map<String, CatalogAvailability> availabilityByParticipant,

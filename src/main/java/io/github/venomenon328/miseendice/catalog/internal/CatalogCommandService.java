@@ -38,17 +38,21 @@ import org.springframework.transaction.annotation.Transactional;
 class CatalogCommandService implements CatalogCommands {
 
     private static final String ENTITY_TYPE = "INGREDIENT_CONCEPT";
-    /** Stable, transaction-scoped PostgreSQL lock key for every graph-semantic catalog mutation. */
-    private static final long REFINEMENT_GRAPH_LOCK_KEY = 6_241_884_431_947_221L;
-
     private final JdbcTemplate jdbcTemplate;
     private final CatalogQueries catalogQueries;
     private final CatalogAuditLog auditLog;
+    private final CatalogGraphLock graphLock;
 
-    CatalogCommandService(JdbcTemplate jdbcTemplate, CatalogQueries catalogQueries, CatalogAuditLog auditLog) {
+    CatalogCommandService(
+            JdbcTemplate jdbcTemplate,
+            CatalogQueries catalogQueries,
+            CatalogAuditLog auditLog,
+            CatalogGraphLock graphLock
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.catalogQueries = catalogQueries;
         this.auditLog = auditLog;
+        this.graphLock = graphLock;
     }
 
     @Override
@@ -105,7 +109,7 @@ class CatalogCommandService implements CatalogCommands {
      * disjoint write-skew cycle in two application processes.
      */
     private CatalogCommandResult updateIngredientConceptAggregate(UpdateIngredientConceptCommand command) {
-        jdbcTemplate.execute("select pg_advisory_xact_lock(" + REFINEMENT_GRAPH_LOCK_KEY + ")");
+        graphLock.acquire();
 
         validateMetadataReferences(command.metadata());
         Set<Long> affectedIds = affectedConceptIds(command);
@@ -497,56 +501,7 @@ class CatalogCommandService implements CatalogCommands {
     }
 
     private static CatalogAggregateSnapshot snapshot(CatalogConceptDetail detail) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        values.put("id", detail.id());
-        values.put("code", detail.code());
-        values.put("displayName", detail.displayName());
-        values.put("active", detail.active());
-        values.put("randomDrawEnabled", detail.randomDrawEnabled());
-        values.put("challengeSpecificity", detail.challengeSpecificity());
-        values.put("baseDrawWeight", detail.baseDrawWeight());
-        values.put("noveltyLevel", detail.noveltyLevel());
-        values.put("curatorNote", detail.curatorNote());
-        values.put("version", detail.version());
-        values.put("directParents", detail.directParents().stream().map(CatalogCommandService::relationSnapshot).toList());
-        values.put("directChildren", detail.directChildren().stream().map(CatalogCommandService::relationSnapshot).toList());
-        values.put("functionalRoles", detail.functionalRoles().stream().map(value -> referenceSnapshot(
-                value.code(), value.displayName(), value.description())).toList());
-        values.put("culinaryFlags", detail.culinaryFlags().stream().map(value -> referenceSnapshot(
-                value.code(), value.displayName(), value.description())).toList());
-        values.put("culinaryDimensions", detail.culinaryDimensions().stream().map(value -> {
-            Map<String, Object> dimension = referenceSnapshot(
-                    value.dimension().code(), value.dimension().displayName(), value.dimension().description());
-            dimension.put("level", value.level());
-            return dimension;
-        }).toList());
-        values.put("availability", detail.availability().stream().map(value -> {
-            Map<String, Object> availability = referenceSnapshot(
-                    value.participant().code(), value.participant().displayName(), value.participant().description());
-            availability.put("level", value.level() == null ? null : value.level().name());
-            return availability;
-        }).toList());
-        values.put("seasonality", detail.seasonality().stream().map(value -> Map.<String, Object>of(
-                "month", value.month(), "weightMultiplier", value.weightMultiplier())).toList());
-        values.put("directExclusionRules", detail.directExclusionRules());
-        return new CatalogAggregateSnapshot(values);
-    }
-
-    private static Map<String, Object> relationSnapshot(CatalogQueries.CatalogConceptRelation relation) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        values.put("id", relation.id());
-        values.put("code", relation.code());
-        values.put("displayName", relation.displayName());
-        values.put("active", relation.active());
-        return values;
-    }
-
-    private static Map<String, Object> referenceSnapshot(String code, String displayName, String description) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        values.put("code", code);
-        values.put("displayName", displayName);
-        values.put("description", description);
-        return values;
+        return CatalogIngredientSnapshotFactory.snapshot(detail);
     }
 
     private record LockedConcept(long id, long version) {
