@@ -105,6 +105,37 @@ class CatalogRefinementEditingReviewRegressionTest {
     }
 
     @Test
+    void structuralCycleRemainsBlockedEvenWhenTheCandidateAlsoHasARoleMismatch() throws Exception {
+        MockHttpSession session = authenticate();
+        long edited = insertConcept("CYCLE_EDITED", "Issue 24 cycle edited", "OPEN");
+        long middle = insertConcept("CYCLE_MIDDLE", "Issue 24 cycle middle", "SPECIFIC");
+        long candidate = insertConcept("CYCLE_CANDIDATE", "Issue 24 cycle candidate", "SPECIFIC");
+        assignRole(edited, "ANIMAL_PROTEIN");
+        assignRole(middle, "ANIMAL_PROTEIN");
+        assignRole(middle, "VEGETABLE");
+        assignRole(candidate, "VEGETABLE");
+        jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", edited, middle);
+        jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", middle, candidate);
+
+        String html = mockMvc.perform(get("/admin/catalog/{id}/relations/picker", edited)
+                        .session(session)
+                        .param("direction", "PARENT")
+                        .param("q", "cycle candidate"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        String marker = "data-candidate-id=\"" + candidate + "\"";
+        int markerIndex = html.indexOf(marker);
+        assertTrue(markerIndex >= 0, "expected the descendant candidate in picker results");
+        int buttonStart = html.lastIndexOf("<button", markerIndex);
+        int buttonEnd = html.indexOf('>', markerIndex);
+        assertTrue(buttonStart >= 0 && buttonEnd > markerIndex, "expected a picker action button");
+        assertTrue(html.substring(buttonStart, buttonEnd).contains("disabled"),
+                "a structural cycle must remain blocked even if metadata could also change in the pending save");
+        assertTrue(html.contains("würde einen Zyklus bilden"));
+    }
+
+    @Test
     void relatedVersionConflictNamesTheChangedConceptAndShowsPendingRelation() throws Exception {
         MockHttpSession session = authenticate();
         long parent = insertConcept("STALE_PARENT", "Issue 21 review stale parent", "OPEN");
@@ -147,9 +178,13 @@ class CatalogRefinementEditingReviewRegressionTest {
     }
 
     private void assignRole(long conceptId) {
+        assignRole(conceptId, "ANIMAL_PROTEIN");
+    }
+
+    private void assignRole(long conceptId, String roleCode) {
         jdbcTemplate.update("""
                 insert into ingredient_functional_role (ingredient_concept_id, functional_role_id)
-                select ?, id from functional_role where code = 'ANIMAL_PROTEIN'
-                """, conceptId);
+                select ?, id from functional_role where code = ?
+                """, conceptId, roleCode);
     }
 }
