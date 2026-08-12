@@ -257,11 +257,84 @@ Dieses Paket schließt die vollständige Katalogverwaltung ab.
 
 ## Phase 9: Generierungsregeln und Kandidatengenerator
 
-Erst nach einer praktikabel pflegbaren Datenbasis werden die harten Generierungsregeln vollständig spezifiziert und implementiert.
+Phase 9 liefert einen reproduzierbaren, historienbewussten und kontrolliert zufälligen Zwölfer-Satz. Der spätere Kurator erhält ausschließlich harte gültige und als Satz ausreichend diverse Kandidaten; er ist nicht dafür verantwortlich, einen schwachen Zufallsgenerator zu retten.
 
-Die Anwendung erzeugt nachvollziehbar Kandidatensätze aus dem eigenen Katalog. Zufallsseed, Generatorversion, verwendete Konfiguration und historische Snapshots müssen die spätere Analyse ermöglichen.
+Verbindliche Hauptquelle ist [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md). ADR 0007 hält die Architekturentscheidung fest.
 
-Der externe Kurator ist in dieser Phase noch nicht für die Korrektheit harter Regeln verantwortlich.
+### Phase 9A: Spezifikation und Datenreife (Issue #33)
+
+- Generatorbegriffe, Datenfluss und Verantwortungsgrenze,
+- effektive Gewichte, Cooldowns und Ausschlussmodus,
+- Profile und harte Kandidatenregeln,
+- versioniertes Score- und Ähnlichkeitsmodell,
+- Neuigkeitskadenz und diverse Zwölfer-Auswahl,
+- deterministischer RNG-, Snapshot- und Replayvertrag,
+- Lifecycleentscheidung `generation_batch` getrennt von `curation_round`,
+- Simulations- und Kalibrierungsvertrag,
+- reproduzierbare Messung der Katalogdatenreife.
+
+Das Repository-Baseline-Gate ist bestanden: Rollen, Neuigkeit und Beschaffbarkeit sind im aktiven Ziehpool vollständig; Graph und Rollenpools sind ausreichend groß. Kulinarische Dimensionen bleiben wegen ihrer lückenhaften Abdeckung optional und dürfen in Generatorversion 1 nur niedrig gewichtete Softsignale liefern. Ein zusätzliches Metadatenpaket vor Phase 9B ist nicht erforderlich.
+
+### Phase 9B: Deterministischer Einzelkandidaten-Kern (Issue #34)
+
+- öffentliche kanonische Generatorprojektion des Katalogmoduls,
+- typisierte fail-fast validierte Konfiguration,
+- `SPLITMIX64_V1` und benannte Substreams,
+- Generation Context und effektive Gewichte,
+- Profile, Proposal-Erzeugung und Hard Rules,
+- Candidate Evaluation und stabile Reason-Codes,
+- reine öffentliche Challenge-API ohne Persistenz.
+
+### Phase 9C: Reservoir, Satzdiversität und Historie (Issue #35)
+
+- sichtbare Historienprojektion,
+- Cooldowns, Neuigkeitskadenz und Attempt-Ausschlussentscheidung,
+- begrenzte Reservoir-Erzeugung,
+- versionierte Kandidatenähnlichkeit,
+- MMR-ähnliche kontrolliert stochastische Zwölfer-Auswahl,
+- geordnete Soft-Fallbacks und typisierte Erschöpfung,
+- reproduzierbarer Simulationsharness.
+
+### Phase 9D: Persistenz und Generation Lifecycle (Issue #36)
+
+- append-only Migration auf `generation_batch`,
+- atomare Persistenz von zwölf Kandidaten, Snapshots und Diagnosen,
+- öffentliche Generation Commands und Queries,
+- Replay gegen gespeicherte Versionen und Snapshots,
+- Idempotenz, Konkurrenz, Retry und Restart gegen echtes PostgreSQL,
+- keine Kuratorauswahl und keine sichtbare Challenge.
+
+### Phase 9E: Generator-Labor und Diagnostik (Issue #37)
+
+- geschützte nicht persistierende Vorschau,
+- verständliche Kandidaten- und Setdiagnosen,
+- Kandidatenpaarvergleich,
+- read-only Anzeige persistierter Batches,
+- Replaydarstellung,
+- begrenzte synchrone Simulation und reproduzierbarer Report.
+
+### Phase 9F: Kalibrierung und Abschlussgate (Issue #40)
+
+- feste automatisierte Szenario- und Seedmatrix,
+- reproduzierbarer Repository-Baseline-Lauf,
+- nicht schreibender operativer Kataloglauf mit Fingerprint,
+- manuelles fachliches Abnahmekorpus,
+- Ursachenanalyse vor jeder Konfigurationsänderung,
+- ausschließlich evidenzbasiertes Tuning innerhalb des spezifizierten Modells,
+- verbindlicher Kalibrierungsbericht.
+
+### Abschlussgate
+
+Phase 9 ist erst abgeschlossen, wenn:
+
+- Hard Rules, Scores, Diversität und Replay implementiert sind,
+- Seed, Versionen und vollständige Eingabe-/Konfigurationssnapshots persistiert werden,
+- PostgreSQL-, Konkurrenz-, Restart- und Replaytests grün sind,
+- breite Simulationen keine Hard-Rule-Verletzung oder unkontrollierte Erschöpfung zeigen,
+- der operative Kataloglauf dokumentiert ist,
+- und eine repräsentative Seed-Auswahl ausdrücklich fachlich abgenommen wurde.
+
+OpenAI-Aufruf, Kuratorauswahl, sichtbare Challenge, Discord und freiwilliger Reroll-Dialog bleiben außerhalb von Phase 9.
 
 ## Phase 10: Strukturierter Kuratorvertrag und OpenAI-Adapter
 

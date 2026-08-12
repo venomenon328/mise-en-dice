@@ -155,16 +155,34 @@ Ein möglicher Widerspruch zwischen einer manuellen Vorgabe und einer Ausschluss
 
 ## 11. Generierungs- und Kuratierungshistorie
 
-Die Historie ist in folgende Ebenen gegliedert:
+Das veröffentlichte Baselineschema besitzt derzeit folgende vorläufige Ebenen:
 
 ```text
 challenge_session
   └─ generation_attempt (INITIAL oder optional REROLL)
        ├─ generation_manual_requirement (0-2)
-       └─ curation_round (1..n interne Runden)
-            └─ challenge_candidate (typischerweise 12)
-                 └─ candidate_requirement (Positionen 1-4)
+       └─ curation_round
+            └─ challenge_candidate
+                 └─ candidate_requirement
 ```
+
+Phase 9D migriert append-only auf die in [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md) festgelegte Trennung:
+
+```text
+challenge_session
+  └─ generation_attempt
+       ├─ generation_manual_requirement (0-2)
+       ├─ generation_context_snapshot (genau 1 ab CONTEXT_READY)
+       └─ generation_batch (1..n)
+            └─ challenge_candidate (genau 12 bei Erfolg)
+                 └─ candidate_requirement (Positionen 1-4)
+
+curation_round
+  ├─ verweist auf genau einen generation_batch
+  └─ curation_candidate_evaluation (je Kandidat genau 1)
+```
+
+Issue #33 ändert noch kein Schema. Es legt das Zielmodell verbindlich fest; die Migration folgt ausschließlich über neue Changesets in Phase 9D.
 
 ### Challenge Session
 
@@ -174,21 +192,31 @@ challenge_session
 
 `generation_attempt` repräsentiert den Versuch, eine sichtbare Challenge zu erzeugen. Pro Session erlaubt die Datenbank höchstens einen `INITIAL`- und einen `REROLL`-Attempt. Interne Neuversuche nach kompletter Ablehnung eines Kandidatensatzes erzeugen keinen weiteren Reroll-Attempt.
 
+Im Zielmodell besitzt der Attempt den unveränderlichen Request- und Context-Rahmen: Attempt-Seed, RNG, Generator- und Konfigurationsversion, wirksamen Monat, manuelle Vorgaben, Ausschlussentscheidung sowie Konfigurations-, Katalog-, Eingabe- und Historiensnapshot. Zustände `PENDING`, `CONTEXT_READY`, `GENERATED`, `EXHAUSTED` und `FAILED` unterscheiden fehlenden Snapshot, laufende Berechnung, vollständigen Generatorerfolg, fachliche Erschöpfung und technischen Fehler.
+
+### Generation Batch
+
+Ein `generation_batch` ist eine vollständig berechnete Generatorrunde unter einem Attempt. Er besitzt eine eindeutige Batchnummer, den daraus abgeleiteten Batch-Seed, Status, Reservoir- und Satzdiagnosen, Fallbackstufe sowie Set-Fingerprint. Alle Batches desselben Attempts verwenden den unveränderten Context Snapshot und die attempt-weite Ausschlussentscheidung.
+
+Ein erfolgreicher Batch enthält genau zwölf eindeutige Kandidaten. Phase 9D implementiert zunächst den ersten Batch eines Attempts; die Struktur darf spätere weitere Batches nach kompletter Kuratorablehnung aufnehmen, ohne dafür einen zweiten sichtbaren Reroll-Attempt anzulegen.
+
 ### Curation Round
 
-Eine `curation_round` entspricht einem Kandidatensatz, der dem Sprachmodell vorgelegt wurde. Modellname, Promptversion sowie exakter Request und Response können auditierbar gespeichert werden. Die flexiblen API-Payloads liegen bewusst als `jsonb` vor; stabile Kernbeziehungen bleiben relational.
+Eine `curation_round` ist künftig ausschließlich die Übergabe eines vorhandenen Generation Batch an das Sprachmodell. Modellname, Promptversion sowie exakter Request und Response liegen erst auf dieser Ebene. Die flexiblen API-Payloads bleiben `jsonb`; stabile Kernbeziehungen bleiben relational. Nicht kuratierte Batches erhalten keine Platzhaltermodelle oder Fake-Promptversionen.
+
+Kuratorbewertungen und Auswahlstatus werden je Runde und Kandidat in `curation_candidate_evaluation` gespeichert. So bleiben generatorseitige Scores unveränderlich und mehrere fachlich getrennte Bewertungen werden nicht auf `challenge_candidate` überschrieben.
 
 ### Challenge Candidate
 
-Jeder `challenge_candidate` enthält positionsgebundene `candidate_requirement`-Zeilen. Der Anwendungscode erstellt vollständige Kandidaten mit genau vier Vorgaben; zusätzlich verhindert die Datenbank, dass eine sichtbare `challenge` aus einem Kandidaten mit einer anderen Anzahl von Vorgaben erzeugt wird.
+Jeder `challenge_candidate` gehört im Zielmodell zu genau einem Generation Batch und enthält positionsgebundene `candidate_requirement`-Zeilen. Der Anwendungscode erstellt vollständige Kandidaten mit genau vier Vorgaben; zusätzlich verhindert die Datenbank, dass ein unvollständiger, nicht erfolgreich generierter oder nicht kuratierter Kandidat als sichtbare `challenge` verwendet wird.
 
 Manuelle Vorgaben werden in jedem Kandidaten als Snapshot wiederholt. Zufällige Vorgaben speichern zusätzlich ihre zum Ziehungszeitpunkt geltende Challenge-Spezifität als Snapshot. Dadurch bleibt nachvollziehbar, welche vollständige Viererkombination dem Kurator vorlag und wie sie bei der Generierung klassifiziert war, selbst wenn der Katalog später geändert wird.
 
-Pro Kuratierungsrunde kann höchstens ein Kandidat mit `is_selected = true` markiert werden.
+Pro Kuratierungsrunde kann höchstens ein Kandidat des referenzierten Generation Batch ausgewählt werden. Die Generatorpersistenz selbst markiert keinen Kandidaten als sichtbar oder kuratorisch ausgewählt.
 
 ### Sichtbare Challenge
 
-`challenge` verweist auf den ausgewählten Kandidaten und den zugehörigen `generation_attempt`. Ein Trigger stellt sicher, dass beide zusammengehören, der Kandidat als ausgewählt markiert ist und exakt vier Vorgaben enthält.
+Das veröffentlichte Baselineschema lässt `challenge` derzeit direkt auf einen als ausgewählt markierten Kandidaten zeigen. Im Zielmodell verweist eine sichtbare Challenge zusätzlich auf die maßgebliche `SELECTED`-Kuratierungsrunde beziehungsweise deren ausgewählte Evaluation. Datenbank und Application Service stellen sicher, dass Attempt, Batch, Kuratierungsrunde und Kandidat zusammengehören und der Kandidat exakt vier Vorgaben enthält.
 
 Ein freiwilliger Reroll überschreibt die alte Challenge nicht. Die ursprüngliche Challenge kann auf `REROLLED` gesetzt werden; der zweite Attempt erzeugt eine neue Challenge unter derselben Session.
 
@@ -197,6 +225,10 @@ Ein freiwilliger Reroll überschreibt die alte Challenge nicht. Die ursprünglic
 Änderungen am Zutatenkatalog sollen historische Challenges nicht unlesbar machen. Deshalb speichern Kandidaten die tatsächlich verwendeten Anzeigetexte ihrer Vorgaben als `display_text_snapshot` und gegebenenfalls den Text der Ausschlussregel als `exclusion_text_snapshot`.
 
 Die Fremdschlüssel auf die aktuellen Katalogeinträge bleiben für Auswertungen erhalten, während die damalige Darstellung unabhängig von späteren Umbenennungen nachvollziehbar bleibt.
+
+Phase 9 erweitert die Snapshots um sämtliche replay- und diagnosewirksamen Werte. Auf Attempt-/Context-Ebene gehören dazu insbesondere Konfiguration, Katalogprojektion, sichtbare Historie, Attempt-Seed, RNG, Versionen und Ausschlussentscheidung. Auf Batch-Ebene liegen Batchnummer, abgeleiteter Batch-Seed, Rejection-Zähler, Fallbackstufe und Set-Fingerprint. Kandidaten und Requirements speichern damalige Rollen, Neuigkeit, Beschaffbarkeit, verwendete Gewichtsfaktoren, relevante bekannte Eigenschaften, Scores und Reason-Codes.
+
+Replay verwendet diese historischen Snapshots und nicht den aktuellen Katalog. Eine nicht mehr unterstützte Generatorversion wird ausdrücklich als nicht unterstützt klassifiziert; sie wird nicht mit aktuellen Regeln scheinbar reproduziert.
 
 ## 13. Administrationsversionen und Katalog-Audit
 
@@ -217,11 +249,11 @@ Die Snapshots sind fachliche Aggregatdaten, keine HTTP-Formulare. Insbesondere e
 
 Unter anderem bleiben im Anwendungscode:
 
-- genau zwölf Kandidaten pro normaler Kuratierungsrunde
+- genau zwölf Kandidaten pro erfolgreich erzeugtem Generation Batch
 - mindestens zwei spezifische Vorgaben in vollständig beziehungsweise teilweise zufällig erzeugten Challenges
 - semantische Redundanzprüfung, etwa `Fisch` plus `Lachs`
 - strukturelle Vielfalt anhand funktionaler Rollen
-- individuelle Gewichtungs- und Cooldown-Algorithmen
+- individuelle Gewichtungs-, Cooldown-, Neuigkeits- und Diversitätsalgorithmen
 - Wahrscheinlichkeit und Auswahl einer optionalen Ausschlussregel
 - Verhalten des Kurators bei manuellen Vorgaben
 - fachliche Entscheidung, welche Verfügbarkeitsstufen für Zufallsziehungen ausreichend sind

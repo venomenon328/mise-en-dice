@@ -1,6 +1,6 @@
 # Produktvision: Mise en Dice
 
-Stand: 11. August 2026
+Stand: 12. August 2026
 
 ## 1. Zweck
 
@@ -155,9 +155,27 @@ Harte Regeln werden vollständig im eigenen Code geprüft, beispielsweise:
 - ausreichende strukturelle Vielfalt des Warenkorbs,
 - gegebenenfalls Regeln zur optionalen Einschränkung.
 
-Die genaue Gewichtung von 2/3/4 konkreten Zutaten ist noch offen und soll später konfigurierbar sein.
+Die Default-Zielverteilung eines Zwölfer-Satzes beträgt vier Kandidaten mit zwei, fünf Kandidaten mit drei und drei Kandidaten mit vier spezifischen Vorgaben. Sie bleibt typisiert konfigurierbar, wird aber nicht pro Bedienvorgang frei verändert. Die vollständigen Regeln stehen in [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md).
 
-### 5.2 Rolle des Sprachmodells
+### 5.2 Qualitätsmodell des Generators
+
+Der Generator arbeitet zweistufig: Er erzeugt zunächst ein größeres Reservoir harter gültiger Vierer-Kandidaten und wählt daraus anschließend einen diversen Zwölfer-Satz. Weder die ersten zwölf Treffer noch ein reines Top-12-Ranking genügen.
+
+Er trennt:
+
+- Eignung und effektives Gewicht einzelner Vorgaben,
+- harte Gültigkeit und weiche Qualität eines Kandidaten,
+- Ähnlichkeit und Zielverteilung des gesamten Satzes.
+
+Funktionale Rollen, Spezifität, Beschaffbarkeit, Neuigkeit und der Konkretisierungsgraph tragen die harten Strukturregeln. Kulinarische Dimensionen sind aufgrund ihrer derzeit lückenhaften Abdeckung nur ein niedrig gewichtetes Softsignal; fehlende Werte werden nicht als niedrige Werte ausgelegt. Der Generator prüft damit strukturelle Plausibilität, behauptet aber keine allgemeine paarweise Geschmacksverträglichkeit.
+
+Außergewöhnlichkeit wird innerhalb eines Kandidaten, im Zwölfer-Satz und über sichtbare Challenges dosiert. Nach einer abenteuerlichen sichtbaren Challenge folgt eine Recovery-Runde ohne abenteuerliche Kandidaten; nach mehreren sehr vertrauten Challenges darf ihr Anteil kontrolliert steigen.
+
+Alle Zufallsentscheidungen verwenden einen gespeicherten Seed, einen benannten RNG, kanonische Eingaben sowie Generator- und Konfigurationsversionen. Harte Regeln werden nie gelockert; begrenzte Fallbacks betreffen ausschließlich dokumentierte Softziele.
+
+Eine optionale Ausschlussregel wird einmal pro Generierungsversuch bestimmt und gilt für alle zwölf Kandidaten und alle internen Runden dieses Versuchs.
+
+### 5.3 Rolle des Sprachmodells
 
 Die OpenAI API erhält ausschließlich die bereits erzeugten Kandidaten und fungiert als **kulinarischer Kurator**.
 
