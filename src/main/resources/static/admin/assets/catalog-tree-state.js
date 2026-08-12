@@ -93,7 +93,7 @@
         }
     });
 
-    document.body.addEventListener("htmx:afterSwap", (event) => {
+    document.body.addEventListener("htmx:afterSettle", (event) => {
         restoreExpandedTreeState(event.detail?.target);
     });
 
