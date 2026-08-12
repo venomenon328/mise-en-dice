@@ -25,6 +25,7 @@ public record GeneratorConfiguration(
         int candidateSetSize,
         int reservoirTarget,
         int reservoirStrictMinimum,
+        int reservoirRelaxedOneMinimum,
         int maximumProposalAttempts,
         long weightQuantization,
         BigDecimal exclusionProbability,
@@ -43,6 +44,7 @@ public record GeneratorConfiguration(
         Map<NoveltyCadence, Map<NoveltyBand, Integer>> cadenceSetTargets,
         Map<ScoreComponent, BigDecimal> scoreWeights,
         Map<SimilarityComponent, BigDecimal> similarityWeights,
+        SimilarityConfiguration similarity,
         SelectionConfiguration selection,
         Map<FallbackLevel, FallbackConfiguration> fallbacks,
         Duration processingLease
@@ -57,6 +59,8 @@ public record GeneratorConfiguration(
         }
         if (candidateSetSize != 12 || reservoirTarget < 12 || reservoirTarget > 2_000
                 || reservoirStrictMinimum < candidateSetSize || reservoirStrictMinimum > reservoirTarget
+                || reservoirRelaxedOneMinimum < candidateSetSize
+                || reservoirRelaxedOneMinimum > reservoirStrictMinimum
                 || maximumProposalAttempts < reservoirTarget || maximumProposalAttempts > 1_000_000
                 || weightQuantization < 1_000L || weightQuantization > 1_000_000_000_000L) {
             throw new IllegalArgumentException("Invalid reservoir, set-size, attempt, or quantization configuration");
@@ -102,11 +106,41 @@ public record GeneratorConfiguration(
         }
         requireDecimalSum(scoreWeights, ONE, "scoreWeights");
         requireDecimalSum(similarityWeights, ONE, "similarityWeights");
+        if (similarity == null || selection == null) {
+            throw new IllegalArgumentException("Similarity and selection configuration are required");
+        }
         if (processingLease == null || processingLease.compareTo(Duration.ofMinutes(1)) < 0
                 || processingLease.compareTo(Duration.ofHours(24)) > 0) {
             throw new IllegalArgumentException("processingLease must be between 1 minute and 24 hours");
         }
         validateFallbacks(fallbacks);
+        validateSelectionWeightBounds(reservoirTarget, weightQuantization, selection);
+    }
+
+    public record SimilarityConfiguration(
+            BigDecimal informativeAncestorMaximumDrawableShare,
+            BigDecimal roleWeight,
+            BigDecimal profileWeight,
+            BigDecimal noveltyBandWeight,
+            BigDecimal noveltyLoadWeight,
+            BigDecimal flagWeight,
+            BigDecimal dimensionWeight
+    ) {
+        public SimilarityConfiguration {
+            requireProbability(informativeAncestorMaximumDrawableShare,
+                    "informativeAncestorMaximumDrawableShare");
+            requireProbability(roleWeight, "roleWeight");
+            requireProbability(profileWeight, "profileWeight");
+            requireProbability(noveltyBandWeight, "noveltyBandWeight");
+            requireProbability(noveltyLoadWeight, "noveltyLoadWeight");
+            requireProbability(flagWeight, "flagWeight");
+            requireProbability(dimensionWeight, "dimensionWeight");
+            if (roleWeight.add(profileWeight).compareTo(ONE) != 0
+                    || noveltyBandWeight.add(noveltyLoadWeight).compareTo(ONE) != 0
+                    || flagWeight.add(dimensionWeight).compareTo(ONE) != 0) {
+                throw new IllegalArgumentException("Every similarity subweight group must sum exactly to one");
+            }
+        }
     }
 
     public record CooldownConfiguration(
@@ -234,6 +268,24 @@ public record GeneratorConfiguration(
                 || one.difficultCandidateCap() < strict.difficultCandidateCap()
                 || two.difficultCandidateCap() < one.difficultCandidateCap()) {
             throw new IllegalArgumentException("Fallbacks must relax monotonically");
+        }
+    }
+
+    private static void validateSelectionWeightBounds(
+            int reservoirTarget,
+            long weightQuantization,
+            SelectionConfiguration selection
+    ) {
+        try {
+            BigDecimal maximumBase = ONE.add(BigDecimal.valueOf(selection.topBandSlope())
+                    .multiply(selection.topBandWidth()));
+            long maximumWeight = maximumBase.multiply(maximumBase)
+                    .multiply(BigDecimal.valueOf(weightQuantization))
+                    .setScale(0, java.math.RoundingMode.HALF_EVEN)
+                    .longValueExact();
+            Math.multiplyExact(maximumWeight, reservoirTarget);
+        } catch (ArithmeticException exception) {
+            throw new IllegalArgumentException("Selection weights cannot be represented without overflow", exception);
         }
     }
 

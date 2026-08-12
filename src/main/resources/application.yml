@@ -16,12 +16,13 @@ mise-en-dice:
   generator:
     configuration:
       generator-version: 1.0.0
-      configuration-version: 2026-08-12.1
+      configuration-version: 2026-08-12.2
       rng-algorithm: SPLITMIX64_V1
       canonical-payload-version: 1
       candidate-set-size: 12
       reservoir-target: 144
       reservoir-strict-minimum: 72
+      reservoir-relaxed-one-minimum: 36
       maximum-proposal-attempts: 5000
       weight-quantization: 1000000000
       exclusion-probability: 0.30
@@ -101,6 +102,14 @@ mise-en-dice:
         NOVELTY: 0.10
         AVAILABILITY_LOAD: 0.05
         COMPARABLE_PROPERTIES: 0.10
+      similarity:
+        informative-ancestor-maximum-drawable-share: 0.25
+        role-weight: 0.90
+        profile-weight: 0.10
+        novelty-band-weight: 0.60
+        novelty-load-weight: 0.40
+        flag-weight: 0.40
+        dimension-weight: 0.60
       selection:
         quality-weight: 0.55
         diversity-weight: 0.30

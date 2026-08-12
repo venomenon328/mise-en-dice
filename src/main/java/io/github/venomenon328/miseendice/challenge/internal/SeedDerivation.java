@@ -1,10 +1,12 @@
 package io.github.venomenon328.miseendice.challenge.internal;
 
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.FallbackLevel;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
+import java.util.Locale;
 
 /** SHA-256 named-substream contract from the generator specification. */
 final class SeedDerivation {
@@ -14,12 +16,36 @@ final class SeedDerivation {
     }
 
     static long derive(String generatorVersion, long attemptSeed, String scope, Purpose purpose, long ordinal) {
+        return derive(generatorVersion, attemptSeed, scope, purpose.code(), ordinal);
+    }
+
+    static long deriveSelection(
+            String generatorVersion,
+            long attemptSeed,
+            int batchNumber,
+            FallbackLevel fallbackLevel,
+            int position
+    ) {
+        if (fallbackLevel == null || position < 1 || position > 12) {
+            throw new IllegalArgumentException("Selection substreams require a fallback and position from 1 to 12");
+        }
+        return derive(generatorVersion, attemptSeed, batchScope(batchNumber),
+                "batch-selection/" + fallbackLevel.name().toLowerCase(Locale.ROOT) + "/" + position, 0);
+    }
+
+    private static long derive(
+            String generatorVersion,
+            long attemptSeed,
+            String scope,
+            String purpose,
+            long ordinal
+    ) {
         String payload = String.join("\0",
                 nfc(PREFIX),
                 nfc(generatorVersion),
                 Long.toString(attemptSeed),
                 nfc(scope),
-                nfc(purpose.code()),
+                nfc(purpose),
                 Long.toString(ordinal));
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(payload.getBytes(StandardCharsets.UTF_8));
