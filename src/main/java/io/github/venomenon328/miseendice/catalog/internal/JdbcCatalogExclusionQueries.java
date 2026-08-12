@@ -91,10 +91,12 @@ public class JdbcCatalogExclusionQueries implements CatalogExclusionQueries {
                     + "and target.ingredient_concept_id = ?)");
             arguments.add(criteria.targetConceptId());
         }
-        if (criteria.includeRefinements() != null) {
+        if (Boolean.TRUE.equals(criteria.includeRefinements())) {
             clauses.add("exists (select 1 from exclusion_rule_target target where target.exclusion_rule_id = er.id "
-                    + "and target.include_refinements = ?)");
-            arguments.add(criteria.includeRefinements());
+                    + "and target.include_refinements)");
+        } else if (Boolean.FALSE.equals(criteria.includeRefinements())) {
+            clauses.add("not exists (select 1 from exclusion_rule_target target where target.exclusion_rule_id = er.id "
+                    + "and target.include_refinements)");
         }
         return new Condition(clauses.isEmpty() ? "" : " where " + String.join(" and ", clauses), arguments);
     }
