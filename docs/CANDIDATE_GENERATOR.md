@@ -87,6 +87,21 @@ Harte Regeln besitzen keine Fallbacks. Weiche Mindestwerte, Zielquoten und Ähnl
 
 Keine dieser Stufen startet einen Netzwerkaufruf.
 
+### 2.3 Implementierungszuordnung innerhalb Phase 9C
+
+Phase 9C ist in zwei reine Fachpakete geteilt:
+
+- **Phase 9C1 / Issue #35** konsumiert einen bereits materialisierten `Visible History Snapshot`, leitet
+  Neuigkeitskadenz und Attempt-Ausschluss genau einmal ab, erzeugt daraus beliebige batch-spezifische
+  `GenerationContext`-Objekte und baut das begrenzte, signaturdeduplizierte Reservoir auf.
+- **Phase 9C2 / Issue #47** berechnet Kandidatenpaarähnlichkeit, führt die geordneten Soft-Fallbacks aus,
+  wählt per MMR-ähnlichem Verfahren den finalen Zwölfer-Satz und führt die breite Baselinesimulation aus.
+- **Phase 9D / Issue #36** erweitert das Schema append-only und materialisiert sowie persistiert erst dann
+  den vollständigen historischen `Visible History Snapshot` aus PostgreSQL.
+
+Phase 9C1 rekonstruiert fehlende historische Rollen-, Neuigkeits-, Flag- oder Graphwerte niemals aus dem
+aktuellen Katalog. Es enthält weder Challenge-JDBC noch Liquibase-Änderungen.
+
 ## 3. Generation Context und Snapshots
 
 Der unveränderliche `GenerationContext` enthält mindestens:
@@ -557,6 +572,9 @@ Alle Komponenten liegen im Bereich 0 bis 100. Der Gesamtscore ist das gewichtete
 
 Default-Mindestscore für die strikte Reservoirnutzung: `55`. Die neun Einzelkomponenten dienen ausschließlich dem Ranking und besitzen keine eigenen harten Mindestschwellen. Harte Gültigkeit wird vorher separat geprüft; der Gesamt-Mindestscore ist selbst ein dokumentiertes Softziel und darf nur über Abschnitt 16 gelockert werden.
 
+Phase 9C1 behält deshalb jeden eindeutigen harten gültigen und bewerteten Kandidaten im Reservoir, auch bei
+einem Gesamtscore unter 55. Erst Phase 9C2 verwendet die Mindestscorewerte bei Setselektion und Soft-Fallbacks.
+
 ### 11.1 Strukturelle Tragfähigkeit
 
 Bewertet werden ausschließlich Reserven oberhalb der harten Mindeststruktur:
@@ -693,6 +711,13 @@ Die kanonische Kandidatensignatur ist von der Anzeigereihenfolge unabhängig und
 Derselbe Vierersatz in anderer Reihenfolge ist kein neuer Kandidat. Feste manuelle Requirements werden später bei der Paarähnlichkeit ausgeblendet, weil sie zwangsläufig in allen Kandidaten desselben Attempts vorkommen.
 
 Für jede Proposal-Art werden Treffer und Ablehnungen nach stabilem Reason-Code gezählt.
+
+Phase 9C1 beginnt beim Proposal-Ordinal `0`, ruft ausschließlich die öffentliche
+`CandidateProposalEngine.propose(context, proposalOrdinal)`-API auf und stoppt beim bevorzugten
+Reservoirziel oder bei `maximumProposalAttempts`. Signaturduplikate erhöhen die Treffer- und
+Duplikatmetriken, nicht die Reservoirgröße. Weniger als zwölf eindeutige harte Kandidaten ergeben typisiert
+`GENERATION_EXHAUSTED`; Größen von 12 bis 143 bleiben gültige Reservoirs. Die Größenklassen werden nur
+diagnostiziert. Ihre spätere Zuordnung zu einer Fallback-Startstufe ist Aufgabe von Phase 9C2.
 
 ## 14. Kandidatenähnlichkeit
 
@@ -927,6 +952,19 @@ Reason-Codes sind stabile maschinenlesbare Großschreibungswerte. Freitext ist e
 
 ### 18.4 Satz und Lifecycle
 
+- `NOVELTY_CADENCE_RECOVERY`
+- `NOVELTY_CADENCE_NEUTRAL`
+- `NOVELTY_CADENCE_SEEKING_VARIETY`
+- `EXCLUSION_MODE_NOT_SELECTED`
+- `EXCLUSION_RULE_SELECTED`
+- `EXCLUSION_RULE_NO_TARGETS`
+- `EXCLUSION_RULE_MANUAL_CONFLICT`
+- `EXCLUSION_RULE_REPEAT_BLOCKED`
+- `EXCLUSION_RULE_WEIGHT_ROUNDED_TO_ZERO`
+- `DUPLICATE_CANDIDATE_SIGNATURE`
+- `RESERVOIR_TARGET_REACHED`
+- `PROPOSAL_ATTEMPT_LIMIT_REACHED`
+
 - `PAIR_EXACT_OVERLAP`
 - `PAIR_ANCESTOR_OVERLAP`
 - `PAIR_SIMILARITY_LIMIT`
@@ -1118,6 +1156,11 @@ Testcontainers prüft mindestens:
 H2 ist kein Ersatz.
 
 ### 21.3 Versionierte Kontextfixtures
+
+Die vollständige 2.304-Attempt-Matrix, Paarähnlichkeits- und Satzdiversitätsgates werden in Phase 9C2 /
+Issue #47 umgesetzt. Phase 9C1 prüft stattdessen repräsentative feste Seeds und Monate gegen die reale
+PostgreSQL-`CatalogGeneratorProjection`, einschließlich deterministischem Reservoir-Replay und vollständiger
+Proposal-/Treffermetriken.
 
 Die Baselinesimulation besitzt mindestens folgende unveränderlich benannte Fixtures:
 

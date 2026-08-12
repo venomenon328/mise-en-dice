@@ -285,19 +285,30 @@ Das Repository-Baseline-Gate ist bestanden: Rollen, Neuigkeit und Beschaffbarkei
 - Candidate Evaluation und stabile Reason-Codes,
 - reine öffentliche Challenge-API ohne Persistenz.
 
-### Phase 9C: Reservoir, Satzdiversität und Historie (Issue #35)
+### Phase 9C1: Attempt-Vorbereitung und Reservoir (Issue #35)
 
-- sichtbare Historienprojektion,
-- Cooldowns, Neuigkeitskadenz und Attempt-Ausschlussentscheidung,
-- begrenzte Reservoir-Erzeugung,
+- bereits materialisierten `VisibleHistorySnapshot` als reine Fachdateneingabe konsumieren,
+- Cooldowns, Neuigkeitskadenz und Attempt-Ausschlussentscheidung genau einmal pro Attempt ableiten,
+- unveränderte attempt-weite Entscheidungen in beliebige batch-spezifische #34-Contexts überführen,
+- begrenzte Reservoir-Erzeugung ausschließlich über `CandidateProposalEngine`,
+- kanonische Signaturdeduplizierung sowie Proposal-, Treffer-, Duplicate- und Hard-Rejection-Metriken,
+- alle eindeutigen hard-valid Kandidaten unabhängig vom späteren Soft-Mindestscore behalten,
+- typisierte Erschöpfung unter zwölf eindeutigen Kandidaten,
+- repräsentative feste Seeds und Monate gegen die reale PostgreSQL-Katalogprojektion replayen,
+- keine Historien-JDBC-Projektion und keine Liquibase-Änderung.
+
+### Phase 9C2: Satzdiversität und Baselinesimulation (Issue #47)
+
 - versionierte Kandidatenähnlichkeit,
 - MMR-ähnliche kontrolliert stochastische Zwölfer-Auswahl,
-- geordnete Soft-Fallbacks und typisierte Erschöpfung,
-- reproduzierbarer Simulationsharness.
+- geordnete Soft-Fallbacks und Set-Erschöpfung,
+- finaler Set-Fingerprint,
+- vollständige 2.304-Attempt-Baselinesimulation und Satzdiversitätsgates.
 
 ### Phase 9D: Persistenz und Generation Lifecycle (Issue #36)
 
 - append-only Migration auf `generation_batch`,
+- historisch vollständige PostgreSQL-Materialisierung und Persistenz des `VisibleHistorySnapshot`,
 - atomare Persistenz von zwölf Kandidaten, Snapshots und Diagnosen,
 - öffentliche Generation Commands und Queries,
 - Replay gegen gespeicherte Versionen und Snapshots,

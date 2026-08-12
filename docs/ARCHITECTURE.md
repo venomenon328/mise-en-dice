@@ -125,6 +125,17 @@ Für den Generator stellt `catalog` eine eigene unveränderliche Projektion bere
 
 Proposal-Erzeugung und Satzselektion sind reine Fachberechnungen auf einem unveränderlichen `GenerationContext`. Sie benötigen keine offene Datenbanktransaktion. Zufall wird ausschließlich über den in ADR 0007 festgelegten Seed-/Substream-Vertrag injiziert.
 
+Die reine Phase 9C1 bereitet einen Attempt aus bereits materialisierten Snapshots vor. Neuigkeitskadenz und
+Ausschlussentscheidung sind attempt-weit und bleiben für alle internen Batchnummern identisch; nur die
+Proposal-Substreams sind batch-spezifisch. Das Reservoir wird ausschließlich über die öffentliche
+`CandidateProposalEngine`-API aufgebaut und enthält jeden eindeutigen harten gültigen Kandidaten unabhängig
+vom späteren Soft-Mindestscore. Paarähnlichkeit, Soft-Fallbacks und Zwölfer-Auswahl folgen getrennt in Phase
+9C2.
+
+Die PostgreSQL-Projektion der vollständigen sichtbaren Historie gehört erst zu Phase 9D. Phase 9C1 erhält den
+`VisibleHistorySnapshot` bereits materialisiert und darf fehlende historische Werte nicht aus dem aktuellen
+Katalog ergänzen.
+
 ### 4.3 `administration`
 
 Das Administrationsmodul ist der Webadapter für die private Datenpflege. Controller und Templates dürfen:
@@ -300,7 +311,7 @@ Phase 9 trennt Generatorberechnung, Persistenz und spätere Kuratierung:
 ```text
 Catalog API ──► Generation Context ──► reiner Generator-Kern
                                          │
-                                         ├─► Reservoir und Zwölfer-Satz
+                                         ├─► 9C1 Reservoir; 9C2 Zwölfer-Satz
                                          │
                                          ▼
                                 kurze Persistenztransaktion
@@ -313,7 +324,7 @@ Catalog API ──► Generation Context ──► reiner Generator-Kern
                                   externer Kurator
 ```
 
-Katalog und sichtbare Historie werden je Attempt einmal als unveränderlicher Context Snapshot materialisiert. Derselbe Snapshot dient allen internen Batches dieses Attempts sowie ihrer Persistenz; ein Satz oder eine spätere interne Neurunde mischt nicht unbemerkt zwei Katalogstände.
+Katalog und sichtbare Historie werden je Attempt einmal als unveränderlicher Context Snapshot materialisiert. In Phase 9C1 werden beide bereits materialisiert übergeben; die historisch korrekte PostgreSQL-Materialisierung folgt mit der append-only Schemaerweiterung in Phase 9D. Derselbe Snapshot dient allen internen Batches dieses Attempts sowie ihrer Persistenz; ein Satz oder eine spätere interne Neurunde mischt nicht unbemerkt zwei Katalogstände.
 
 Das Zielmodell führt `generation_batch` als eigene Ebene unter `generation_attempt` ein. Kandidaten gehören zum Batch. Eine spätere `curation_round` verweist auf einen Batch und besitzt erst dort Modell-, Prompt-, Request- und Responseinformationen. Fake-Kuratormodelle für noch nicht kuratierte Generatorergebnisse sind unzulässig.
 
