@@ -189,7 +189,9 @@ class CatalogSelectionUiStateRegressionTest {
                         "parentToggle ? treeStateKey(parentToggle) : topLevelTreeScope(toggle)"
                 )))
                 .andExpect(content().string(containsString("#hierarchy-roots, [id^='tree-focus-']")))
-                .andExpect(content().string(containsString("restoreExpandedTreeState")));
+                .andExpect(content().string(containsString("restoreExpandedTreeState")))
+                .andExpect(content().string(containsString("htmx:afterSettle")))
+                .andExpect(content().string(not(containsString("htmx:afterSwap"))));
     }
 
     private CatalogQueries.CatalogSearchCriteria criteria(Boolean active, int page, int pageSize) {
