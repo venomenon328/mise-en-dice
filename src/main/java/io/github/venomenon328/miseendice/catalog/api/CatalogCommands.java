@@ -120,7 +120,7 @@ public interface CatalogCommands {
             }
             if (expectedRelatedVersions.entrySet().stream().anyMatch(entry -> entry.getKey() == null
                     || entry.getKey() <= 0 || entry.getValue() == null || entry.getValue() < 0)) {
-                errors.put("relations", "Die Versionsdaten einer Beziehung sind ungÃ¼ltig.");
+                errors.put("relations", "Die Versionsdaten einer Beziehung sind ungültig.");
             }
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);
