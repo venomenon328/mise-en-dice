@@ -18,10 +18,10 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.WeakHashMap;
 
 /** Exact version-1 pair similarity, deliberately independent from proposal generation. */
 final class CandidateSimilarityCalculator {
@@ -30,7 +30,7 @@ final class CandidateSimilarityCalculator {
     private static final BigDecimal ONE = scaled(BigDecimal.ONE);
     private static final BigDecimal TWO = BigDecimal.valueOf(2);
     private static final BigDecimal FOUR = BigDecimal.valueOf(4);
-    private final Map<CatalogGeneratorSnapshot, CatalogIndex> catalogIndexes = new IdentityHashMap<>();
+    private final Map<CatalogGeneratorSnapshot, CatalogIndex> catalogIndexes = new WeakHashMap<>();
 
     PairAssessment assess(
             int firstNumber,
