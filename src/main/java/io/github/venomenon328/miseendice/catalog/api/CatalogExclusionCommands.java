@@ -24,7 +24,7 @@ public interface CatalogExclusionCommands {
     record ExclusionTarget(long ingredientConceptId, boolean includeRefinements) {
         public ExclusionTarget {
             if (ingredientConceptId <= 0) {
-                throw new CatalogCommandValidationException(Map.of("targets", "Ein Ausschlussziel ist nicht g\u00fcltig."));
+                throw new CatalogCommandValidationException(Map.of("targets", "Ein Ausschlussziel ist nicht gültig."));
             }
         }
     }
@@ -48,7 +48,7 @@ public interface CatalogExclusionCommands {
             curatorNote = nullable(curatorNote);
             actorKey = required(actorKey);
             targets = targets == null ? List.of() : List.copyOf(targets);
-            validate(code, displayText, active, baseDrawWeight, targets);
+            validate(code, displayText, active, baseDrawWeight, targets, actorKey);
         }
     }
 
@@ -69,12 +69,12 @@ public interface CatalogExclusionCommands {
             targets = targets == null ? List.of() : List.copyOf(targets);
             Map<String, String> errors = new LinkedHashMap<>();
             if (exclusionRuleId <= 0) {
-                errors.put("exclusionRuleId", "Die Ausschlussregel ist nicht g\u00fcltig.");
+                errors.put("exclusionRuleId", "Die Ausschlussregel ist nicht gültig.");
             }
             if (expectedVersion < 0) {
-                errors.put("version", "Die erwartete Version ist nicht g\u00fcltig.");
+                errors.put("version", "Die erwartete Version ist nicht gültig.");
             }
-            validateInto(errors, null, displayText, active, baseDrawWeight, targets);
+            validateInto(errors, null, displayText, active, baseDrawWeight, targets, actorKey);
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);
             }
@@ -86,10 +86,11 @@ public interface CatalogExclusionCommands {
             String displayText,
             boolean active,
             BigDecimal baseDrawWeight,
-            List<ExclusionTarget> targets
+            List<ExclusionTarget> targets,
+            String actorKey
     ) {
         Map<String, String> errors = new LinkedHashMap<>();
-        validateInto(errors, code, displayText, active, baseDrawWeight, targets);
+        validateInto(errors, code, displayText, active, baseDrawWeight, targets, actorKey);
         if (!errors.isEmpty()) {
             throw new CatalogCommandValidationException(errors);
         }
@@ -101,7 +102,8 @@ public interface CatalogExclusionCommands {
             String displayText,
             boolean active,
             BigDecimal baseDrawWeight,
-            List<ExclusionTarget> targets
+            List<ExclusionTarget> targets,
+            String actorKey
     ) {
         if (code != null && !Pattern.matches(CatalogCommands.INGREDIENT_CONCEPT_CODE_PATTERN, code)) {
             errors.put("code", "Der Code muss dem Muster A-Z, Ziffern und Unterstriche folgen.");
@@ -110,14 +112,17 @@ public interface CatalogExclusionCommands {
             errors.put("displayText", "Der Anzeigetext darf nicht leer sein.");
         }
         if (baseDrawWeight == null || baseDrawWeight.signum() <= 0) {
-            errors.put("baseDrawWeight", "Das Ziehungsgewicht muss gr\u00f6\u00dfer als 0 sein.");
+            errors.put("baseDrawWeight", "Das Ziehungsgewicht muss größer als 0 sein.");
         }
         if (active && targets.isEmpty()) {
-            errors.put("targets", "Aktive Ausschlussregeln ben\u00f6tigen mindestens ein Ziel.");
+            errors.put("targets", "Aktive Ausschlussregeln benötigen mindestens ein Ziel.");
         }
         long distinctTargets = targets.stream().map(ExclusionTarget::ingredientConceptId).distinct().count();
         if (distinctTargets != targets.size()) {
             errors.put("targets", "Dasselbe Zutatenkonzept darf nur einmal als Ausschlussziel vorkommen.");
+        }
+        if (actorKey.isEmpty()) {
+            errors.put("actorKey", "Für die Auditierung ist ein Administrationsschlüssel erforderlich.");
         }
     }
 
