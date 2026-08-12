@@ -21,9 +21,11 @@ jobs:
           cache: maven
       - name: Generate catalog report
         run: ./mvnw -Dtest=CatalogDiagnosticReportTest test
-      - name: Upload catalog report
+      - name: Package checked-out source
+        run: tar --exclude=.git --exclude=target -czf target/catalog-diagnostic/source.tar.gz .
+      - name: Upload catalog report and source snapshot
         uses: actions/upload-artifact@v4
         with:
           name: catalog-diagnostic
-          path: target/catalog-diagnostic/catalog.json
+          path: target/catalog-diagnostic
           if-no-files-found: error
