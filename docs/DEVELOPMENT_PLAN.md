@@ -186,7 +186,7 @@ Dieses Paket führt die ersten produktiven Schreibzugriffe ein.
 - unbekannte Datenbankfehler werden nicht als fachliche Konflikte maskiert,
 - jeder erfolgreiche Schreibzugriff erzeugt einen korrekten Audit-Eintrag.
 
-## Phase 6: Konkretisierungsbeziehungen (nächster Schritt)
+## Phase 6: Konkretisierungsbeziehungen (abgeschlossen mit Issue #21)
 
 Dieses Paket macht den Graphen schreibend pflegbar.
 
@@ -198,14 +198,15 @@ Dieses Paket macht den Graphen schreibend pflegbar.
 - transitive Vorfahren/Nachfahren als read-only Kontext,
 - Vorabprüfung auf Selbstbeziehungen, Duplikate und Zyklen,
 - PostgreSQL-Trigger bleibt letzte Integritätssicherung,
-- Versionierung beider betroffener Aggregate,
-- zwei Audit-Einträge pro Beziehungsänderung mit gemeinsamer `change_group_id`.
+- Versionierung aller vom Save betroffenen Aggregate,
+- PostgreSQL-seitige Serialisierung aller Graphmutationen,
+- ein Audit-Eintrag pro betroffenem Konzept mit gemeinsamer `change_group_id`.
 
 ### Gate
 
 - Hinzufügen einer Beziehung entfernt keine andere Beziehung stillschweigend,
-- echte Zyklus- und Konkurrenzfälle sind gegen PostgreSQL getestet,
-- inaktive Konzepte können bewusst in Beziehungen verbleiben,
+- echte Zyklus-, Write-Skew- und überlappende Versionskonkurrenzfälle sind gegen PostgreSQL getestet,
+- inaktive Konzepte können nach sichtbarer Bestätigung in Beziehungen verbleiben,
 - die UI unterscheidet direkte und transitive Beziehungen eindeutig.
 
 ## Phase 7: Rollen, Eigenschaften, Beschaffbarkeit und Saison

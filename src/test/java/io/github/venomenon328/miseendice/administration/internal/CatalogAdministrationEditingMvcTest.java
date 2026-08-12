@@ -211,6 +211,82 @@ class CatalogAdministrationEditingMvcTest {
         ));
     }
 
+    @Test
+    void supportsPendingParentChildPickerChangesInactiveWarningsAndRelationConflicts() throws Exception {
+        MockHttpSession session = authenticate();
+        long parent = insertConcept("RELATION_PARENT", "Issue twenty-one parent", "OPEN", true, false, null);
+        long inactiveParent = insertConcept("RELATION_INACTIVE", "Issue twenty-one inactive", "OPEN", false, false, null);
+        long child = insertConcept("RELATION_CHILD", "Issue twenty-one child", "SPECIFIC", true, false, null);
+        assignRequiredRole(parent);
+        assignRequiredRole(inactiveParent);
+        assignRequiredRole(child);
+
+        mockMvc.perform(get("/admin/catalog/{id}/edit", child).session(session).header("HX-Request", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Konkretisierungsbeziehungen")))
+                .andExpect(content().string(containsString("Oberbegriff hinzufügen")))
+                .andExpect(content().string(containsString("data-pending-refinements")));
+
+        mockMvc.perform(get("/admin/catalog/{id}/relations/picker", child).session(session)
+                        .param("direction", "PARENT").param("q", "parent"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Issue twenty-one parent")))
+                .andExpect(content().string(containsString("data-add-relation")));
+
+        mockMvc.perform(post("/admin/catalog/{id}", child).session(session).with(csrf())
+                        .param("displayName", "Issue twenty-one child")
+                        .param("active", "true")
+                        .param("challengeSpecificity", "SPECIFIC")
+                        .param("baseDrawWeight", "1.0")
+                        .param("version", "0")
+                        .param("relationChange", "ADD:" + parent + ":" + child + ":0"))
+                .andExpect(status().is3xxRedirection());
+        assertTrue(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_refinement where parent_concept_id = ? and child_concept_id = ?)",
+                Boolean.class, parent, child));
+
+        long inactiveChild = insertConcept("RELATION_INACTIVE_CHILD", "Issue twenty-one inactive child", "SPECIFIC", true, false, null);
+        assignRequiredRole(inactiveChild);
+        mockMvc.perform(post("/admin/catalog/{id}", inactiveChild).session(session).with(csrf())
+                        .param("displayName", "Issue twenty-one inactive child")
+                        .param("active", "true")
+                        .param("challengeSpecificity", "SPECIFIC")
+                        .param("baseDrawWeight", "1.0")
+                        .param("version", "0")
+                        .param("relationChange", "ADD:" + inactiveParent + ":" + inactiveChild + ":0"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(containsString("Inaktive Beziehung bewusst")));
+        assertFalse(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_refinement where parent_concept_id = ? and child_concept_id = ?)",
+                Boolean.class, inactiveParent, inactiveChild));
+
+        mockMvc.perform(post("/admin/catalog/{id}", inactiveChild).session(session).with(csrf())
+                        .param("displayName", "Issue twenty-one inactive child")
+                        .param("active", "true")
+                        .param("challengeSpecificity", "SPECIFIC")
+                        .param("baseDrawWeight", "1.0")
+                        .param("version", "0")
+                        .param("relationChange", "ADD:" + inactiveParent + ":" + inactiveChild + ":0")
+                        .param("inactiveRelationsAcknowledged", "true"))
+                .andExpect(status().is3xxRedirection());
+
+        long staleParent = insertConcept("RELATION_STALE", "Issue twenty-one stale", "OPEN", true, false, null);
+        long staleChild = insertConcept("RELATION_STALE_CHILD", "Issue twenty-one stale child", "SPECIFIC", true, false, null);
+        assignRequiredRole(staleParent);
+        assignRequiredRole(staleChild);
+        jdbcTemplate.update("update ingredient_concept set version = version + 1 where id = ?", staleParent);
+        mockMvc.perform(post("/admin/catalog/{id}", staleChild).session(session).with(csrf())
+                        .param("displayName", "Issue twenty-one stale child")
+                        .param("active", "true")
+                        .param("challengeSpecificity", "SPECIFIC")
+                        .param("baseDrawWeight", "1.0")
+                        .param("version", "0")
+                        .param("relationChange", "ADD:" + staleParent + ":" + staleChild + ":0"))
+                .andExpect(status().isConflict())
+                .andExpect(content().string(containsString("„Issue twenty-one stale“ wurde zwischenzeitlich geändert")))
+                .andExpect(content().string(containsString("Vorgemerkte Beziehungen")))
+                .andExpect(content().string(containsString("Oberbegriff „Issue twenty-one stale“ hinzufügen")))
+                .andExpect(content().string(containsString("Direkte Eltern")));
+    }
+
     private MockHttpSession authenticate() throws Exception {
         return (MockHttpSession) mockMvc.perform(formLogin().user(ACTOR_KEY).password(PASSWORD))
                 .andExpect(status().is3xxRedirection())
@@ -227,13 +303,17 @@ class CatalogAdministrationEditingMvcTest {
     }
 
     private void assignRequiredDrawMetadata(long conceptId) {
-        jdbcTemplate.update("""
-                insert into ingredient_functional_role (ingredient_concept_id, functional_role_id)
-                select ?, id from functional_role where code = 'ANIMAL_PROTEIN'
-                """, conceptId);
+        assignRequiredRole(conceptId);
         jdbcTemplate.update("""
                 insert into ingredient_availability (ingredient_concept_id, participant_id, availability_level)
                 select ?, id, 'EASY' from participant where code in ('GEORGIA', 'TOBIAS')
+                """, conceptId);
+    }
+
+    private void assignRequiredRole(long conceptId) {
+        jdbcTemplate.update("""
+                insert into ingredient_functional_role (ingredient_concept_id, functional_role_id)
+                select ?, id from functional_role where code = 'ANIMAL_PROTEIN'
                 """, conceptId);
     }
 

@@ -207,6 +207,10 @@
     <section th:if="${formMode.name() == 'CONFLICT'}" class="conflict-view" data-testid="catalog-conflict-view">
         <p class="eyebrow">Gleichzeitige Änderung</p>
         <h2>Dein Stand wurde nicht gespeichert</h2>
+        <p th:if="${conflictingConceptId != null and conflictingConceptId != form.conceptId}" class="field-error"
+           th:text="|„${conflictingConceptName}“ wurde zwischenzeitlich geändert. Prüfe die vorgemerkte Beziehung erneut.|">
+            Eine beteiligte Zutat wurde zwischenzeitlich geändert.
+        </p>
         <p>Das Zutatenkonzept wurde seit dem Laden geändert. Nichts wurde überschrieben.</p>
         <div class="conflict-columns">
             <section>
@@ -220,6 +224,12 @@
                     <div th:classappend="${form.noveltyLevel != (currentDetail.noveltyLevel == null ? '' : currentDetail.noveltyLevel.toString())} ? ' is-different'"><dt>Ungewöhnlichkeit</dt><dd th:text="${form.noveltyLevel.isEmpty() ? 'nicht gepflegt' : form.noveltyLevel}">nicht gepflegt</dd></div>
                     <div th:classappend="${form.curatorNote != (currentDetail.curatorNote ?: '')} ? ' is-different'"><dt>Kuratornotiz</dt><dd th:text="${form.curatorNote.isEmpty() ? 'keine' : form.curatorNote}">keine</dd></div>
                 </dl>
+                <div th:if="${pendingRelationSummaries != null and !pendingRelationSummaries.isEmpty()}" class="conflict-relations" data-testid="pending-relation-conflict-summary">
+                    <h4>Vorgemerkte Beziehungen</h4>
+                    <ul>
+                        <li th:each="summary : ${pendingRelationSummaries}" th:text="${summary}">Oberbegriff hinzufügen</li>
+                    </ul>
+                </div>
             </section>
             <section>
                 <h3>Aktueller Datenbankstand</h3>
@@ -231,6 +241,8 @@
                     <div th:classappend="${form.baseDrawWeight != currentDetail.baseDrawWeight.toPlainString()} ? ' is-different'"><dt>Gewicht</dt><dd th:text="${currentDetail.baseDrawWeight}">1.0000</dd></div>
                     <div th:classappend="${form.noveltyLevel != (currentDetail.noveltyLevel == null ? '' : currentDetail.noveltyLevel.toString())} ? ' is-different'"><dt>Ungewöhnlichkeit</dt><dd th:text="${currentDetail.noveltyLevel ?: 'nicht gepflegt'}">nicht gepflegt</dd></div>
                     <div th:classappend="${form.curatorNote != (currentDetail.curatorNote ?: '')} ? ' is-different'"><dt>Kuratornotiz</dt><dd th:text="${currentDetail.curatorNote ?: 'keine'}">keine</dd></div>
+                    <div><dt>Direkte Eltern</dt><dd th:text="${#strings.listJoin(currentDetail.directParents.![displayName], ', ')} ?: 'keine'">keine</dd></div>
+                    <div><dt>Direkte Kinder</dt><dd th:text="${#strings.listJoin(currentDetail.directChildren.![displayName], ', ')} ?: 'keine'">keine</dd></div>
                 </dl>
             </section>
         </div>
@@ -245,6 +257,7 @@
                 <input type="hidden" name="noveltyLevel" th:value="${form.noveltyLevel}">
                 <input type="hidden" name="curatorNote" th:value="${form.curatorNote}">
                 <input type="hidden" name="version" th:value="${currentDetail.version}">
+                <input th:each="pending : ${form.pendingRefinements}" type="hidden" name="relationChange" th:value="${pending.encoded()}">
                 <input type="hidden" name="continueEditing" value="true">
                 <button class="button button--primary" type="submit">Mit aktuellem Stand weiterbearbeiten</button>
             </form>
@@ -271,6 +284,12 @@
                 <p>Diese Baseline-Richtwerte dienen dem späteren empirischen Tuning. Das Speichern bleibt möglich.</p>
                 <ul><li th:each="warning : ${weightWarnings}" th:text="${warning}">Richtwert</li></ul>
                 <label class="confirmation-check"><input type="checkbox" name="weightWarningsAcknowledged" value="true" th:checked="${form.weightWarningsAcknowledged}"> Ich habe den Richtwert geprüft und möchte trotzdem speichern.</label>
+            </aside>
+            <aside th:if="${relationWarnings != null and !relationWarnings.isEmpty()}" class="weight-warning" data-testid="inactive-relation-warning">
+                <h3>Inaktive Beziehung bewusst prüfen</h3>
+                <p>Inaktive Konzepte dürfen als direkte Beziehung erhalten bleiben. Die Bestätigung gilt nur für diese vorgemerkten Änderungen.</p>
+                <ul><li th:each="warning : ${relationWarnings}" th:text="${warning}">Warnung</li></ul>
+                <label class="confirmation-check"><input type="checkbox" name="inactiveRelationsAcknowledged" value="true" th:checked="${form.inactiveRelationsAcknowledged}"> Ich möchte diese Beziehung zu einem inaktiven Konzept bewusst speichern.</label>
             </aside>
 
             <section class="detail-section">
@@ -325,8 +344,50 @@
                 </label>
             </section>
 
+            <section th:if="${detail != null}" class="detail-section" data-refinement-editor th:attr="data-concept-id=${form.conceptId}">
+                <div class="detail-section-heading"><p class="section-kicker">Graph</p><h3>Konkretisierungsbeziehungen</h3></div>
+                <p>Direkte Kanten werden nur vorgemerkt und zusammen mit den Basisfeldern gespeichert. Andere Eltern oder Kinder werden nie ersetzt.</p>
+                <p th:if="${formErrors != null and formErrors.get('relations') != null}" class="field-error" th:text="${formErrors.get('relations')}">Fehler</p>
+                <div class="relation-columns">
+                    <div>
+                        <h4>Direkte Oberbegriffe</h4>
+                        <ul class="relation-list" data-relation-list="PARENT">
+                            <li th:each="parent : ${detail.directParents}" data-relation-entry
+                                th:attr="data-parent-id=${parent.id},data-child-id=${detail.id},data-related-version=${parent.version},data-original=true">
+                                <span><span th:text="${parent.displayName}">Fisch</span> <code th:text="${parent.code}">FISH</code></span>
+                                <button type="button" class="button button--secondary" data-remove-relation>Entfernen</button>
+                            </li>
+                            <li th:if="${detail.directParents.isEmpty()}" class="muted-copy" data-empty-relations>Keine direkten Oberbegriffe</li>
+                        </ul>
+                        <button type="button" class="button button--secondary" data-open-relation-picker data-direction="PARENT"
+                                th:attr="data-picker-url=|/admin/catalog/${detail.id}/relations/picker?direction=PARENT|">Oberbegriff hinzufügen</button>
+                    </div>
+                    <div>
+                        <h4>Direkte Konkretisierungen</h4>
+                        <ul class="relation-list" data-relation-list="CHILD">
+                            <li th:each="child : ${detail.directChildren}" data-relation-entry
+                                th:attr="data-parent-id=${detail.id},data-child-id=${child.id},data-related-version=${child.version},data-original=true">
+                                <span><span th:text="${child.displayName}">Kabeljau</span> <code th:text="${child.code}">COD</code></span>
+                                <button type="button" class="button button--secondary" data-remove-relation>Entfernen</button>
+                            </li>
+                            <li th:if="${detail.directChildren.isEmpty()}" class="muted-copy" data-empty-relations>Keine direkten Konkretisierungen</li>
+                        </ul>
+                        <button type="button" class="button button--secondary" data-open-relation-picker data-direction="CHILD"
+                                th:attr="data-picker-url=|/admin/catalog/${detail.id}/relations/picker?direction=CHILD|">Konkretisierung hinzufügen</button>
+                    </div>
+                </div>
+                <div class="relation-picker" hidden data-relation-picker>
+                    <label>Konzept suchen <input type="search" data-relation-picker-search placeholder="Name oder Code"></label>
+                    <div data-relation-picker-results><p class="muted-copy">Suche starten, um passende Konzepte zu sehen.</p></div>
+                </div>
+                <div data-pending-refinements>
+                    <input th:each="pending : ${form.pendingRefinements}" type="hidden" name="relationChange" th:value="${pending.encoded()}"
+                           data-pending-refinement th:attr="data-parent-id=${pending.parentConceptId},data-child-id=${pending.childConceptId},data-change-type=${pending.type},data-related-version=${pending.relatedVersion}">
+                </div>
+            </section>
+
             <section th:if="${detail != null}" class="detail-section read-only-section">
-                <div class="detail-section-heading"><p class="section-kicker">Read-only in diesem Paket</p><h3>Konkretisierungen und Rollen</h3></div>
+                <div class="detail-section-heading"><p class="section-kicker">Kontext</p><h3>Rollen und direkte Beziehungen</h3></div>
                 <p><strong>Direkte Eltern:</strong> <span th:text="${#strings.listJoin(detail.directParents.![displayName], ', ')} ?: 'keine'">keine</span></p>
                 <p><strong>Direkte Kinder:</strong> <span th:text="${#strings.listJoin(detail.directChildren.![displayName], ', ')} ?: 'keine'">keine</span></p>
                 <p><strong>Funktionale Rollen:</strong> <span th:text="${#strings.listJoin(detail.functionalRoles.![displayName], ', ')} ?: 'nicht gepflegt'">nicht gepflegt</span></p>
@@ -361,6 +422,25 @@
         </dialog>
     </section>
 </section>
+
+<div th:fragment="relationPickerResults" data-relation-picker-result-fragment>
+    <p th:if="${relationCandidates.isEmpty()}" class="muted-copy">Keine passenden Konzepte gefunden.</p>
+    <ul class="relation-picker-results" th:if="${!relationCandidates.isEmpty()}">
+        <li th:each="item : ${relationCandidates}" th:with="candidate=${item.candidate}">
+            <div>
+                <strong th:text="${candidate.displayName}">Kabeljau</strong> <code th:text="${candidate.code}">COD</code>
+                <span th:text="${candidate.active ? 'aktiv' : 'inaktiv'}">aktiv</span>
+                <span th:text="${candidate.challengeSpecificity == 'OPEN' ? 'offen' : 'spezifisch'}">spezifisch</span>
+                <span th:text="${#strings.listJoin(candidate.functionalRoles, ', ')} ?: 'ohne Rollen'">Rollen</span>
+                <small th:text="|Direkte Eltern: ${#strings.listJoin(candidate.directParents.![displayName], ', ')} ?: 'keine'|">Direkte Eltern</small>
+            </div>
+            <button type="button" class="button button--secondary" data-add-relation th:disabled="${!item.selectable}"
+                    th:attr="data-candidate-id=${candidate.id},data-candidate-name=${candidate.displayName},data-candidate-code=${candidate.code},data-candidate-active=${candidate.active},data-candidate-version=${candidate.version},data-direction=${direction}">
+                <span th:text="${item.selectable ? 'Vormerken' : item.reason}">Vormerken</span>
+            </button>
+        </li>
+    </ul>
+</div>
 
 <section th:fragment="missing" id="catalog-detail" class="detail-empty error" data-testid="catalog-detail-missing">
     <h2>Nicht verfügbar</h2>

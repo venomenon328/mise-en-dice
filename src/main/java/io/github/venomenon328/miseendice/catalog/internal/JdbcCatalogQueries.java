@@ -6,6 +6,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvail
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvailabilityValue;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogConceptDetail;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogConceptRelation;
+import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogRelationCandidate;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogDimensionValue;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogFilterOptions;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogHierarchyNode;
@@ -162,6 +163,33 @@ public class JdbcCatalogQueries implements CatalogQueries {
                 findReferences("select code, display_name, description from functional_role order by lower(display_name), id"),
                 findReferences("select code, display_name, description from culinary_flag order by lower(display_name), id")
         );
+    }
+
+    @Override
+    public List<CatalogRelationCandidate> searchRelationCandidates(String searchTerm, long excludedConceptId) {
+        String normalized = searchTerm == null ? "" : searchTerm.strip().toLowerCase(Locale.ROOT)
+                .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        List<ConceptRow> rows = jdbcTemplate.query(
+                """
+                select id, display_name, code, active, random_draw_enabled, challenge_specificity,
+                       base_draw_weight, novelty_level, curator_note, version, updated_at
+                from ingredient_concept
+                where id <> ? and (lower(display_name) like ? escape '\' or lower(code) like ? escape '\')
+                order by lower(display_name), id
+                limit 40
+                """,
+                this::mapConceptRow, excludedConceptId, "%" + normalized + "%", "%" + normalized + "%"
+        );
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = rows.stream().map(ConceptRow::id).toList();
+        Map<Long, List<String>> roles = findRoles(ids);
+        Map<Long, List<CatalogConceptRelation>> parents = findDirectParents(ids);
+        return rows.stream().map(row -> new CatalogRelationCandidate(
+                row.id(), row.displayName(), row.code(), row.active(), row.challengeSpecificity(), row.version(),
+                roles.getOrDefault(row.id(), List.of()), parents.getOrDefault(row.id(), List.of())
+        )).toList();
     }
 
     @Override
@@ -341,7 +369,7 @@ public class JdbcCatalogQueries implements CatalogQueries {
 
     private Map<Long, List<CatalogConceptRelation>> findDirectParents(List<Long> conceptIds) {
         Map<Long, List<CatalogConceptRelation>> parents = new HashMap<>();
-        jdbcTemplate.query("select ir.child_concept_id, parent.id, parent.display_name, parent.code, parent.active "
+        jdbcTemplate.query("select ir.child_concept_id, parent.id, parent.display_name, parent.code, parent.active, parent.version "
                         + "from ingredient_refinement ir "
                         + "join ingredient_concept parent on parent.id = ir.parent_concept_id "
                         + "where ir.child_concept_id in (" + placeholders(conceptIds.size()) + ") "
@@ -356,14 +384,14 @@ public class JdbcCatalogQueries implements CatalogQueries {
         if (!transitive) {
             String sql = parents
                     ? """
-                    select parent.id, parent.display_name, parent.code, parent.active
+                    select parent.id, parent.display_name, parent.code, parent.active, parent.version
                     from ingredient_refinement ir
                     join ingredient_concept parent on parent.id = ir.parent_concept_id
                     where ir.child_concept_id = ?
                     order by lower(parent.display_name), parent.id
                     """
                     : """
-                    select child.id, child.display_name, child.code, child.active
+                    select child.id, child.display_name, child.code, child.active, child.version
                     from ingredient_refinement ir
                     join ingredient_concept child on child.id = ir.child_concept_id
                     where ir.parent_concept_id = ?
@@ -378,7 +406,7 @@ public class JdbcCatalogQueries implements CatalogQueries {
                     union
                     select ir.parent_concept_id from ingredient_refinement ir join ancestors a on a.id = ir.child_concept_id
                 )
-                select ic.id, ic.display_name, ic.code, ic.active
+                select ic.id, ic.display_name, ic.code, ic.active, ic.version
                 from ancestors join ingredient_concept ic on ic.id = ancestors.id
                 order by lower(ic.display_name), ic.id
                 """
@@ -388,7 +416,7 @@ public class JdbcCatalogQueries implements CatalogQueries {
                     union
                     select ir.child_concept_id from ingredient_refinement ir join descendants d on d.id = ir.parent_concept_id
                 )
-                select ic.id, ic.display_name, ic.code, ic.active
+                select ic.id, ic.display_name, ic.code, ic.active, ic.version
                 from descendants join ingredient_concept ic on ic.id = descendants.id
                 order by lower(ic.display_name), ic.id
                 """;
@@ -496,7 +524,7 @@ public class JdbcCatalogQueries implements CatalogQueries {
     private static CatalogConceptRelation mapRelation(ResultSet resultSet) throws SQLException {
         return new CatalogConceptRelation(
                 resultSet.getLong("id"), resultSet.getString("display_name"), resultSet.getString("code"),
-                resultSet.getBoolean("active")
+                resultSet.getBoolean("active"), resultSet.getLong("version")
         );
     }
 
