@@ -25,14 +25,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Transactional application service for the first, deliberately small catalog writing surface. */
+/** Transactional application service for the current catalog writing surface. */
 @Service
 class CatalogCommandService implements CatalogCommands {
 
@@ -136,7 +136,10 @@ class CatalogCommandService implements CatalogCommands {
         affectedIds.stream().sorted().forEach(id -> before.put(id, findRequired(id)));
 
         GraphState graph = loadGraph();
-        graph.replace(command.conceptId(), command.challengeSpecificity(), command.active(), command.randomDrawEnabled());
+        graph.replace(
+                command.conceptId(), command.displayName(), command.challengeSpecificity(),
+                command.active(), command.randomDrawEnabled()
+        );
         applyPendingRefinements(graph, command);
         validateGraph(graph);
         validateDrawability(command, before.get(command.conceptId()), graph.directChildCount(command.conceptId()));
@@ -145,7 +148,11 @@ class CatalogCommandService implements CatalogCommands {
         if (!inactiveWarnings.isEmpty() && !command.inactiveRelationsAcknowledged()) {
             throw new CatalogRelationWarningException(inactiveWarnings);
         }
-        List<String> weightWarnings = drawWeightWarnings(command, before.get(command.conceptId()));
+        List<String> weightWarnings = drawWeightWarnings(
+                command,
+                before.get(command.conceptId()),
+                graph.hasDirectParentCode(command.conceptId(), "COOKING_ALCOHOL")
+        );
         if (!weightWarnings.isEmpty() && !command.weightWarningsAcknowledged()) {
             throw new CatalogDrawWeightWarningException(weightWarnings);
         }
@@ -176,14 +183,14 @@ class CatalogCommandService implements CatalogCommands {
             }
             Edge edge = new Edge(change.parentConceptId(), change.childConceptId());
             if (!seenEdges.add(edge)) {
-                errors.put("relations", "Dieselbe direkte Beziehung darf pro Speichern nur einmal geÃ¤ndert werden.");
+                errors.put("relations", "Dieselbe direkte Beziehung darf pro Speichern nur einmal geändert werden.");
             }
             affected.add(change.parentConceptId());
             affected.add(change.childConceptId());
         }
         for (long conceptId : affected) {
             if (conceptId != command.conceptId() && !command.expectedRelatedVersions().containsKey(conceptId)) {
-                errors.put("relations", "FÃ¼r alle beteiligten Zutaten muss die geladene Aggregatversion vorliegen.");
+                errors.put("relations", "Für alle beteiligten Zutaten muss die geladene Aggregatversion vorliegen.");
             }
         }
         if (!errors.isEmpty()) {
@@ -219,11 +226,15 @@ class CatalogCommandService implements CatalogCommands {
 
     private GraphState loadGraph() {
         Map<Long, GraphNode> nodes = new LinkedHashMap<>();
-        jdbcTemplate.query("select id, display_name, active, random_draw_enabled, challenge_specificity from ingredient_concept order by id",
+        jdbcTemplate.query(
+                "select id, code, display_name, active, random_draw_enabled, challenge_specificity "
+                        + "from ingredient_concept order by id",
                 (RowCallbackHandler) resultSet -> nodes.put(resultSet.getLong("id"), new GraphNode(
-                        resultSet.getLong("id"), resultSet.getString("display_name"), resultSet.getBoolean("active"),
-                        resultSet.getBoolean("random_draw_enabled"), resultSet.getString("challenge_specificity"))),
-                new Object[0]);
+                        resultSet.getLong("id"), resultSet.getString("code"), resultSet.getString("display_name"),
+                        resultSet.getBoolean("active"), resultSet.getBoolean("random_draw_enabled"),
+                        resultSet.getString("challenge_specificity"))),
+                new Object[0]
+        );
         Map<Long, Set<String>> roles = new HashMap<>();
         jdbcTemplate.query("select ifr.ingredient_concept_id, fr.code from ingredient_functional_role ifr "
                         + "join functional_role fr on fr.id = ifr.functional_role_id",
@@ -272,19 +283,19 @@ class CatalogCommandService implements CatalogCommands {
         }
         Edge cycle = graph.firstCycleEdge();
         if (cycle != null) {
-            throw relationError("Die direkte Beziehung wÃ¼rde einen Zyklus erzeugen: " + graph.edgeName(cycle) + ".");
+            throw relationError("Die direkte Beziehung würde einen Zyklus erzeugen: " + graph.edgeName(cycle) + ".");
         }
         for (Edge edge : graph.edges()) {
             if (graph.hasAlternativePath(edge)) {
                 throw relationError("Die direkte Beziehung " + graph.edgeName(edge)
-                        + " ist Ã¼ber einen anderen Pfad bereits transitiv ableitbar. Entferne bewusst eine der Kanten.");
+                        + " ist über einen anderen Pfad bereits transitiv ableitbar. Entferne bewusst eine der Kanten.");
             }
         }
         for (GraphNode node : graph.nodes().values()) {
             if (node.active() && node.randomDrawEnabled() && "OPEN".equals(node.challengeSpecificity())
                     && graph.directChildCount(node.id()) == 0) {
                 throw relationError("Die aktive ziehbare offene Vorgabe „" + node.displayName()
-                        + "“ benÃ¶tigt mindestens eine direkte Konkretisierung.");
+                        + "“ benötigt mindestens eine direkte Konkretisierung.");
             }
         }
     }
@@ -362,20 +373,20 @@ class CatalogCommandService implements CatalogCommands {
         }
         Map<String, String> errors = new LinkedHashMap<>();
         if (current.functionalRoles().isEmpty()) {
-            errors.put("functionalRoles", "Ziehbare aktive Konzepte benÃ¶tigen mindestens eine funktionale Rolle.");
+            errors.put("functionalRoles", "Ziehbare aktive Konzepte benötigen mindestens eine funktionale Rolle.");
         }
         boolean georgiaAvailable = current.availability().stream()
                 .anyMatch(entry -> entry.participant().code().equals("GEORGIA") && entry.level() != null);
         if (!georgiaAvailable) {
-            errors.put("availabilityGeorgia", "Ziehbare aktive Konzepte benÃ¶tigen eine Beschaffbarkeit fÃ¼r Georgia.");
+            errors.put("availabilityGeorgia", "Ziehbare aktive Konzepte benötigen eine Beschaffbarkeit für Georgia.");
         }
         boolean tobiasAvailable = current.availability().stream()
                 .anyMatch(entry -> entry.participant().code().equals("TOBIAS") && entry.level() != null);
         if (!tobiasAvailable) {
-            errors.put("availabilityTobias", "Ziehbare aktive Konzepte benÃ¶tigen eine Beschaffbarkeit fÃ¼r Tobias.");
+            errors.put("availabilityTobias", "Ziehbare aktive Konzepte benötigen eine Beschaffbarkeit für Tobias.");
         }
         if ("OPEN".equals(command.challengeSpecificity()) && directChildren == 0) {
-            errors.put("challengeSpecificity", "Eine offene ziehbare Vorgabe benÃ¶tigt mindestens eine direkte Konkretisierung.");
+            errors.put("challengeSpecificity", "Eine offene ziehbare Vorgabe benötigt mindestens eine direkte Konkretisierung.");
         }
         if (!errors.isEmpty()) {
             throw new CatalogCommandValidationException(errors);
@@ -447,6 +458,24 @@ class CatalogCommandService implements CatalogCommands {
     }
 
     private List<String> drawWeightWarnings(UpdateIngredientConceptCommand command, CatalogConceptDetail current) {
+        boolean directCookingAlcoholParent = Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+                """
+                select exists (
+                    select 1
+                    from ingredient_refinement relation
+                    join ingredient_concept parent on parent.id = relation.parent_concept_id
+                    where relation.child_concept_id = ? and parent.code = 'COOKING_ALCOHOL'
+                )
+                """, Boolean.class, current.id()
+        ));
+        return drawWeightWarnings(command, current, directCookingAlcoholParent);
+    }
+
+    private List<String> drawWeightWarnings(
+            UpdateIngredientConceptCommand command,
+            CatalogConceptDetail current,
+            boolean directCookingAlcoholParent
+    ) {
         if (!command.active() || !command.randomDrawEnabled()) {
             return List.of();
         }
@@ -468,15 +497,7 @@ class CatalogCommandService implements CatalogCommands {
                 && weight.compareTo(new BigDecimal("0.35")) > 0) {
             warnings.add("Schwierig beschaffbare Konzepte haben in der Baseline einen Richtwert von höchstens 0.35.");
         }
-        if (jdbcTemplate.queryForObject(
-                """
-                select exists (
-                    select 1
-                    from ingredient_refinement relation
-                    join ingredient_concept parent on parent.id = relation.parent_concept_id
-                    where relation.child_concept_id = ? and parent.code = 'COOKING_ALCOHOL'
-                )
-                """, Boolean.class, current.id()) && weight.compareTo(new BigDecimal("0.35")) > 0) {
+        if (directCookingAlcoholParent && weight.compareTo(new BigDecimal("0.35")) > 0) {
             warnings.add("Direkte Konkretisierungen von Kochalkohol haben in der Baseline einen Richtwert von höchstens 0.35.");
         }
         return List.copyOf(warnings);
@@ -557,6 +578,7 @@ class CatalogCommandService implements CatalogCommands {
 
     private record GraphNode(
             long id,
+            String code,
             String displayName,
             boolean active,
             boolean randomDrawEnabled,
@@ -589,10 +611,16 @@ class CatalogCommandService implements CatalogCommands {
             return edges;
         }
 
-        private void replace(long conceptId, String specificity, boolean active, boolean randomDrawEnabled) {
+        private void replace(
+                long conceptId,
+                String displayName,
+                String specificity,
+                boolean active,
+                boolean randomDrawEnabled
+        ) {
             GraphNode current = requireNode(conceptId);
             nodes.put(conceptId, new GraphNode(
-                    current.id(), current.displayName(), active, randomDrawEnabled, specificity));
+                    current.id(), current.code(), displayName, active, randomDrawEnabled, specificity));
         }
 
         private GraphNode requireNode(long id) {
@@ -609,6 +637,11 @@ class CatalogCommandService implements CatalogCommands {
 
         private int directChildCount(long parentId) {
             return Math.toIntExact(edges.stream().filter(edge -> edge.parentId() == parentId).count());
+        }
+
+        private boolean hasDirectParentCode(long childId, String parentCode) {
+            return edges.stream().anyMatch(edge -> edge.childId() == childId
+                    && parentCode.equals(requireNode(edge.parentId()).code()));
         }
 
         private String edgeName(Edge edge) {
