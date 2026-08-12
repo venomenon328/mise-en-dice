@@ -8,6 +8,9 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`DATA_MODEL.md`](DATA_MODEL.md): fachliche Entscheidungen des PostgreSQL-Datenmodells
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
 - [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md): verbindliche Bedien-, Interaktions-, Locking-, Audit- und Sicherheitsentscheidungen für die private Katalogverwaltung
+- [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md): verbindliche Regeln für Gewichtung, harte Kandidatengültigkeit, Scores, Diversität, Determinismus, Replay und Simulation
+- [`CANDIDATE_GENERATOR_DATA_READINESS.md`](CANDIDATE_GENERATOR_DATA_READINESS.md): gemessene Metadatenabdeckung und Gate für den Generatorstart
+- [`analysis/candidate-generator-data-readiness.sql`](analysis/candidate-generator-data-readiness.sql): reproduzierbare PostgreSQL-Auswertung des aktiven Ziehpools
 
 ## Architektur, Betrieb und Umsetzung
 
@@ -15,6 +18,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`DEPLOYMENT.md`](DEPLOYMENT.md): VPS-Betrieb, Produktionsdeployment, isolierte Branch-Previews, Backup und Restore
 - [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md): aktuelle Reihenfolge der Entwicklungspakete und ihre Gates
 - [`adr`](adr): einzelne grundlegende Architekturentscheidungen mit Kontext und Konsequenzen
+- [`ADR 0007`](adr/0007-seeded-two-stage-candidate-generator.md): seedbarer zweistufiger Kandidatengenerator und Trennung von Generation und Kuratierung
 
 ## Reihenfolge der Verbindlichkeit bei Entwicklungsarbeit
 
@@ -29,4 +33,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Anwendungsfundament, Administrationssicherheit, lesende Katalogverwaltung, Basisbearbeitung und die schreibbare Pflege direkter Konkretisierungsbeziehungen sind umgesetzt. Als nächster Schritt folgt Phase 7: Rollen, Eigenschaften, Beschaffbarkeit und Saison.
+Die vollständige Katalogverwaltung aus Phase 8 ist umgesetzt. Phase 9A spezifiziert gegenwärtig den Kandidatengenerator und sein Datenreife-Gate. Nach deren Abnahme folgt Phase 9B mit dem rein fachlichen, seedbaren Einzelkandidaten-Kern; OpenAI- und Discord-Adapter bleiben weiterhin nachgelagert.

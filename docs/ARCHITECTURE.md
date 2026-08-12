@@ -1,6 +1,6 @@
 # Architektur von Mise en Dice
 
-Stand: 11. August 2026
+Stand: 12. August 2026
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für die nächsten Entwicklungsabschnitte. Die Produktregeln stehen in [`VISION.md`](VISION.md), das fachliche Datenmodell in [`DATA_MODEL.md`](DATA_MODEL.md). Einzelne Architekturentscheidungen werden zusätzlich unter [`adr`](adr) begründet.
 
@@ -120,6 +120,10 @@ Das Challenge-Modul besitzt:
 - die Schnittstelle zum externen Kurator.
 
 Es darf die öffentliche API des Katalogmoduls verwenden. Ein direkter Zugriff auf interne Katalog-Repositories oder Tabellen ist unzulässig.
+
+Für den Generator stellt `catalog` eine eigene unveränderliche Projektion bereit. Sie materialisiert Rollen, Neuigkeit, Beschaffbarkeit, Saison, Graphbeziehungen, Ausschlussziele und Snapshotwerte in kanonischer Reihenfolge. Das Challenge-Modul bleibt Eigentümer von Gewichtung, Profilen, Hard Rules, Scores, Reservoir, Satzdiversität, Cooldowns und Generation Lifecycle.
+
+Proposal-Erzeugung und Satzselektion sind reine Fachberechnungen auf einem unveränderlichen `GenerationContext`. Sie benötigen keine offene Datenbanktransaktion. Zufall wird ausschließlich über den in ADR 0007 festgelegten Seed-/Substream-Vertrag injiziert.
 
 ### 4.3 `administration`
 
@@ -289,6 +293,34 @@ Mindestens folgende Risiken sind ausdrücklich zu testen:
 - Challenge-Integritätstrigger,
 - Vollständigkeit der Rollen- und Beschaffbarkeitsdaten im aktiven Ziehungspool.
 
+### 10.4 Generator-, Snapshot- und Kuratierungsfluss
+
+Phase 9 trennt Generatorberechnung, Persistenz und spätere Kuratierung:
+
+```text
+Catalog API ──► Generation Context ──► reiner Generator-Kern
+                                         │
+                                         ├─► Reservoir und Zwölfer-Satz
+                                         │
+                                         ▼
+                                kurze Persistenztransaktion
+                                         │
+                                         ▼
+                                  generation_batch
+                                         │
+                              später außerhalb der Transaktion
+                                         ▼
+                                  externer Kurator
+```
+
+Katalog und sichtbare Historie werden je Attempt einmal als unveränderlicher Context Snapshot materialisiert. Derselbe Snapshot dient allen internen Batches dieses Attempts sowie ihrer Persistenz; ein Satz oder eine spätere interne Neurunde mischt nicht unbemerkt zwei Katalogstände.
+
+Das Zielmodell führt `generation_batch` als eigene Ebene unter `generation_attempt` ein. Kandidaten gehören zum Batch. Eine spätere `curation_round` verweist auf einen Batch und besitzt erst dort Modell-, Prompt-, Request- und Responseinformationen. Fake-Kuratormodelle für noch nicht kuratierte Generatorergebnisse sind unzulässig.
+
+Der vollständige erfolgreiche Zwölfer-Satz wird atomar gespeichert. Erschöpfung ist ein fachliches Ergebnis; unbekannte PostgreSQL- oder Laufzeitfehler bleiben technisch. Replay verwendet ausschließlich gespeicherte Snapshots, Versionen, RNG und Seed und erzeugt keine neue Historienexposition.
+
+Generator-Labor und Simulation rufen dieselbe öffentliche Challenge-API auf wie spätere Adapter. Sie besitzen keine zweite Generator- oder Statistikimplementierung und schreiben bei Vorschau, Simulation oder Replay keine operativen Challenge-Daten.
+
 ## 11. Entwicklungsreihenfolge
 
 Die aktuelle Reihenfolge ist:
@@ -312,3 +344,4 @@ Die einzelnen Pakete sollen jeweils nur den für ihren Zweck notwendigen Umfang 
 - [`ADR 0004`](adr/0004-postgresql-only-persistence-tests.md): Persistenztests verwenden PostgreSQL
 - [`ADR 0005`](adr/0005-server-rendered-administration-ui.md): serverseitig gerenderte Webverwaltung
 - [`ADR 0006`](adr/0006-spring-jdbc-persistence.md): explizite Persistenz mit Spring JDBC
+- [`ADR 0007`](adr/0007-seeded-two-stage-candidate-generator.md): seedbarer zweistufiger Kandidatengenerator und Trennung von Generation und Kuratierung
