@@ -536,3 +536,84 @@
         }
     });
 })();
+
+(() => {
+    "use strict";
+
+    function selectedConceptIdFromLocation() {
+        const selected = new URLSearchParams(window.location.search).get("selected");
+        if (selected && /^\d+$/.test(selected)) {
+            return selected;
+        }
+        const match = window.location.pathname.match(/^\/admin\/catalog\/(\d+)(?:\/edit)?$/);
+        return match?.[1] ?? null;
+    }
+
+    function conceptIdFromLink(link) {
+        if (!link) {
+            return null;
+        }
+        const match = link.pathname.match(/^\/admin\/catalog\/(\d+)(?:\/edit)?$/);
+        return match?.[1] ?? null;
+    }
+
+    let currentCatalogSelectionId = selectedConceptIdFromLocation();
+
+    function synchronizeCatalogSelection(selectedConceptId) {
+        const selected = selectedConceptId == null ? null : String(selectedConceptId);
+        document.querySelectorAll(".tree-node").forEach((node) => {
+            const link = node.querySelector(":scope > .tree-node-link");
+            node.classList.toggle("is-selected", selected !== null && conceptIdFromLink(link) === selected);
+        });
+        document.querySelectorAll(".catalog-list > li").forEach((item) => {
+            const link = item.querySelector(".list-entry-heading > a");
+            item.classList.toggle("selected", selected !== null && conceptIdFromLink(link) === selected);
+        });
+    }
+
+    function updateCatalogFeedback(selectionOutsideResults) {
+        document.querySelectorAll(".save-notice").forEach((notice) => notice.remove());
+
+        const detailColumn = document.querySelector(".catalog-detail-column");
+        if (!detailColumn) {
+            return;
+        }
+        let outsideNotice = detailColumn.querySelector(":scope > .notice");
+        if (!selectionOutsideResults) {
+            outsideNotice?.remove();
+            return;
+        }
+        if (outsideNotice) {
+            return;
+        }
+
+        outsideNotice = document.createElement("p");
+        outsideNotice.className = "notice";
+        outsideNotice.textContent = "Das ausgewählte Konzept liegt außerhalb der aktuellen Treffer.";
+        const detail = detailColumn.querySelector(":scope > #catalog-detail");
+        if (detail) {
+            detailColumn.insertBefore(outsideNotice, detail);
+        } else {
+            detailColumn.append(outsideNotice);
+        }
+    }
+
+    document.body.addEventListener("catalogSelectionState", (event) => {
+        const state = event.detail ?? {};
+        updateCatalogFeedback(state.selectionOutsideResults === true);
+        if (state.selectedConceptId !== undefined && state.selectedConceptId !== null) {
+            currentCatalogSelectionId = String(state.selectedConceptId);
+            synchronizeCatalogSelection(currentCatalogSelectionId);
+        }
+    });
+
+    document.body.addEventListener("htmx:afterSwap", (event) => {
+        if (event.detail?.target?.classList?.contains("tree-children") && currentCatalogSelectionId !== null) {
+            synchronizeCatalogSelection(currentCatalogSelectionId);
+        }
+    });
+
+    if (currentCatalogSelectionId !== null) {
+        synchronizeCatalogSelection(currentCatalogSelectionId);
+    }
+})();
