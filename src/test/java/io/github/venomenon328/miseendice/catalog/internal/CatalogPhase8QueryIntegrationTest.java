@@ -59,23 +59,28 @@ class CatalogPhase8QueryIntegrationTest {
     }
 
     @Test
-    void filtersAndPagesExclusionsWithTargetProjectionAndInactiveTargetState() {
+    void filtersAndPagesExclusionsWithTargetProjectionAndExclusiveRefinementPresence() {
         long activeTarget = insertConcept("ACTIVE_TARGET", true);
         long inactiveTarget = insertConcept("INACTIVE_TARGET", false);
         long matchingRule = insertRule("MATCH", "Passender Ausschluss", true);
-        long otherRule = insertRule("OTHER", "Andere Ausschlussregel", false);
+        long noRefinementRule = insertRule("NO_REFINEMENT", "Ausschluss ohne Konkretisierungen", true);
+        long mixedRule = insertRule("MIXED", "Gemischter Ausschluss", true);
         jdbcTemplate.update("""
                 insert into exclusion_rule_target (exclusion_rule_id, ingredient_concept_id, include_refinements)
-                values (?, ?, true), (?, ?, false)
-                """, matchingRule, inactiveTarget, otherRule, activeTarget);
+                values (?, ?, true), (?, ?, false), (?, ?, true), (?, ?, false)
+                """, matchingRule, inactiveTarget, noRefinementRule, activeTarget,
+                mixedRule, inactiveTarget, mixedRule, activeTarget);
 
         var filtered = exclusionQueries.search(new CatalogExclusionSearchCriteria(
                 true, inactiveTarget, true, 0, 25));
-        assertThat(filtered.totalItems()).isEqualTo(1);
-        assertThat(filtered.items()).singleElement().satisfies(item -> {
-            assertThat(item.id()).isEqualTo(matchingRule);
-            assertThat(item.targetCount()).isEqualTo(1);
-        });
+        assertThat(filtered.items()).extracting(CatalogExclusionQueries.CatalogExclusionListItem::id)
+                .containsExactlyInAnyOrder(matchingRule, mixedRule);
+
+        var withoutRefinements = exclusionQueries.search(new CatalogExclusionSearchCriteria(
+                true, null, false, 0, 25));
+        assertThat(withoutRefinements.items()).extracting(CatalogExclusionQueries.CatalogExclusionListItem::id)
+                .contains(noRefinementRule)
+                .doesNotContain(matchingRule, mixedRule);
 
         var detail = exclusionQueries.findExclusionRule(matchingRule).orElseThrow();
         assertThat(detail.targets()).singleElement().satisfies(target -> {
