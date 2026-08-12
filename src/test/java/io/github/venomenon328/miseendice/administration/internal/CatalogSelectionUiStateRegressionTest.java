@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.administration.internal;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -29,7 +30,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-/** Regression coverage for catalog selection feedback that spans full-page and HTMX state. */
+/** Regression coverage for catalog selection, editing and hierarchy UI state. */
 @SpringBootTest
 @Testcontainers
 class CatalogSelectionUiStateRegressionTest {
@@ -140,6 +141,27 @@ class CatalogSelectionUiStateRegressionTest {
     }
 
     @Test
+    void rendersEditFormForConceptWithCuratedDimensionLevels() throws Exception {
+        var tempeh = catalogQueries.search(new CatalogQueries.CatalogSearchCriteria(
+                        "TEMPEH", null, null, null, null, Set.of(), Set.of(),
+                        CatalogQueries.CatalogAvailabilityFilter.any(), CatalogQueries.CatalogAvailabilityFilter.any(),
+                        CatalogQueries.CatalogNoveltyFilter.any(), CatalogQueries.CatalogSort.DISPLAY_NAME_ASC, 0, 50
+                )).items().stream()
+                .filter(item -> "TEMPEH".equals(item.code()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(catalogQueries.findConcept(tempeh.id()).orElseThrow().culinaryDimensions().stream()
+                .anyMatch(dimension -> dimension.level() != null), "Tempeh must exercise a curated dimension value");
+
+        mockMvc.perform(get("/admin/catalog/{id}/edit", tempeh.id())
+                        .session(authenticate())
+                        .header("HX-Request", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-testid=\"catalog-edit-form\"")))
+                .andExpect(content().string(containsString("name=\"dimension[UMAMI]\"")));
+    }
+
+    @Test
     void shipsClientSynchronizationForNoticesAndVisibleSelectionOccurrences() throws Exception {
         mockMvc.perform(get("/admin/assets/catalog.js").session(authenticate()))
                 .andExpect(status().isOk())
@@ -148,6 +170,26 @@ class CatalogSelectionUiStateRegressionTest {
                 .andExpect(content().string(containsString(".save-notice")))
                 .andExpect(content().string(containsString("tree-children")))
                 .andExpect(content().string(containsString("querySelectorAll(\".tree-node\")")));
+    }
+
+    @Test
+    void preservesExpandedHierarchyOccurrencesWithSessionScopedPathKeys() throws Exception {
+        MockHttpSession session = authenticate();
+
+        mockMvc.perform(get("/admin/catalog").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("/admin/assets/catalog-tree-state.js")));
+
+        mockMvc.perform(get("/admin/assets/catalog-tree-state.js").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("expandedTreeStorageKey")))
+                .andExpect(content().string(containsString("window.sessionStorage")))
+                .andExpect(content().string(containsString("function treeStateKey(toggle)")))
+                .andExpect(content().string(containsString(
+                        "parentToggle ? treeStateKey(parentToggle) : topLevelTreeScope(toggle)"
+                )))
+                .andExpect(content().string(containsString("#hierarchy-roots, [id^='tree-focus-']")))
+                .andExpect(content().string(containsString("restoreExpandedTreeState")));
     }
 
     private CatalogQueries.CatalogSearchCriteria criteria(Boolean active, int page, int pageSize) {
