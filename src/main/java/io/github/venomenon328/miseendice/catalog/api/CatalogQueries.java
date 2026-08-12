@@ -26,6 +26,9 @@ public interface CatalogQueries {
 
     CatalogFilterOptions findFilterOptions();
 
+    /** Compact server-side search projection used by the pending relationship picker. */
+    List<CatalogRelationCandidate> searchRelationCandidates(String searchTerm, long excludedConceptId);
+
     CatalogSummary summarize();
 
     record CatalogSearchCriteria(
@@ -209,7 +212,34 @@ public interface CatalogQueries {
         }
     }
 
-    record CatalogConceptRelation(long id, String displayName, String code, boolean active) {
+    record CatalogConceptRelation(
+            long id,
+            String displayName,
+            String code,
+            boolean active,
+            long version
+    ) {
+
+        public CatalogConceptRelation(long id, String displayName, String code, boolean active) {
+            this(id, displayName, code, active, 0);
+        }
+    }
+
+    record CatalogRelationCandidate(
+            long id,
+            String displayName,
+            String code,
+            boolean active,
+            String challengeSpecificity,
+            long version,
+            List<String> functionalRoles,
+            List<CatalogConceptRelation> directParents
+    ) {
+
+        public CatalogRelationCandidate {
+            functionalRoles = List.copyOf(functionalRoles);
+            directParents = List.copyOf(directParents);
+        }
     }
 
     record CatalogReferenceValue(String code, String displayName, String description) {

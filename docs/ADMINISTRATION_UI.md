@@ -485,6 +485,8 @@ Ablauf:
 6. Auswahl wird als ungespeicherte Änderung in das aktuelle Formular übernommen,
 7. endgültige Speicherung erfolgt zusammen mit dem Konzept.
 
+Die vorgemerkte Kante zeigt die beim Laden bekannte Aggregatversion des Gegenknotens. Erst `Speichern` prüft diese zusammen mit der Version des bearbeiteten Konzepts. Ändert sich die Menge vorgemerkter Kanten, wird eine zuvor nötige Inaktivitätsbestätigung erneut verlangt.
+
 ### 10.4 Child hinzufügen
 
 Analog zu Parent hinzufügen. Auch hier werden keine anderen Parent-Beziehungen des Childs entfernt.
@@ -946,7 +948,7 @@ Eine Transaktion mit erwartetem Versionswert. Alle zum jeweiligen Implementierun
 
 **Konkretisierungsbeziehung hinzufügen/entfernen**
 
-Eine Transaktion; beide betroffenen Konzepte werden versionsgeprüft beziehungsweise konsistent gesperrt und gemeinsam auditiert. Kein Netzwerkzugriff in der Transaktion.
+Eine Transaktion; beide betroffenen Konzepte werden versionsgeprüft beziehungsweise konsistent gesperrt und gemeinsam auditiert. Mehrere Kanten desselben Saves behandeln jeden Gegenknoten nur einmal. Vor der resultierenden Graphprüfung serialisiert ein PostgreSQL-Transaktionslock sämtliche Graphmutationen; kein Netzwerkzugriff in der Transaktion.
 
 **Ausschlussregel anlegen/ändern**
 

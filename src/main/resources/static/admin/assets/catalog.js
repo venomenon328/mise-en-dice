@@ -279,6 +279,223 @@
         }
     });
 
+    function refinementEditor() {
+        return document.querySelector("[data-refinement-editor]");
+    }
+
+    function refinementChangeSelector(parentId, childId) {
+        return `[data-pending-refinement][data-parent-id="${parentId}"][data-child-id="${childId}"]`;
+    }
+
+    function changeInput(editor, type, parentId, childId, relatedVersion) {
+        const changes = editor.querySelector("[data-pending-refinements]");
+        if (!changes) {
+            return null;
+        }
+        const existing = changes.querySelector(refinementChangeSelector(parentId, childId));
+        if (existing) {
+            existing.remove();
+        }
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "relationChange";
+        input.value = `${type}:${parentId}:${childId}:${relatedVersion}`;
+        input.dataset.pendingRefinement = "true";
+        input.dataset.parentId = String(parentId);
+        input.dataset.childId = String(childId);
+        input.dataset.changeType = type;
+        input.dataset.relatedVersion = String(relatedVersion);
+        changes.append(input);
+        return input;
+    }
+
+    function removeChange(editor, parentId, childId) {
+        editor.querySelector(refinementChangeSelector(parentId, childId))?.remove();
+    }
+
+    function relationEntry(editor, parentId, childId) {
+        return editor.querySelector(`[data-relation-entry][data-parent-id="${parentId}"][data-child-id="${childId}"]`);
+    }
+
+    function setRelationDirty(editor) {
+        const form = editor.closest("[data-catalog-concept-form]");
+        if (form) {
+            form.dataset.dirty = "true";
+        }
+    }
+
+    function addPendingRelation(editor, button) {
+        const currentId = editor.dataset.conceptId;
+        const direction = button.dataset.direction;
+        const candidateId = button.dataset.candidateId;
+        if (!currentId || !candidateId || !direction) {
+            return;
+        }
+        const parentId = direction === "PARENT" ? candidateId : currentId;
+        const childId = direction === "PARENT" ? currentId : candidateId;
+        if (relationEntry(editor, parentId, childId)) {
+            return;
+        }
+        const list = editor.querySelector(`[data-relation-list="${direction}"]`);
+        if (!list) {
+            return;
+        }
+        list.querySelector("[data-empty-relations]")?.remove();
+        changeInput(editor, "ADD", parentId, childId, button.dataset.candidateVersion || "0");
+        const item = document.createElement("li");
+        item.className = "pending-relation";
+        item.dataset.relationEntry = "true";
+        item.dataset.parentId = parentId;
+        item.dataset.childId = childId;
+        item.dataset.relatedVersion = button.dataset.candidateVersion || "0";
+        item.dataset.original = "false";
+        const label = document.createElement("span");
+        label.textContent = `${button.dataset.candidateName || "Konzept"} `;
+        const code = document.createElement("code");
+        code.textContent = button.dataset.candidateCode || "";
+        label.append(code);
+        const marker = document.createElement("small");
+        marker.textContent = button.dataset.candidateActive === "true" ? " vorgemerkt" : " inaktiv · vorgemerkt";
+        label.append(marker);
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "button button--secondary";
+        remove.dataset.removeRelation = "true";
+        remove.textContent = "Vormerkung zurücknehmen";
+        item.append(label, remove);
+        list.append(item);
+        setRelationDirty(editor);
+    }
+
+    function toggleExistingRemoval(editor, entry) {
+        const parentId = entry.dataset.parentId;
+        const childId = entry.dataset.childId;
+        const removed = entry.dataset.pendingRemoval === "true";
+        if (removed) {
+            entry.dataset.pendingRemoval = "false";
+            entry.classList.remove("pending-removal");
+            entry.querySelector("[data-remove-relation]").textContent = "Entfernen";
+            removeChange(editor, parentId, childId);
+        } else {
+            entry.dataset.pendingRemoval = "true";
+            entry.classList.add("pending-removal");
+            entry.querySelector("[data-remove-relation]").textContent = "Entfernen zurücknehmen";
+            changeInput(editor, "REMOVE", parentId, childId, entry.dataset.relatedVersion || "0");
+        }
+        setRelationDirty(editor);
+    }
+
+    function requestPickerResults(editor, search) {
+        const picker = editor.querySelector("[data-relation-picker]");
+        const results = editor.querySelector("[data-relation-picker-results]");
+        const url = picker?.dataset.pickerUrl;
+        if (!url || !results || !window.htmx) {
+            return;
+        }
+        window.htmx.ajax("GET", `${url}&q=${encodeURIComponent(search || "")}`, {target: results, swap: "innerHTML"});
+    }
+
+    function restorePendingRefinements() {
+        const editor = refinementEditor();
+        if (!editor) {
+            return;
+        }
+        editor.querySelectorAll("[data-pending-refinement]").forEach((input) => {
+            const parentId = input.dataset.parentId;
+            const childId = input.dataset.childId;
+            const existing = relationEntry(editor, parentId, childId);
+            if (input.dataset.changeType === "REMOVE" && existing) {
+                existing.dataset.pendingRemoval = "true";
+                existing.classList.add("pending-removal");
+                const button = existing.querySelector("[data-remove-relation]");
+                if (button) {
+                    button.textContent = "Entfernen zurücknehmen";
+                }
+            }
+            if (input.dataset.changeType === "ADD" && !existing) {
+                const direction = parentId === editor.dataset.conceptId ? "CHILD" : "PARENT";
+                const list = editor.querySelector(`[data-relation-list="${direction}"]`);
+                if (!list) {
+                    return;
+                }
+                list.querySelector("[data-empty-relations]")?.remove();
+                const item = document.createElement("li");
+                item.className = "pending-relation";
+                item.dataset.relationEntry = "true";
+                item.dataset.parentId = parentId;
+                item.dataset.childId = childId;
+                item.dataset.relatedVersion = input.dataset.relatedVersion || "0";
+                item.dataset.original = "false";
+                const label = document.createElement("span");
+                label.textContent = `Vorgemerkte Beziehung zu Konzept #${parentId === editor.dataset.conceptId ? childId : parentId} `;
+                const marker = document.createElement("small");
+                marker.textContent = "vorgemerkt";
+                label.append(marker);
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "button button--secondary";
+                remove.dataset.removeRelation = "true";
+                remove.textContent = "Vormerkung zurücknehmen";
+                item.append(label, remove);
+                list.append(item);
+            }
+        });
+    }
+
+    let pickerTimer = null;
+
+    document.addEventListener("click", (event) => {
+        const pickerButton = event.target.closest?.("[data-open-relation-picker]");
+        if (pickerButton) {
+            const editor = refinementEditor();
+            const picker = editor?.querySelector("[data-relation-picker]");
+            if (!editor || !picker) {
+                return;
+            }
+            picker.hidden = false;
+            picker.dataset.pickerUrl = pickerButton.dataset.pickerUrl;
+            const input = picker.querySelector("[data-relation-picker-search]");
+            input?.focus();
+            requestPickerResults(editor, input?.value || "");
+            return;
+        }
+        const add = event.target.closest?.("[data-add-relation]");
+        if (add && !add.disabled) {
+            const editor = refinementEditor();
+            if (editor) {
+                addPendingRelation(editor, add);
+            }
+            return;
+        }
+        const remove = event.target.closest?.("[data-remove-relation]");
+        if (remove) {
+            const editor = refinementEditor();
+            const entry = remove.closest?.("[data-relation-entry]");
+            if (!editor || !entry) {
+                return;
+            }
+            if (entry.dataset.original === "true") {
+                toggleExistingRemoval(editor, entry);
+            } else {
+                removeChange(editor, entry.dataset.parentId, entry.dataset.childId);
+                entry.remove();
+            }
+        }
+    });
+
+    document.addEventListener("input", (event) => {
+        const search = event.target.closest?.("[data-relation-picker-search]");
+        const editor = refinementEditor();
+        if (!search || !editor) {
+            return;
+        }
+        window.clearTimeout(pickerTimer);
+        pickerTimer = window.setTimeout(() => requestPickerResults(editor, search.value), 180);
+    });
+
+    document.body.addEventListener("htmx:afterSwap", restorePendingRefinements);
+    restorePendingRefinements();
+
     window.addEventListener("beforeunload", (event) => {
         if (activeForm()?.dataset.dirty === "true") {
             event.preventDefault();

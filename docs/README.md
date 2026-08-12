@@ -29,4 +29,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Anwendungsfundament, Administrationssicherheit, lesende Katalogverwaltung und Deploymentpaket sind umgesetzt. Vor der Basisbearbeitung von Zutatenkonzepten wird die bestehende Oberfläche in einem abgegrenzten Zwischenpaket bei Hierarchiebedienung, grafischen Skalen und kulinarischem Design nachgeschärft.
+Anwendungsfundament, Administrationssicherheit, lesende Katalogverwaltung, Basisbearbeitung und die schreibbare Pflege direkter Konkretisierungsbeziehungen sind umgesetzt. Als nächster Schritt folgt Phase 7: Rollen, Eigenschaften, Beschaffbarkeit und Saison.
