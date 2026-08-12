@@ -14,6 +14,7 @@ import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.QuotaE
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.SetEvaluation;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.FallbackLevel;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -30,10 +31,10 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Canonical JSON payload and SHA-256 fingerprint for a complete selected set. */
 final class CanonicalSetFingerprint {
-    private final ObjectMapper objectMapper;
 
-    CanonicalSetFingerprint(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    CanonicalSetFingerprint(ObjectMapper ignored) {
+        // Kept in the constructor contract because the engine already receives the application's mapper.
+        // Fingerprint bytes deliberately use the explicit canonical writer below instead of mapper defaults.
     }
 
     String fingerprint(
@@ -58,11 +59,95 @@ final class CanonicalSetFingerprint {
         payload.put("generatorVersion", nfc(reservoir.context().configuration().generatorVersion()));
         payload.put("setDiagnosis", diagnosis(reservoir, evaluation, attempts));
         try {
-            byte[] canonicalBytes = objectMapper.writeValueAsBytes(payload);
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(canonicalBytes));
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(canonicalBytes(payload)));
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is required by the Java platform", exception);
         }
+    }
+
+    static byte[] canonicalBytes(Object value) {
+        StringBuilder output = new StringBuilder();
+        appendJson(value, output);
+        return output.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static void appendJson(Object value, StringBuilder output) {
+        if (value == null) {
+            output.append("null");
+            return;
+        }
+        if (value instanceof String text) {
+            appendString(nfc(text), output);
+            return;
+        }
+        if (value instanceof BigDecimal decimal) {
+            output.append(decimal.toPlainString());
+            return;
+        }
+        if (value instanceof Byte || value instanceof Short || value instanceof Integer
+                || value instanceof Long || value instanceof java.math.BigInteger) {
+            output.append(value);
+            return;
+        }
+        if (value instanceof Boolean bool) {
+            output.append(bool ? "true" : "false");
+            return;
+        }
+        if (value instanceof Map<?, ?> map) {
+            TreeMap<String, Object> ordered = new TreeMap<>();
+            map.forEach((key, item) -> ordered.put(nfc(String.valueOf(key)), item));
+            output.append('{');
+            boolean first = true;
+            for (Map.Entry<String, Object> entry : ordered.entrySet()) {
+                if (!first) {
+                    output.append(',');
+                }
+                first = false;
+                appendString(entry.getKey(), output);
+                output.append(':');
+                appendJson(entry.getValue(), output);
+            }
+            output.append('}');
+            return;
+        }
+        if (value instanceof Iterable<?> iterable) {
+            output.append('[');
+            boolean first = true;
+            for (Object item : iterable) {
+                if (!first) {
+                    output.append(',');
+                }
+                first = false;
+                appendJson(item, output);
+            }
+            output.append(']');
+            return;
+        }
+        throw new IllegalArgumentException("Unsupported canonical JSON value type: " + value.getClass().getName());
+    }
+
+    private static void appendString(String value, StringBuilder output) {
+        output.append('"');
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            switch (character) {
+                case '"' -> output.append("\\\"");
+                case '\\' -> output.append("\\\\");
+                case '\b' -> output.append("\\b");
+                case '\f' -> output.append("\\f");
+                case '\n' -> output.append("\\n");
+                case '\r' -> output.append("\\r");
+                case '\t' -> output.append("\\t");
+                default -> {
+                    if (character < 0x20) {
+                        output.append("\\u").append("%04x".formatted((int) character));
+                    } else {
+                        output.append(character);
+                    }
+                }
+            }
+        }
+        output.append('"');
     }
 
     private static Map<String, Object> diagnosis(
