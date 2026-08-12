@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.FallbackLevel;
 import org.junit.jupiter.api.Test;
 
 class DeterministicRandomTest {
@@ -37,6 +38,15 @@ class DeterministicRandomTest {
                 SeedDerivation.Purpose.PROPOSAL_SLOT_4, 123)).isEqualTo(7593157400136693928L);
         assertThat(SeedDerivation.derive("1.0.0", Long.MIN_VALUE, "attempt",
                 SeedDerivation.Purpose.ATTEMPT_EXCLUSION_MODE, 0)).isEqualTo(-3974647204649309894L);
+    }
+
+    @Test
+    void setSelectionUsesVersionedPurposeValuesWithoutChangingTheSeedContract() {
+        assertThat(SeedDerivation.deriveSelection("1.0.0", 81_200L, 1,
+                FallbackLevel.STRICT, 1)).isEqualTo(-6143698973571220239L);
+        assertThat(SeedDerivation.deriveSelection("1.0.0", 81_200L, 1,
+                FallbackLevel.RELAXED_1, 12)).isEqualTo(SeedDerivation.derive("1.0.0", 81_200L, "batch/1",
+                SeedDerivation.Purpose.BATCH_SELECTION_RELAXED_1_12, 0));
     }
 
     private long[] outputs(long seed) {
