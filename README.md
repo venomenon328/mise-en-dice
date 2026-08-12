@@ -84,7 +84,7 @@ Zentrale Modellierungsentscheidungen sind insbesondere:
 - persistente Audit-Historie für Kandidatensätze und Kuratorentscheidungen
 - freie manuelle Vorgaben, die den Zufallsgenerator und seine Regeln bewusst übersteuern können
 
-Der initiale Katalog umfasst **642 Zutatenkonzepte**, davon **640 zufällig ziehbar**. Darunter befinden sich **78 offene** und **562 spezifische** Vorgaben. Jeder aktive Zieh-Kandidat besitzt mindestens eine funktionale Rolle sowie eine Beschaffbarkeitseinschätzung für Georgia und Tobias.
+Der initiale Katalog umfasst **665 Zutatenkonzepte**, davon **663 zufällig ziehbar**. Darunter befinden sich **87 offene** und **576 spezifische** Vorgaben. Jeder aktive Zieh-Kandidat besitzt mindestens eine funktionale Rolle sowie eine Beschaffbarkeitseinschätzung für Georgia und Tobias.
 
 ## Status
 
