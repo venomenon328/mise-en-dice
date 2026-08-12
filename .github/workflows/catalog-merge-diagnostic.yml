@@ -1,4 +1,4 @@
-name: Catalog merge diagnostic
+name: Merge main into catalog review
 
 on:
   push:
@@ -6,10 +6,11 @@ on:
       - agent/issue-23-catalog-gap-review
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  merge:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -17,32 +18,14 @@ jobs:
         with:
           ref: agent/issue-23-catalog-gap-review
           fetch-depth: 0
-      - name: Attempt merge and collect conflicts
+      - name: Merge current main and remove temporary workflow
         shell: bash
         run: |
-          set -u
-          git config user.name 'catalog-merge-diagnostic'
-          git config user.email 'catalog-merge-diagnostic@example.invalid'
+          set -Eeuo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git fetch origin main
-          set +e
-          git merge --no-commit --no-ff origin/main > /tmp/merge-output.txt 2>&1
-          merge_status=$?
-          set -e
-          mkdir -p target/merge-diagnostic/files
-          cp /tmp/merge-output.txt target/merge-diagnostic/merge-output.txt
-          printf '%s\n' "$merge_status" > target/merge-diagnostic/merge-status.txt
-          git status --short > target/merge-diagnostic/status.txt
-          git diff --name-only --diff-filter=U > target/merge-diagnostic/conflicts.txt
-          while IFS= read -r file; do
-            test -z "$file" && continue
-            mkdir -p "target/merge-diagnostic/files/$(dirname "$file")"
-            cp "$file" "target/merge-diagnostic/files/$file"
-            git show HEAD:"$file" > "target/merge-diagnostic/files/$file.ours" || true
-            git show origin/main:"$file" > "target/merge-diagnostic/files/$file.theirs" || true
-          done < target/merge-diagnostic/conflicts.txt
-      - name: Upload merge diagnostic
-        uses: actions/upload-artifact@v4
-        with:
-          name: catalog-merge-diagnostic
-          path: target/merge-diagnostic
-          if-no-files-found: error
+          git merge --no-commit --no-ff origin/main
+          git rm .github/workflows/catalog-merge-diagnostic.yml
+          git commit -m 'Merge current main into catalog gap review'
+          git push origin HEAD:agent/issue-23-catalog-gap-review
