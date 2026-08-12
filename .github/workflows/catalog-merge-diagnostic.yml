@@ -21,12 +21,15 @@ jobs:
         shell: bash
         run: |
           set -u
+          git config user.name 'catalog-merge-diagnostic'
+          git config user.email 'catalog-merge-diagnostic@example.invalid'
           git fetch origin main
           set +e
-          git merge --no-commit --no-ff origin/main
+          git merge --no-commit --no-ff origin/main > /tmp/merge-output.txt 2>&1
           merge_status=$?
           set -e
           mkdir -p target/merge-diagnostic/files
+          cp /tmp/merge-output.txt target/merge-diagnostic/merge-output.txt
           printf '%s\n' "$merge_status" > target/merge-diagnostic/merge-status.txt
           git status --short > target/merge-diagnostic/status.txt
           git diff --name-only --diff-filter=U > target/merge-diagnostic/conflicts.txt
