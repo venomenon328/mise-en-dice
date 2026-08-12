@@ -1,0 +1,29 @@
+name: Catalog Diagnostic
+
+on:
+  push:
+    branches:
+      - agent/issue-23-catalog-gap-review
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Generate catalog report
+        run: ./mvnw -Dtest=CatalogDiagnosticReportTest test
+      - name: Upload catalog report
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-diagnostic
+          path: target/catalog-diagnostic/catalog.json
+          if-no-files-found: error
