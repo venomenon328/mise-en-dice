@@ -110,7 +110,8 @@ class CatalogSelectionStateWebConfiguration implements WebMvcConfigurer {
         }
 
         private static boolean containsConcept(CatalogSearchResult result, long conceptId) {
-            return result.items().stream().anyMatch(item -> item.id() == conceptId);
+            return result.items().stream()
+                    .anyMatch(item -> item.id() == conceptId);
         }
 
         private static boolean hasEffectiveCriteria(CatalogAdministrationController.CatalogState state) {
