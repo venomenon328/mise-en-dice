@@ -110,7 +110,7 @@ class CatalogDiagnosticReportTest {
                             'targets', coalesce((
                                 select jsonb_agg(jsonb_build_object(
                                     'concept', concept.code,
-                                    'includeDescendants', target.include_descendants
+                                    'includeRefinements', target.include_refinements
                                 ) order by concept.code)
                                 from exclusion_rule_target target
                                 join ingredient_concept concept on concept.id = target.ingredient_concept_id
