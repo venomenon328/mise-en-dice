@@ -319,9 +319,16 @@
 
     function setRelationDirty(editor) {
         const form = editor.closest("[data-catalog-concept-form]");
-        if (form) {
-            form.dataset.dirty = "true";
+        if (!form) {
+            return;
         }
+        form.dataset.dirty = "true";
+        ["inactiveRelationsAcknowledged", "weightWarningsAcknowledged"].forEach((name) => {
+            const acknowledgement = form.querySelector(`input[name='${name}']`);
+            if (acknowledgement) {
+                acknowledgement.checked = false;
+            }
+        });
     }
 
     function addPendingRelation(editor, button) {
@@ -400,7 +407,14 @@
         if (!editor) {
             return;
         }
-        editor.querySelectorAll("[data-pending-refinement]").forEach((input) => {
+        const pending = editor.querySelectorAll("[data-pending-refinement]");
+        if (pending.length > 0) {
+            const form = editor.closest("[data-catalog-concept-form]");
+            if (form) {
+                form.dataset.dirty = "true";
+            }
+        }
+        pending.forEach((input) => {
             const parentId = input.dataset.parentId;
             const childId = input.dataset.childId;
             const existing = relationEntry(editor, parentId, childId);
@@ -479,6 +493,7 @@
             } else {
                 removeChange(editor, entry.dataset.parentId, entry.dataset.childId);
                 entry.remove();
+                setRelationDirty(editor);
             }
         }
     });
