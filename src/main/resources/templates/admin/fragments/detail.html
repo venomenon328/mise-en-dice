@@ -440,7 +440,7 @@
                                 <input type="radio" th:name="|dimension[${dimension.code}]|" th:value="${level}"
                                        th:checked="${form.metadata.dimensionLevel(dimension.code) == level.toString()}"
                                        th:aria-label="|${dimension.displayName}: Stufe ${level} von 5|">
-                                <svg class="metric-icon" th:classappend="${form.metadata.dimensionLevel(dimension.code) != '' and level <= form.metadata.dimensionLevel(dimension.code)} ? ' is-active' : ' is-inactive'"
+                                <svg class="metric-icon" th:classappend="${form.metadata.dimensionLevel(dimension.code).matches('[1-5]') and level.toString().compareTo(form.metadata.dimensionLevel(dimension.code)) <= 0} ? ' is-active' : ' is-inactive'"
                                      aria-hidden="true" focusable="false" viewBox="0 0 24 24">
                                     <use th:attr="href=|/admin/assets/catalog-icons.svg#icon-${#strings.toLowerCase(dimension.code)}|"></use>
                                 </svg>
