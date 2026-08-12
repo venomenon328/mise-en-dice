@@ -6,6 +6,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.Catalog
 import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.ChangeKind;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,9 +31,9 @@ final class CatalogAuditDiffFactory {
             scalar(result, before, after, "code", "Code");
             scalar(result, before, after, "active", "Aktiv");
             scalar(result, before, after, "randomDrawEnabled", "Ziehbar");
-            scalar(result, before, after, "challengeSpecificity", "Challenge-Spezifit\u00e4t");
+            scalar(result, before, after, "challengeSpecificity", "Challenge-Spezifität");
             scalar(result, before, after, "baseDrawWeight", "Ziehungsgewicht");
-            scalar(result, before, after, "noveltyLevel", "Ungew\u00f6hnlichkeit");
+            scalar(result, before, after, "noveltyLevel", "Ungewöhnlichkeit");
             scalar(result, before, after, "curatorNote", "Kuratornotiz");
             mapCollection(result, before, after, "directParents", "Direkte Oberbegriffe", "code", "displayName", null);
             mapCollection(result, before, after, "directChildren", "Direkte Konkretisierungen", "code", "displayName", null);
@@ -115,7 +116,7 @@ final class CatalogAuditDiffFactory {
             raw.forEach((key, mapped) -> map.put(String.valueOf(key), mapped));
             Object key = map.get(keyField);
             if (key != null) {
-                result.put(String.valueOf(key), Map.copyOf(map));
+                result.put(String.valueOf(key), Collections.unmodifiableMap(map));
             }
         }
         return Map.copyOf(result);
@@ -135,15 +136,15 @@ final class CatalogAuditDiffFactory {
             return "";
         }
         if ("includeRefinements".equals(field)) {
-            return Boolean.TRUE.equals(value) ? " \u00b7 bekannte Konkretisierungen eingeschlossen" : " \u00b7 nur dieses Ziel";
+            return Boolean.TRUE.equals(value) ? " · bekannte Konkretisierungen eingeschlossen" : " · nur dieses Ziel";
         }
         if ("level".equals(field)) {
-            return " \u00b7 " + render(value);
+            return " · " + render(value);
         }
         if ("weightMultiplier".equals(field)) {
-            return " \u00b7 Faktor " + render(value);
+            return " · Faktor " + render(value);
         }
-        return " \u00b7 " + render(value);
+        return " · " + render(value);
     }
 
     private static ChangeKind kind(Object before, Object after) {
@@ -152,7 +153,7 @@ final class CatalogAuditDiffFactory {
 
     private static String render(Object value) {
         if (value == null) {
-            return "\u2014";
+            return "—";
         }
         if (value instanceof Boolean bool) {
             return bool ? "ja" : "nein";
