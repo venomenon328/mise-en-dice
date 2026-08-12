@@ -63,6 +63,7 @@ final class DefaultCandidateReservoirEngine implements CandidateReservoirEngine 
     public ReservoirResult generate(PreparedGenerationAttempt preparedAttempt, int batchNumber) {
         GenerationContext context = contextForBatch(preparedAttempt, batchNumber);
         GenerationPlan plan = proposalEngine.validateAndPlan(context);
+        rejectInvalidPlan(plan);
         GeneratorConfiguration configuration = context.configuration();
         LinkedHashMap<String, AcceptedProposal> unique = new LinkedHashMap<>();
         EnumMap<GeneratorReasonCode, Long> hardRejections = new EnumMap<>(GeneratorReasonCode.class);
@@ -111,6 +112,20 @@ final class DefaultCandidateReservoirEngine implements CandidateReservoirEngine 
             return new ExhaustedReservoir(preparedAttempt, context, plan, metrics, sizeClass, candidates, diagnostics);
         }
         return new GeneratedReservoir(preparedAttempt, context, plan, metrics, sizeClass, candidates, diagnostics);
+    }
+
+    private static void rejectInvalidPlan(GenerationPlan plan) {
+        if (plan.valid()) {
+            return;
+        }
+        GeneratorReasonCode invalidReason = plan.validationErrors().stream()
+                .filter(reason -> reason != GeneratorReasonCode.GENERATION_EXHAUSTED)
+                .findFirst()
+                .orElse(null);
+        if (invalidReason != null) {
+            throw new GeneratorValidationException(invalidReason,
+                    "Prepared generation context failed proposal validation");
+        }
     }
 
     private ExclusionPreparation prepareExclusion(GenerationAttemptRequest request) {
