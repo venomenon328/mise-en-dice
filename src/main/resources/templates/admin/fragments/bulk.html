@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="de" xmlns:th="https://www.thymeleaf.org"><body>
+<section th:fragment="preview" id="bulk-preview" class="detail-section bulk-preview" data-testid="bulk-preview">
+    <div th:if="${bulkErrors != null and !bulkErrors.isEmpty()}" class="form-errors"><h2>Bulk-Aktion nicht ausführbar</h2><ul><li th:each="error : ${bulkErrors}" th:text="${error.value}">Fehler</li></ul></div>
+    <div th:if="${bulkPreview != null}">
+        <div class="detail-section-heading"><p class="section-kicker">Vor dem Speichern</p><h2>Bulk-Vorschau</h2></div>
+        <p th:text="|${bulkPreview.changedCount} von ${bulkPreview.items.size()} ausgewählten Konzepten werden geändert.|">Zusammenfassung</p>
+        <p th:if="${bulkPreview.unchangedCount > 0}" th:text="|${bulkPreview.unchangedCount} Einträge befinden sich bereits im Zielzustand und werden weder versioniert noch auditiert.|">No-ops</p>
+        <ul class="reference-list"><li th:each="item : ${bulkPreview.items}"><strong th:text="${item.displayName}">Zutat</strong>: <span th:text="${#strings.listJoin(item.effects, ', ')}">Effekt</span></li></ul>
+        <aside th:if="${!bulkPreview.warnings.isEmpty()}" class="weight-warning"><h3>Gewicht bewusst prüfen</h3><p>Die Warnungen wurden gegen den resultierenden Bulk-Stand ermittelt.</p><ul><li th:each="warning : ${bulkPreview.warnings}" th:text="${warning}">Warnung</li></ul></aside>
+        <form th:action="@{/admin/catalog/bulk}" method="post" hx-post="/admin/catalog/bulk" hx-target="#bulk-preview" hx-swap="outerHTML">
+            <input type="hidden" name="confirmationId" th:value="${bulkConfirmationId}"><input th:each="selection : ${bulkPreview.operation.selections}" type="hidden" name="selection" th:value="|${selection.conceptId}:${selection.expectedVersion}|"><input type="hidden" name="action" th:value="${bulkPreview.operation.action}"><input th:if="${bulkPreview.operation.functionalRoleCode != null}" type="hidden" name="functionalRole" th:value="${bulkPreview.operation.functionalRoleCode}"><input th:if="${bulkPreview.operation.availability != null}" type="hidden" name="availability" th:value="${bulkPreview.operation.availability}"><label th:if="${!bulkPreview.warnings.isEmpty()}" class="confirmation-check"><input type="checkbox" name="weightWarningsAcknowledged" value="true"> Ich habe die Gewichtswarnungen geprüft und möchte trotzdem ändern.</label><div class="form-actions"><button class="button button--primary" type="submit" th:text="|${bulkPreview.changedCount} Konzepte ändern|">Ändern</button></div>
+        </form>
+    </div>
+</section>
+<section th:fragment="completed" id="bulk-preview"></section>
+</body></html>

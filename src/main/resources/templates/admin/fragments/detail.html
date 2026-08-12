@@ -199,6 +199,13 @@
             <li th:each="rule : ${detail.directExclusionRules}" th:text="${rule}">keine Kokosmilch</li>
             <li th:if="${detail.directExclusionRules.isEmpty()}" class="muted-copy">Keine direkten Ausschlussregeln</li>
         </ul>
+        <h4>Letzte Änderungen</h4>
+        <ul class="reference-list">
+            <li th:each="entry : ${entityHistory}"><a th:href="@{/admin/audit(entry=${entry.id})}"
+                   th:text="|${entry.action} · ${#temporals.format(entry.occurredAt, 'dd.MM.yyyy HH:mm')}|">Änderung</a></li>
+            <li th:if="${entityHistory == null or entityHistory.isEmpty()}" class="muted-copy">Noch keine Änderungshistorie.</li>
+        </ul>
+        <a class="button button--secondary button--small" th:href="@{/admin/audit(entityType='INGREDIENT_CONCEPT',entityId=${detail.id})}">Alle Änderungen anzeigen</a>
         <p class="technical" th:text="|Technik: Aggregatversion ${detail.version}|">Technik: Aggregatversion 0</p>
     </section>
 </section>

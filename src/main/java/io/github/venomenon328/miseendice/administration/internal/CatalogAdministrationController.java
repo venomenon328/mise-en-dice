@@ -1,6 +1,8 @@
 package io.github.venomenon328.miseendice.administration.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
+import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries;
+import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.CatalogAuditEntityType;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogMetadata;
@@ -49,10 +51,16 @@ class CatalogAdministrationController {
 
     private final CatalogQueries catalogQueries;
     private final CatalogCommands catalogCommands;
+    private final CatalogAuditQueries auditQueries;
 
-    CatalogAdministrationController(CatalogQueries catalogQueries, CatalogCommands catalogCommands) {
+    CatalogAdministrationController(
+            CatalogQueries catalogQueries,
+            CatalogCommands catalogCommands,
+            CatalogAuditQueries auditQueries
+    ) {
         this.catalogQueries = catalogQueries;
         this.catalogCommands = catalogCommands;
+        this.auditQueries = auditQueries;
     }
 
     @GetMapping
@@ -96,6 +104,8 @@ class CatalogAdministrationController {
             model.addAttribute("detail", detail.get());
             model.addAttribute("state", state);
             model.addAttribute("monthNames", monthNames());
+            model.addAttribute("entityHistory", auditQueries.findEntityHistory(
+                    CatalogAuditEntityType.INGREDIENT_CONCEPT, conceptId, 5));
             return "admin/fragments/detail :: panel";
         }
         populateCatalogPage(state, authentication, model, response);
@@ -422,6 +432,8 @@ class CatalogAdministrationController {
         populateEditorOptions(model);
         model.addAttribute("catalogSummary", catalogQueries.summarize());
         model.addAttribute("detail", detail.orElse(null));
+        detail.ifPresent(value -> model.addAttribute("entityHistory", auditQueries.findEntityHistory(
+                CatalogAuditEntityType.INGREDIENT_CONCEPT, value.id(), 5)));
         model.addAttribute("selectionOutsideResults", selectionOutsideResults);
         model.addAttribute("administratorName", authentication == null ? "Administration" : authentication.getName());
         model.addAttribute("monthNames", monthNames());
