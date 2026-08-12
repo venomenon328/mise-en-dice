@@ -46,4 +46,20 @@ class AdapterBoundaryTest {
                 .because("catalog audit persistence is an internal foundation; adapters must use later application APIs")
                 .check(classes);
     }
+
+    @Test
+    void challengeUsesOnlyThePublicCatalogApiAndHasNoPersistenceDependency() {
+        var classes = new ClassFileImporter()
+                .withImportOption(new ImportOption.DoNotIncludeTests())
+                .importPackages("io.github.venomenon328.miseendice");
+
+        noClasses()
+                .that().resideInAPackage("..challenge..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "..catalog.internal..",
+                        "org.springframework.jdbc..",
+                        "javax.sql.."
+                )
+                .check(classes);
+    }
 }

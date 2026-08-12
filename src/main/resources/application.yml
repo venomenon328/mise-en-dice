@@ -13,6 +13,126 @@ spring:
 mise-en-dice:
   administration:
     enabled: ${MISE_EN_DICE_ADMINISTRATION_ENABLED:false}
+  generator:
+    configuration:
+      generator-version: 1.0.0
+      configuration-version: 2026-08-12.1
+      rng-algorithm: SPLITMIX64_V1
+      canonical-payload-version: 1
+      candidate-set-size: 12
+      reservoir-target: 144
+      reservoir-strict-minimum: 72
+      maximum-proposal-attempts: 5000
+      weight-quantization: 1000000000
+      exclusion-probability: 0.30
+      availability-factors:
+        EASY: 1.00
+        PLANNED: 0.65
+        DIFFICULT: 0.20
+        UNAVAILABLE: 0.00
+      cooldown:
+        hard-window: 6
+        first-decay-end: 9
+        second-decay-end: 12
+        third-decay-end: 16
+        first-decay-factor: 0.25
+        second-decay-factor: 0.50
+        third-decay-factor: 0.75
+      exclusion:
+        hard-window: 4
+        decay-end: 7
+        decay-factor: 0.35
+      novelty:
+        load-points: { 1: 0, 2: 1, 3: 2, 4: 4, 5: 7 }
+        target-factors:
+          FAMILIAR: { 1: 1.25, 2: 1.10, 3: 0.70, 4: 0.15, 5: 0.00 }
+          BALANCED: { 1: 0.80, 2: 1.00, 3: 1.20, 4: 0.75, 5: 0.20 }
+          ADVENTUROUS: { 1: 0.35, 2: 0.65, 3: 1.00, 4: 1.30, 5: 1.15 }
+        level-five-cap: 1
+        high-level-cap: 2
+        load-cap: 11
+      anchor-roles: [ANIMAL_PROTEIN, PLANT_PROTEIN, VEGETABLE, FRUIT, STARCH]
+      support-roles: [FAT, ACID]
+      flavor-roles: [AROMATIC, SEASONING]
+      profiles:
+        PROTEIN_PRODUCE:
+          required-slots: [PROTEIN, PRODUCE_1]
+        PRODUCE_DUO:
+          required-slots: [PRODUCE_1, PRODUCE_2]
+        STARCH_ANCHORED:
+          required-slots: [STARCH, PROTEIN_OR_PRODUCE]
+        THREE_ANCHORS:
+          required-slots: [ANCHOR_1, ANCHOR_2, ANCHOR_3]
+        FLEXIBLE_BALANCED:
+          required-slots: [ANCHOR_1, ANCHOR_2]
+      profile-weights:
+        PROTEIN_PRODUCE: 3
+        PRODUCE_DUO: 2
+        STARCH_ANCHORED: 2
+        THREE_ANCHORS: 2
+        FLEXIBLE_BALANCED: 3
+      profile-set-targets:
+        PROTEIN_PRODUCE: 3
+        PRODUCE_DUO: 2
+        STARCH_ANCHORED: 2
+        THREE_ANCHORS: 2
+        FLEXIBLE_BALANCED: 3
+      specificity-weights: { 2: 4, 3: 5, 4: 3 }
+      specificity-set-targets: { 2: 4, 3: 5, 4: 3 }
+      cadence-set-targets:
+        RECOVERY: { FAMILIAR: 5, BALANCED: 7, ADVENTUROUS: 0 }
+        NEUTRAL: { FAMILIAR: 3, BALANCED: 7, ADVENTUROUS: 2 }
+        SEEKING_VARIETY: { FAMILIAR: 2, BALANCED: 7, ADVENTUROUS: 3 }
+      score-weights:
+        STRUCTURAL_VIABILITY: 0.25
+        ROLE_COMPLEMENTARITY: 0.15
+        CREATIVE_TENSION: 0.15
+        OPENNESS_NON_TRIVIALITY: 0.10
+        NOVELTY_TARGET_FIT: 0.10
+        AVAILABILITY_LOAD: 0.08
+        HISTORY_FRESHNESS: 0.08
+        DATA_CONFIDENCE: 0.05
+        KNOWN_CULINARY_LOAD_BALANCE: 0.04
+      similarity-weights:
+        EXACT_RANDOM_CONCEPTS: 0.35
+        INFORMATIVE_ANCESTORS: 0.20
+        ROLES_AND_PROFILE: 0.15
+        SPECIFICITY_MIX: 0.05
+        NOVELTY: 0.10
+        AVAILABILITY_LOAD: 0.05
+        COMPARABLE_PROPERTIES: 0.10
+      selection:
+        quality-weight: 0.55
+        diversity-weight: 0.30
+        quota-weight: 0.15
+        top-band-width: 0.04
+        top-band-slope: 20
+      fallbacks:
+        STRICT:
+          minimum-score: 55
+          maximum-pair-similarity: 0.58
+          concept-cap: 2
+          ancestor-cap: 4
+          quota-deviation: 0
+          profile-cap: 4
+          difficult-candidate-cap: 3
+        RELAXED_1:
+          minimum-score: 50
+          maximum-pair-similarity: 0.65
+          concept-cap: 2
+          ancestor-cap: 5
+          quota-deviation: 1
+          profile-cap: 5
+          difficult-candidate-cap: 4
+        RELAXED_2:
+          minimum-score: 45
+          maximum-pair-similarity: 0.72
+          concept-cap: 3
+          ancestor-cap: 6
+          quota-deviation: 2
+          profile-cap: 5
+          difficult-candidate-cap: 4
+      processing-lease: PT15M
 
 server:
   servlet:
