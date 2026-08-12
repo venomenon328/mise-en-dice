@@ -281,7 +281,9 @@ class CatalogAdministrationEditingMvcTest {
                         .param("version", "0")
                         .param("relationChange", "ADD:" + staleParent + ":" + staleChild + ":0"))
                 .andExpect(status().isConflict())
-                .andExpect(content().string(containsString("beteiligte Zutat")))
+                .andExpect(content().string(containsString("„Issue twenty-one stale“ wurde zwischenzeitlich geändert")))
+                .andExpect(content().string(containsString("Vorgemerkte Beziehungen")))
+                .andExpect(content().string(containsString("Oberbegriff „Issue twenty-one stale“ hinzufügen")))
                 .andExpect(content().string(containsString("Direkte Eltern")));
     }
 
