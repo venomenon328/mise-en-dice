@@ -5,8 +5,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
-/** Supplies the configured administration display name to the catalog web shell. */
+/** Supplies the configured administration display name to the administration web shell. */
 @ControllerAdvice(assignableTypes = {
+        AdministrationEntryPointController.class,
         CatalogAdministrationController.class,
         CatalogExclusionAdministrationController.class,
         CatalogAuditAdministrationController.class
