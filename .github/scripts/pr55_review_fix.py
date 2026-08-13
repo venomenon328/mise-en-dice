@@ -160,10 +160,14 @@ replace_exact(
     anchor + '''            assertThat(directExclusionTargets(connection, "NO_DAIRY"))\n                    .contains("MILK_CHOCOLATE:false", "WHITE_CHOCOLATE:false");\n'''
 )
 
+# Keep the generated fingerprint consistent everywhere it is documented.
+old_fingerprint = '26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52'
+replace_exact(readiness, old_fingerprint, fingerprint)
+
 contract = 'docs/analysis/final-catalog-snapshot-contract-20260813.md'
 for old, new in [
     ('- normalisierte Fachzeilen: **6.291**', '- normalisierte Fachzeilen: **6.296**'),
-    ('`26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52`', f'`{fingerprint}`'),
+    (f'`{old_fingerprint}`', f'`{fingerprint}`'),
     ('- ziehbare Konzepte: **652** (`590 SPECIFIC`, `62 OPEN`)', '- ziehbare Konzepte: **651** (`589 SPECIFIC`, `62 OPEN`)'),
     ('- direkte Konkretisierungen: **777**', '- direkte Konkretisierungen: **780**'),
     ('- Ausschlussregeln/-ziele: **22 / 56**', '- Ausschlussregeln/-ziele: **22 / 58**'),
@@ -177,15 +181,15 @@ for old, new in [
     ('| `SWEETNESS` | 150 / 621 (24,2 %) | 201 / 652 (30,8 %) |', '| `SWEETNESS` | 150 / 621 (24,2 %) | 201 / 651 (30,9 %) |'),
     ('| `UMAMI` | 217 / 621 (34,9 %) | 256 / 652 (39,3 %) |', '| `UMAMI` | 217 / 621 (34,9 %) | 255 / 651 (39,2 %) |'),
     ('Alle 590 spezifischen Endkandidaten', 'Alle 589 spezifischen Endkandidaten'),
-    ('| `AROMATIC` | 89 / 96 | 99 / 102 |', '| `AROMATIC` | 89 / 96 | 98 / 101 |'),
-    ('| `SEASONING` | 196 / 212 | 216 / 229 |', '| `SEASONING` | 196 / 212 | 215 / 228 |'),
+    ('| `AROMATIC` | 89 / 94 | 99 / 100 |', '| `AROMATIC` | 89 / 94 | 98 / 100 |'),
+    ('| `SEASONING` | 196 / 212 | 216 / 229 |', '| `SEASONING` | 196 / 212 | 215 / 229 |'),
 ]:
     replace_exact(contract, old, new)
 
 run('git', 'diff', '--check')
 run('./mvnw', 'clean', 'verify')
 
-# Temporary machinery must not remain in the PR.
+# Temporary review machinery must not remain in the final PR.
 for temporary in [
     ROOT / '.github/workflows/pr55-review-fix.yml',
     ROOT / '.github/workflows/pr55-workflow-repair.yml',
