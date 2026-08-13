@@ -103,7 +103,7 @@ Der linke Bereich belegt ungefähr 40 %, der rechte ungefähr 60 % der verfügba
 │ ...                           │ Eltern: Fisch, weißfleischiger Fisch          │
 │                               │ Kinder: —                                     │
 │                               │                                               │
-│ 665 Konzepte                  │ ROLLEN · EIGENSCHAFTEN · BESCHAFFBARKEIT ... │
+│ 698 Konzepte                  │ ROLLEN · EIGENSCHAFTEN · BESCHAFFBARKEIT ... │
 └───────────────────────────────┴──────────────────────────────────────────────┘
 ```
 
@@ -135,7 +135,7 @@ Standardmäßig durchsucht sie:
 
 Die Kuratornotiz wird nicht standardmäßig in die Volltextsuche einbezogen, damit inhaltliche Notizen nicht zu überraschenden Treffern führen. Ein späterer expliziter Filter `auch Kuratornotizen durchsuchen` ist zulässig, aber kein Muss der ersten Stufe.
 
-Die Suche ist fehlertolerant bezüglich Groß-/Kleinschreibung. Bei ungefähr 665 Konzepten genügt eine PostgreSQL-basierte Teilstringsuche; eine separate Suchinfrastruktur ist nicht gerechtfertigt.
+Die Suche ist fehlertolerant bezüglich Groß-/Kleinschreibung. Bei ungefähr 700 Konzepten genügt eine PostgreSQL-basierte Teilstringsuche; eine separate Suchinfrastruktur ist nicht gerechtfertigt.
 
 ### 5.2 Schnellfilter
 
@@ -337,7 +337,8 @@ Für jede bekannte Dimension wird eine Zeile gezeigt:
 - Bitterkeit,
 - Fettigkeit,
 - Schärfe,
-- Umami.
+- Umami,
+- Salzigkeit.
 
 Jede Zeile bietet:
 
@@ -349,6 +350,8 @@ Jede Zeile bietet:
 - Stufe 5.
 
 Ein fehlender Wert bleibt semantisch `nicht gepflegt` und ist **nicht** identisch mit Stufe 1.
+
+Jede Dimension verwendet ein lokales Symbol aus `catalog-icons.svg`. Für `SALTINESS` ist `icon-saltiness` hinterlegt; Darstellung und Bearbeitungsformular erzeugen den Sprite-Verweis dynamisch aus dem stabilen Dimensionscode.
 
 ### 7.7 Beschaffbarkeit
 
@@ -557,7 +560,7 @@ Bewusst **nicht** als erste Bulk-Aktion vorgesehen:
 - Ziehungsgewichte pauschal setzen,
 - physisch löschen.
 
-Es gibt kein `alle 665 Treffer auswählen` ohne Sichtkontrolle. Bulk-Aktionen gelten nur für explizit ausgewählte Zeilen; die erste Version begrenzt eine Operation auf höchstens 200 Konzepte.
+Es gibt kein `alle 698 Treffer auswählen` ohne Sichtkontrolle. Bulk-Aktionen gelten nur für explizit ausgewählte Zeilen; die erste Version begrenzt eine Operation auf höchstens 200 Konzepte.
 
 Vor Ausführung erscheint eine Zusammenfassung:
 

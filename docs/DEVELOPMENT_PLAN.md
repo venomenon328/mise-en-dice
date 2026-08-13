@@ -142,7 +142,7 @@ Vor den ersten Schreibflows wird die in Phase 4 entstandene Webshell funktional 
 #### Scope
 
 - kompakte, zugängliche `+`-/`−`-Schalter für lazy geladene Hierarchieäste einschließlich erneutem Einklappen,
-- grafische Fünfer-Skalen für Ungewöhnlichkeit und alle sieben kulinarischen Dimensionen,
+- grafische Fünfer-Skalen für Ungewöhnlichkeit und alle acht kulinarischen Dimensionen,
 - expliziter eigener Zustand für nicht gepflegte Skalenwerte,
 - lokal ausgelieferte SVG-, CSS- und JavaScript-Assets,
 - konsistentes warmes, modernes und zurückhaltend kulinarisches Designsystem,
@@ -318,6 +318,18 @@ Die Phase-9D-Commands erzeugen ausschließlich Batch 1; Schema und interne Persi
 - Idempotenz, Konkurrenz, Retry und Restart gegen echtes PostgreSQL,
 - keine Kuratorauswahl und keine sichtbare Challenge,
 - die Persistenz darf die für Phase 10 benötigten höchstens zwei Kurationsrunden, kandidatenübergreifenden Carry-over-Referenzen und ein finales Multi-Offer-Set nicht durch eine starre Ein-Batch-/Ein-Selected-Kardinalität verbauen.
+
+### Finaler Katalog-Snapshot vor Phase 9E (Issue #52)
+
+Vor dem Generator-Labor wird der redaktionell geprüfte Produktionskatalog als kanonische Deployment-Baseline festgeschrieben. Das Paket ist ein Daten- und Migrationspaket, keine neue Generatorphase:
+
+- Fresh Build und Upgrade der freigegebenen Produktions-Fixture konvergieren auf denselben fachlichen SHA-256-Fingerprint,
+- bestehende IDs bleiben erhalten und unbekannte Ausgangszustände werden vor Schreibzugriffen abgelehnt,
+- Salzigkeit und der genehmigte breite Dimensions-Backfill werden in Projektion und Administration sichtbar,
+- Graph, Rollen, Ausschlüsse, Saisonwerte und neue Kernkonzepte werden final kuratiert,
+- Generatoralgorithmen, Hard Rules, Phase-9-Konfiguration und Fallbacklogik bleiben unverändert.
+
+Issue #37 und Issue #40 bleiben eigenständige nachgelagerte Pakete; ihre Labor-, Simulations- und Kalibrierungsumfänge werden durch den Katalog-Snapshot nicht vorgezogen.
 
 ### Phase 9E: Generator-Labor und Diagnostik (Issue #37)
 

@@ -13,6 +13,8 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`CANDIDATE_GENERATOR_9C2_REVIEW_CLARIFICATION.md`](CANDIDATE_GENERATOR_9C2_REVIEW_CLARIFICATION.md): verbindliche Nachschärfung aus dem Review von PR #49 zu tatsächlichen Neuigkeitsquoten und zur ausschließlich expliziten großen Baselinesimulation; ersetzt für Issue #47 widersprechende ältere 9C2-Formulierungen
 - [`CANDIDATE_GENERATOR_DATA_READINESS.md`](CANDIDATE_GENERATOR_DATA_READINESS.md): gemessene Metadatenabdeckung und Gate für den Generatorstart
 - [`analysis/candidate-generator-data-readiness.sql`](analysis/candidate-generator-data-readiness.sql): reproduzierbare PostgreSQL-Auswertung des aktiven Ziehpools
+- [`analysis/final-catalog-review-20260813.md`](analysis/final-catalog-review-20260813.md): verbindlicher fachlicher Review für den finalen Katalog
+- [`analysis/final-catalog-snapshot-contract-20260813.md`](analysis/final-catalog-snapshot-contract-20260813.md): Normalisierung, Upgrade-Schutz, Endfingerprint und Dimensionsabdeckung aus Issue #52
 
 ## Architektur, Betrieb und Umsetzung
 
@@ -35,4 +37,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Phase 9A bis 9D sind abgeschlossen. Als nächstes folgt Phase 9E / Issue #37 mit Generator-Labor, Preview, Replaydarstellung und begrenzter Simulationsdiagnostik. Danach schließt Phase 9F / Issue #40 die breite Kalibrierung und fachliche Abnahme ab; OpenAI- und Discord-Implementierung bleiben weiterhin nachgelagert.
+Phase 9A bis 9D und die dazwischengeschaltete finale Katalog-Baseline aus Issue #52 sind abgeschlossen. Als nächstes folgt Phase 9E / Issue #37 mit Generator-Labor, Preview, Replaydarstellung und begrenzter Simulationsdiagnostik. Danach schließt Phase 9F / Issue #40 die breite Kalibrierung und fachliche Abnahme ab; OpenAI- und Discord-Implementierung bleiben weiterhin nachgelagert.

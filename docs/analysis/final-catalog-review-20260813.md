@@ -1,6 +1,6 @@
 # Finaler Katalogreview und freigegebener Zielumfang
 
-Stand: 13. August 2026  
+Stand: 13. August 2026
 Status: **fachlich freigegeben; verbindliche Quelle für Issue #52**
 
 Prüfgrundlage ist der katalogbeschränkte Produktions-Export `mise-en-dice-catalog-20260813T065949Z.sql.gz` mit SHA-256 `26ee689d67deb8a0cdc201e092b3e95f186c1976af77a46049fb39b8de60a610`. Der Export stammt aus der gesunden Produktionsinstanz auf `main`, Commit `4e97dd7fc4e787539e4f899d1f63785b4a4685f0`.
@@ -285,3 +285,9 @@ Verpflichtende Tests:
 ## Umsetzungskonsequenz
 
 Issue #52 führt den genehmigten Zustand als normalisierten, codebasierten Snapshot ein. Eine frische Datenbank sowie die dokumentierte Produktions-Fixture müssen auf exakt denselben fachlichen Fingerprint konvergieren. Technische IDs, Zeitstempel und Optimistic-Locking-Versionen sind nicht Teil des Fingerprints. Bestehende IDs bleiben bei Upgrades erhalten. Ein unbekannter nicht genehmigter Ausgangszustand darf nicht still überschrieben werden.
+
+## 10. Umsetzungsergebnis
+
+Der Review ist durch `catalog/016-final-catalog-snapshot.sql` umgesetzt. Der finale Zustand umfasst 698 aktive Konzepte, davon 652 ziehbar, 777 direkte Konkretisierungen, acht Dimensionen und 22 Ausschlussregeln. Der normalisierte Snapshot enthält 6.291 Fachzeilen und besitzt SHA-256 `358be33c5f4edc856d9ddcd278d3f94ec84cec1991fc57ad54d94ec41acd0756`.
+
+Fresh Build, Upgrade der unberührten Repository-Baseline und Upgrade der Produktions-Fixture konvergieren auf diesen Wert; bestehende IDs bleiben in beiden Upgradepfaden erhalten. Die vollständige Normalisierung, die beiden zulässigen Precondition-Fingerprints sowie die Vorher-/Nachher-Abdeckung der Dimensionen sind in [`final-catalog-snapshot-contract-20260813.md`](final-catalog-snapshot-contract-20260813.md) dokumentiert.

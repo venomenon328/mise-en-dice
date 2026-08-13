@@ -78,7 +78,7 @@ Rollen werden zunächst explizit auf den jeweils relevanten Konzepten gepflegt u
 Kulinarische Eigenschaften sind in zwei Arten getrennt:
 
 - `culinary_flag`: binäre Eigenschaften wie `fermentiert`, `geräuchert` oder `eingelegt`.
-- `culinary_dimension`: abgestufte Eigenschaften wie Dominanz, Süße, Säure, Bitterkeit, Fettigkeit, Schärfe oder Umami.
+- `culinary_dimension`: abgestufte Eigenschaften wie Dominanz, Süße, Säure, Bitterkeit, Fettigkeit, Schärfe, Umami oder Salzigkeit.
 
 Abgestufte Dimensionen verwenden **fünf Stufen**:
 
@@ -318,5 +318,7 @@ docker compose up -d postgres
 ```
 
 Der Master-Changelog führt die Schemas, Referenzdaten, den initialen Katalog, strukturelle Sanity-Checks und append-only Erweiterungen in fester Reihenfolge aus. Jeder Changeset wird von Liquibase genau einmal protokolliert; ein späterer Neustart führt weder die Katalog-Baseline erneut aus noch überschreibt er operative Daten. Eine vorhandene, außerhalb Liquibase erstellte Datenbank wird bewusst nicht übernommen.
+
+Die einmalige Finalisierung in `catalog/016-final-catalog-snapshot.sql` bildet dabei eine bewusst enge Upgrade-Brücke: Als Ausgangszustand sind nur die unberührte Repository-Baseline und die dokumentierte Produktions-Fixture vom 13. August 2026 zulässig. Ein kanonischer, codebasierter Precondition-Fingerprint schließt technische IDs, Zeitstempel und Optimistic-Locking-Versionen aus und lehnt jeden anderen fachlichen Zustand vor dem ersten Schreibzugriff sichtbar ab. Beide zulässigen Pfade ergeben denselben normalisierten SHA-256-Snapshot `358be33c5f4edc856d9ddcd278d3f94ec84cec1991fc57ad54d94ec41acd0756`; bestehende IDs bleiben beim Upgrade erhalten. Nach der einmaligen Ausführung ist wieder die laufende Datenbank redaktionelle Quelle der Wahrheit.
 
 [`001-seed-sanity.sql`](../src/main/resources/db/changelog/checks/001-seed-sanity.sql) prüft beim ersten Aufbau insbesondere, dass der aktive Ziehungspool ausreichend groß ist und jeder aktive Zieh-Kandidat funktionale Rollen sowie Beschaffbarkeitsdaten für Georgia und Tobias besitzt. Die vollständige Ausführung wird zusätzlich in PostgreSQL-Testcontainers-Integrationstests geprüft.
