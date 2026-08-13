@@ -1,6 +1,6 @@
 # Datenmodell
 
-Stand: 12. August 2026
+Stand: 13. August 2026
 
 Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt als explizit geordnete Liquibase-Changesets vor:
 
@@ -126,7 +126,7 @@ Die Challenge-Historie ist die Quelle der Wahrheit. In der ersten Regelversion s
 
 Die Konkretisierungshierarchie erzeugt zunächst keine automatische Eltern-, Kind- oder Geschwister-Sperre. Insbesondere soll eine sehr offene Vorgabe nicht dazu führen, dass anschließend ihr gesamter semantischer Bereich blockiert wird.
 
-Nur Challenge-Vorgaben beeinflussen diese Logik. Später dokumentierte persönliche Konkretisierungen oder Zusatz-Zutaten tun dies nicht automatisch.
+Nur bestätigte Challenge-Vorgaben beeinflussen diese Logik. Später dokumentierte persönliche Konkretisierungen oder Zusatz-Zutaten tun dies nicht automatisch. Ebenso erzeugen kuratierte, im Discord angebotene, aber nicht gewählte Kandidaten keinerlei Cooldown oder Neuigkeitswirkung; für den Generator gelten sie als nicht exponiert.
 
 ## 9. Ausschlussregeln
 
@@ -153,7 +153,7 @@ Manuelle Vorgaben überschreiben die Generatorregeln. Aktivstatus, Zufalls-Ziehb
 
 Ein möglicher Widerspruch zwischen einer manuellen Vorgabe und einer Ausschlussregel wird nicht als Datenbankfehler behandelt. Das Tool unterstützt die Nutzer; es überwacht nicht deren selbst gesetzte Regeln.
 
-## 11. Generierungs- und Kuratierungshistorie
+## 11. Generierungs-, Kuratierungs- und Angebotshistorie
 
 Das veröffentlichte Baselineschema besitzt derzeit folgende vorläufige Ebenen:
 
@@ -166,59 +166,86 @@ challenge_session
                  └─ candidate_requirement
 ```
 
-Phase 9D migriert append-only auf die in [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md) festgelegte Trennung:
+Phase 9D migriert append-only zunächst auf die in [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md) festgelegte Trennung von Generation und Kuratierung. Die spätere Phase 10 erweitert diese Trennung gemäß [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) um Carry-over und ein finales Offer Set. Das fachliche Zielmodell lautet:
 
 ```text
 challenge_session
   └─ generation_attempt
        ├─ generation_manual_requirement (0-2)
        ├─ generation_context_snapshot (genau 1 ab CONTEXT_READY)
-       └─ generation_batch (1..n)
-            └─ challenge_candidate (genau 12 bei Erfolg)
-                 └─ candidate_requirement (Positionen 1-4)
+       ├─ generation_batch (1..2 bei produktiver Kurationsorchestrierung)
+       │    └─ challenge_candidate (genau 12 bei Erfolg)
+       │         └─ candidate_requirement (Positionen 1-4)
+       ├─ curation_round (höchstens 2 externe Requests)
+       │    └─ curation_round_candidate
+       │         └─ verweist auf challenge_candidate desselben Attempts
+       └─ curated_offer_set (höchstens 1 erfolgreiches Set)
+            └─ curated_offer (Positionen 1..requested_offer_count)
 
-curation_round
-  ├─ verweist auf genau einen generation_batch
-  └─ curation_candidate_evaluation (je Kandidat genau 1)
+challenge
+  └─ verweist auf genau ein bestätigtes curated_offer
 ```
 
-Issue #33 ändert noch kein Schema. Es legt das Zielmodell verbindlich fest; die Migration folgt ausschließlich über neue Changesets in Phase 9D.
+Phase 9D implementiert noch keine Kuratororchestrierung und kein Offer Set. Seine Persistenz muss jedoch verhindern, dass die spätere fachliche Kardinalität durch eine starre Annahme „eine Kurationsrunde = genau ein Generation Batch = genau ein ausgewählter Kandidat“ verbaut wird.
 
 ### Challenge Session
 
 `challenge_session` fasst Erstziehung und optionalen freiwilligen Reroll zusammen.
 
+Die spätere Kurationsphase speichert für die Session die gewünschte Zahl präsentierter Angebote `requested_offer_count` im Bereich `1..3`, Default `1`. Ein Reroll verwendet dieselbe Zahl, sofern die Produktspezifikation später nicht ausdrücklich eine erneute Wahl erlaubt.
+
 ### Generation Attempt
 
-`generation_attempt` repräsentiert den Versuch, eine sichtbare Challenge zu erzeugen. Pro Session erlaubt die Datenbank höchstens einen `INITIAL`- und einen `REROLL`-Attempt. Interne Neuversuche nach kompletter Ablehnung eines Kandidatensatzes erzeugen keinen weiteren Reroll-Attempt.
+`generation_attempt` repräsentiert den Versuch, eine sichtbare Challenge zu erzeugen. Pro Session erlaubt die Datenbank höchstens einen `INITIAL`- und einen `REROLL`-Attempt. Interne Neuversuche wegen zu weniger guter Kuratorergebnisse erzeugen keinen weiteren Reroll-Attempt.
 
-Im Zielmodell besitzt der Attempt den unveränderlichen Request- und Context-Rahmen: Attempt-Seed, RNG, Generator- und Konfigurationsversion, wirksamen Monat, manuelle Vorgaben, Ausschlussentscheidung sowie Konfigurations-, Katalog-, Eingabe- und Historiensnapshot. Zustände `PENDING`, `CONTEXT_READY`, `GENERATED`, `EXHAUSTED` und `FAILED` unterscheiden fehlenden Snapshot, laufende Berechnung, vollständigen Generatorerfolg, fachliche Erschöpfung und technischen Fehler.
+Im Zielmodell besitzt der Attempt den unveränderlichen Request- und Context-Rahmen: Attempt-Seed, RNG, Generator- und Konfigurationsversion, wirksamen Monat, manuelle Vorgaben, Ausschlussentscheidung sowie Konfigurations-, Katalog-, Eingabe- und Historiensnapshot. Zustände `PENDING`, `CONTEXT_READY`, `GENERATED`, `EXHAUSTED` und `FAILED` unterscheiden fehlenden Snapshot, laufende Berechnung, vollständigen Generatorerfolg, fachliche Erschöpfung und technischen Fehler. Die spätere Kurationsphase ergänzt klar getrennte Kurations-/Offer-Zustände statt Generatorzustände umzudeuten.
 
 ### Generation Batch
 
 Ein `generation_batch` ist eine vollständig berechnete Generatorrunde unter einem Attempt. Er besitzt eine eindeutige Batchnummer, den daraus abgeleiteten Batch-Seed, Status, Reservoir- und Satzdiagnosen, Fallbackstufe sowie Set-Fingerprint. Alle Batches desselben Attempts verwenden den unveränderten Context Snapshot und die attempt-weite Ausschlussentscheidung.
 
-Ein erfolgreicher Batch enthält genau zwölf eindeutige Kandidaten. Phase 9D implementiert zunächst den ersten Batch eines Attempts; die Struktur darf spätere weitere Batches nach kompletter Kuratorablehnung aufnehmen, ohne dafür einen zweiten sichtbaren Reroll-Attempt anzulegen.
+Ein erfolgreicher Batch enthält genau zwölf eindeutige Kandidaten. Phase 9D implementiert zunächst den ersten Batch eines Attempts. Die spätere produktive Kurationsorchestrierung darf bei zu wenigen `GOOD`-Kandidaten genau einen zweiten Batch unter demselben Attempt erzeugen; eine unbegrenzte Batchfolge ist nicht vorgesehen.
 
 ### Curation Round
 
-Eine `curation_round` ist künftig ausschließlich die Übergabe eines vorhandenen Generation Batch an das Sprachmodell. Modellname, Promptversion sowie exakter Request und Response liegen erst auf dieser Ebene. Die flexiblen API-Payloads bleiben `jsonb`; stabile Kernbeziehungen bleiben relational. Nicht kuratierte Batches erhalten keine Platzhaltermodelle oder Fake-Promptversionen.
+Eine `curation_round` ist ausschließlich genau ein tatsächlicher externer Kuratorrequest. Modellname, Promptversion sowie exakter Request und Response liegen auf dieser Ebene. Die flexiblen API-Payloads bleiben `jsonb`; stabile Kernbeziehungen bleiben relational. Nicht kuratierte Batches erhalten keine Platzhaltermodelle oder Fake-Promptversionen.
 
-Kuratorbewertungen und Auswahlstatus werden je Runde und Kandidat in `curation_candidate_evaluation` gespeichert. So bleiben generatorseitige Scores unveränderlich und mehrere fachlich getrennte Bewertungen werden nicht auf `challenge_candidate` überschrieben.
+Eine Kurationsrunde besitzt einen primären neu erzeugten Generation Batch, darf aber über `curation_round_candidate` zusätzlich Kandidaten aus einem früheren Batch **desselben Attempts** referenzieren. Damit können die in [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) definierten Rollen `NEW`, `CARRY_OVER` und `LOCKED_CONTEXT` rekonstruiert werden.
+
+Kuratorbewertungen speichern je bewerteter Kandidatenreferenz mindestens qualitative Klasse `GOOD`, `ACCEPTABLE` oder `BAD`, Rang und Reason-Codes. Ein `LOCKED_CONTEXT`-Kandidat bleibt bereits gesetzt und muss nicht so behandelt werden, als würde der zweite Kurator ihn erneut zur Disposition stellen.
+
+Pro `generation_attempt` sind höchstens zwei tatsächliche externe Kuratorrequests zulässig. Ein technischer Retry zählt als eigene Kurationsrunde und verbraucht dasselbe Budget.
 
 ### Challenge Candidate
 
-Jeder `challenge_candidate` gehört im Zielmodell zu genau einem Generation Batch und enthält positionsgebundene `candidate_requirement`-Zeilen. Der Anwendungscode erstellt vollständige Kandidaten mit genau vier Vorgaben; zusätzlich verhindert die Datenbank, dass ein unvollständiger, nicht erfolgreich generierter oder nicht kuratierter Kandidat als sichtbare `challenge` verwendet wird.
+Jeder `challenge_candidate` gehört im Zielmodell zu genau einem Generation Batch und enthält positionsgebundene `candidate_requirement`-Zeilen. Der Anwendungscode erstellt vollständige Kandidaten mit genau vier Vorgaben; zusätzlich verhindert die Datenbank, dass ein unvollständiger oder nicht erfolgreich generierter Kandidat als Offer beziehungsweise sichtbare `challenge` verwendet wird.
 
 Manuelle Vorgaben werden in jedem Kandidaten als Snapshot wiederholt. Zufällige Vorgaben speichern zusätzlich ihre zum Ziehungszeitpunkt geltende Challenge-Spezifität als Snapshot. Dadurch bleibt nachvollziehbar, welche vollständige Viererkombination dem Kurator vorlag und wie sie bei der Generierung klassifiziert war, selbst wenn der Katalog später geändert wird.
 
-Pro Kuratierungsrunde kann höchstens ein Kandidat des referenzierten Generation Batch ausgewählt werden. Die Generatorpersistenz selbst markiert keinen Kandidaten als sichtbar oder kuratorisch ausgewählt.
+Generatorseitige Scores bleiben unveränderlich. Kuratorurteile und Ränge werden je `curation_round` separat persistiert und nicht auf `challenge_candidate` überschrieben.
+
+### Curated Offer Set
+
+Nach Abschluss der Kurationsorchestrierung kann ein `generation_attempt` höchstens ein erfolgreiches `curated_offer_set` besitzen.
+
+Das Set speichert mindestens:
+
+- `requested_offer_count` im Bereich `1..3`,
+- Abschlussstatus,
+- die maßgebliche letzte Kurationsrunde beziehungsweise den nachvollziehbaren Orchestrierungsstand,
+- exakt `requested_offer_count` positionsgebundene `curated_offer`-Einträge bei Erfolg.
+
+Jeder `curated_offer` verweist auf einen `challenge_candidate` desselben Attempts und auf die maßgebliche Kuratorbewertung, aus der seine Klasse und Rangfolge nachvollziehbar bleiben. Ein erfolgreiches Offer Set enthält mindestens einen `GOOD`-Kandidaten. Weitere Plätze dürfen nach Ausschöpfung des strikt begrenzten Kuratorbudgets aus `ACCEPTABLE` und notfalls den bestgerankten `BAD`-Kandidaten bestehen.
+
+Ein Set, das die angeforderte Zahl nicht vollständig enthält oder überhaupt keinen `GOOD`-Kandidaten besitzt, darf nicht als erfolgreich angeboten werden. Bei vollständiger Kurationserschöpfung entsteht kein scheinbar erfolgreiches Offer Set.
 
 ### Sichtbare Challenge
 
-Das veröffentlichte Baselineschema lässt `challenge` derzeit direkt auf einen als ausgewählt markierten Kandidaten zeigen. Im Zielmodell verweist eine sichtbare Challenge zusätzlich auf die maßgebliche `SELECTED`-Kuratierungsrunde beziehungsweise deren ausgewählte Evaluation. Datenbank und Application Service stellen sicher, dass Attempt, Batch, Kuratierungsrunde und Kandidat zusammengehören und der Kandidat exakt vier Vorgaben enthält.
+Eine sichtbare `challenge` entsteht erst, wenn der Nutzer genau einen `curated_offer` ausdrücklich bestätigt. Datenbank und Application Service stellen sicher, dass Session, Attempt, Offer Set, Offer, Candidate und dessen vier Requirements zusammengehören.
 
-Ein freiwilliger Reroll überschreibt die alte Challenge nicht. Die ursprüngliche Challenge kann auf `REROLLED` gesetzt werden; der zweite Attempt erzeugt eine neue Challenge unter derselben Session.
+Nicht gewählte Angebote bleiben für Audit, Replay und Diagnose erhalten, sind aber **keine sichtbare Historienexposition**. Sie erzeugen weder Cooldown noch Neuigkeitswirkung und werden auch bei einem späteren freiwilligen Reroll nicht zusätzlich blockiert.
+
+Ein freiwilliger Reroll überschreibt die alte Challenge nicht. Die ursprüngliche Challenge kann auf `REROLLED` gesetzt werden; der zweite Attempt erzeugt nach erneuter Kuratierung und Nutzerbestätigung eine neue Challenge unter derselben Session.
 
 ## 12. Historische Snapshots
 
@@ -227,6 +254,8 @@ Ein freiwilliger Reroll überschreibt die alte Challenge nicht. Die ursprünglic
 Die Fremdschlüssel auf die aktuellen Katalogeinträge bleiben für Auswertungen erhalten, während die damalige Darstellung unabhängig von späteren Umbenennungen nachvollziehbar bleibt.
 
 Phase 9 erweitert die Snapshots um sämtliche replay- und diagnosewirksamen Werte. Auf Attempt-/Context-Ebene gehören dazu insbesondere Konfiguration, Katalogprojektion, sichtbare Historie, Attempt-Seed, RNG, Versionen und Ausschlussentscheidung. Auf Batch-Ebene liegen Batchnummer, abgeleiteter Batch-Seed, Rejection-Zähler, Fallbackstufe und Set-Fingerprint. Kandidaten und Requirements speichern damalige Rollen, Neuigkeit, Beschaffbarkeit, verwendete Gewichtsfaktoren, relevante bekannte Eigenschaften, Scores und Reason-Codes.
+
+Phase 10 ergänzt Kuratorrequest/-response, qualitative Bewertungen, Ränge, Kandidatenteilnahme je Kurationsrunde, Carry-over-/Locked-Kontext und das finale Offer Set. Diese Daten dienen Replay und Diagnose, dürfen aber nicht mit dem `VisibleHistorySnapshot` des Generators verwechselt werden: Nur ausdrücklich bestätigte Challenges zählen dort als Exposition.
 
 Replay verwendet diese historischen Snapshots und nicht den aktuellen Katalog. Eine nicht mehr unterstützte Generatorversion wird ausdrücklich als nicht unterstützt klassifiziert; sie wird nicht mit aktuellen Regeln scheinbar reproduziert.
 
@@ -249,14 +278,18 @@ Die Snapshots sind fachliche Aggregatdaten, keine HTTP-Formulare. Insbesondere e
 
 Unter anderem bleiben im Anwendungscode:
 
-- genau zwölf Kandidaten pro erfolgreich erzeugtem Generation Batch
-- mindestens zwei spezifische Vorgaben in vollständig beziehungsweise teilweise zufällig erzeugten Challenges
-- semantische Redundanzprüfung, etwa `Fisch` plus `Lachs`
-- strukturelle Vielfalt anhand funktionaler Rollen
-- individuelle Gewichtungs-, Cooldown-, Neuigkeits- und Diversitätsalgorithmen
-- Wahrscheinlichkeit und Auswahl einer optionalen Ausschlussregel
-- Verhalten des Kurators bei manuellen Vorgaben
-- fachliche Entscheidung, welche Verfügbarkeitsstufen für Zufallsziehungen ausreichend sind
+- genau zwölf Kandidaten pro erfolgreich erzeugtem Generation Batch,
+- mindestens zwei spezifische Vorgaben in vollständig beziehungsweise teilweise zufällig erzeugten Challenges,
+- semantische Redundanzprüfung, etwa `Fisch` plus `Lachs`,
+- strukturelle Vielfalt anhand funktionaler Rollen,
+- individuelle Gewichtungs-, Cooldown-, Neuigkeits- und Diversitätsalgorithmen,
+- Wahrscheinlichkeit und Auswahl einer optionalen Ausschlussregel,
+- fachliche Bewertung und Rangfolge des Kurators,
+- Auswahl der Carry-over-Fallbacks,
+- Auffüllpriorität `GOOD` -> `ACCEPTABLE` -> `BAD`,
+- fachliche Entscheidung, welche Verfügbarkeitsstufen für Zufallsziehungen ausreichend sind.
+
+Die Datenbank soll dagegen geeignete strukturelle Grenzen absichern, insbesondere Bereich `1..3` für die gewünschte Angebotszahl, referenzielle Zugehörigkeit aller Kurationskandidaten zum selben Attempt und keine sichtbare Challenge aus einem nicht bestätigten Offer.
 
 Diese Regeln sind absichtlich nicht als konfigurierbare SQL-Regelmaschine modelliert.
 
@@ -264,12 +297,12 @@ Diese Regeln sind absichtlich nicht als konfigurierbare SQL-Regelmaschine modell
 
 Die Struktur soll folgende Erweiterungen ermöglichen, bildet sie aber noch nicht ab:
 
-- persönliche Konkretisierungen offener Vorgaben
-- drei zusätzliche Zutaten pro Person
-- optionaler Grundplan
-- Gericht, Foto und Fazit
-- Vergleich und Rückblick auf beide Lösungen
-- Verwaltungsoberfläche für die Datenpflege
+- persönliche Konkretisierungen offener Vorgaben,
+- drei zusätzliche Zutaten pro Person,
+- optionaler Grundplan,
+- Gericht, Foto und Fazit,
+- Vergleich und Rückblick auf beide Lösungen,
+- Verwaltungsoberfläche für die Datenpflege.
 
 Für solche Daten kann später auf `challenge`, `participant` und die gespeicherten Challenge-Vorgaben referenziert werden. Freitext beziehungsweise optionale Katalogreferenzen können wie bei manuellen Vorgaben kombiniert werden, sodass die Zutatenbasis auch künftig nicht künstlich vollständig sein muss.
 
