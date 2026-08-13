@@ -75,10 +75,20 @@ class PersistedGenerationIntegrationTest {
                 new StartNewSession(DATE, List.of(), 47_000_001L)));
 
         var attempt = queries.findAttempt(generated.attemptId()).orElseThrow();
+        var context = queries.findContext(generated.attemptId()).orElseThrow();
         var batch = queries.findBatch(generated.attemptId(), 1).orElseThrow();
         assertThat(attempt.status()).isEqualTo("GENERATED");
         assertThat(attempt.batchNumbers()).containsExactly(1);
         assertThat(attempt.nextAction()).isEqualTo(GenerationQueries.NextAction.AWAIT_CURATION);
+        assertThat(context.configurationSnapshotJson()).isNotBlank();
+        assertThat(context.catalogSnapshotJson()).isNotBlank();
+        assertThat(context.requestSnapshotJson()).isNotBlank();
+        assertThat(context.visibleHistorySnapshotJson()).isNotBlank();
+        assertThat(context.preparedAttemptSnapshotJson()).isNotBlank();
+        assertThat(List.of(
+                context.contextFingerprint(), context.configurationFingerprint(), context.catalogFingerprint(),
+                context.requestFingerprint(), context.historyFingerprint()))
+                .allMatch(value -> value.matches("[0-9a-f]{64}"));
         assertThat(batch.candidates()).hasSize(12);
         assertThat(batch.candidates()).allSatisfy(candidate -> assertThat(candidate.requirements()).hasSize(4));
         assertThat(batch.candidates()).extracting(GenerationQueries.CandidateView::candidateNumber)
@@ -125,39 +135,30 @@ class PersistedGenerationIntegrationTest {
 
     @Test
     void onlyConfirmedChallengesEnterHistoryAndDriveTheRerollHardBlock() {
-        Generated initial = generated(commands.startNewSession(
+        Generated unconfirmed = generated(commands.startNewSession(
                 new StartNewSession(DATE, List.of(), 47_000_011L)));
         assertThat(repository.visibleHistory().challengesNewestFirst()).isEmpty();
-
-        long candidateId = jdbcTemplate.queryForObject("""
-                select id from challenge_candidate
-                where generation_batch_id = ? and candidate_number = 1
-                """, Long.class, queries.findBatch(initial.attemptId(), 1).orElseThrow().batchId());
-        Set<String> confirmedCodes = new HashSet<>(jdbcTemplate.queryForList("""
-                select concept_code_snapshot from candidate_requirement
-                where candidate_id = ? order by position
-                """, String.class, candidateId));
-        String snapshotCode = confirmedCodes.iterator().next();
-        Integer snapshotNovelty = jdbcTemplate.queryForObject("""
-                select novelty_level_snapshot from candidate_requirement
-                where candidate_id = ? and concept_code_snapshot = ?
-                """, Integer.class, candidateId, snapshotCode);
-        Set<String> otherGeneratedCodes = new HashSet<>(jdbcTemplate.queryForList("""
+        Set<String> unconfirmedCodes = new HashSet<>(jdbcTemplate.queryForList("""
                 select distinct requirement.concept_code_snapshot
                 from candidate_requirement requirement
                 join challenge_candidate candidate on candidate.id = requirement.candidate_id
-                where candidate.generation_batch_id = ? and candidate.candidate_number <> 1
-                """, String.class, queries.findBatch(initial.attemptId(), 1).orElseThrow().batchId()));
-        jdbcTemplate.update("update challenge_candidate set is_selected = true where id = ?", candidateId);
-        jdbcTemplate.update("""
-                insert into challenge (generation_attempt_id, selected_candidate_id)
-                values (?, ?)
-                """, initial.attemptId(), candidateId);
+                where candidate.generation_batch_id = ? and requirement.concept_code_snapshot is not null
+                """, String.class, queries.findBatch(unconfirmed.attemptId(), 1).orElseThrow().batchId()));
+
+        LegacyConfirmedChallenge legacy = createConfirmedLegacyChallenge();
+        assertThat(queries.findAttempt(legacy.attemptId()).orElseThrow().nextAction())
+                .isEqualTo(GenerationQueries.NextAction.NONE);
+        String snapshotCode = legacy.codes().iterator().next();
+        Integer snapshotNovelty = jdbcTemplate.queryForObject("""
+                select novelty_level_snapshot from candidate_requirement
+                where candidate_id = ? and concept_code_snapshot = ?
+                """, Integer.class, legacy.candidateId(), snapshotCode);
 
         var visible = repository.visibleHistory();
         assertThat(visible.challengesNewestFirst()).hasSize(1);
         assertThat(visible.challengesNewestFirst().getFirst().requirements())
-                .extracting(requirement -> requirement.conceptCode()).containsExactlyInAnyOrderElementsOf(confirmedCodes);
+                .extracting(requirement -> requirement.conceptCode())
+                .containsExactlyInAnyOrderElementsOf(legacy.codes());
 
         long currentConceptId = jdbcTemplate.queryForObject(
                 "select id from ingredient_concept where code = ?", Long.class, snapshotCode);
@@ -177,13 +178,27 @@ class PersistedGenerationIntegrationTest {
         }
 
         Generated reroll = generated(commands.startReroll(new StartExistingSession(
-                initial.sessionId(), DATE.plusDays(1), List.of(), 47_000_012L)));
+                legacy.sessionId(), DATE.plusDays(1), List.of(), 47_000_012L)));
         List<String> blocked = jdbcTemplate.queryForList("""
                 select jsonb_array_elements_text(request_snapshot -> 'rerollBlockedConceptCodes')
                 from generation_context_snapshot where generation_attempt_id = ?
                 """, String.class, reroll.attemptId());
-        assertThat(blocked).containsExactlyInAnyOrderElementsOf(confirmedCodes);
-        assertThat(blocked).noneMatch(code -> otherGeneratedCodes.contains(code) && !confirmedCodes.contains(code));
+        assertThat(blocked).containsExactlyInAnyOrderElementsOf(legacy.codes());
+        assertThat(blocked).noneMatch(code -> unconfirmedCodes.contains(code) && !legacy.codes().contains(code));
+    }
+
+    @Test
+    void generatedCandidateCannotBypassCurationThroughTheLegacySelectionFlag() {
+        Generated generated = generated(commands.startNewSession(
+                new StartNewSession(DATE, List.of(), 47_000_013L)));
+        long candidateId = queries.findBatch(generated.attemptId(), 1).orElseThrow().candidates().getFirst().candidateId();
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "update challenge_candidate set is_selected = true where id = ?", candidateId))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from challenge where generation_attempt_id = ?",
+                Integer.class, generated.attemptId())).isZero();
     }
 
     @Test
@@ -229,6 +244,22 @@ class PersistedGenerationIntegrationTest {
     }
 
     @Test
+    void retryAfterCommittedInitialReturnsTheExistingResult() {
+        Generated first = generated(commands.startNewSession(
+                new StartNewSession(DATE, List.of(), 47_000_032L)));
+
+        Generated repeated = generated(commands.startInitial(new StartExistingSession(
+                first.sessionId(), DATE.plusMonths(1), List.of(), 999L)));
+
+        assertThat(repeated.attemptId()).isEqualTo(first.attemptId());
+        assertThat(repeated.batchId()).isEqualTo(first.batchId());
+        assertThat(repeated.setFingerprint()).isEqualTo(first.setFingerprint());
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from generation_batch where generation_attempt_id = ?
+                """, Integer.class, first.attemptId())).isEqualTo(1);
+    }
+
+    @Test
     void concurrentInitialCommandsCreateOnlyOneAttemptAndOneBatch() throws Exception {
         long sessionId = jdbcTemplate.queryForObject(
                 "insert into challenge_session default values returning id", Long.class);
@@ -249,6 +280,28 @@ class PersistedGenerationIntegrationTest {
                 join generation_attempt attempt on attempt.id = batch.generation_attempt_id
                 where attempt.challenge_session_id = ?
                 """, Integer.class, sessionId)).isEqualTo(1);
+    }
+
+    @Test
+    void concurrentRerollCommandsCreateOnlyOneAttemptAndOneBatch() throws Exception {
+        LegacyConfirmedChallenge legacy = createConfirmedLegacyChallenge();
+        var command = new StartExistingSession(legacy.sessionId(), DATE.plusDays(1), List.of(), 47_000_042L);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> commands.startReroll(command));
+            var second = executor.submit(() -> commands.startReroll(command));
+            List<GenerationOutcome> results = List.of(first.get(), second.get());
+            assertThat(results).anyMatch(result -> result instanceof Generated);
+            assertThat(results).allMatch(result -> result instanceof Generated || result instanceof InProgress);
+        }
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from generation_attempt
+                where challenge_session_id = ? and attempt_type = 'REROLL'
+                """, Integer.class, legacy.sessionId())).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from generation_batch batch
+                join generation_attempt attempt on attempt.id = batch.generation_attempt_id
+                where attempt.challenge_session_id = ? and attempt.attempt_type = 'REROLL'
+                """, Integer.class, legacy.sessionId())).isEqualTo(1);
     }
 
     @Test
@@ -301,6 +354,57 @@ class PersistedGenerationIntegrationTest {
         assertThat(queries.findBatch(attemptId, 1).orElseThrow().candidates()).hasSize(12);
     }
 
+    private LegacyConfirmedChallenge createConfirmedLegacyChallenge() {
+        long sessionId = jdbcTemplate.queryForObject(
+                "insert into challenge_session default values returning id", Long.class);
+        long attemptId = jdbcTemplate.queryForObject("""
+                insert into generation_attempt (
+                    challenge_session_id, attempt_type, status, generator_version, completed_at
+                ) values (?, 'INITIAL', 'GENERATED', 'legacy-generator', now()) returning id
+                """, Long.class, sessionId);
+        long batchId = jdbcTemplate.queryForObject("""
+                insert into generation_batch (
+                    generation_attempt_id, batch_number, status, legacy_migrated
+                ) values (?, 1, 'GENERATED', true) returning id
+                """, Long.class, attemptId);
+        long roundId = jdbcTemplate.queryForObject("""
+                insert into curation_round (
+                    generation_attempt_id, round_number, curator_model, prompt_version, status, completed_at
+                ) values (?, 1, 'legacy-model', 'legacy-prompt', 'SELECTED', now()) returning id
+                """, Long.class, attemptId);
+        long candidateId = jdbcTemplate.queryForObject("""
+                insert into challenge_candidate (
+                    generation_batch_id, curation_round_id, candidate_number, is_selected
+                ) values (?, ?, 1, true) returning id
+                """, Long.class, batchId, roundId);
+        jdbcTemplate.update("""
+                insert into candidate_requirement (
+                    candidate_id, position, source, ingredient_concept_id,
+                    challenge_specificity_snapshot, display_text_snapshot, concept_code_snapshot,
+                    novelty_level_snapshot, concept_snapshot
+                )
+                select ?, row_number() over (order by id), 'RANDOM', id,
+                       challenge_specificity, display_name, code, novelty_level,
+                       jsonb_build_object(
+                           'functionalRoles', '[]'::jsonb,
+                           'culinaryFlags', '[]'::jsonb,
+                           'transitiveAncestorCodes', '[]'::jsonb
+                       )
+                from ingredient_concept
+                where active and random_draw_enabled and novelty_level is not null
+                order by id limit 4
+                """, candidateId);
+        jdbcTemplate.update("""
+                insert into challenge (generation_attempt_id, selected_candidate_id)
+                values (?, ?)
+                """, attemptId, candidateId);
+        Set<String> codes = new HashSet<>(jdbcTemplate.queryForList("""
+                select concept_code_snapshot from candidate_requirement
+                where candidate_id = ? order by position
+                """, String.class, candidateId));
+        return new LegacyConfirmedChallenge(sessionId, attemptId, candidateId, Set.copyOf(codes));
+    }
+
     private Generated generated(GenerationOutcome outcome) {
         assertThat(outcome).isInstanceOf(Generated.class);
         return (Generated) outcome;
@@ -327,5 +431,8 @@ class PersistedGenerationIntegrationTest {
                 join generation_batch batch on batch.id = candidate.generation_batch_id
                 where batch.generation_attempt_id = ? and requirement.source = 'MANUAL'
                 """, Integer.class, attemptId);
+    }
+
+    private record LegacyConfirmedChallenge(long sessionId, long attemptId, long candidateId, Set<String> codes) {
     }
 }
