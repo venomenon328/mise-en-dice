@@ -6,10 +6,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-/** Purpose-built read API for persisted phase-9D attempts, batches, and replay. */
+/** Purpose-built read API for persisted phase-9D attempts, contexts, batches, and replay. */
 public interface GenerationQueries {
 
     Optional<AttemptView> findAttempt(long attemptId);
+
+    Optional<ContextView> findContext(long attemptId);
 
     Optional<BatchView> findBatch(long attemptId, int batchNumber);
 
@@ -43,6 +45,27 @@ public interface GenerationQueries {
         public AttemptView {
             batchNumbers = List.copyOf(batchNumbers);
         }
+
+        public AttemptView withNextAction(NextAction value) {
+            return new AttemptView(sessionId, attemptId, attemptType, status, effectiveDate, seasonMonth,
+                    attemptSeed, rngAlgorithm, generatorVersion, configurationVersion, canonicalPayloadVersion,
+                    createdAt, completedAt, failureReasonCode, failureDetail, value, batchNumbers);
+        }
+    }
+
+    record ContextView(
+            long attemptId,
+            String configurationSnapshotJson,
+            String catalogSnapshotJson,
+            String requestSnapshotJson,
+            String visibleHistorySnapshotJson,
+            String preparedAttemptSnapshotJson,
+            String contextFingerprint,
+            String configurationFingerprint,
+            String catalogFingerprint,
+            String requestFingerprint,
+            String historyFingerprint
+    ) {
     }
 
     record BatchView(
