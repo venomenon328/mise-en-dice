@@ -412,7 +412,7 @@ class PostgresIntegrationTest {
                 candidate
         ))
                 .isInstanceOf(UncategorizedSQLException.class)
-                .hasMessageContaining("is not marked as selected");
+                .hasMessageContaining("no completed legacy curation");
 
         jdbcTemplate.update("update challenge_candidate set is_selected = true where id = ?", candidate);
         insertRandomRequirements(candidate, 3);
@@ -481,8 +481,9 @@ class PostgresIntegrationTest {
     private long insertCandidate(long attemptId, boolean selected) {
         long round = insertReturningId(
                 """
-                insert into curation_round (generation_attempt_id, round_number, curator_model, prompt_version)
-                values (?, 1, 'test', 'test')
+                insert into curation_round (
+                    generation_attempt_id, round_number, curator_model, prompt_version, status, completed_at
+                ) values (?, 1, 'test', 'test', 'SELECTED', now())
                 returning id
                 """,
                 attemptId
