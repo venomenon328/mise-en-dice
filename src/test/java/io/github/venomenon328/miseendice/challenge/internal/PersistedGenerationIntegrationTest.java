@@ -3,6 +3,8 @@ package io.github.venomenon328.miseendice.challenge.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.venomenon328.miseendice.MiseEnDiceApplication;
+import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Generated;
@@ -23,6 +25,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -34,7 +39,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@SpringBootTest
+@SpringBootTest(classes = {
+        MiseEnDiceApplication.class,
+        PersistedGenerationIntegrationTest.GeneratedBatchConfiguration.class
+})
 @Testcontainers
 class PersistedGenerationIntegrationTest {
     private static final LocalDate DATE = LocalDate.of(2026, 8, 13);
@@ -434,5 +442,15 @@ class PersistedGenerationIntegrationTest {
     }
 
     private record LegacyConfirmedChallenge(long sessionId, long attemptId, long candidateId, Set<String> codes) {
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class GeneratedBatchConfiguration {
+
+        @Bean
+        @Primary
+        CandidateSetEngine deterministicGeneratedCandidateSetEngine(CandidateReservoirEngine reservoirEngine) {
+            return new DeterministicGeneratedCandidateSetEngine(reservoirEngine);
+        }
     }
 }

@@ -46,11 +46,11 @@ class CatalogGeneratorProjectionIntegrationTest {
     void projectsTheCompleteCanonicalBaselineIncludingManualOnlyConcepts() {
         var snapshot = projection.snapshotForMonth(8);
 
-        assertThat(snapshot.concepts()).hasSize(665);
+        assertThat(snapshot.concepts()).hasSize(698);
         assertThat(snapshot.concepts()).filteredOn(concept -> concept.active() && concept.randomDrawEnabled())
-                .hasSize(663);
+                .hasSize(651);
         assertThat(snapshot.concepts()).filteredOn(concept -> !concept.active() || !concept.randomDrawEnabled())
-                .hasSize(2)
+                .hasSize(47)
                 .allSatisfy(concept -> {
                     assertThat(concept.code()).isNotBlank();
                     assertThat(concept.displayName()).isNotBlank();
@@ -58,6 +58,8 @@ class CatalogGeneratorProjectionIntegrationTest {
                 });
         assertThat(snapshot.concepts()).isSortedAccordingTo(GeneratorConcept.CANONICAL_ORDER);
         assertThat(snapshot.activeParticipantCodes()).containsExactly("GEORGIA", "TOBIAS");
+        assertThat(snapshot.conceptByCode("FISH_SAUCE").orElseThrow().culinaryDimensions())
+                .containsEntry("SALTINESS", 5);
         assertThat(snapshot.concepts()).filteredOn(concept -> concept.active() && concept.randomDrawEnabled())
                 .allSatisfy(concept -> {
                     assertThat(concept.functionalRoles()).isNotEmpty();

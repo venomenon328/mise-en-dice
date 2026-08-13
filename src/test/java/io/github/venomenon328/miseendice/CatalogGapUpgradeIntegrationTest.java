@@ -76,7 +76,7 @@ class CatalogGapUpgradeIntegrationTest {
                 );
             }
 
-            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+            runLiquibase(connection, "db/changelog/db.changelog-before-final-catalog.yaml");
 
             assertThat(count(connection, "databasechangelog")).isEqualTo(22);
             assertThat(count(connection, "ingredient_concept")).isEqualTo(665);
@@ -94,7 +94,7 @@ class CatalogGapUpgradeIntegrationTest {
             assertThat(countWhere(connection, "ingredient_concept", "code = 'MAGGI_SEASONING'"))
                     .isEqualTo(1);
 
-            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+            runLiquibase(connection, "db/changelog/db.changelog-before-final-catalog.yaml");
             assertThat(count(connection, "databasechangelog")).isEqualTo(22);
             assertThat(count(connection, "ingredient_concept")).isEqualTo(665);
             assertThat(count(connection, "ingredient_refinement")).isEqualTo(735);

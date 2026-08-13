@@ -1,7 +1,7 @@
 # Datenreife für den Kandidatengenerator
 
-Stand: 12. August 2026  
-Bezugsstand: `main` auf Commit `e184678ba457bdec4798a8d238cd121174e5892f`
+Stand: 13. August 2026
+Bezugsstand: finaler Katalog-Snapshot aus Issue #52, SHA-256 `d20fdf8278ff8b00c56c28984531836d42e8698da154e1ec36dbcb43341db6bb`
 
 Dieses Dokument hält die Messung des über Liquibase aufgebauten Repository-Baseline-Katalogs für Phase 9 fest. Die Abfragen liegen reproduzierbar unter [`analysis/candidate-generator-data-readiness.sql`](analysis/candidate-generator-data-readiness.sql).
 
@@ -45,81 +45,81 @@ Binäre Flags besitzen keine Abdeckungsquote: Eine fehlende Zuordnung bedeutet, 
 
 | Kennzahl | Wert |
 |---|---:|
-| aktive Ziehkandidaten | 663 |
-| `SPECIFIC` | 576 |
-| `OPEN` | 87 |
-| mit Neuigkeitsstufe | 663 |
+| aktive Ziehkandidaten | 651 |
+| `SPECIFIC` | 589 |
+| `OPEN` | 62 |
+| mit Neuigkeitsstufe | 651 |
 | ohne Neuigkeitsstufe | 0 |
 
 Beide Spezifitätsklassen sind groß genug, um 2/3/4-Spezifitätsmixe und ein Reservoir deutlich oberhalb von zwölf Kandidaten zu unterstützen.
 
 ## 3. Rollen
 
-Alle 663 Ziehkandidaten besitzen mindestens eine funktionale Rolle.
+Alle 651 Ziehkandidaten besitzen mindestens eine funktionale Rolle.
 
 | Rolle | gesamt | spezifisch | offen |
 |---|---:|---:|---:|
-| `ACID` | 56 | 54 | 2 |
-| `ANIMAL_PROTEIN` | 158 | 137 | 21 |
-| `AROMATIC` | 107 | 95 | 12 |
-| `FAT` | 137 | 124 | 13 |
-| `FRUIT` | 72 | 62 | 10 |
-| `PLANT_PROTEIN` | 68 | 60 | 8 |
-| `SEASONING` | 231 | 204 | 27 |
-| `STARCH` | 101 | 91 | 10 |
-| `VEGETABLE` | 128 | 109 | 19 |
+| `ACID` | 65 | 63 | 2 |
+| `ANIMAL_PROTEIN` | 148 | 130 | 18 |
+| `AROMATIC` | 101 | 94 | 7 |
+| `FAT` | 140 | 131 | 9 |
+| `FRUIT` | 72 | 63 | 9 |
+| `PLANT_PROTEIN` | 63 | 58 | 5 |
+| `SEASONING` | 228 | 209 | 19 |
+| `STARCH` | 95 | 89 | 6 |
+| `VEGETABLE` | 130 | 114 | 16 |
 
-Die kleinste Rolle ist `ACID` mit 56 Kandidaten und überschreitet das Gate von 48. Profilslots verlangen nicht gleichzeitig eine offene und eine bestimmte Rolle; die teilweise kleinen offenen Teilpools einzelner Rollen sind daher kein Blocker.
+Die kleinste Rolle ist `PLANT_PROTEIN` mit 63 Kandidaten und überschreitet das Gate von 48. Profilslots verlangen nicht gleichzeitig eine offene und eine bestimmte Rolle; die teilweise kleinen offenen Teilpools einzelner Rollen sind daher kein Blocker.
 
 Die häufigsten reinen beziehungsweise kombinierten Rollensignaturen sind unter anderem:
 
 | Signatur | gesamt |
 |---|---:|
-| `ANIMAL_PROTEIN` | 78 |
-| `VEGETABLE` | 71 |
-| `AROMATIC+SEASONING` | 62 |
-| `STARCH` | 60 |
-| `ANIMAL_PROTEIN+FAT` | 46 |
-| `SEASONING` | 43 |
+| `ANIMAL_PROTEIN` | 74 |
+| `VEGETABLE` | 72 |
+| `AROMATIC+SEASONING` | 54 |
+| `STARCH` | 54 |
+| `ANIMAL_PROTEIN+FAT` | 47 |
+| `SEASONING` | 51 |
 | `FRUIT` | 37 |
-| `ANIMAL_PROTEIN+FAT+SEASONING` | 22 |
+| `ANIMAL_PROTEIN+FAT+SEASONING` | 23 |
 | `AROMATIC` | 22 |
-| `ACID+SEASONING` | 20 |
-| `PLANT_PROTEIN+STARCH` | 20 |
+| `ACID+SEASONING` | 25 |
+| `PLANT_PROTEIN+STARCH` | 19 |
 
-514 Konzepte besitzen mindestens eine der breit als strukturell oder unterstützend gemessenen Rollen einschließlich `FAT`; 149 sind ausschließlich geschmacksgebend. Die verbindliche Generatorspezifikation verwendet für ihre härtere Ankerdefinition kein Fett als alleinige Ankerrolle und verhindert dadurch, dass mehrere reine Fett-/Würzkomponenten eine Struktur nur auf dem Papier erfüllen.
+497 Konzepte besitzen mindestens eine der breit als strukturell oder unterstützend gemessenen Rollen einschließlich `FAT`; 154 sind ausschließlich geschmacksgebend. Die verbindliche Generatorspezifikation verwendet für ihre härtere Ankerdefinition kein Fett als alleinige Ankerrolle und verhindert dadurch, dass mehrere reine Fett-/Würzkomponenten eine Struktur nur auf dem Papier erfüllen.
 
 ## 4. Beschaffbarkeit
 
-Für 663 Ziehkandidaten und zwei aktive Teilnehmer existieren vollständig 1.326 Zuordnungen. Es fehlt keine Zeile.
+Für 651 Ziehkandidaten und zwei aktive Teilnehmer existieren vollständig 1.302 Zuordnungen. Es fehlt keine Zeile.
 
 ### 4.1 Georgia
 
 | Stufe | Konzepte |
 |---|---:|
-| `EASY` | 486 |
-| `PLANNED` | 161 |
-| `DIFFICULT` | 16 |
+| `EASY` | 464 |
+| `PLANNED` | 170 |
+| `DIFFICULT` | 17 |
 | `UNAVAILABLE` | 0 |
 
 ### 4.2 Tobias
 
 | Stufe | Konzepte |
 |---|---:|
-| `EASY` | 462 |
-| `PLANNED` | 137 |
-| `DIFFICULT` | 64 |
+| `EASY` | 436 |
+| `PLANNED` | 145 |
+| `DIFFICULT` | 70 |
 | `UNAVAILABLE` | 0 |
 
 ### 4.3 Gemeinsame schlechteste Stufe
 
 | schlechteste Stufe beider Teilnehmer | Konzepte |
 |---|---:|
-| `EASY` | 462 |
-| `PLANNED` | 137 |
-| `DIFFICULT` | 64 |
+| `EASY` | 436 |
+| `PLANNED` | 145 |
+| `DIFFICULT` | 70 |
 
-Der Pool ist vollständig nutzbar. Die 64 gemeinsam mindestens schwierigen Konzepte sind groß genug, um nicht als Einzelfälle behandelt zu werden, müssen aber über Gewichtung und Satzcaps dosiert werden.
+Der Pool ist vollständig nutzbar. Die 70 gemeinsam mindestens schwierigen Konzepte sind groß genug, um nicht als Einzelfälle behandelt zu werden, müssen aber über Gewichtung und Satzcaps dosiert werden.
 
 ## 5. Neuigkeit
 
@@ -127,13 +127,13 @@ Die Neuigkeitsstufe ist vollständig gepflegt, auch je Rolle.
 
 | Stufe | gesamt | spezifisch | offen |
 |---:|---:|---:|---:|
-| 1 | 304 | 248 | 56 |
-| 2 | 190 | 164 | 26 |
-| 3 | 94 | 89 | 5 |
-| 4 | 53 | 53 | 0 |
+| 1 | 281 | 245 | 36 |
+| 2 | 194 | 174 | 20 |
+| 3 | 96 | 91 | 5 |
+| 4 | 58 | 57 | 1 |
 | 5 | 22 | 22 | 0 |
 
-75 Konzepte liegen auf Stufe 4 oder 5. Außergewöhnlichkeit ist damit kein theoretisches Randmerkmal, sondern ein ausreichend großer Teilpool. Zugleich sind sämtliche offenen Vorgaben auf Stufe 1 bis 3 eingeordnet; extreme Neuigkeit entsteht in der Baseline ausschließlich durch spezifische Zutaten.
+80 Konzepte liegen auf Stufe 4 oder 5. Außergewöhnlichkeit ist damit kein theoretisches Randmerkmal, sondern ein ausreichend großer Teilpool. Mit `Bagoong` besitzt nun auch eine offene Vorgabe Neuigkeitsstufe 4; die übrigen offenen Vorgaben liegen auf Stufe 1 bis 3.
 
 Das unterstützt die vorgesehene Kadenz:
 
@@ -145,50 +145,51 @@ Das unterstützt die vorgesehene Kadenz:
 
 | Dimension | gepflegt | fehlend | Abdeckung |
 |---|---:|---:|---:|
-| `ACIDITY` | 78 | 585 | 11,8 % |
-| `BITTERNESS` | 53 | 610 | 8,0 % |
-| `DOMINANCE` | 366 | 297 | 55,2 % |
-| `FATTINESS` | 128 | 535 | 19,3 % |
-| `HEAT` | 57 | 606 | 8,6 % |
-| `SWEETNESS` | 154 | 509 | 23,2 % |
-| `UMAMI` | 221 | 442 | 33,3 % |
+| `ACIDITY` | 93 | 558 | 14,3 % |
+| `BITTERNESS` | 75 | 576 | 11,5 % |
+| `DOMINANCE` | 595 | 56 | 91,4 % |
+| `FATTINESS` | 150 | 501 | 23,0 % |
+| `HEAT` | 54 | 597 | 8,3 % |
+| `SALTINESS` | 60 | 591 | 9,2 % |
+| `SWEETNESS` | 201 | 450 | 30,9 % |
+| `UMAMI` | 255 | 396 | 39,2 % |
 
-Selbst `DOMINANCE` ist nicht ausreichend flächendeckend für eine faire harte Regel. Die Rollenabdeckung ist zudem stark unterschiedlich:
+`DOMINANCE` ist für alle 589 spezifischen Ziehkandidaten und für sechs belastbar bewertbare offene Konzepte gepflegt. Die 56 fehlenden Werte gehören ausschließlich zu heterogenen offenen Familien. Die Rollenabdeckung lautet:
 
 | Rolle | Dominanz bekannt | gesamt |
 |---|---:|---:|
-| `ACID` | 39 | 56 |
-| `ANIMAL_PROTEIN` | 70 | 158 |
-| `AROMATIC` | 97 | 107 |
-| `FAT` | 74 | 137 |
-| `FRUIT` | 38 | 72 |
-| `PLANT_PROTEIN` | 22 | 68 |
-| `SEASONING` | 207 | 231 |
-| `STARCH` | 49 | 101 |
-| `VEGETABLE` | 41 | 128 |
+| `ACID` | 63 | 65 |
+| `ANIMAL_PROTEIN` | 131 | 148 |
+| `AROMATIC` | 98 | 101 |
+| `FAT` | 132 | 140 |
+| `FRUIT` | 63 | 72 |
+| `PLANT_PROTEIN` | 58 | 63 |
+| `SEASONING` | 215 | 228 |
+| `STARCH` | 89 | 95 |
+| `VEGETABLE` | 115 | 130 |
 
-Insbesondere Würzkomponenten und Aromaten sind gut beschrieben, Protein-, Gemüse- und Stärkepools dagegen deutlich schwächer. Eine harte Dominanzprüfung würde daher gerade strukturelle Zutaten systematisch anders behandeln als Würzkomponenten.
+Der Backfill beseitigt die frühere Schieflage zwischen Würzkomponenten und strukturellen Zutaten deutlich. Fehlende Werte werden trotzdem weiterhin nicht als Stufe 1 interpretiert; die Generator-Hard-Rules bleiben durch Issue #52 unverändert.
 
 Verteilung der bekannten Dominanzwerte:
 
 | Stufe | Konzepte |
 |---:|---:|
-| 1 | 18 |
-| 2 | 42 |
-| 3 | 82 |
-| 4 | 139 |
-| 5 | 85 |
-| unbekannt | 297 |
+| 1 | 23 |
+| 2 | 112 |
+| 3 | 220 |
+| 4 | 154 |
+| 5 | 86 |
+| unbekannt | 56 |
 
-**Entscheidung:** Dimensionen bleiben für Generatorversion 1 optional und niedrig gewichtet. Es wird vor Phase 9B kein flächendeckendes Dimensions-Nachpflegepaket erzwungen. Auffällige Lücken können später aus Simulation und Generator-Labor als gezielte redaktionelle Aufgaben entstehen.
+**Entscheidung:** Dimensionen bleiben für Generatorversion 1 trotz der deutlich besseren Datenlage optional und niedrig gewichtet. Issue #52 ändert keine Generatoralgorithmen oder Hard Rules. Auffällige verbleibende Lücken können später aus Simulation und Generator-Labor als gezielte redaktionelle Aufgaben entstehen.
 
 ## 7. Kulinarische Flags
 
 | Flag | Konzepte |
 |---|---:|
 | `CURED` | 14 |
-| `DRIED` | 40 |
-| `FERMENTED` | 43 |
+| `DRIED` | 43 |
+| `FERMENTED` | 45 |
 | `PICKLED` | 8 |
 | `SMOKED` | 6 |
 
@@ -198,14 +199,14 @@ Flags eignen sich für Diagnose, bekannte Intensitätshäufung und Ähnlichkeit.
 
 | Kennzahl | Wert |
 |---|---:|
-| direkte Kanten | 735 |
-| maximale transitive Tiefe | 5 |
-| Konzepte mit mehreren direkten Eltern | 88 |
-| aktive Wurzeln | 24 |
-| aktive Blätter | 530 |
-| verbundene Ziehkandidaten | 662 von 663 |
-| isolierte Ziehkandidaten | 1 von 663 |
-| offene Ziehkandidaten mit direktem Kind | 87 von 87 |
+| direkte Kanten | 780 |
+| maximale transitive Tiefe | 4 |
+| Konzepte mit mehreren direkten Eltern | 103 |
+| aktive Wurzeln | 26 |
+| aktive Blätter | 554 |
+| verbundene Ziehkandidaten | 650 von 651 |
+| isolierte Ziehkandidaten | 1 von 651 |
+| offene Ziehkandidaten mit direktem Kind | 62 von 62 |
 
 Der Graph ist ausreichend tief und besitzt reale Mehrfach-Eltern-Strukturen. Er trägt:
 
@@ -213,11 +214,11 @@ Der Graph ist ausreichend tief und besitzt reale Mehrfach-Eltern-Strukturen. Er 
 - informative Vorfahrenähnlichkeit,
 - Ausschlussziel-Expansion.
 
-Die einzelne isolierte Vorgabe ist kein Blocker. Ein Konzept benötigt nicht zwingend eine Hierarchiekante, um eigenständig eine gültige Challenge-Vorgabe zu sein. Für semantische Ähnlichkeit steht bei diesem Konzept lediglich weniger Information zur Verfügung.
+Die einzelne isolierte Vorgabe `Kaffee` ist kein Blocker. Ein Konzept benötigt nicht zwingend eine Hierarchiekante, um eigenständig eine gültige Challenge-Vorgabe zu sein. Für semantische Ähnlichkeit steht bei diesen Konzepten lediglich weniger Information zur Verfügung.
 
 ## 9. Gate-Ergebnis
 
-**Ergebnis: bestanden mit ausdrücklich begrenzter Dimensionsnutzung.**
+**Ergebnis: bestanden mit deutlich verbreiterter, weiterhin optionaler Dimensionsnutzung.**
 
 Vor Phase 9B ist kein zusätzliches Katalog- oder Metadatenpaket erforderlich, weil:
 
@@ -226,7 +227,7 @@ Vor Phase 9B ist kein zusätzliches Katalog- oder Metadatenpaket erforderlich, w
 - alle Referenzrollen ausreichend besetzt sind,
 - der Graph Redundanz und semantische Nähe zuverlässig genug unterstützt.
 
-Die geringe Dimensionsabdeckung wird nicht durch erfundene Defaults kaschiert. Sie begrenzt bewusst den Anspruch des Generators:
+Die verbleibenden Dimensionslücken werden nicht durch erfundene Defaults kaschiert. Sie begrenzen weiterhin bewusst den Anspruch des Generators:
 
 - Struktur und Neuigkeitsbalance sind belastbar prüfbar.
 - bekannte Eigenschaftshäufungen sind als schwaches Softsignal nutzbar.

@@ -1,6 +1,6 @@
 # Initialer Zutatenkatalog
 
-Stand: 12. August 2026
+Stand: 13. August 2026
 
 Dieses Dokument beschreibt die kuratierte Erstbefüllung der Zutatenbasis. Das fachliche Datenmodell selbst ist in [`DATA_MODEL.md`](DATA_MODEL.md) beschrieben; die konkreten Baseline-Changesets liegen unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog).
 
@@ -22,23 +22,23 @@ Eine fehlende Zutat oder Konkretisierung bedeutet weiterhin nicht, dass sie beim
 
 Die Befüllung enthält:
 
-- **665 Zutatenkonzepte** insgesamt,
-- davon **663 zufällig ziehbar**,
-- **87 offene** ziehbare Vorgaben,
-- **576 spezifische** ziehbare Vorgaben,
-- **2 nicht ziehbare Strukturknoten**,
-- **735 bekannte Konkretisierungsbeziehungen**,
+- **698 aktive Zutatenkonzepte** insgesamt,
+- davon **651 zufällig ziehbar**,
+- **62 offene** ziehbare Vorgaben,
+- **589 spezifische** ziehbare Vorgaben,
+- **47 nicht ziehbare Konzepte**, darunter vier reine Strukturknoten, 42 bewusst deaktivierte breite oder sehr gewöhnliche Vorgaben und das bewusst nicht zufällig ziehbare Lorbeerblatt,
+- **780 bekannte Konkretisierungsbeziehungen**,
 - **9 funktionale Rollen**,
-- **7 fünfstufige kulinarische Dimensionen**,
+- **8 fünfstufige kulinarische Dimensionen**,
 - **5 binäre kulinarische Flags**,
-- **42 Zutatenkonzepte mit saisonalen Faktoren**,
+- **49 Zutatenkonzepte mit saisonalen Faktoren**,
 - sowie **22 kuratierte Ausschlussregeln**.
 
-Die beiden nicht ziehbaren Strukturknoten bleiben `Milchprodukte` und `fertige Currypaste`. Sie werden für Klassifikation und Ausschlussregeln benötigt, ohne selbst als Challenge-Vorgabe ausgelost zu werden.
+Die reinen Strukturknoten `Milchprodukte`, `fertige Currypaste`, `fertige Sauce oder Würzpaste` und `pflanzlicher Drink` werden für Klassifikation und Ausschlussregeln benötigt, ohne selbst als Challenge-Vorgabe ausgelost zu werden. Die 42 aus dem Produktionsreview übernommenen Deaktivierungen werden nicht pauschal reaktiviert.
 
-Nach der Konsolidierung besitzt der aktive Katalog **24 Root-Konzepte**. Davon ist nur `Kaffee` eine spezifische Vorgabe; alle übrigen Wurzeln sind bewusst breite Familien wie `Fleisch`, `Gemüse`, `Obst`, `Gewürz` oder `Kochalkohol`. Ein universeller Oberknoten namens „Zutat“ wurde nicht ergänzt, weil er zwar die Baumansicht beruhigen, fachlich aber ungefähr so viel erklären würde wie ein Ordner namens „Sonstiges“.
+Nach der Finalisierung besitzt der aktive Katalog **26 Root-Konzepte**. `Kaffee` bleibt das einzige spezifische Root-Konzept; alle übrigen Wurzeln sind bewusst breite Familien oder fachlich eigenständige offene Konzepte. `Bagoong` bleibt unter den fermentierten Würzzutaten und zugleich unter der engen Familie fertiger Saucen und Pasten eingeordnet; `Aligue` ist dort ebenfalls als Würzpaste verankert. Ein universeller Oberknoten namens „Zutat“ wurde nicht ergänzt, weil er zwar die Baumansicht beruhigen, fachlich aber ungefähr so viel erklären würde wie ein Ordner namens „Sonstiges“.
 
-`Kokosnuss oder Kokosprodukt` bleibt trotz erneuter Prüfung bewusst ein Root-Konzept. Kokosnuss, Kokoswasser, Kokosraspeln und Kokosöl unter `Tropenfrucht`, `Kochfett` oder einer ähnlich hübsch aussehenden Sammelkategorie zu hängen, würde über die transitive Konkretisierung falsche Challenge-Alternativen erzeugen. Die Bezeichnung wurde geschärft; der Graph wurde nicht nur deshalb verbogen, damit die Baumansicht beim Frühstück weniger unangenehme Fragen stellt.
+`Kokoszutat` bleibt trotz erneuter Prüfung bewusst ein Root-Konzept. Kokosnuss, Kokoswasser, Kokosraspeln und Kokosöl unter `Tropenfrucht`, `Kochfett` oder einer ähnlich hübsch aussehenden Sammelkategorie zu hängen, würde über die transitive Konkretisierung falsche Challenge-Alternativen erzeugen. Die Bezeichnung wurde geschärft; der Graph wurde nicht nur deshalb verbogen, damit die Baumansicht beim Frühstück weniger unangenehme Fragen stellt.
 
 ## 3. Offene und konkrete Vorgaben
 
@@ -96,7 +96,7 @@ Vorhanden sind:
 - Aromat
 - Würzkomponente
 
-Mehrfachzuordnungen sind ausdrücklich normal. Rollen werden explizit gepflegt und nicht automatisch aus dem Konkretisierungsgraphen vererbt. Jeder der 663 aktiven Zieh-Kandidaten besitzt mindestens eine Rolle.
+Mehrfachzuordnungen sind ausdrücklich normal. Rollen werden explizit gepflegt und nicht automatisch aus dem Konkretisierungsgraphen vererbt. Jeder der 652 aktiven Zieh-Kandidaten besitzt mindestens eine Rolle.
 
 ## 6. Kulinarische Eigenschaften
 
@@ -109,20 +109,21 @@ Die fünfstufigen Dimensionen sind:
 - Fettigkeit
 - Schärfe
 - Umami
+- Salzigkeit
 
 Die Stufen reichen von `1` = sehr niedrig bis `5` = sehr hoch. Ein fehlender Eintrag bedeutet „nicht kuratiert beziehungsweise derzeit nicht relevant“ und nicht den niedrigsten Wert.
 
-Binäre Flags kennzeichnen Fermentation, Einlegen, Räuchern, Pökeln/Reifen und Trocknung. Auch diese Werte werden bewusst sparsam gesetzt. Insgesamt sind **111 Flag-Zuordnungen** und **1.057 Dimensionswerte** gepflegt.
+Binäre Flags kennzeichnen Fermentation, Einlegen, Räuchern, Pökeln/Reifen und Trocknung. Auch diese Werte werden bewusst sparsam gesetzt. Insgesamt sind **117 Flag-Zuordnungen** und **1.518 Dimensionswerte** gepflegt. Alle 590 spezifischen Ziehkandidaten besitzen einen Dominanzwert; bei offenen, fachlich heterogenen Familien bleibt ein fehlender Wert weiterhin ausdrücklich zulässig.
 
 ## 7. Beschaffbarkeit
 
-Jeder der 663 zufällig ziehbaren Einträge besitzt einen separaten Beschaffbarkeitswert für Georgia und Tobias. Die Einschätzungen sind pragmatische Startwerte und dürfen anhand realer Einkaufserfahrungen korrigiert werden.
+Jeder der 652 zufällig ziehbaren Einträge besitzt einen separaten Beschaffbarkeitswert für Georgia und Tobias. Die Einschätzungen sind pragmatische Startwerte und dürfen anhand realer Einkaufserfahrungen korrigiert werden.
 
 | Stufe | Tobias | Georgia |
 |---|---:|---:|
-| EASY | 462 | 486 |
-| PLANNED | 137 | 161 |
-| DIFFICULT | 64 | 16 |
+| EASY | 437 | 465 |
+| PLANNED | 145 | 170 |
+| DIFFICULT | 70 | 17 |
 | UNAVAILABLE | 0 | 0 |
 
 Die deutlich höhere Zahl geplanter oder schwieriger Einträge bei Tobias berücksichtigt insbesondere Spezialgeschäfte und das regional unterschiedliche Angebot. Die Werte werden direkt pro Konzept gepflegt und nicht aus Eltern- oder Kindknoten abgeleitet.
@@ -209,6 +210,7 @@ Die Befüllung ist als einmalige Baseline in den explizit geordneten Master-Chan
 15. `checks/002-final-catalog-sanity.sql` – Plausibilitätsprüfung des konsolidierten, unberührten Baseline-Zustands
 16. `catalog/015-catalog-gap-review.sql` – zweite fachliche Plausibilisierung, zusätzliche Zwischenkonzepte und Alltagsergänzungen
 17. `checks/003-catalog-gap-sanity.sql` – exakte Prüfung des nachgeschärften Ausgangskatalogs
+18. `catalog/016-final-catalog-snapshot.sql` – einmalige Finalisierung aus der Repository-Baseline oder der freigegebenen Produktions-Fixture
 
 Die Erweiterung hält die Pflichtmetadaten pro Konzept in drei kompakten, dokumentierten Manifesten zusammen und überführt sie über kurzlebige `DO`-Blöcke in temporäre Quelltabellen. Dadurch existieren Code, Rolle und Beschaffbarkeit nicht in mehreren unabhängig zu synchronisierenden Listen. Die Dateien sind Liquibase-Changesets ohne `runAlways`: Die Baseline wird nur auf eine leere Datenbank angewandt und überschreibt bei späteren Starts keine kuratierten Laufzeitdaten.
 
@@ -237,6 +239,8 @@ Anschließend reduziert `catalog/014-catalog-consolidation.sql` den Graphen auf 
 - sowie die festgelegten Gewichtsobergrenzen für ungewöhnliche, schwer beschaffbare und alkoholische Kochzutaten.
 
 Nach dieser ersten Konsolidierung ergänzt [`checks/003-catalog-gap-sanity.sql`](../src/main/resources/db/changelog/checks/003-catalog-gap-sanity.sql) exakte Prüfungen für 665 Konzepte, 735 Direktbeziehungen und die nachgeschärften Chili-, Paprika-, Pfeffer-, Gemüse-, Champignon-, Butter- und Currypastenfamilien. Auch die neuen Ausschlussziele für Chili- und Lauchgewächsprodukte werden dort abgesichert.
+
+Die abschließende Migration [`catalog/016-final-catalog-snapshot.sql`](../src/main/resources/db/changelog/catalog/016-final-catalog-snapshot.sql) akzeptiert ausschließlich die unberührte Repository-Baseline oder die dokumentierte Produktions-Fixture vom 13. August 2026. Beide Pfade konvergieren auf den normalisierten Snapshot [`final-catalog-snapshot-20260813.txt`](../src/main/resources/db/catalog/final-catalog-snapshot-20260813.txt) mit SHA-256 `26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52`. IDs, Zeitstempel und Versionszähler gehören nicht zu diesem fachlichen Fingerprint; bestehende IDs bleiben beim Upgrade dennoch erhalten. Der Changeset ist nicht `runAlways`, sodass spätere redaktionelle Änderungen bei normalen Starts nicht zurückgesetzt werden.
 
 Die exakten Baseline-Prüfungen werden bewusst übersprungen, sobald bereits versionierte redaktionelle Änderungen vorliegen. Ein Upgrade soll kuratierte Laufzeitdaten nicht nachträglich zu einer unveränderten Seed-Datei umerziehen. Der Check prüft weiterhin keine kulinarische Qualität einzelner Kombinationen; dafür sind Generatorregeln und Kurator zuständig.
 
