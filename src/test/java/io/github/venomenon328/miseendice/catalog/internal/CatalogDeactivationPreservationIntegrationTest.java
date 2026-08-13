@@ -83,11 +83,18 @@ class CatalogDeactivationPreservationIntegrationTest {
                     values (?, 1, 'issue11-test', 'issue11-test')
                     returning id
                     """, Long.class, attemptId);
-            long candidateId = jdbcTemplate.queryForObject("""
-                    insert into challenge_candidate (curation_round_id, candidate_number)
-                    values (?, 1)
+            long batchId = jdbcTemplate.queryForObject("""
+                    insert into generation_batch
+                        (generation_attempt_id, batch_number, status, legacy_migrated)
+                    values (?, 1, 'GENERATED', true)
                     returning id
-                    """, Long.class, roundId);
+                    """, Long.class, attemptId);
+            long candidateId = jdbcTemplate.queryForObject("""
+                    insert into challenge_candidate
+                        (generation_batch_id, curation_round_id, candidate_number)
+                    values (?, ?, 1)
+                    returning id
+                    """, Long.class, batchId, roundId);
             jdbcTemplate.update("""
                     insert into candidate_requirement (
                         candidate_id, position, source, ingredient_concept_id,
