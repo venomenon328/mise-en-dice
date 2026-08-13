@@ -69,10 +69,10 @@ class PostgresIntegrationTest {
     void applicationContextStartsWithTheCompleteLiquibaseBaseline() {
         assertThat(count("databasechangelog")).isEqualTo(23);
         assertThat(count("ingredient_concept")).isEqualTo(698);
-        assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(652);
+        assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(651);
         assertThat(countWhere("ingredient_concept", "active and random_draw_enabled and challenge_specificity = 'OPEN'"))
                 .isEqualTo(62);
-        assertThat(count("ingredient_refinement")).isEqualTo(777);
+        assertThat(count("ingredient_refinement")).isEqualTo(780);
         assertThat(countWhere("exclusion_rule", "active")).isEqualTo(22);
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from ingredient_concept where code = 'ALIGUE'", Integer.class))
@@ -134,7 +134,7 @@ class PostgresIntegrationTest {
             assertThat(countWhere(connection, "exclusion_rule", "version = 0"))
                     .isEqualTo(count(connection, "exclusion_rule"));
             assertThat(count(connection, "catalog_audit_entry")).isZero();
-            assertThat(count(connection, "ingredient_refinement")).isEqualTo(777);
+            assertThat(count(connection, "ingredient_refinement")).isEqualTo(780);
         }
     }
 

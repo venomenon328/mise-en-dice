@@ -20,8 +20,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class CatalogBaselineConsistencyTest {
 
     private static final Set<String> EXPECTED_ACTIVE_ROOTS = Set.of(
-            "ALIGUE",
-            "BAGOONG",
             "COCOA_PRODUCTS",
             "COCONUT_PRODUCTS",
             "COFFEE",
@@ -69,7 +67,7 @@ class CatalogBaselineConsistencyTest {
     @Test
     void consolidatedBaselineHasTheDocumentedSizeAndDeliberateRoots() {
         assertThat(count("ingredient_concept")).isEqualTo(698);
-        assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(652);
+        assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(651);
         assertThat(countWhere(
                 "ingredient_concept",
                 "active and random_draw_enabled and challenge_specificity = 'OPEN'"
@@ -77,8 +75,8 @@ class CatalogBaselineConsistencyTest {
         assertThat(countWhere(
                 "ingredient_concept",
                 "active and random_draw_enabled and challenge_specificity = 'SPECIFIC'"
-        )).isEqualTo(590);
-        assertThat(count("ingredient_refinement")).isEqualTo(777);
+        )).isEqualTo(589);
+        assertThat(count("ingredient_refinement")).isEqualTo(780);
 
         Set<String> activeRoots = Set.copyOf(jdbcTemplate.queryForList(
                 """
@@ -108,7 +106,7 @@ class CatalogBaselineConsistencyTest {
                   )
                 """,
                 String.class
-        )).containsExactly("ALIGUE", "COFFEE");
+        )).containsExactly("COFFEE");
     }
 
     @Test

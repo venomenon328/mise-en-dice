@@ -44,7 +44,7 @@ class FinalCatalogSnapshotIntegrationTest {
     private static final String SNAPSHOT_RESOURCE =
             "db/catalog/final-catalog-snapshot-20260813.txt";
     private static final String FINAL_SHA_256 =
-            "26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52";
+            "d20fdf8278ff8b00c56c28984531836d42e8698da154e1ec36dbcb43341db6bb";
     private static final String FIXTURE_DIRECTORY =
             "db/fixtures/final-catalog-production-20260813/";
     private static final List<String> FIXTURE_PARTS = List.of(
@@ -156,7 +156,7 @@ class FinalCatalogSnapshotIntegrationTest {
             assertThat(conceptIds(production)).containsAllEntriesOf(productionIds);
 
             List<String> expectedLines = snapshotLines();
-            assertThat(expectedLines).hasSize(6291);
+            assertThat(expectedLines).hasSize(6296);
             assertThat(canonicalLines(fresh)).containsExactlyElementsOf(expectedLines);
             assertThat(canonicalLines(baseline)).containsExactlyElementsOf(expectedLines);
             assertThat(canonicalLines(production)).containsExactlyElementsOf(expectedLines);
@@ -216,9 +216,26 @@ class FinalCatalogSnapshotIntegrationTest {
             assertThat(value(connection, "select count(*) from ingredient_concept", Integer.class)).isEqualTo(698);
             assertThat(value(connection,
                     "select count(*) from ingredient_concept where active and random_draw_enabled", Integer.class))
-                    .isEqualTo(652);
-            assertThat(value(connection, "select count(*) from ingredient_refinement", Integer.class)).isEqualTo(777);
+                    .isEqualTo(651);
+            assertThat(value(connection, "select count(*) from ingredient_refinement", Integer.class)).isEqualTo(780);
             assertThat(value(connection, "select count(*) from exclusion_rule where active", Integer.class)).isEqualTo(22);
+
+            assertThat(value(connection, """
+                    select count(*)
+                    from ingredient_refinement relation
+                    join ingredient_concept parent on parent.id = relation.parent_concept_id
+                    join ingredient_concept child on child.id = relation.child_concept_id
+                    where (parent.code, child.code) in (
+                        ('FERMENTED_SEASONINGS', 'BAGOONG'),
+                        ('READY_SAUCES_AND_PASTES', 'BAGOONG'),
+                        ('READY_SAUCES_AND_PASTES', 'ALIGUE')
+                    )
+                    """, Integer.class)).isEqualTo(3);
+            assertThat(value(connection, """
+                    select count(*)
+                    from ingredient_concept
+                    where code = 'BAY_LEAF' and active and not random_draw_enabled
+                    """, Integer.class)).isOne();
 
             assertThat(value(connection, redundantEdgesSql(), Integer.class)).isZero();
             assertThat(value(connection, roleDisjointEdgesSql(), Integer.class)).isZero();
@@ -267,6 +284,8 @@ class FinalCatalogSnapshotIntegrationTest {
                     .containsExactly("RICE:true");
             assertThat(directExclusionTargets(connection, "NO_SOY_SAUCE"))
                     .containsExactly("SOY_SAUCE:true");
+            assertThat(directExclusionTargets(connection, "NO_DAIRY"))
+                    .contains("MILK_CHOCOLATE:false", "WHITE_CHOCOLATE:false");
             assertThat(expandedExclusionTargets(connection, "NO_READY_SAUCES"))
                     .contains("READY_SAUCES_AND_PASTES", "TOMATO_SAUCE", "MISO", "SOY_SAUCE")
                     .doesNotContain("TOMATO_PRODUCTS", "CANNED_TOMATOES", "TAHINI", "PEANUT_BUTTER");

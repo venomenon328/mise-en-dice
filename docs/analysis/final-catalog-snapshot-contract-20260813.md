@@ -7,14 +7,14 @@ Umsetzung: Issue #52
 
 Der normalisierte Endzustand liegt unter [`src/main/resources/db/catalog/final-catalog-snapshot-20260813.txt`](../../src/main/resources/db/catalog/final-catalog-snapshot-20260813.txt).
 
-- normalisierte Fachzeilen: **6.291**
-- SHA-256 einschließlich abschließendem LF: `26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52`
+- normalisierte Fachzeilen: **6.296**
+- SHA-256 einschließlich abschließendem LF: `d20fdf8278ff8b00c56c28984531836d42e8698da154e1ec36dbcb43341db6bb`
 - aktive Konzepte: **698**
-- ziehbare Konzepte: **652** (`590 SPECIFIC`, `62 OPEN`)
-- direkte Konkretisierungen: **777**
+- ziehbare Konzepte: **651** (`589 SPECIFIC`, `62 OPEN`)
+- direkte Konkretisierungen: **780**
 - Rollen-/Flag-/Dimensionszuordnungen: **1.107 / 117 / 1.518**
 - Beschaffbarkeits-/Saisonwerte: **1.384 / 588**
-- Ausschlussregeln/-ziele: **22 / 56**
+- Ausschlussregeln/-ziele: **22 / 58**
 
 Die Zeilen werden tabellenübergreifend lexikografisch sortiert. Jede Zeile beginnt mit dem stabilen Tabellennamen und enthält anschließend ein JSON-Array aus stabilen Codes und fachlichen Werten. Enthalten sind Teilnehmer, Rollen, Flags, Dimensionen, Konzepte, direkte Konkretisierungen, Rollen-, Flag- und Dimensionszuordnungen, Beschaffbarkeiten, Saisonwerte sowie Ausschlussregeln und ihre Ziele.
 
@@ -39,30 +39,30 @@ Fresh Build, Baseline-Upgrade und Produktions-Fixture-Upgrade werden gegen diese
 
 ## Dimensionsabdeckung vorher und nachher
 
-Die Werte beziehen sich auf aktive Ziehkandidaten. Der Ausgangswert ist die freigegebene Produktions-Fixture mit 621 Ziehkandidaten; der Endwert umfasst 652 Ziehkandidaten.
+Die Werte beziehen sich auf aktive Ziehkandidaten. Der Ausgangswert ist die freigegebene Produktions-Fixture mit 621 Ziehkandidaten; der Endwert umfasst 651 Ziehkandidaten.
 
 | Dimension | vorher | nachher |
 |---|---:|---:|
-| `ACIDITY` | 78 / 621 (12,6 %) | 93 / 652 (14,3 %) |
-| `BITTERNESS` | 53 / 621 (8,5 %) | 76 / 652 (11,7 %) |
-| `DOMINANCE` | 349 / 621 (56,2 %) | 596 / 652 (91,4 %) |
-| `FATTINESS` | 126 / 621 (20,3 %) | 150 / 652 (23,0 %) |
-| `HEAT` | 53 / 621 (8,5 %) | 54 / 652 (8,3 %) |
-| `SALTINESS` | nicht vorhanden | 60 / 652 (9,2 %) |
-| `SWEETNESS` | 150 / 621 (24,2 %) | 201 / 652 (30,8 %) |
-| `UMAMI` | 217 / 621 (34,9 %) | 256 / 652 (39,3 %) |
+| `ACIDITY` | 78 / 621 (12,6 %) | 93 / 651 (14,3 %) |
+| `BITTERNESS` | 53 / 621 (8,5 %) | 75 / 651 (11,5 %) |
+| `DOMINANCE` | 349 / 621 (56,2 %) | 595 / 651 (91,4 %) |
+| `FATTINESS` | 126 / 621 (20,3 %) | 150 / 651 (23,0 %) |
+| `HEAT` | 53 / 621 (8,5 %) | 54 / 651 (8,3 %) |
+| `SALTINESS` | nicht vorhanden | 60 / 651 (9,2 %) |
+| `SWEETNESS` | 150 / 621 (24,2 %) | 201 / 651 (30,9 %) |
+| `UMAMI` | 217 / 621 (34,9 %) | 255 / 651 (39,2 %) |
 
-Alle 590 spezifischen Endkandidaten besitzen einen Dominanzwert. Bei offenen Konzepten steigt die Abdeckung von 4/60 auf 6/62; die übrigen 56 offenen Familien bleiben wegen ihrer heterogenen Spannweite bewusst unbewertet.
+Alle 589 spezifischen Endkandidaten besitzen einen Dominanzwert. Bei offenen Konzepten steigt die Abdeckung von 4/60 auf 6/62; die übrigen 56 offenen Familien bleiben wegen ihrer heterogenen Spannweite bewusst unbewertet.
 
 | Rolle | Dominanz vorher | Dominanz nachher |
 |---|---:|---:|
 | `ACID` | 39 / 56 | 63 / 65 |
 | `ANIMAL_PROTEIN` | 70 / 153 | 131 / 148 |
-| `AROMATIC` | 89 / 96 | 99 / 102 |
+| `AROMATIC` | 89 / 96 | 98 / 101 |
 | `FAT` | 72 / 130 | 132 / 140 |
 | `FRUIT` | 38 / 71 | 63 / 72 |
 | `PLANT_PROTEIN` | 21 / 64 | 58 / 63 |
-| `SEASONING` | 196 / 212 | 216 / 229 |
+| `SEASONING` | 196 / 212 | 215 / 228 |
 | `STARCH` | 45 / 93 | 89 / 95 |
 | `VEGETABLE` | 41 / 125 | 115 / 130 |
 

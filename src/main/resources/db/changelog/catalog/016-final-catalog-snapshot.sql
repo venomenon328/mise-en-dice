@@ -163,7 +163,8 @@ VALUES
         'Filipinische fermentierte Würzzutat auf Garnelenbasis.'),
     ('BAGOONG_ISDA', 'Bagoong isda', true, true, 'SPECIFIC', 0.2500, 4,
         'Filipinische fermentierte Würzzutat auf Fischbasis.'),
-    ('BAY_LEAF', 'Lorbeerblatt', true, true, 'SPECIFIC', 0.6000, 1, null),
+    ('BAY_LEAF', 'Lorbeerblatt', true, false, 'SPECIFIC', 0.6000, 1,
+        'Bewusst nicht zufällig ziehbares Würzblatt; bleibt als bekannte manuelle Vorgabe und Katalogwissen erhalten.'),
     ('CHILI_OIL', 'Chiliöl', true, true, 'SPECIFIC', 0.5500, 2, null),
     ('DAIKON', 'Daikon', true, true, 'SPECIFIC', 0.6500, 2, null),
     ('WHITE_VINEGAR', 'Branntweinessig', true, true, 'SPECIFIC', 0.6000, 1, null),
@@ -221,6 +222,8 @@ WHERE relation.parent_concept_id = parent.id
 INSERT INTO ingredient_refinement (parent_concept_id, child_concept_id)
 SELECT parent.id, child.id
 FROM (VALUES
+    ('FERMENTED_SEASONINGS', 'BAGOONG'),
+    ('READY_SAUCES_AND_PASTES', 'BAGOONG'),
     ('BAGOONG', 'BAGOONG_ALAMANG'),
     ('BAGOONG', 'BAGOONG_ISDA'),
     ('SHRIMP_PASTE', 'BAGOONG_ALAMANG'),
@@ -234,6 +237,7 @@ FROM (VALUES
     ('PEANUT', 'PEANUT_BUTTER'),
     ('SESAME_SEEDS', 'TAHINI'),
     ('SAUCES_AND_PASTES', 'READY_SAUCES_AND_PASTES'),
+    ('READY_SAUCES_AND_PASTES', 'ALIGUE'),
     ('READY_SAUCES_AND_PASTES', 'READY_CURRY_PASTE'),
     ('READY_SAUCES_AND_PASTES', 'CHILI_CONDIMENTS'),
     ('READY_SAUCES_AND_PASTES', 'MUSTARD'),
@@ -525,6 +529,8 @@ FROM (VALUES
     ('NO_MEAT', 'DUCK_FAT', false),
     ('NO_MEAT', 'LARD', false),
     ('NO_MEAT', 'PORK_STOCK', false),
+    ('NO_DAIRY', 'MILK_CHOCOLATE', false),
+    ('NO_DAIRY', 'WHITE_CHOCOLATE', false),
     ('NO_NUTS', 'ALMOND_DRINK', false),
     ('NO_LEGUMES', 'SOY_DRINK', false)
 ) AS assignment(rule_code, concept_code, include_refinements)

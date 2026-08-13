@@ -23,11 +23,11 @@ Eine fehlende Zutat oder Konkretisierung bedeutet weiterhin nicht, dass sie beim
 Die Befüllung enthält:
 
 - **698 aktive Zutatenkonzepte** insgesamt,
-- davon **652 zufällig ziehbar**,
+- davon **651 zufällig ziehbar**,
 - **62 offene** ziehbare Vorgaben,
-- **590 spezifische** ziehbare Vorgaben,
-- **46 nicht ziehbare Konzepte**, darunter vier reine Strukturknoten und 42 bewusst deaktivierte breite oder sehr gewöhnliche Vorgaben,
-- **777 bekannte Konkretisierungsbeziehungen**,
+- **589 spezifische** ziehbare Vorgaben,
+- **47 nicht ziehbare Konzepte**, darunter vier reine Strukturknoten, 42 bewusst deaktivierte breite oder sehr gewöhnliche Vorgaben und das bewusst nicht zufällig ziehbare Lorbeerblatt,
+- **780 bekannte Konkretisierungsbeziehungen**,
 - **9 funktionale Rollen**,
 - **8 fünfstufige kulinarische Dimensionen**,
 - **5 binäre kulinarische Flags**,
@@ -36,7 +36,7 @@ Die Befüllung enthält:
 
 Die reinen Strukturknoten `Milchprodukte`, `fertige Currypaste`, `fertige Sauce oder Würzpaste` und `pflanzlicher Drink` werden für Klassifikation und Ausschlussregeln benötigt, ohne selbst als Challenge-Vorgabe ausgelost zu werden. Die 42 aus dem Produktionsreview übernommenen Deaktivierungen werden nicht pauschal reaktiviert.
 
-Nach der Finalisierung besitzt der aktive Katalog **28 Root-Konzepte**. Davon sind `Aligue` und `Kaffee` spezifische Vorgaben; alle übrigen Wurzeln sind bewusst breite Familien oder fachlich eigenständige offene Konzepte. Ein universeller Oberknoten namens „Zutat“ wurde nicht ergänzt, weil er zwar die Baumansicht beruhigen, fachlich aber ungefähr so viel erklären würde wie ein Ordner namens „Sonstiges“.
+Nach der Finalisierung besitzt der aktive Katalog **26 Root-Konzepte**. `Kaffee` bleibt das einzige spezifische Root-Konzept; alle übrigen Wurzeln sind bewusst breite Familien oder fachlich eigenständige offene Konzepte. `Bagoong` bleibt unter den fermentierten Würzzutaten und zugleich unter der engen Familie fertiger Saucen und Pasten eingeordnet; `Aligue` ist dort ebenfalls als Würzpaste verankert. Ein universeller Oberknoten namens „Zutat“ wurde nicht ergänzt, weil er zwar die Baumansicht beruhigen, fachlich aber ungefähr so viel erklären würde wie ein Ordner namens „Sonstiges“.
 
 `Kokoszutat` bleibt trotz erneuter Prüfung bewusst ein Root-Konzept. Kokosnuss, Kokoswasser, Kokosraspeln und Kokosöl unter `Tropenfrucht`, `Kochfett` oder einer ähnlich hübsch aussehenden Sammelkategorie zu hängen, würde über die transitive Konkretisierung falsche Challenge-Alternativen erzeugen. Die Bezeichnung wurde geschärft; der Graph wurde nicht nur deshalb verbogen, damit die Baumansicht beim Frühstück weniger unangenehme Fragen stellt.
 

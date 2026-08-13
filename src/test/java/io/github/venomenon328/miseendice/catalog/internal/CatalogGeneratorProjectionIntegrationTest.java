@@ -48,9 +48,9 @@ class CatalogGeneratorProjectionIntegrationTest {
 
         assertThat(snapshot.concepts()).hasSize(698);
         assertThat(snapshot.concepts()).filteredOn(concept -> concept.active() && concept.randomDrawEnabled())
-                .hasSize(652);
+                .hasSize(651);
         assertThat(snapshot.concepts()).filteredOn(concept -> !concept.active() || !concept.randomDrawEnabled())
-                .hasSize(46)
+                .hasSize(47)
                 .allSatisfy(concept -> {
                     assertThat(concept.code()).isNotBlank();
                     assertThat(concept.displayName()).isNotBlank();
