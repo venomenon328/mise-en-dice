@@ -1,6 +1,6 @@
 # Entwicklungsplan
 
-Stand: 12. August 2026
+Stand: 13. August 2026
 
 Dieses Dokument beschreibt die aktuelle Umsetzungsreihenfolge. Die [`VISION.md`](VISION.md) beschreibt das gewünschte Produkt; dieser Plan legt fest, in welcher technischen Reihenfolge die dafür notwendigen Bausteine entstehen. Die konkrete Webspezifikation steht in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md).
 
@@ -259,7 +259,7 @@ Dieses Paket schließt die vollständige Katalogverwaltung ab.
 
 Phase 9 liefert einen reproduzierbaren, historienbewussten und kontrolliert zufälligen Zwölfer-Satz. Der spätere Kurator erhält ausschließlich harte gültige und als Satz ausreichend diverse Kandidaten; er ist nicht dafür verantwortlich, einen schwachen Zufallsgenerator zu retten.
 
-Verbindliche Hauptquelle ist [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md). ADR 0007 hält die Architekturentscheidung fest.
+Verbindliche Hauptquelle ist [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md). ADR 0007 hält die Architekturentscheidung fest. Die spätere Mehrfachauswahl und Kuratororchestrierung ist davon getrennt in [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) spezifiziert.
 
 ### Phase 9A: Spezifikation und Datenreife (Issue #33)
 
@@ -297,7 +297,7 @@ Das Repository-Baseline-Gate ist bestanden: Rollen, Neuigkeit und Beschaffbarkei
 - repräsentative feste Seeds und Monate gegen die reale PostgreSQL-Katalogprojektion replayen,
 - keine Historien-JDBC-Projektion und keine Liquibase-Änderung.
 
-### Phase 9C2: Satzdiversität und Baselinesimulation (Issue #47)
+### Phase 9C2: Satzdiversität und Baselinesimulation (abgeschlossen mit Issue #47)
 
 - öffentliche transportneutrale Batch-API auf dem vorhandenen `CandidateReservoirEngine`,
 - versionierte siebenkomponentige Kandidatenähnlichkeit mit expliziter Nichtvergleichbarkeit,
@@ -314,7 +314,8 @@ Das Repository-Baseline-Gate ist bestanden: Rollen, Neuigkeit und Beschaffbarkei
 - öffentliche Generation Commands und Queries,
 - Replay gegen gespeicherte Versionen und Snapshots,
 - Idempotenz, Konkurrenz, Retry und Restart gegen echtes PostgreSQL,
-- keine Kuratorauswahl und keine sichtbare Challenge.
+- keine Kuratorauswahl und keine sichtbare Challenge,
+- die Persistenz darf die für Phase 10 benötigten höchstens zwei Kurationsrunden, kandidatenübergreifenden Carry-over-Referenzen und ein finales Multi-Offer-Set nicht durch eine starre Ein-Batch-/Ein-Selected-Kardinalität verbauen.
 
 ### Phase 9E: Generator-Labor und Diagnostik (Issue #37)
 
@@ -346,17 +347,86 @@ Phase 9 ist erst abgeschlossen, wenn:
 - der operative Kataloglauf dokumentiert ist,
 - und eine repräsentative Seed-Auswahl ausdrücklich fachlich abgenommen wurde.
 
-OpenAI-Aufruf, Kuratorauswahl, sichtbare Challenge, Discord und freiwilliger Reroll-Dialog bleiben außerhalb von Phase 9.
+OpenAI-Aufruf, Kuratorauswahl, sichtbare Challenge, Discord und freiwilliger Reroll-Dialog bleiben außerhalb von Phase 9. Nicht gewählte spätere Kurationsangebote zählen ausdrücklich nicht zum `VisibleHistorySnapshot`.
 
-## Phase 10: Strukturierter Kuratorvertrag und OpenAI-Adapter
+## Phase 10: Begrenzte Kuratierung, Multi-Offer-Lifecycle und OpenAI-Adapter
 
-Der Kurator erhält ausschließlich bereits gültige Kandidaten. Request, Response, Reason-Codes, Modell und Promptversion werden strukturiert und auditierbar behandelt.
+Verbindliche Fachquelle ist [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md). Phase 10 baut auf dem vollständig kalibrierten Phase-9-Generator auf und trennt Kuratorbewertung, präsentierbares Offer Set und tatsächlich bestätigte Challenge sauber voneinander.
 
-Netzwerkaufrufe erfolgen außerhalb offener Datenbanktransaktionen. Vollständige Ablehnung eines Kandidatensatzes führt zu einer internen neuen Runde und verbraucht keinen sichtbaren Reroll.
+### Phase 10A: Kuratorvertrag und persistenter Offer-Lifecycle
 
-## Phase 11: Discord-Bot
+Dieses Paket schafft die fachliche und persistente Grenze noch ohne Discord-Adapter.
 
-Der eigenständige Discord-Adapter verwendet dieselben Application-APIs wie die Weboberfläche. Die erste Bot-Stufe umfasst Ziehung, Anzeige und den gemeinsamen einmaligen Reroll.
+#### Scope
+
+- `requested_offer_count` im Bereich `1..3`, Default `1`, als Session-/Kurationsparameter,
+- strukturierter Kuratorrequest ohne Rezept- oder Vorgabenerfindung,
+- strukturierte Candidate-Bewertung `GOOD`, `ACCEPTABLE`, `BAD` mit Rang und Reason-Codes,
+- `curation_round_candidate` oder gleichwertige relationale Referenz für `NEW`, `CARRY_OVER` und `LOCKED_CONTEXT`,
+- finales `curated_offer_set` mit exakt der angeforderten Zahl positionsgebundener Angebote,
+- mindestens ein `GOOD` als Voraussetzung für ein erfolgreiches Offer Set,
+- klare Trennung von Generatorstatus, Kuratorstatus, Offerstatus und späterer Challenge-Bestätigung,
+- Replay-/Auditdaten für Request, Response, Modell, Promptversion, Bewertungen und Auswahlpfad.
+
+#### Gate
+
+- eine Kurationsrunde kann Kandidaten aus mehreren Generation Batches desselben Attempts nachvollziehbar referenzieren,
+- ein erfolgreiches Offer Set enthält exakt `1..3` Angebote und mindestens einen `GOOD`,
+- ein unvollständiges oder ausschließlich `BAD`/`ACCEPTABLE` enthaltendes Ergebnis wird nicht als erfolgreicher Offer-Satz maskiert,
+- noch kein Discord- oder OpenAI-Netzwerkadapter ist für die fachlichen Tests erforderlich.
+
+### Phase 10B: OpenAI-Adapter und strikt gedeckelte Kurationsorchestrierung
+
+Dieses Paket implementiert den tatsächlichen externen Kurator und die höchstens zweistufige Orchestrierung.
+
+#### Scope
+
+- erster Generation Batch mit zwölf Kandidaten und genau ein Kuratorrequest im Normalfall,
+- unmittelbarer Abschluss, sobald mindestens `requested_offer_count` geeignete `GOOD`-Optionen vorliegen,
+- bei zu wenigen `GOOD` höchstens eine zweite Generation unter demselben Attempt,
+- `GOOD` aus Runde 1 verbindlich locken,
+- höchstens so viele beste `ACCEPTABLE`/`BAD`-Fallbacks aus Runde 1 als Carry-over behalten, wie Plätze fehlen,
+- zweiter Kuratorrequest mit Locked-Kontext, Carry-over und zwölf neuen Kandidaten,
+- nach Runde 2 keine weitere Qualitätsrunde,
+- bei mindestens einem `GOOD` fehlende Plätze deterministisch nach Kuratorrang mit `ACCEPTABLE` und anschließend den am wenigsten problematischen `BAD` auffüllen,
+- ohne irgendeinen `GOOD` typisierte Kurationserschöpfung und kein Offer Set,
+- technisch **höchstens zwei tatsächliche externe Requests pro `generation_attempt`**, einschließlich Retries,
+- automatische Client-Retries deaktivieren oder vollständig in dasselbe Budget integrieren,
+- Netzwerkaufrufe außerhalb offener Datenbanktransaktionen.
+
+#### Gate
+
+- der Normalfall benötigt genau einen externen Request,
+- kein fachlicher oder technischer Pfad kann einen dritten Request erzeugen,
+- ein technischer Retry verbraucht dasselbe Budget wie eine zweite Qualitätsrunde,
+- bereits gelockte gute Kandidaten werden durch Runde 2 nicht verdrängt,
+- ein brauchbarer Carry-over aus Runde 1 kann einen schlechteren neuen Kandidaten schlagen,
+- nach erfolgreicher Kuratierung existiert exakt die gewünschte Zahl von Angeboten,
+- nicht gewählte Angebote erzeugen keinerlei Generatorhistorie.
+
+## Phase 11: Discord-Bot für Ziehung, Auswahl, Bestätigung und Reroll
+
+Der eigenständige Discord-Adapter verwendet ausschließlich die öffentlichen Challenge-Application-APIs aus Phase 10. Er besitzt keine eigene Generator-, Kurator-, Fallback- oder Persistenzlogik.
+
+### Scope
+
+- vor der Ziehung kompakte Auswahl `1`, `2` oder `3` Angebote; Default `1`,
+- Erzeugung über denselben fachlichen Generation-/Kurations-Use-Case unabhängig von der gewählten Zahl,
+- übersichtliche Darstellung exakt der kuratierten Angebote,
+- Auswahl genau einer stabilen Candidate-/Offer-ID,
+- explizite Bestätigung vor Erzeugung der sichtbaren Challenge,
+- nur die bestätigte Challenge fließt in Cooldown und Neuigkeitskadenz ein,
+- nicht gewählte Angebote bleiben auditierbar, sind generatorisch aber „nicht gesehen“,
+- gemeinsamer einmaliger Reroll der bestätigten Challenge,
+- Reroll verwendet dieselbe gewünschte Optionszahl und blockiert nur die vier Vorgaben der tatsächlich bestätigten ursprünglichen Challenge.
+
+### Gate
+
+- bloßes Anzeigen von Angeboten erzeugt noch keine `challenge`,
+- Manipulation von Discord-IDs kann keinen Kandidaten außerhalb des aktuellen Offer Sets bestätigen,
+- genau eine Option wird atomar bestätigt,
+- nicht gewählte Optionen beeinflussen weder normalen Cooldown noch Reroll-Hardblock,
+- der freiwillige Reroll bleibt genau einmal gemeinsam möglich und ist von internen Kurationsrunden getrennt.
 
 Persönliche Konkretisierungen, Zusatz-Zutaten, Grundpläne und Ergebnisdokumentation folgen in späteren Paketen.
 
@@ -370,4 +440,7 @@ Persönliche Konkretisierungen, Zusatz-Zutaten, Grundpläne und Ergebnisdokument
 - frei konfigurierbare Datenbank-Rule-Engine,
 - physisches Löschen von Katalogobjekten über die normale Webverwaltung,
 - Webadministration der kleinen Referenzvokabulare,
+- mehr als drei gleichzeitig angebotene Challenges,
+- unbeschränkte Kurator-/Retry-Schleifen,
+- drei voneinander unabhängige Zwölfer-Generierungen nur deshalb, weil drei Angebote gewünscht wurden,
 - frühzeitige Implementierung späterer Komfortfunktionen ohne tragfähige Kernabläufe.
