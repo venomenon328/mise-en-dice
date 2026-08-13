@@ -1,6 +1,6 @@
 # Produktvision: Mise en Dice
 
-Stand: 12. August 2026
+Stand: 13. August 2026
 
 ## 1. Zweck
 
@@ -175,16 +175,19 @@ Alle Zufallsentscheidungen verwenden einen gespeicherten Seed, einen benannten R
 
 Eine optionale Ausschlussregel wird einmal pro Generierungsversuch bestimmt und gilt für alle zwölf Kandidaten und alle internen Runden dieses Versuchs.
 
-### 5.3 Rolle des Sprachmodells
+### 5.3 Rolle des Sprachmodells und Auswahl mehrerer Angebote
 
 Die OpenAI API erhält ausschließlich die bereits erzeugten Kandidaten und fungiert als **kulinarischer Kurator**.
 
+Der Nutzer kann vor der Erzeugung festlegen, ob **ein, zwei oder drei Challenge-Angebote** präsentiert werden sollen; Default ist eins. Diese Zahl verändert den Generator nicht: Ein Generation Batch enthält weiterhin genau zwölf Kandidaten.
+
 Das Modell soll:
 
-- einen geeigneten Kandidaten auswählen **oder alle Kandidaten ablehnen**,
+- alle übergebenen Kandidaten als `GOOD`, `ACCEPTABLE` oder `BAD` klassifizieren und innerhalb der relevanten Auswahl ranken,
 - grundsätzliche kulinarische Kohärenz prüfen,
 - kreative Offenheit berücksichtigen,
 - vermeiden, dass ein Kandidat bereits fast eindeutig ein Standardgericht vorgibt,
+- bei mehreren gewünschten Angeboten auch deren gegenseitige Verschiedenheit berücksichtigen,
 - riskante Entscheidungen innerhalb allgemeiner Kategorien ausdrücklich zulassen.
 
 Das Modell soll **nicht**:
@@ -195,9 +198,15 @@ Das Modell soll **nicht**:
 - verraten, welche Konkretisierung einer allgemeinen Kategorie vermutlich die beste wäre,
 - oder die harten Regeln der Anwendung überschreiben.
 
-Wenn alle zwölf Kandidaten ungeeignet sind, darf die Anwendung intern einen neuen Kandidaten-Satz erzeugen und erneut kuratieren. Eine solche interne Wiederholung zählt nicht als sichtbarer Reroll der Nutzer.
+Sind bereits im ersten Zwölfer-Satz genügend `GOOD`-Kandidaten für die gewünschte Zahl von Angeboten vorhanden, endet die Kuratierung nach genau einem API-Aufruf. Sind es zu wenige, darf die Anwendung unter demselben Generierungsversuch **höchstens einmal** einen zweiten Zwölfer-Satz erzeugen und erneut kuratieren. Gute Kandidaten aus Runde 1 bleiben dabei gesetzt; wenige der besten nicht gesetzten Fallbacks dürfen gegen den neuen Satz weiterverglichen werden.
 
-Die API-Antwort soll strukturiert und kompakt sein, beispielsweise über eine Auswahl-ID, Scores und feste Reason-Codes. Freie Prosa ist für den produktiven Ablauf nicht notwendig.
+Pro `generation_attempt` sind technisch strikt höchstens **zwei tatsächliche externe Kuratorrequests** erlaubt. Auch technische Retries verbrauchen dieses Budget. Eine fachlich schwache Antwort darf niemals eine unbegrenzte Kette weiterer Aufrufe auslösen.
+
+Nach Ausschöpfung der erlaubten Runden gilt: Wenn mindestens ein Kandidat als `GOOD` bewertet wurde, wird die gewünschte Zahl von Angeboten bei Bedarf mit den bestgerankten `ACCEPTABLE`- und anschließend den am wenigsten problematischen `BAD`-Kandidaten aufgefüllt. Gibt es überhaupt keinen `GOOD`-Kandidaten, endet der Versuch mit einer typisierten Kurationserschöpfung statt einer ausschließlich schlechten Auswahl.
+
+Die API-Antwort soll strukturiert und kompakt sein, insbesondere über Candidate-ID, qualitative Klasse, Rang und feste Reason-Codes. Freie Prosa ist für den produktiven Ablauf nicht notwendig.
+
+Die vollständige Kurations-, Carry-over-, Fallback-, API-Budget- und Bestätigungssemantik steht in [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md).
 
 Welches konkrete Modell verwendet wird (z. B. Terra oder Sol), ist noch nicht entschieden und soll austauschbar bleiben.
 
@@ -212,6 +221,7 @@ Arbeitsregeln:
 - Der Reroll darf nur erfolgen, bevor persönliche Konkretisierungen und Zusatz-Zutaten verbindlich festgelegt wurden.
 - Der Reroll soll von beiden Beteiligten gemeinsam bestätigt werden.
 - Technische Fehler oder intern vom Kurator verworfene Kandidaten verbrauchen den Reroll nicht.
+- Nicht gewählte Challenge-Angebote sind keine sichtbaren Challenges und erzeugen weder Cooldown noch Neuigkeitswirkung.
 - Nach einem Reroll gibt es keine zweite freiwillige Neuziehung.
 
 ## 7. Zutaten- und Kategorienbasis
@@ -276,12 +286,15 @@ Mise en Dice erhält als eigentliche Challenge-Oberfläche einen **eigenständig
 
 Discord ist vorgesehen für:
 
-- Challenge ziehen,
-- Challenge anzeigen,
+- vor einer Ziehung die gewünschte Zahl von `1..3` Challenge-Angeboten wählen; Default `1`,
+- Challenge-Angebote ziehen und anzeigen,
+- genau eine angebotene Candidate-ID auswählen und ausdrücklich als Challenge bestätigen,
 - gemeinsamen Reroll auslösen und bestätigen,
 - später persönliche Konkretisierungen und drei Zusatz-Zutaten verdeckt erfassen,
 - Entscheidungen beider Personen gleichzeitig offenlegen,
 - später gegebenenfalls Ergebnisse und Bewertungen dokumentieren.
+
+Nur die ausdrücklich bestätigte Option wird zur sichtbaren Challenge und beeinflusst Cooldowns beziehungsweise Neuigkeitskadenz. Nicht gewählte Angebote bleiben für Audit und Replay nachvollziehbar, sind für den Generator aber so zu behandeln, als wären sie nie angeboten worden.
 
 Discord-Bot und Verwaltungsoberfläche verwenden dieselbe fachliche Logik und dieselbe persistente Datenbasis. Eine unnötig verteilte Architektur ist für zwei Benutzer nicht das Ziel.
 
@@ -289,7 +302,7 @@ Discord-Bot und Verwaltungsoberfläche verwenden dieselbe fachliche Logik und di
 
 Später kann das System den gesamten Ablauf begleiten:
 
-1. Vier Vorgaben werden veröffentlicht.
+1. Eine der kuratierten Optionen wird ausdrücklich bestätigt und ihre vier Vorgaben werden veröffentlicht.
 2. Beide konkretisieren allgemeine Vorgaben unabhängig voneinander.
 3. Beide wählen unabhängig ihre drei zusätzlichen Zutaten.
 4. Optional wird jeweils ein sehr kurzer Grundplan hinterlegt.
@@ -335,17 +348,16 @@ Bereits abgeschlossen sind:
 1. fachliche Modellierung der Zutaten-/Kategorien-Datenbasis,
 2. umfangreiche initiale Katalogbefüllung,
 3. Spring-Boot-/Liquibase-/PostgreSQL-Anwendungsfundament,
-4. Spezifikation der privaten Webverwaltung.
+4. Spezifikation und Umsetzung der privaten Katalogverwaltung,
+5. Spezifikation sowie fachlicher Kern des reproduzierbaren Kandidatengenerators bis einschließlich diverser Zwölfer-Auswahl.
 
 Als nächste Schritte folgen:
 
-5. schrittweise Implementierung der Webverwaltung gemäß [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md),
-6. Festlegung der harten Generierungsregeln und Gewichtungen,
-7. Implementierung des Kandidatengenerators,
-8. Definition des strukturierten Kurator-Requests/-Responses,
-9. OpenAI-Anbindung und Testvergleich geeigneter Modelle,
-10. Discord-Flow für Ziehung und einen gemeinsamen Reroll,
-11. später: persönliche Auswahl, Historie und Ergebnisdokumentation.
+6. Persistenz, Replay, Konkurrenz und Kalibrierung des Kandidatengenerators gemäß [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md),
+7. strukturierter Kuratorvertrag und persistentes Multi-Offer-Lifecycle gemäß [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md),
+8. OpenAI-Anbindung mit strikt gedeckelter Orchestrierung,
+9. Discord-Flow für Auswahl von `1..3` Angeboten, Bestätigung genau einer Challenge und einen gemeinsamen Reroll,
+10. später: persönliche Auswahl, Historie und Ergebnisdokumentation.
 
 ## 13. Leitprinzip in einem Satz
 
