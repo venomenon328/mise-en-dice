@@ -3,6 +3,9 @@ package io.github.venomenon328.miseendice.challenge.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.venomenon328.miseendice.MiseEnDiceApplication;
+import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
+import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Generated;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
@@ -13,6 +16,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -21,7 +27,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@SpringBootTest
+@SpringBootTest(classes = {
+        MiseEnDiceApplication.class,
+        GeneratedCandidateUniquenessIntegrationTest.GeneratedBatchConfiguration.class
+})
 @Testcontainers
 class GeneratedCandidateUniquenessIntegrationTest {
     @Container
@@ -51,7 +60,7 @@ class GeneratedCandidateUniquenessIntegrationTest {
     @Test
     void postgresqlRejectsDuplicateCanonicalSignaturesInsideAGeneratedBatch() {
         var outcome = commands.startNewSession(new StartNewSession(
-                LocalDate.of(2026, 8, 13), List.of(), 47_000_001L));
+                LocalDate.of(2026, 8, 13), List.of(), 47_000_061L));
         assertThat(outcome).isInstanceOf(Generated.class);
         Generated generated = (Generated) outcome;
         var candidates = queries.findBatch(generated.attemptId(), 1).orElseThrow().candidates();
@@ -65,5 +74,15 @@ class GeneratedCandidateUniquenessIntegrationTest {
                 "update challenge_candidate set canonical_signature = ? where id = ?",
                 first.canonicalSignature(), second.candidateId()))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class GeneratedBatchConfiguration {
+
+        @Bean
+        @Primary
+        CandidateSetEngine deterministicGeneratedCandidateSetEngine(CandidateReservoirEngine reservoirEngine) {
+            return new DeterministicGeneratedCandidateSetEngine(reservoirEngine);
+        }
     }
 }
