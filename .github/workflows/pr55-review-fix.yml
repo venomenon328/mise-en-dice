@@ -1,0 +1,219 @@
+name: PR 55 review fixes
+
+on:
+  push:
+    branches:
+      - feat/52-final-catalog-snapshot
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Apply review fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one occurrence, got {count}: {old!r}")
+              p.write_text(text.replace(old, new))
+
+          migration = 'src/main/resources/db/changelog/catalog/016-final-catalog-snapshot.sql'
+          replace_once(
+              migration,
+              "    ('BAY_LEAF', 'Lorbeerblatt', true, true, 'SPECIFIC', 0.6000, 1, null),",
+              "    ('BAY_LEAF', 'Lorbeerblatt', true, false, 'SPECIFIC', 0.6000, 1,\n        'Bewusst nicht zufällig ziehbares Würzblatt; bleibt als bekannte manuelle Vorgabe und Katalogwissen erhalten.'),"
+          )
+          replace_once(
+              migration,
+              "    ('BAGOONG', 'BAGOONG_ALAMANG'),",
+              "    ('FERMENTED_SEASONINGS', 'BAGOONG'),\n    ('READY_SAUCES_AND_PASTES', 'BAGOONG'),\n    ('BAGOONG', 'BAGOONG_ALAMANG'),"
+          )
+          replace_once(
+              migration,
+              "    ('SAUCES_AND_PASTES', 'READY_SAUCES_AND_PASTES'),",
+              "    ('SAUCES_AND_PASTES', 'READY_SAUCES_AND_PASTES'),\n    ('READY_SAUCES_AND_PASTES', 'ALIGUE'),"
+          )
+          replace_once(
+              migration,
+              "    ('NO_NUTS', 'ALMOND_DRINK', false),",
+              "    ('NO_DAIRY', 'MILK_CHOCOLATE', false),\n    ('NO_DAIRY', 'WHITE_CHOCOLATE', false),\n    ('NO_NUTS', 'ALMOND_DRINK', false),"
+          )
+
+          baseline = 'src/test/java/io/github/venomenon328/miseendice/CatalogBaselineConsistencyTest.java'
+          replace_once(baseline, '            "ALIGUE",\n            "BAGOONG",\n', '')
+          replace_once(baseline, 'isEqualTo(652);', 'isEqualTo(651);')
+          replace_once(baseline, 'isEqualTo(590);', 'isEqualTo(589);')
+          replace_once(baseline, 'isEqualTo(777);', 'isEqualTo(780);')
+          replace_once(baseline, ').containsExactly("ALIGUE", "COFFEE");', ').containsExactly("COFFEE");')
+
+          final_test = 'src/test/java/io/github/venomenon328/miseendice/FinalCatalogSnapshotIntegrationTest.java'
+          replace_once(final_test, '.isEqualTo(652);', '.isEqualTo(651);')
+          replace_once(final_test, '.isEqualTo(777);', '.isEqualTo(780);')
+          anchor = '''            assertThat(value(connection, "select count(*) from exclusion_rule where active", Integer.class)).isEqualTo(22);\n'''
+          extra = anchor + '''\n            assertThat(value(connection, """\n                    select count(*)\n                    from ingredient_refinement relation\n                    join ingredient_concept parent on parent.id = relation.parent_concept_id\n                    join ingredient_concept child on child.id = relation.child_concept_id\n                    where (parent.code, child.code) in (\n                        ('FERMENTED_SEASONINGS', 'BAGOONG'),\n                        ('READY_SAUCES_AND_PASTES', 'BAGOONG'),\n                        ('READY_SAUCES_AND_PASTES', 'ALIGUE')\n                    )\n                    """, Integer.class)).isEqualTo(3);\n            assertThat(value(connection, """\n                    select count(*)\n                    from ingredient_concept\n                    where code = 'BAY_LEAF' and active and not random_draw_enabled\n                    """, Integer.class)).isOne();\n'''
+          replace_once(final_test, anchor, extra)
+          anchor = '''            assertThat(directExclusionTargets(connection, "NO_SOY_SAUCE"))\n                    .containsExactly("SOY_SAUCE:true");\n'''
+          extra = anchor + '''            assertThat(directExclusionTargets(connection, "NO_DAIRY"))\n                    .contains("MILK_CHOCOLATE:false", "WHITE_CHOCOLATE:false");\n'''
+          replace_once(final_test, anchor, extra)
+
+          initial = 'docs/INITIAL_CATALOG.md'
+          replace_once(initial, '- davon **652 zufällig ziehbar**,', '- davon **651 zufällig ziehbar**,')
+          replace_once(initial, '- **590 spezifische** ziehbare Vorgaben,', '- **589 spezifische** ziehbare Vorgaben,')
+          replace_once(initial, '- **46 nicht ziehbare Konzepte**, darunter vier reine Strukturknoten und 42 bewusst deaktivierte breite oder sehr gewöhnliche Vorgaben,', '- **47 nicht ziehbare Konzepte**, darunter vier reine Strukturknoten, 42 bewusst deaktivierte breite oder sehr gewöhnliche Vorgaben und das bewusst nicht zufällig ziehbare Lorbeerblatt,')
+          replace_once(initial, '- **777 bekannte Konkretisierungsbeziehungen**,', '- **780 bekannte Konkretisierungsbeziehungen**,')
+          replace_once(initial, 'Nach der Finalisierung besitzt der aktive Katalog **28 Root-Konzepte**. Davon sind `Aligue` und `Kaffee` spezifische Vorgaben; alle übrigen Wurzeln sind bewusst breite Familien oder fachlich eigenständige offene Konzepte.', 'Nach der Finalisierung besitzt der aktive Katalog **26 Root-Konzepte**. `Kaffee` bleibt das einzige spezifische Root-Konzept; alle übrigen Wurzeln sind bewusst breite Familien oder fachlich eigenständige offene Konzepte. `Bagoong` bleibt unter den fermentierten Würzzutaten und zugleich unter der engen Familie fertiger Saucen und Pasten eingeordnet; `Aligue` ist dort ebenfalls als Würzpaste verankert.')
+
+          readiness = 'docs/CANDIDATE_GENERATOR_DATA_READINESS.md'
+          replacements = {
+              '| aktive Ziehkandidaten | 652 |': '| aktive Ziehkandidaten | 651 |',
+              '| `SPECIFIC` | 590 |': '| `SPECIFIC` | 589 |',
+              '| mit Neuigkeitsstufe | 652 |': '| mit Neuigkeitsstufe | 651 |',
+              'Alle 652 Ziehkandidaten': 'Alle 651 Ziehkandidaten',
+              '| `AROMATIC` | 102 | 95 | 7 |': '| `AROMATIC` | 101 | 94 | 7 |',
+              '| `SEASONING` | 229 | 210 | 19 |': '| `SEASONING` | 228 | 209 | 19 |',
+              '| `AROMATIC+SEASONING` | 55 |': '| `AROMATIC+SEASONING` | 54 |',
+              '497 Konzepte besitzen mindestens eine der breit als strukturell oder unterstützend gemessenen Rollen einschließlich `FAT`; 155 sind ausschließlich geschmacksgebend.': '497 Konzepte besitzen mindestens eine der breit als strukturell oder unterstützend gemessenen Rollen einschließlich `FAT`; 154 sind ausschließlich geschmacksgebend.',
+              'Für 652 Ziehkandidaten und zwei aktive Teilnehmer existieren vollständig 1.304 Zuordnungen.': 'Für 651 Ziehkandidaten und zwei aktive Teilnehmer existieren vollständig 1.302 Zuordnungen.',
+              '| `EASY` | 465 |': '| `EASY` | 464 |',
+              '| `EASY` | 437 |': '| `EASY` | 436 |',
+              '| 1 | 282 | 246 | 36 |': '| 1 | 281 | 245 | 36 |',
+              '| `ACIDITY` | 93 | 559 | 14,3 % |': '| `ACIDITY` | 93 | 558 | 14,3 % |',
+              '| `BITTERNESS` | 76 | 576 | 11,7 % |': '| `BITTERNESS` | 75 | 576 | 11,5 % |',
+              '| `DOMINANCE` | 596 | 56 | 91,4 % |': '| `DOMINANCE` | 595 | 56 | 91,4 % |',
+              '| `FATTINESS` | 150 | 502 | 23,0 % |': '| `FATTINESS` | 150 | 501 | 23,0 % |',
+              '| `HEAT` | 54 | 598 | 8,3 % |': '| `HEAT` | 54 | 597 | 8,3 % |',
+              '| `SALTINESS` | 60 | 592 | 9,2 % |': '| `SALTINESS` | 60 | 591 | 9,2 % |',
+              '| `SWEETNESS` | 201 | 451 | 30,8 % |': '| `SWEETNESS` | 201 | 450 | 30,9 % |',
+              '| `UMAMI` | 256 | 396 | 39,3 % |': '| `UMAMI` | 255 | 396 | 39,2 % |',
+              '`DOMINANCE` ist für alle 590 spezifischen Ziehkandidaten': '`DOMINANCE` ist für alle 589 spezifischen Ziehkandidaten',
+              '| `AROMATIC` | 99 | 102 |': '| `AROMATIC` | 98 | 101 |',
+              '| `SEASONING` | 216 | 229 |': '| `SEASONING` | 215 | 228 |',
+              '| 3 | 221 |': '| 3 | 220 |',
+              '| `DRIED` | 44 |': '| `DRIED` | 43 |',
+              '| direkte Kanten | 777 |': '| direkte Kanten | 780 |',
+              '| Konzepte mit mehreren direkten Eltern | 102 |': '| Konzepte mit mehreren direkten Eltern | 103 |',
+              '| aktive Wurzeln | 28 |': '| aktive Wurzeln | 26 |',
+              '| verbundene Ziehkandidaten | 650 von 652 |': '| verbundene Ziehkandidaten | 650 von 651 |',
+              '| isolierte Ziehkandidaten | 2 von 652 |': '| isolierte Ziehkandidaten | 1 von 651 |',
+              'Die beiden isolierten Vorgaben sind kein Blocker.': 'Die einzelne isolierte Vorgabe `Kaffee` ist kein Blocker.'
+          }
+          for old, new in replacements.items():
+              replace_once(readiness, old, new)
+
+      - name: Generate canonical snapshot and fingerprint
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_file=src/test/java/io/github/venomenon328/miseendice/FinalCatalogSnapshotIntegrationTest.java
+          cp "$test_file" /tmp/FinalCatalogSnapshotIntegrationTest.java
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/test/java/io/github/venomenon328/miseendice/FinalCatalogSnapshotIntegrationTest.java')
+          text = p.read_text()
+          needle = '            List<String> expectedLines = snapshotLines();\n'
+          if text.count(needle) != 1:
+              raise SystemExit('snapshot generation insertion point not unique')
+          block = '''            if (Boolean.getBoolean("finalCatalogSnapshot.write")) {\n                List<String> generatedLines = canonicalLines(fresh);\n                Path output = Path.of("target", "final-catalog-snapshot-20260813.txt");\n                Files.createDirectories(output.getParent());\n                Files.write(output, generatedLines, UTF_8);\n                Files.writeString(Path.of("target", "final-catalog-fingerprint.txt"),\n                        fingerprint(fresh) + System.lineSeparator(), UTF_8);\n                return;\n            }\n\n'''
+          p.write_text(text.replace(needle, block + needle))
+          PY
+          ./mvnw -Dtest=FinalCatalogSnapshotIntegrationTest#freshBaselineUpgradeAndProductionFixtureConvergeWithoutChangingExistingIds -DfinalCatalogSnapshot.write=true test
+          mv /tmp/FinalCatalogSnapshotIntegrationTest.java "$test_file"
+          cp target/final-catalog-snapshot-20260813.txt src/main/resources/db/catalog/final-catalog-snapshot-20260813.txt
+          fingerprint=$(tr -d '\r\n' < target/final-catalog-fingerprint.txt)
+          lines=$(wc -l < target/final-catalog-snapshot-20260813.txt | tr -d ' ')
+          printf 'fingerprint=%s\nlines=%s\n' "$fingerprint" "$lines" | tee /tmp/final-catalog-values
+          test "$lines" = 6296
+
+          python - "$fingerprint" "$lines" <<'PY'
+          from pathlib import Path
+          import sys
+          fingerprint, lines = sys.argv[1], sys.argv[2]
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one occurrence, got {count}: {old!r}")
+              p.write_text(text.replace(old, new))
+
+          test = 'src/test/java/io/github/venomenon328/miseendice/FinalCatalogSnapshotIntegrationTest.java'
+          replace_once(test,
+              '            "26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52";',
+              f'            "{fingerprint}";')
+          replace_once(test, 'assertThat(expectedLines).hasSize(6291);', f'assertThat(expectedLines).hasSize({lines});')
+          replace_once(test, '.isEqualTo(652);', '.isEqualTo(651);')
+          replace_once(test, '.isEqualTo(777);', '.isEqualTo(780);')
+
+          anchor = '''            assertThat(value(connection, "select count(*) from exclusion_rule where active", Integer.class)).isEqualTo(22);\n'''
+          extra = anchor + '''\n            assertThat(value(connection, """\n                    select count(*)\n                    from ingredient_refinement relation\n                    join ingredient_concept parent on parent.id = relation.parent_concept_id\n                    join ingredient_concept child on child.id = relation.child_concept_id\n                    where (parent.code, child.code) in (\n                        ('FERMENTED_SEASONINGS', 'BAGOONG'),\n                        ('READY_SAUCES_AND_PASTES', 'BAGOONG'),\n                        ('READY_SAUCES_AND_PASTES', 'ALIGUE')\n                    )\n                    """, Integer.class)).isEqualTo(3);\n            assertThat(value(connection, """\n                    select count(*)\n                    from ingredient_concept\n                    where code = 'BAY_LEAF' and active and not random_draw_enabled\n                    """, Integer.class)).isOne();\n'''
+          replace_once(test, anchor, extra)
+          anchor = '''            assertThat(directExclusionTargets(connection, "NO_SOY_SAUCE"))\n                    .containsExactly("SOY_SAUCE:true");\n'''
+          replace_once(test, anchor, anchor + '''            assertThat(directExclusionTargets(connection, "NO_DAIRY"))\n                    .contains("MILK_CHOCOLATE:false", "WHITE_CHOCOLATE:false");\n''')
+
+          contract = 'docs/analysis/final-catalog-snapshot-contract-20260813.md'
+          replacements = {
+              '- normalisierte Fachzeilen: **6.291**': f'- normalisierte Fachzeilen: **{int(lines):,}**'.replace(',', '.'),
+              '`26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52`': f'`{fingerprint}`',
+              '- ziehbare Konzepte: **652** (`590 SPECIFIC`, `62 OPEN`)': '- ziehbare Konzepte: **651** (`589 SPECIFIC`, `62 OPEN`)',
+              '- direkte Konkretisierungen: **777**': '- direkte Konkretisierungen: **780**',
+              '- Ausschlussregeln/-ziele: **22 / 56**': '- Ausschlussregeln/-ziele: **22 / 58**',
+              'der Endwert umfasst 652 Ziehkandidaten': 'der Endwert umfasst 651 Ziehkandidaten',
+              '| `ACIDITY` | 78 / 621 (12,6 %) | 93 / 652 (14,3 %) |': '| `ACIDITY` | 78 / 621 (12,6 %) | 93 / 651 (14,3 %) |',
+              '| `BITTERNESS` | 53 / 621 (8,5 %) | 76 / 652 (11,7 %) |': '| `BITTERNESS` | 53 / 621 (8,5 %) | 75 / 651 (11,5 %) |',
+              '| `DOMINANCE` | 349 / 621 (56,2 %) | 596 / 652 (91,4 %) |': '| `DOMINANCE` | 349 / 621 (56,2 %) | 595 / 651 (91,4 %) |',
+              '| `FATTINESS` | 126 / 621 (20,3 %) | 150 / 652 (23,0 %) |': '| `FATTINESS` | 126 / 621 (20,3 %) | 150 / 651 (23,0 %) |',
+              '| `HEAT` | 53 / 621 (8,5 %) | 54 / 652 (8,3 %) |': '| `HEAT` | 53 / 621 (8,5 %) | 54 / 651 (8,3 %) |',
+              '| `SALTINESS` | nicht vorhanden | 60 / 652 (9,2 %) |': '| `SALTINESS` | nicht vorhanden | 60 / 651 (9,2 %) |',
+              '| `SWEETNESS` | 150 / 621 (24,2 %) | 201 / 652 (30,8 %) |': '| `SWEETNESS` | 150 / 621 (24,2 %) | 201 / 651 (30,9 %) |',
+              '| `UMAMI` | 217 / 621 (34,9 %) | 256 / 652 (39,3 %) |': '| `UMAMI` | 217 / 621 (34,9 %) | 255 / 651 (39,2 %) |',
+              'Alle 590 spezifischen Endkandidaten': 'Alle 589 spezifischen Endkandidaten',
+              '| `AROMATIC` | 89 / 96 | 99 / 102 |': '| `AROMATIC` | 89 / 96 | 98 / 101 |',
+              '| `SEASONING` | 196 / 212 | 216 / 229 |': '| `SEASONING` | 196 / 212 | 215 / 228 |'
+          }
+          for old, new in replacements.items():
+              replace_once(contract, old, new)
+          PY
+
+      - name: Verify complete change
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          ./mvnw clean verify
+
+      - name: Commit verified fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/pr55-review-fix.yml
+          git add src/main/resources/db/changelog/catalog/016-final-catalog-snapshot.sql \
+                  src/main/resources/db/catalog/final-catalog-snapshot-20260813.txt \
+                  src/test/java/io/github/venomenon328/miseendice/CatalogBaselineConsistencyTest.java \
+                  src/test/java/io/github/venomenon328/miseendice/FinalCatalogSnapshotIntegrationTest.java \
+                  docs/INITIAL_CATALOG.md \
+                  docs/CANDIDATE_GENERATOR_DATA_READINESS.md \
+                  docs/analysis/final-catalog-snapshot-contract-20260813.md
+          git commit -m 'Fix final catalog review findings'
+          git push origin HEAD:feat/52-final-catalog-snapshot
