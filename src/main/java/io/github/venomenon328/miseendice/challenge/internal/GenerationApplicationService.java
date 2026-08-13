@@ -5,6 +5,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.
 import io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.GeneratedCandidateSet;
+import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.AcceptedProposal;
 import io.github.venomenon328.miseendice.challenge.api.GenerationAttemptRequest;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Exhausted;
@@ -20,6 +21,8 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.AttemptView;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.BatchView;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ContextView;
+import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayDifference;
+import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayDifferenceType;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayResult;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayStatus;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
@@ -28,17 +31,24 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorValidationExcept
 import io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt;
 import io.github.venomenon328.miseendice.challenge.api.SeedSource;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Map;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 /** Coordinates short PostgreSQL transactions around pure CandidateSetEngine calculation. */
 @Service
@@ -51,6 +61,7 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
     private final CandidateSetEngine candidateSetEngine;
     private final SeedSource seedSource;
     private final GeneratorProperties properties;
+    private final ObjectMapper objectMapper;
     private final TransactionTemplate writeTransaction;
     private final TransactionTemplate repeatableReadTransaction;
 
@@ -61,6 +72,7 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
             CandidateSetEngine candidateSetEngine,
             SeedSource seedSource,
             GeneratorProperties properties,
+            ObjectMapper objectMapper,
             PlatformTransactionManager transactionManager
     ) {
         this.repository = repository;
@@ -69,6 +81,7 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
         this.candidateSetEngine = candidateSetEngine;
         this.seedSource = seedSource;
         this.properties = properties;
+        this.objectMapper = objectMapper;
         this.writeTransaction = new TransactionTemplate(transactionManager);
         this.repeatableReadTransaction = new TransactionTemplate(transactionManager);
         this.repeatableReadTransaction.setReadOnly(true);
@@ -282,16 +295,16 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
         Optional<AttemptView> attempt = repository.findAttemptView(attemptId);
         Optional<BatchView> batch = repository.findBatchView(attemptId, batchNumber);
         if (attempt.isEmpty() || batch.isEmpty()) {
-            return replayResult(ReplayStatus.NOT_FOUND, null, null, null, List.of(), List.of());
+            return replayResult(ReplayStatus.NOT_FOUND, null, null, null, List.of(), List.of(), null);
         }
         if (!configuration().generatorVersion().equals(attempt.get().generatorVersion())
                 || !configuration().configurationVersion().equals(attempt.get().configurationVersion())) {
             return replayResult(ReplayStatus.UNSUPPORTED_VERSION,
                     GeneratorReasonCode.UNSUPPORTED_GENERATOR_VERSION.name(), batch.get().setFingerprint(),
-                    null, storedSignatures(batch.get()), List.of());
+                    null, storedSignatures(batch.get()), List.of(), null);
         }
         if (!"GENERATED".equals(batch.get().status()) || batch.get().setFingerprint() == null) {
-            return replayResult(ReplayStatus.NOT_GENERATED, null, null, null, List.of(), List.of());
+            return replayResult(ReplayStatus.NOT_GENERATED, null, null, null, List.of(), List.of(), null);
         }
         try {
             PreparedGenerationAttempt prepared = repository.snapshotCodec().decodeAndVerify(
@@ -299,21 +312,138 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
             CandidateSetEngine.CandidateSetResult result = candidateSetEngine.generate(prepared, batchNumber);
             if (!(result instanceof GeneratedCandidateSet replayed)) {
                 return replayResult(ReplayStatus.MISMATCH, GeneratorReasonCode.REPLAY_FINGERPRINT_MISMATCH.name(),
-                        batch.get().setFingerprint(), null, storedSignatures(batch.get()), List.of());
+                        batch.get().setFingerprint(), null, storedSignatures(batch.get()), List.of(),
+                        difference(ReplayDifferenceType.SET_FINGERPRINT, "setFingerprint",
+                                batch.get().setFingerprint(), null));
             }
             List<String> stored = storedSignatures(batch.get());
             List<String> replayedSignatures = replayed.candidates().stream()
                     .map(candidate -> candidate.canonicalSignature()).toList();
-            boolean matches = batch.get().setFingerprint().equals(replayed.fingerprint())
-                    && stored.equals(replayedSignatures);
+            ReplayDifference firstDifference = firstDifference(batch.get(), replayed);
+            boolean matches = firstDifference == null;
             return replayResult(matches ? ReplayStatus.MATCH : ReplayStatus.MISMATCH,
                     matches ? null : GeneratorReasonCode.REPLAY_FINGERPRINT_MISMATCH.name(),
-                    batch.get().setFingerprint(), replayed.fingerprint(), stored, replayedSignatures);
+                    batch.get().setFingerprint(), replayed.fingerprint(), stored, replayedSignatures,
+                    firstDifference);
         } catch (GenerationSnapshotCodec.InvalidContextSnapshotException exception) {
             return replayResult(ReplayStatus.CONTEXT_SNAPSHOT_INVALID,
                     GeneratorReasonCode.CONTEXT_SNAPSHOT_INVALID.name(), batch.get().setFingerprint(),
-                    null, storedSignatures(batch.get()), List.of());
+                    null, storedSignatures(batch.get()), List.of(), null);
         }
+    }
+
+    private ReplayDifference firstDifference(BatchView storedBatch, GeneratedCandidateSet replayed) {
+        if (!Objects.equals(storedBatch.setFingerprint(), replayed.fingerprint())) {
+            return difference(ReplayDifferenceType.SET_FINGERPRINT, "setFingerprint",
+                    storedBatch.setFingerprint(), replayed.fingerprint());
+        }
+
+        List<GenerationQueries.CandidateView> storedCandidates = storedBatch.candidates();
+        List<AcceptedProposal> replayedCandidates = replayed.candidates();
+        if (storedCandidates.size() != replayedCandidates.size()) {
+            return difference(ReplayDifferenceType.CANDIDATE_SIGNATURE, "candidates.length",
+                    Integer.toString(storedCandidates.size()), Integer.toString(replayedCandidates.size()));
+        }
+
+        for (int index = 0; index < storedCandidates.size(); index++) {
+            GenerationQueries.CandidateView stored = storedCandidates.get(index);
+            AcceptedProposal replayedCandidate = replayedCandidates.get(index);
+            String candidatePath = "candidates[" + stored.candidateNumber() + "]";
+            if (!Objects.equals(stored.canonicalSignature(), replayedCandidate.canonicalSignature())) {
+                return difference(ReplayDifferenceType.CANDIDATE_SIGNATURE,
+                        candidatePath + ".canonicalSignature", stored.canonicalSignature(),
+                        replayedCandidate.canonicalSignature());
+            }
+            if (!sameDecimal(stored.totalScore(), replayedCandidate.evaluation().totalScore())) {
+                return difference(ReplayDifferenceType.CANDIDATE_TOTAL_SCORE,
+                        candidatePath + ".totalScore", decimal(stored.totalScore()),
+                        decimal(replayedCandidate.evaluation().totalScore()));
+            }
+            String replayedComponents = json(replayedCandidate.evaluation().components());
+            if (!sameJson(stored.componentScoresJson(), replayedComponents)) {
+                return jsonDifference(ReplayDifferenceType.CANDIDATE_COMPONENT_SCORES,
+                        candidatePath + ".componentScores", stored.componentScoresJson(), replayedComponents);
+            }
+            String replayedReasons = json(replayedCandidate.evaluation().reasonCodes().stream()
+                    .map(Enum::name).sorted().toList());
+            if (!sameJson(stored.reasonCodesJson(), replayedReasons)) {
+                return jsonDifference(ReplayDifferenceType.CANDIDATE_REASON_CODES,
+                        candidatePath + ".reasonCodes", stored.reasonCodesJson(), replayedReasons);
+            }
+        }
+
+        String replayedEvaluation = json(replayed.evaluation());
+        if (!sameJson(storedBatch.setEvaluationJson(), replayedEvaluation)) {
+            return jsonDifference(ReplayDifferenceType.SET_EVALUATION, "setEvaluation",
+                    storedBatch.setEvaluationJson(), replayedEvaluation);
+        }
+        return null;
+    }
+
+    private ReplayDifference jsonDifference(
+            ReplayDifferenceType type,
+            String path,
+            String stored,
+            String replayed
+    ) {
+        return difference(type, path, canonicalJson(stored), canonicalJson(replayed));
+    }
+
+    private static ReplayDifference difference(
+            ReplayDifferenceType type,
+            String path,
+            String stored,
+            String replayed
+    ) {
+        return new ReplayDifference(type, path, stored, replayed);
+    }
+
+    private boolean sameJson(String stored, String replayed) {
+        return Objects.equals(canonicalJson(stored), canonicalJson(replayed));
+    }
+
+    private String canonicalJson(String json) {
+        if (json == null) {
+            return null;
+        }
+        try {
+            Object parsed = objectMapper.readValue(json, Object.class);
+            return new String(CanonicalSetFingerprint.canonicalBytes(normalizeJson(parsed)), StandardCharsets.UTF_8);
+        } catch (JacksonException exception) {
+            throw new IllegalStateException("Persisted replay diagnostic is invalid JSON", exception);
+        }
+    }
+
+    private String json(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JacksonException exception) {
+            throw new IllegalStateException("Replayed diagnostic is not JSON serializable", exception);
+        }
+    }
+
+    private static Object normalizeJson(Object value) {
+        if (value instanceof Number number) {
+            BigDecimal normalized = new BigDecimal(number.toString()).stripTrailingZeros();
+            return normalized.signum() == 0 ? BigDecimal.ZERO : normalized;
+        }
+        if (value instanceof Map<?, ?> map) {
+            Map<String, Object> normalized = new TreeMap<>();
+            map.forEach((key, item) -> normalized.put(String.valueOf(key), normalizeJson(item)));
+            return normalized;
+        }
+        if (value instanceof List<?> list) {
+            return list.stream().map(GenerationApplicationService::normalizeJson).toList();
+        }
+        return value;
+    }
+
+    private static boolean sameDecimal(BigDecimal stored, BigDecimal replayed) {
+        return stored == null ? replayed == null : replayed != null && stored.compareTo(replayed) == 0;
+    }
+
+    private static String decimal(BigDecimal value) {
+        return value == null ? null : value.stripTrailingZeros().toPlainString();
     }
 
     private static ReplayResult replayResult(
@@ -322,10 +452,11 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
             String storedFingerprint,
             String replayedFingerprint,
             List<String> storedSignatures,
-            List<String> replayedSignatures
+            List<String> replayedSignatures,
+            ReplayDifference difference
     ) {
         return new ReplayResult(status, reason, storedFingerprint, replayedFingerprint,
-                storedSignatures, replayedSignatures);
+                storedSignatures, replayedSignatures, difference);
     }
 
     private static List<String> storedSignatures(BatchView batch) {

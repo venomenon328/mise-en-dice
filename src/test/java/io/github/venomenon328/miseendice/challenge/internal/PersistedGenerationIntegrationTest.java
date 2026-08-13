@@ -14,6 +14,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Manual
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartExistingSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
+import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayDifferenceType;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayStatus;
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -122,6 +123,79 @@ class PersistedGenerationIntegrationTest {
                 "select count(*) from challenge_candidate", Integer.class)).isEqualTo(persistedCandidates);
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from generation_batch", Integer.class)).isEqualTo(persistedBatches);
+    }
+
+    @Test
+    void replayReportsTheFirstPersistedDifferenceThroughThePublicReadOnlyQuery() {
+        Generated generated = generated(commands.startNewSession(
+                new StartNewSession(DATE, List.of(), 47_000_002L)));
+        GenerationQueries.BatchView batch = queries.findBatch(generated.attemptId(), 1).orElseThrow();
+        GenerationQueries.CandidateView candidate = batch.candidates().getFirst();
+
+        assertThat(queries.replay(generated.attemptId(), 1).difference()).isNull();
+
+        jdbcTemplate.update("update generation_batch set set_fingerprint = ? where id = ?",
+                "0".repeat(64), batch.batchId());
+        assertDifference(generated.attemptId(), ReplayDifferenceType.SET_FINGERPRINT, "setFingerprint");
+        jdbcTemplate.update("update generation_batch set set_fingerprint = ? where id = ?",
+                batch.setFingerprint(), batch.batchId());
+
+        jdbcTemplate.update("update challenge_candidate set canonical_signature = ? where id = ?",
+                candidate.canonicalSignature() + "-changed", candidate.candidateId());
+        assertDifference(generated.attemptId(), ReplayDifferenceType.CANDIDATE_SIGNATURE,
+                "candidates[" + candidate.candidateNumber() + "].canonicalSignature");
+        jdbcTemplate.update("update challenge_candidate set canonical_signature = ? where id = ?",
+                candidate.canonicalSignature(), candidate.candidateId());
+
+        jdbcTemplate.update("update challenge_candidate set total_score = total_score + 0.001 where id = ?",
+                candidate.candidateId());
+        assertDifference(generated.attemptId(), ReplayDifferenceType.CANDIDATE_TOTAL_SCORE,
+                "candidates[" + candidate.candidateNumber() + "].totalScore");
+        jdbcTemplate.update("update challenge_candidate set total_score = ? where id = ?",
+                candidate.totalScore(), candidate.candidateId());
+
+        jdbcTemplate.update("""
+                update challenge_candidate
+                set component_scores = jsonb_set(component_scores, '{review_probe}', '0'::jsonb)
+                where id = ?
+                """, candidate.candidateId());
+        assertDifference(generated.attemptId(), ReplayDifferenceType.CANDIDATE_COMPONENT_SCORES,
+                "candidates[" + candidate.candidateNumber() + "].componentScores");
+        jdbcTemplate.update("update challenge_candidate set component_scores = cast(? as jsonb) where id = ?",
+                candidate.componentScoresJson(), candidate.candidateId());
+
+        jdbcTemplate.update("update challenge_candidate set generator_reason_codes = '[\"REVIEW_PROBE\"]'::jsonb where id = ?",
+                candidate.candidateId());
+        assertDifference(generated.attemptId(), ReplayDifferenceType.CANDIDATE_REASON_CODES,
+                "candidates[" + candidate.candidateNumber() + "].reasonCodes");
+        jdbcTemplate.update("update challenge_candidate set generator_reason_codes = cast(? as jsonb) where id = ?",
+                candidate.reasonCodesJson(), candidate.candidateId());
+
+        jdbcTemplate.update("""
+                update generation_batch
+                set set_evaluation = jsonb_set(set_evaluation, '{review_probe}', 'true'::jsonb)
+                where id = ?
+                """, batch.batchId());
+        assertDifference(generated.attemptId(), ReplayDifferenceType.SET_EVALUATION, "setEvaluation");
+    }
+
+    @Test
+    void replayKeepsMatchAndNonMismatchStatesFreeOfDifferences() {
+        Generated generated = generated(commands.startNewSession(
+                new StartNewSession(DATE, List.of(), 47_000_003L)));
+
+        assertThat(queries.replay(generated.attemptId(), 1))
+                .extracting(GenerationQueries.ReplayResult::status, GenerationQueries.ReplayResult::difference)
+                .containsExactly(ReplayStatus.MATCH, null);
+        assertThat(queries.replay(Long.MAX_VALUE, 1))
+                .extracting(GenerationQueries.ReplayResult::status, GenerationQueries.ReplayResult::difference)
+                .containsExactly(ReplayStatus.NOT_FOUND, null);
+
+        jdbcTemplate.update("update generation_attempt set configuration_version = 'unsupported-review-test' where id = ?",
+                generated.attemptId());
+        assertThat(queries.replay(generated.attemptId(), 1))
+                .extracting(GenerationQueries.ReplayResult::status, GenerationQueries.ReplayResult::difference)
+                .containsExactly(ReplayStatus.UNSUPPORTED_VERSION, null);
     }
 
     @Test
@@ -416,6 +490,14 @@ class PersistedGenerationIntegrationTest {
     private Generated generated(GenerationOutcome outcome) {
         assertThat(outcome).isInstanceOf(Generated.class);
         return (Generated) outcome;
+    }
+
+    private void assertDifference(long attemptId, ReplayDifferenceType type, String path) {
+        assertThat(queries.replay(attemptId, 1))
+                .extracting(GenerationQueries.ReplayResult::status,
+                        replay -> replay.difference().type(),
+                        replay -> replay.difference().path())
+                .containsExactly(ReplayStatus.MISMATCH, type, path);
     }
 
     private long conceptId(int offset) {

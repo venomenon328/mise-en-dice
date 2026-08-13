@@ -1204,6 +1204,19 @@ Setdiagnose einschließlich Reservoirmetriken und Fallbackversuchen sowie die ge
 Kandidatenliste in Auswahlreihenfolge. Nicht ausgewählte Reservoirkandidaten gehören nicht zur Set-Payload.
 Separate Snapshotfingerprints erlauben, eine Abweichung vor dem eigentlichen Generatorlauf zu lokalisieren.
 
+### 20.2 Generator-Labor (Phase 9E1 / Issue #37)
+
+Das Generator-Labor verwendet dieselbe öffentliche Generatorpipeline wie die persistente Generation, ruft aber
+niemals `GenerationCommands` auf. Eine Preview materialisiert ihren Katalog- und Historiensnapshot nur lesend;
+`PRODUCTION_VISIBLE` verwendet die bestätigte sichtbare Historie, synthetische Szenarien bleiben explizit getrennt.
+Es entstehen weder Session, Attempt, Batch, Candidate noch Historienexposition.
+
+Persistierte Attempts und Batches werden ausschließlich aus ihren gespeicherten Snapshots angezeigt. Replay ist
+ebenfalls read-only und vergleicht Fingerprint, Kandidatenreihenfolge/-signatur, Gesamt- und Komponentenscores,
+Reason-Codes sowie Setevaluation. Die erste relevante Abweichung ist als begrenzter strukturierter Wert sichtbar;
+eine nicht unterstützte Version bleibt ausdrücklich kein Mismatch. Simulations-/Reportlogik folgt getrennt in #53,
+der zugehörige Adminadapter in #54; das Kalibrierungsgate bleibt #40.
+
 ## 21. Test- und Simulationsvertrag
 
 ### 21.1 Reine Fachtests

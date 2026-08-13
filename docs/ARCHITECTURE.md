@@ -332,7 +332,7 @@ Das Modell führt `generation_batch` als eigene Ebene unter `generation_attempt`
 
 Der vollständige erfolgreiche Zwölfer-Satz wird mit Attempt-Status, Kandidaten und Requirements atomar in einer kurzen Schreibtransaktion gespeichert; die reine `CandidateSetEngine`-Berechnung liegt außerhalb davon. Operationstoken, Lease, Zeilensperre und eindeutige Attempt-/Batchschlüssel tragen Retry, Konkurrenz und Restart. Erschöpfung ist ein fachliches Ergebnis; unbekannte PostgreSQL- oder Laufzeitfehler bleiben technisch. Replay verwendet ausschließlich gespeicherte Snapshots, Versionen, RNG und Seed, schreibt nichts und erzeugt keine neue Historienexposition.
 
-Generator-Labor und Simulation rufen dieselbe öffentliche Challenge-API auf wie spätere Adapter. Sie besitzen keine zweite Generator- oder Statistikimplementierung und schreiben bei Vorschau, Simulation oder Replay keine operativen Challenge-Daten.
+Das Generator-Labor aus Issue #37 und die nachgelagerten, getrennten Simulationspakete #53/#54 rufen dieselbe öffentliche Challenge-API auf wie spätere Adapter. Sie besitzen keine zweite Generator- oder Statistikimplementierung und schreiben bei Vorschau, Simulation oder Replay keine operativen Challenge-Daten.
 
 ## 11. Entwicklungsreihenfolge
 

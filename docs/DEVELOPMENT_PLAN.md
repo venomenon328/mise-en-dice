@@ -331,14 +331,23 @@ Vor dem Generator-Labor wird der redaktionell geprüfte Produktionskatalog als k
 
 Issue #37 und Issue #40 bleiben eigenständige nachgelagerte Pakete; ihre Labor-, Simulations- und Kalibrierungsumfänge werden durch den Katalog-Snapshot nicht vorgezogen.
 
-### Phase 9E: Generator-Labor und Diagnostik (Issue #37)
+### Phase 9E1: Generator-Labor und Diagnostik (Issue #37)
 
-- geschützte nicht persistierende Vorschau,
-- verständliche Kandidaten- und Setdiagnosen,
-- Kandidatenpaarvergleich,
-- read-only Anzeige persistierter Batches,
-- Replaydarstellung,
-- begrenzte synchrone Simulation und reproduzierbarer Report.
+- geschützte, strikt nicht persistierende Vorschau,
+- verständliche Kandidaten- und Setdiagnosen einschließlich PairAssessment-basierter Paarerklärung,
+- read-only Anzeige persistierter Batches ausschließlich aus ihren Snapshots,
+- Replaydarstellung mit strukturierter erster Abweichung,
+- keine Simulations- oder Kalibrierungslogik.
+
+### Phase 9E2: Begrenzte Simulations- und Reportlogik (Issue #53)
+
+- gemeinsamer, begrenzter und nicht schreibender Simulations-/Reportkern,
+- keine neue Generatorpipeline und kein Adminadapter.
+
+### Phase 9E3: Adminadapter für Simulation (Issue #54)
+
+- dünne geschützte Verwaltungsansicht über den gemeinsamen Simulationskern,
+- keine Duplizierung von Generator-, Statistik- oder Persistenzlogik.
 
 ### Phase 9F: Kalibrierung und Abschlussgate (Issue #40)
 
