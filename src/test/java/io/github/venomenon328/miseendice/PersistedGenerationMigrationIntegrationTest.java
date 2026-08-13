@@ -118,6 +118,8 @@ class PersistedGenerationMigrationIntegrationTest {
             assertThat(countWhere(connection, "curation_round", "id = " + round)).isEqualTo(1);
             assertThat(countWhere(connection, "challenge_candidate", "id = " + candidate)).isEqualTo(1);
             assertThat(countWhere(connection, "candidate_requirement", "candidate_id = " + candidate)).isEqualTo(4);
+            assertThat(countWhere(connection, "candidate_requirement",
+                    "candidate_id = " + candidate + " and concept_code_snapshot is not null")).isEqualTo(4);
             assertThat(countWhere(connection, "challenge", "generation_attempt_id = " + attempt)).isEqualTo(1);
             assertThat(countWhere(connection, "generation_batch",
                     "generation_attempt_id = " + attempt + " and batch_number = 1 and legacy_migrated"))
