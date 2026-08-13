@@ -51,7 +51,7 @@ class AdministrationEntryPointController {
         if (attempt != null && attempt > 0) {
             loadPersistedGeneration(attempt, batch, model);
         }
-        return "admin/generator";
+        return "admin/audit";
     }
 
     @PostMapping("/admin/generator/preview")
@@ -66,13 +66,13 @@ class AdministrationEntryPointController {
             model.addAttribute("previewForm", form);
             model.addAttribute("previewErrors", List.of(exception.getMessage()));
         }
-        return "admin/generator";
+        return "admin/audit";
     }
 
     @PostMapping("/admin/generator/replay")
     String generatorReplay(@RequestParam long attemptId, @RequestParam int batchNumber, Model model) {
         model.addAttribute("replayResult", generationQueries.replay(attemptId, batchNumber));
-        return "admin/fragments/generator-replay :: replay";
+        return "admin/audit :: generatorReplay";
     }
 
     @GetMapping("/admin/generator/concepts")
@@ -88,10 +88,11 @@ class AdministrationEntryPointController {
         model.addAttribute("conceptCandidates", search.isBlank()
                 ? List.of()
                 : catalogQueries.searchRelationCandidates(search.strip(), 0));
-        return "admin/fragments/generator-concepts :: options";
+        return "admin/audit :: generatorConceptOptions";
     }
 
     private void generatorBaseModel(Model model) {
+        model.addAttribute("generatorLab", true);
         model.addAttribute("laboratoryScenarios", generatorLaboratory.scenarios());
         model.addAttribute("attemptTypes", List.of(AttemptType.values()));
         if (!model.containsAttribute("previewForm")) {
