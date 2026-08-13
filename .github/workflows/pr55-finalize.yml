@@ -1,45 +1,10 @@
-name: Finalize PR 55 review fixes
+name: Disabled PR 55 finalizer
 
 on:
-  push:
-    branches:
-      - feat/52-final-catalog-snapshot
-
-permissions:
-  contents: write
+  workflow_dispatch:
 
 jobs:
-  finalize:
-    if: github.actor != 'github-actions[bot]'
+  disabled:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 21
-          cache: maven
-      - name: Correct review helper and run full verification
-        shell: python
-        run: |
-          from pathlib import Path
-          p = Path('.github/scripts/pr55_review_fix.py')
-          text = p.read_text()
-          replacements = {
-              "('| `AROMATIC` | 89 / 94 | 99 / 100 |', '| `AROMATIC` | 89 / 94 | 98 / 100 |')": "('| `AROMATIC` | 89 / 96 | 99 / 102 |', '| `AROMATIC` | 89 / 96 | 98 / 101 |')",
-              "('| `SEASONING` | 196 / 212 | 216 / 229 |', '| `SEASONING` | 196 / 212 | 215 / 229 |')": "('| `SEASONING` | 196 / 212 | 216 / 229 |', '| `SEASONING` | 196 / 212 | 215 / 228 |')",
-              "    ROOT / '.github/workflows/pr55-workflow-repair.yml',\n": "    ROOT / '.github/workflows/pr55-workflow-repair.yml',\n    ROOT / '.github/workflows/pr55-finalize.yml',\n",
-          }
-          for old, new in replacements.items():
-              if text.count(old) != 1:
-                  raise SystemExit(f'expected one helper occurrence, got {text.count(old)}: {old!r}')
-              text = text.replace(old, new)
-          p.write_text(text)
-          import subprocess
-          subprocess.run(['python', str(p)], check=True)
-      - name: Anchor repaired commit for takeover
-        if: success()
-        run: git push --force origin HEAD:refs/heads/agent/pr55-materialized
+      - run: echo "Superseded by isolated PR 55 materialization."
