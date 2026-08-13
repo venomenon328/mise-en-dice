@@ -137,17 +137,55 @@ public interface GenerationQueries {
         NOT_GENERATED
     }
 
+    enum ReplayDifferenceType {
+        SET_FINGERPRINT,
+        CANDIDATE_SIGNATURE,
+        CANDIDATE_TOTAL_SCORE,
+        CANDIDATE_COMPONENT_SCORES,
+        CANDIDATE_REASON_CODES,
+        SET_EVALUATION
+    }
+
+    record ReplayDifference(
+            ReplayDifferenceType type,
+            String path,
+            String storedValue,
+            String replayedValue
+    ) {
+        public ReplayDifference {
+            if (type == null || path == null || path.isBlank()) {
+                throw new IllegalArgumentException("Replay differences require a type and path");
+            }
+        }
+    }
+
     record ReplayResult(
             ReplayStatus status,
             String reasonCode,
             String storedFingerprint,
             String replayedFingerprint,
             List<String> storedCandidateSignatures,
-            List<String> replayedCandidateSignatures
+            List<String> replayedCandidateSignatures,
+            ReplayDifference difference
     ) {
         public ReplayResult {
             storedCandidateSignatures = List.copyOf(storedCandidateSignatures);
             replayedCandidateSignatures = List.copyOf(replayedCandidateSignatures);
+            if (status != ReplayStatus.MISMATCH && difference != null) {
+                throw new IllegalArgumentException("Only replay mismatches may contain a structured difference");
+            }
+        }
+
+        public ReplayResult(
+                ReplayStatus status,
+                String reasonCode,
+                String storedFingerprint,
+                String replayedFingerprint,
+                List<String> storedCandidateSignatures,
+                List<String> replayedCandidateSignatures
+        ) {
+            this(status, reasonCode, storedFingerprint, replayedFingerprint,
+                    storedCandidateSignatures, replayedCandidateSignatures, null);
         }
     }
 }
