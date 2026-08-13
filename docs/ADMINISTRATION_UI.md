@@ -1121,7 +1121,29 @@ Folgende Punkte blockieren die erste Webverwaltung nicht:
 
 Wenn einer dieser Punkte später relevant wird, wird er als eigenes Paket spezifiziert statt stillschweigend in einen bestehenden CRUD-Flow eingeschmuggelt.
 
-## 25. Abnahmekriterium dieser Spezifikation
+## 25. Generator-Labor (Phase 9E1 / Issue #37)
+
+`/admin/generator` ist eine geschützte serverseitig gerenderte Diagnoseansicht. Sie ergänzt die Katalogverwaltung,
+ersetzt aber keinen produktiven Challenge-Flow und enthält keine Katalogbearbeitung.
+
+Die Preview nimmt fachliches Datum, INITIAL/REROLL, optionalen Seed, einen stabilen Historienszenariocode,
+null bis zwei manuelle Vorgaben sowie für REROLL exakt vier gematchte Hardblockkonzepte entgegen. Der verwendete
+Seed wird angezeigt. Die Aktion verwendet die öffentliche Challenge-API, besitzt CSRF-Schutz und erzeugt weder
+Session, Attempt, Batch, Candidate noch sichtbare Challenge; sie verändert deshalb weder Cooldowns noch
+Neuigkeitskadenz.
+
+Die Ergebnisansicht zeigt die zwölf Kandidaten mit Requirements, Ziel-/Ist-Neuigkeit, Scores und Reason-Codes,
+Setquoten, Reservoir-/Fallbackdiagnostik, Nutzung, Auswahlentscheidungen und die bestehende PairAssessment als
+Autorität des Paarvergleichs. Rohsnapshots sind nur ergänzende einklappbare Diagnose.
+
+Ein Persisted-Abschnitt lädt Attempt und Batch ausschließlich über `GenerationQueries`: Datum, Statuszeiten,
+Versionen, Fingerprints, historische Candidate-/Requirement-Snapshots und Legacy-Grenzen bleiben sichtbar.
+Replay ist ein read-only POST mit CSRF-Schutz und zeigt Match, nicht unterstützte Version, ungültigen Snapshot oder
+die erste strukturierte Differenz. Aktuelle Katalogwerte reparieren keine historischen Anzeige- oder Replaydaten.
+
+Simulation und Report folgen in #53, deren Adminadapter in #54; Kalibrierung ist #40 und nicht Teil dieser Ansicht.
+
+## 26. Abnahmekriterium dieser Spezifikation
 
 Nach diesem Dokument sind für den Start von Paket A keine fachlichen oder gestalterischen Entscheidungen mehr offen, die dessen Scope blockieren.
 

@@ -5,7 +5,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
@@ -73,7 +73,16 @@ class GeneratorLaboratoryAdministrationMvcTest {
     void generatorLaboratoryIsProtected() throws Exception {
         mockMvc.perform(get("/admin/generator"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrlPattern("**/login"));
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    @WithMockUser(username = "generator-lab-admin")
+    void normalAuditRenderingDoesNotRequireAReplayResult() throws Exception {
+        mockMvc.perform(get("/admin/audit"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-testid=\"audit-list\"")))
+                .andExpect(content().string(containsString("Redaktionelle Historie")));
     }
 
     @Test
@@ -105,6 +114,8 @@ class GeneratorLaboratoryAdministrationMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Vollständiger Zwölfer-Satz")))
                 .andExpect(content().string(containsString("Kandidatenpaare")))
+                .andExpect(content().string(containsString("Baseline-Neuigkeit")))
+                .andExpect(content().string(containsString("Zielverteilungen und Auswahl")))
                 .andExpect(content().string(containsString("PairAssessment")));
     }
 
@@ -122,6 +133,8 @@ class GeneratorLaboratoryAdministrationMvcTest {
                         .param("batch", "1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Persistierter Attempt")))
+                .andExpect(content().string(containsString("Datum 2026-08-13")))
+                .andExpect(content().string(containsString("Erstellt")))
                 .andExpect(content().string(containsString(generated.setFingerprint())));
 
         mockMvc.perform(post("/admin/generator/replay").with(csrf())

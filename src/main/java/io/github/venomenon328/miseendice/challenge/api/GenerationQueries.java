@@ -156,6 +156,12 @@ public interface GenerationQueries {
             if (type == null || path == null || path.isBlank()) {
                 throw new IllegalArgumentException("Replay differences require a type and path");
             }
+            storedValue = limited(storedValue);
+            replayedValue = limited(replayedValue);
+        }
+
+        private static String limited(String value) {
+            return value == null || value.length() <= 500 ? value : value.substring(0, 497) + "...";
         }
     }
 
@@ -172,8 +178,7 @@ public interface GenerationQueries {
             storedCandidateSignatures = List.copyOf(storedCandidateSignatures);
             replayedCandidateSignatures = List.copyOf(replayedCandidateSignatures);
             if (status == ReplayStatus.MISMATCH && difference == null) {
-                difference = new ReplayDifference(ReplayDifferenceType.SET_FINGERPRINT, "setFingerprint",
-                        limited(storedFingerprint), limited(replayedFingerprint));
+                throw new IllegalArgumentException("Replay mismatches require a structured first difference");
             } else if (status != ReplayStatus.MISMATCH && difference != null) {
                 throw new IllegalArgumentException("Only replay mismatches may contain a structured difference");
             }
@@ -189,10 +194,6 @@ public interface GenerationQueries {
         ) {
             this(status, reasonCode, storedFingerprint, replayedFingerprint,
                     storedCandidateSignatures, replayedCandidateSignatures, null);
-        }
-
-        private static String limited(String value) {
-            return value == null || value.length() <= 500 ? value : value.substring(0, 497) + "...";
         }
     }
 }
