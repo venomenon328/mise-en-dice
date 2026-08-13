@@ -288,6 +288,6 @@ Issue #52 führt den genehmigten Zustand als normalisierten, codebasierten Snaps
 
 ## 10. Umsetzungsergebnis
 
-Der Review ist durch `catalog/016-final-catalog-snapshot.sql` umgesetzt. Der finale Zustand umfasst 698 aktive Konzepte, davon 652 ziehbar, 777 direkte Konkretisierungen, acht Dimensionen und 22 Ausschlussregeln. Der normalisierte Snapshot enthält 6.291 Fachzeilen und besitzt SHA-256 `358be33c5f4edc856d9ddcd278d3f94ec84cec1991fc57ad54d94ec41acd0756`.
+Der Review ist durch `catalog/016-final-catalog-snapshot.sql` umgesetzt. Der finale Zustand umfasst 698 aktive Konzepte, davon 652 ziehbar, 777 direkte Konkretisierungen, acht Dimensionen und 22 Ausschlussregeln. Der mit PostgreSQL-Kollation `C` normalisierte Snapshot enthält 6.291 Fachzeilen und besitzt SHA-256 `26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52`.
 
 Fresh Build, Upgrade der unberührten Repository-Baseline und Upgrade der Produktions-Fixture konvergieren auf diesen Wert; bestehende IDs bleiben in beiden Upgradepfaden erhalten. Die vollständige Normalisierung, die beiden zulässigen Precondition-Fingerprints sowie die Vorher-/Nachher-Abdeckung der Dimensionen sind in [`final-catalog-snapshot-contract-20260813.md`](final-catalog-snapshot-contract-20260813.md) dokumentiert.

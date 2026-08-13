@@ -8,7 +8,7 @@ Umsetzung: Issue #52
 Der normalisierte Endzustand liegt unter [`src/main/resources/db/catalog/final-catalog-snapshot-20260813.txt`](../../src/main/resources/db/catalog/final-catalog-snapshot-20260813.txt).
 
 - normalisierte Fachzeilen: **6.291**
-- SHA-256 einschließlich abschließendem LF: `358be33c5f4edc856d9ddcd278d3f94ec84cec1991fc57ad54d94ec41acd0756`
+- SHA-256 einschließlich abschließendem LF: `26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52`
 - aktive Konzepte: **698**
 - ziehbare Konzepte: **652** (`590 SPECIFIC`, `62 OPEN`)
 - direkte Konkretisierungen: **777**
@@ -26,8 +26,12 @@ Technische Primär- und Fremdschlüssel, Erstellungs-/Änderungszeitpunkte und O
 
 | Ausgangszustand | kanonischer Precondition-MD5 |
 |---|---|
-| unberührte Repository-Baseline auf dem nach PR #51 aktuellen `main` | `511118414a53aa9118a3212b7912a961` |
-| Produktions-Fixture vom 13. August 2026 | `94be058535b8f5cc026085bfaf268173` |
+| unberührte Repository-Baseline auf dem nach PR #51 aktuellen `main` | `f90ba3058230969f5cda13cb93f227c2` |
+| Produktions-Fixture vom 13. August 2026 | `759d87bdee666f18e94b787eb4b99217` |
+
+Die Zeilen werden dabei explizit mit der PostgreSQL-Kollation `C` sortiert. Damit
+bleiben beide Eingangs-Fingerprints zwischen den Debian-basierten Testcontainern
+und dem Alpine-basierten Deployment-Image identisch.
 
 Der MD5 dient ausschließlich als vollständige, in PostgreSQL ohne Erweiterung berechenbare Precondition. Der veröffentlichte Endfingerprint ist SHA-256. Ein anderer Ausgangszustand bricht vor dem ersten schreibenden Statement mit `final catalog snapshot refuses unknown starting state` ab. Nach erfolgreicher einmaliger Ausführung werden spätere redaktionelle Änderungen durch normale Liquibase-Starts nicht überschrieben.
 

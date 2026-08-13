@@ -44,7 +44,7 @@ class FinalCatalogSnapshotIntegrationTest {
     private static final String SNAPSHOT_RESOURCE =
             "db/catalog/final-catalog-snapshot-20260813.txt";
     private static final String FINAL_SHA_256 =
-            "358be33c5f4edc856d9ddcd278d3f94ec84cec1991fc57ad54d94ec41acd0756";
+            "26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52";
     private static final String FIXTURE_DIRECTORY =
             "db/fixtures/final-catalog-production-20260813/";
     private static final List<String> FIXTURE_PARTS = List.of(
@@ -117,7 +117,7 @@ class FinalCatalogSnapshotIntegrationTest {
                 join exclusion_rule rule on rule.id = target.exclusion_rule_id
                 join ingredient_concept concept on concept.id = target.ingredient_concept_id
             )
-            select line from canonical_lines order by line
+            select line from canonical_lines order by line collate "C"
             """;
 
     @Container
@@ -139,11 +139,17 @@ class FinalCatalogSnapshotIntegrationTest {
 
             runLiquibase(baseline, BEFORE_FINAL_CHANGELOG);
             Map<String, Long> baselineIds = conceptIds(baseline);
-            runLiquibase(baseline, MASTER_CHANGELOG);
 
             runLiquibase(production, BEFORE_FINAL_CHANGELOG);
             loadProductionFixture(productionDatabase, production);
             Map<String, Long> productionIds = conceptIds(production);
+
+            assertThat(List.of(md5Fingerprint(baseline), md5Fingerprint(production)))
+                    .containsExactly(
+                            "f90ba3058230969f5cda13cb93f227c2",
+                            "759d87bdee666f18e94b787eb4b99217");
+
+            runLiquibase(baseline, MASTER_CHANGELOG);
             runLiquibase(production, MASTER_CHANGELOG);
 
             assertThat(conceptIds(baseline)).containsAllEntriesOf(baselineIds);
@@ -370,6 +376,12 @@ class FinalCatalogSnapshotIntegrationTest {
             digest.update(line.getBytes(UTF_8));
             digest.update((byte) '\n');
         }
+        return java.util.HexFormat.of().formatHex(digest.digest());
+    }
+
+    private static String md5Fingerprint(Connection connection) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("MD5");
+        digest.update(String.join("\n", canonicalLines(connection)).getBytes(UTF_8));
         return java.util.HexFormat.of().formatHex(digest.digest());
     }
 

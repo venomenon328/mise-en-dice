@@ -1,7 +1,7 @@
 # Datenreife für den Kandidatengenerator
 
 Stand: 13. August 2026
-Bezugsstand: finaler Katalog-Snapshot aus Issue #52, SHA-256 `358be33c5f4edc856d9ddcd278d3f94ec84cec1991fc57ad54d94ec41acd0756`
+Bezugsstand: finaler Katalog-Snapshot aus Issue #52, SHA-256 `26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52`
 
 Dieses Dokument hält die Messung des über Liquibase aufgebauten Repository-Baseline-Katalogs für Phase 9 fest. Die Abfragen liegen reproduzierbar unter [`analysis/candidate-generator-data-readiness.sql`](analysis/candidate-generator-data-readiness.sql).
 

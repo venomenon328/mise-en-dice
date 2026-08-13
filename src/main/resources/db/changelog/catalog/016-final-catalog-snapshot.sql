@@ -6,7 +6,9 @@
 -- Requires: schema/004-persisted-candidate-generation.sql
 --
 -- This one-time migration accepts exactly the untouched repository baseline or
--- the reviewed production catalog fixture. Technical IDs, timestamps and
+-- the reviewed production catalog fixture. The explicit C collation makes the
+-- input fingerprint independent of the PostgreSQL image's operating system.
+-- Technical IDs, timestamps and
 -- aggregate versions are deliberately excluded from the input fingerprint.
 -- The normalized target snapshot is stored at
 -- db/catalog/final-catalog-snapshot-20260813.txt and is verified by PostgreSQL
@@ -70,13 +72,13 @@ BEGIN
         JOIN exclusion_rule rule ON rule.id = target.exclusion_rule_id
         JOIN ingredient_concept concept ON concept.id = target.ingredient_concept_id
     )
-    SELECT md5(string_agg(line, E'\n' ORDER BY line))
+    SELECT md5(string_agg(line, E'\n' ORDER BY line COLLATE "C"))
       INTO actual_fingerprint
       FROM canonical_lines;
 
     IF actual_fingerprint NOT IN (
-        '511118414a53aa9118a3212b7912a961', -- untouched repository baseline
-        '94be058535b8f5cc026085bfaf268173'  -- reviewed production fixture
+        'f90ba3058230969f5cda13cb93f227c2', -- untouched repository baseline
+        '759d87bdee666f18e94b787eb4b99217'  -- reviewed production fixture
     ) THEN
         RAISE EXCEPTION
             'final catalog snapshot refuses unknown starting state (canonical MD5 %)',
