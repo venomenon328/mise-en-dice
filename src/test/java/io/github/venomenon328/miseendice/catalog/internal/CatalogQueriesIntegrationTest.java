@@ -95,7 +95,7 @@ class CatalogQueriesIntegrationTest {
         assertThat(detail.directParents()).extracting(parent -> parent.id()).containsExactlyInAnyOrder(fish, seaFish);
         assertThat(detail.functionalRoles()).extracting(role -> role.code()).containsExactly("ANIMAL_PROTEIN");
         assertThat(detail.culinaryFlags()).extracting(flag -> flag.code()).containsExactly("FERMENTED");
-        assertThat(detail.culinaryDimensions()).hasSize(7);
+        assertThat(detail.culinaryDimensions()).hasSize(8);
         assertThat(detail.culinaryDimensions()).filteredOn(dimension -> dimension.dimension().code().equals("UMAMI"))
                 .singleElement().extracting(dimension -> dimension.level()).isEqualTo(4);
         assertThat(detail.availability()).extracting(value -> value.participant().code(), value -> value.level())

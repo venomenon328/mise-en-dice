@@ -158,7 +158,15 @@ class CatalogSelectionUiStateRegressionTest {
                         .header("HX-Request", "true"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-testid=\"catalog-edit-form\"")))
-                .andExpect(content().string(containsString("name=\"dimension[UMAMI]\"")));
+                .andExpect(content().string(containsString("name=\"dimension[UMAMI]\"")))
+                .andExpect(content().string(containsString("name=\"dimension[SALTINESS]\"")));
+    }
+
+    @Test
+    void shipsLocalSaltinessIcon() throws Exception {
+        mockMvc.perform(get("/admin/assets/catalog-icons.svg").session(authenticate()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"icon-saltiness\"")));
     }
 
     @Test

@@ -20,6 +20,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class CatalogBaselineConsistencyTest {
 
     private static final Set<String> EXPECTED_ACTIVE_ROOTS = Set.of(
+            "ALIGUE",
+            "BAGOONG",
             "COCOA_PRODUCTS",
             "COCONUT_PRODUCTS",
             "COFFEE",
@@ -32,6 +34,7 @@ class CatalogBaselineConsistencyTest {
             "LEGUMES",
             "MEAT",
             "NUTS",
+            "PLANT_DRINKS",
             "PLANT_PROTEIN_PRODUCTS",
             "PRESERVED_PRODUCE",
             "SAUCES_AND_PASTES",
@@ -42,6 +45,7 @@ class CatalogBaselineConsistencyTest {
             "STOCKS",
             "SWEETENERS",
             "TEA",
+            "TOMATO_PRODUCTS",
             "VEGETABLES",
             "VINEGAR"
     );
@@ -64,17 +68,17 @@ class CatalogBaselineConsistencyTest {
 
     @Test
     void consolidatedBaselineHasTheDocumentedSizeAndDeliberateRoots() {
-        assertThat(count("ingredient_concept")).isEqualTo(665);
-        assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(663);
+        assertThat(count("ingredient_concept")).isEqualTo(698);
+        assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(652);
         assertThat(countWhere(
                 "ingredient_concept",
                 "active and random_draw_enabled and challenge_specificity = 'OPEN'"
-        )).isEqualTo(87);
+        )).isEqualTo(62);
         assertThat(countWhere(
                 "ingredient_concept",
                 "active and random_draw_enabled and challenge_specificity = 'SPECIFIC'"
-        )).isEqualTo(576);
-        assertThat(count("ingredient_refinement")).isEqualTo(735);
+        )).isEqualTo(590);
+        assertThat(count("ingredient_refinement")).isEqualTo(777);
 
         Set<String> activeRoots = Set.copyOf(jdbcTemplate.queryForList(
                 """
@@ -104,7 +108,7 @@ class CatalogBaselineConsistencyTest {
                   )
                 """,
                 String.class
-        )).containsExactly("COFFEE");
+        )).containsExactly("ALIGUE", "COFFEE");
     }
 
     @Test

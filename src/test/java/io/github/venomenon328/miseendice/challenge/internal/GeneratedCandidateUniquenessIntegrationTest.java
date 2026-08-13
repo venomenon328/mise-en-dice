@@ -51,7 +51,7 @@ class GeneratedCandidateUniquenessIntegrationTest {
     @Test
     void postgresqlRejectsDuplicateCanonicalSignaturesInsideAGeneratedBatch() {
         var outcome = commands.startNewSession(new StartNewSession(
-                LocalDate.of(2026, 8, 13), List.of(), 47_000_061L));
+                LocalDate.of(2026, 8, 13), List.of(), 47_000_001L));
         assertThat(outcome).isInstanceOf(Generated.class);
         Generated generated = (Generated) outcome;
         var candidates = queries.findBatch(generated.attemptId(), 1).orElseThrow().candidates();

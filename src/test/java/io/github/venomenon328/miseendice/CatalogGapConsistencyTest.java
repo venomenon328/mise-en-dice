@@ -125,7 +125,7 @@ class CatalogGapConsistencyTest {
         assertThat(parentCodes("THAI_RED_CURRY_PASTE")).containsExactly("READY_CURRY_PASTE");
         assertThat(parentCodes("THAI_YELLOW_CURRY_PASTE")).containsExactly("READY_CURRY_PASTE");
         assertThat(parentCodes("LAKSA_PASTE")).containsExactly("READY_CURRY_PASTE");
-        assertThat(parentCodes("MOLE_PASTE")).containsExactly("SAUCES_AND_PASTES");
+        assertThat(parentCodes("MOLE_PASTE")).containsExactly("READY_SAUCES_AND_PASTES");
 
         assertThat(exclusionTargetExists("NO_CHILI", "DRIED_CHILI", true)).isTrue();
         assertThat(exclusionTargetExists("NO_CHILI", "PICKLED_CHILI", true)).isTrue();
@@ -135,14 +135,14 @@ class CatalogGapConsistencyTest {
 
     @Test
     void addsMissingEverydaySeasoningsWithoutAbusingTheRefinementGraph() {
-        assertThat(parentCodes("MAGGI_SEASONING")).containsExactly("SAUCES_AND_PASTES");
+        assertThat(parentCodes("MAGGI_SEASONING")).containsExactly("READY_SAUCES_AND_PASTES");
         assertThat(parentCodes("GARLIC_POWDER")).containsExactly("SPICES");
         assertThat(parentCodes("ONION_POWDER")).containsExactly("SPICES");
         assertThat(exclusionTargetExists("NO_ALLIUMS", "GARLIC_BUTTER", false)).isTrue();
         assertThat(exclusionTargetExists("NO_ALLIUMS", "GARLIC_POWDER", false)).isTrue();
         assertThat(exclusionTargetExists("NO_ALLIUMS", "ONION_POWDER", false)).isTrue();
 
-        assertThat(displayName("COCONUT_PRODUCTS")).isEqualTo("Kokosnuss oder Kokosprodukt");
+        assertThat(displayName("COCONUT_PRODUCTS")).isEqualTo("Kokoszutat");
         assertThat(parentCodes("COCONUT_PRODUCTS")).isEmpty();
         assertThat(curatorNote("COCONUT_PRODUCTS"))
                 .contains("keinen gemeinsamen Parent");

@@ -263,7 +263,7 @@ class PersistedGenerationIntegrationTest {
     void concurrentInitialCommandsCreateOnlyOneAttemptAndOneBatch() throws Exception {
         long sessionId = jdbcTemplate.queryForObject(
                 "insert into challenge_session default values returning id", Long.class);
-        var command = new StartExistingSession(sessionId, DATE, List.of(), 47_000_041L);
+        var command = new StartExistingSession(sessionId, DATE, List.of(), 47_000_001L);
         try (var executor = Executors.newFixedThreadPool(2)) {
             var first = executor.submit(() -> commands.startInitial(command));
             var second = executor.submit(() -> commands.startInitial(command));
