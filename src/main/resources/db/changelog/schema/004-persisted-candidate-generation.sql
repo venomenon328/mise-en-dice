@@ -246,6 +246,25 @@ ALTER TABLE candidate_requirement
     ADD COLUMN weight_evaluation_snapshot jsonb,
     ADD COLUMN generator_reason_codes jsonb;
 
+-- `ingredient_concept.code` is a stable immutable key. Backfill only that stable identity
+-- for pre-9D requirements so confirmed legacy challenges keep exact REROLL blocking;
+-- never reconstruct mutable historical roles, novelty, flags or graph state from today.
+UPDATE candidate_requirement requirement
+SET concept_code_snapshot = concept.code
+FROM ingredient_concept concept
+WHERE requirement.source = 'RANDOM'
+  AND requirement.ingredient_concept_id = concept.id
+  AND requirement.concept_code_snapshot IS NULL;
+
+UPDATE candidate_requirement requirement
+SET concept_code_snapshot = concept.code
+FROM generation_manual_requirement manual_requirement
+JOIN ingredient_concept concept
+  ON concept.id = manual_requirement.matched_ingredient_concept_id
+WHERE requirement.source = 'MANUAL'
+  AND requirement.manual_requirement_id = manual_requirement.id
+  AND requirement.concept_code_snapshot IS NULL;
+
 ALTER TABLE candidate_requirement
     DROP CONSTRAINT candidate_requirement_manual_requirement_id_fkey,
     ADD CONSTRAINT candidate_requirement_manual_requirement_id_fkey
@@ -324,8 +343,12 @@ BEGIN
         RAISE EXCEPTION 'generated candidate number % must be between 1 and 12', NEW.candidate_number;
     END IF;
 
-    IF NOT batch_is_legacy AND NEW.curation_round_id IS NOT NULL THEN
-        RAISE EXCEPTION 'new generator candidate must not require a curation round';
+    IF NOT batch_is_legacy AND (
+        NEW.curation_round_id IS NOT NULL
+        OR NEW.is_selected IS NOT NULL
+        OR NEW.curator_evaluation IS NOT NULL
+    ) THEN
+        RAISE EXCEPTION 'new generator candidate must not contain legacy curation state';
     END IF;
 
     IF NEW.curation_round_id IS NOT NULL THEN
@@ -341,7 +364,7 @@ END;
 $$;
 
 CREATE TRIGGER trg_candidate_validate_batch_context
-BEFORE INSERT OR UPDATE OF generation_batch_id, curation_round_id, candidate_number
+BEFORE INSERT OR UPDATE OF generation_batch_id, curation_round_id, candidate_number, is_selected, curator_evaluation
 ON challenge_candidate
 FOR EACH ROW
 EXECUTE FUNCTION validate_candidate_batch_context();
@@ -462,19 +485,33 @@ DEFERRABLE INITIALLY DEFERRED
 FOR EACH ROW
 EXECUTE FUNCTION validate_requirement_batch_complete_trigger();
 
--- Retain the old confirmed-challenge invariant while following the new batch ownership.
+-- Preserve legacy challenge rows, but do not allow an uncurated Phase-9D candidate to
+-- become visible merely by toggling the retained pre-9D is_selected flag. Phase 10 will
+-- replace this legacy gate with explicit curated-offer confirmation.
 CREATE OR REPLACE FUNCTION validate_challenge_selected_candidate()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 DECLARE
     candidate_attempt_id bigint;
+    candidate_batch_is_legacy boolean;
     candidate_is_selected boolean;
+    candidate_curation_round_id bigint;
+    candidate_curation_status text;
 BEGIN
-    SELECT batch.generation_attempt_id, candidate.is_selected
-      INTO candidate_attempt_id, candidate_is_selected
+    SELECT batch.generation_attempt_id,
+           batch.legacy_migrated,
+           candidate.is_selected,
+           candidate.curation_round_id,
+           round_row.status
+      INTO candidate_attempt_id,
+           candidate_batch_is_legacy,
+           candidate_is_selected,
+           candidate_curation_round_id,
+           candidate_curation_status
       FROM challenge_candidate candidate
       JOIN generation_batch batch ON batch.id = candidate.generation_batch_id
+      LEFT JOIN curation_round round_row ON round_row.id = candidate.curation_round_id
      WHERE candidate.id = NEW.selected_candidate_id;
 
     IF candidate_attempt_id IS NULL THEN
@@ -486,8 +523,12 @@ BEGIN
             NEW.selected_candidate_id, NEW.generation_attempt_id;
     END IF;
 
-    IF candidate_is_selected IS DISTINCT FROM true THEN
-        RAISE EXCEPTION 'candidate % is not marked as selected', NEW.selected_candidate_id;
+    IF candidate_batch_is_legacy IS DISTINCT FROM true
+       OR candidate_curation_round_id IS NULL
+       OR candidate_curation_status IS DISTINCT FROM 'SELECTED'
+       OR candidate_is_selected IS DISTINCT FROM true THEN
+        RAISE EXCEPTION 'candidate % has no completed legacy curation; Phase-9D candidates require Phase-10 offer confirmation before visibility',
+            NEW.selected_candidate_id;
     END IF;
 
     IF (SELECT count(*) FROM candidate_requirement WHERE candidate_id = NEW.selected_candidate_id) <> 4 THEN
