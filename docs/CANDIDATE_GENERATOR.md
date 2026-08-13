@@ -721,7 +721,10 @@ diagnostiziert. Ihre spätere Zuordnung zu einer Fallback-Startstufe ist Aufgabe
 
 ## 14. Kandidatenähnlichkeit
 
-Die Gesamtähnlichkeit liegt zwischen 0 und 1. Sie ist der gewichtete Mittelwert der tatsächlich vergleichbaren Komponenten:
+Die Gesamtähnlichkeit liegt zwischen 0 und 1. Alle Zwischenwerte verwenden `BigDecimal`, Scale 12 und
+`HALF_EVEN`. Nicht vergleichbare optionale Hauptkomponenten werden aus Zähler und Nenner entfernt; die
+übrigen Hauptgewichte werden proportional renormiert. Feste manuelle Requirements werden aus sämtlichen
+requirementbasierten Paarmerkmalen entfernt. Die Profilidentität bleibt vergleichbar.
 
 | Komponente | Gewicht |
 |---|---:|
@@ -735,19 +738,65 @@ Die Gesamtähnlichkeit liegt zwischen 0 und 1. Sie ist der gewichtete Mittelwert
 
 ### 14.1 Exakte Konzepte
 
-Jaccard-Ähnlichkeit der zufälligen Konzeptmengen. Feste manuelle Requirements werden nicht mitgerechnet.
+Jaccard-Ähnlichkeit `|A ∩ B| / |A ∪ B|` der Codes zufälliger Konzepte. Diese Komponente ist für gültige
+v1-Kandidaten immer vergleichbar.
 
 ### 14.2 Informative Vorfahren
 
-Gewichteter Jaccard-Vergleich transitiver Vorfahren. Das Gewicht eines Vorfahren sinkt mit seinem Anteil an allen ziehbaren Nachfahren. Sehr breite Wurzeln tragen nahezu nichts bei; enge gemeinsame Familien sind relevant.
+Sei `N` die Zahl aller Katalogkonzepte mit `active=true && randomDrawEnabled=true` und `d(a)` die Zahl dieser
+Konzepte unter den transitiven Nachfahren des Vorfahren `a`. Dann gilt:
+
+```text
+w(a) = ((N - d(a)) / N)²
+```
+
+Vorfahren mit Gewicht 0 tragen nicht bei. Der Paarwert ist der gewichtete Jaccard aus der Gewichtssumme der
+Schnittmenge geteilt durch die Gewichtssumme der Vereinigung. Fehlen bei mindestens einem Kandidaten positive
+Vorfahrengewichte, ist die Hauptkomponente `NOT_COMPARABLE`. Für den Set-Cap ist ein Vorfahr informativ eng,
+wenn `d(a) / N <= 0,25`; je Kandidat zählt derselbe Vorfahr höchstens einmal.
 
 ### 14.3 Rollen und Profil
 
-Rollen-Jaccard der Requirements sowie ein kleiner Zusatz für identische Zielprofile.
+Aus allen zufälligen Requirements entsteht ein Rollen-Multiset. Seine Ähnlichkeit ist der generalisierte
+Jaccard `sum(min(countA, countB)) / sum(max(countA, countB))`. Anschließend gilt:
 
-### 14.4 Optionale Eigenschaftsdaten
+```text
+roleProfileSimilarity = 0,90 × roleSimilarity + 0,10 × sameProfileIndicator
+```
 
-Die Eigenschaftskomponente wird nur aus beidseitig vergleichbaren Werten berechnet. Fehlen Vergleichswerte, wird ihr Gewicht proportional auf die übrigen Komponenten verteilt. Fehlende Daten bedeuten weder vollständige Gleichheit noch vollständige Verschiedenheit.
+### 14.4 Spezifitätsmix
+
+Verwendet wird die tatsächliche Anzahl `SPECIFIC` unter allen vier Requirements:
+
+```text
+similarity = 1 - abs(specificCountA - specificCountB) / 2
+```
+
+### 14.5 Neuigkeitsband und bekannte Last
+
+Bandindizes sind `FAMILIAR=0`, `BALANCED=1`, `ADVENTUROUS=2`. Bandähnlichkeit ist
+`1 - abs(indexA-indexB)/2`. Bei positivem `novelty.loadCap` ist die Lastähnlichkeit
+`1 - min(abs(loadA-loadB), loadCap)/loadCap`; bei Cap 0 ist sie 1 genau bei gleicher Last. Insgesamt gilt
+`0,60 × bandSimilarity + 0,40 × loadSimilarity`.
+
+### 14.6 Beschaffbarkeitslast
+
+Pro zufälligem Requirement wird der bereits ausgewertete Availability-Faktor verwendet; Last ist
+`1 - availabilityFactor`. Die Kandidatenlast ist deren Mittelwert und die Paarähnlichkeit
+`1 - abs(meanLoadA-meanLoadB)`.
+
+### 14.7 Optionale Eigenschaftsdaten
+
+Flags werden als Vereinigungsmengen pro Kandidat und bei nichtleerer Gesamtvereinigung per Jaccard verglichen.
+Pro Dimension wird je Kandidat der Mittelwert aller bekannten Stufen seiner zufälligen Requirements gebildet.
+Nur beidseitig bekannte Dimensionen sind vergleichbar; ihr Einzelwert ist `1 - abs(meanA-meanB)/4`, danach
+wird gemittelt. Sind beide Unteranteile verfügbar, gilt `0,40 × flagSimilarity + 0,60 × dimensionSimilarity`;
+ist nur einer verfügbar, trägt er den Gesamtwert. Sind beide nicht verfügbar, ist die Hauptkomponente
+`NOT_COMPARABLE`. Fehlende Werte werden insbesondere nicht als Stufe 1 interpretiert.
+
+Jede Paarbewertung enthält alle sieben Hauptkomponenten als Wert oder `NOT_COMPARABLE`, die tatsächlich
+renormierten Hauptgewichte, die Gesamtähnlichkeit und stabile Paar-Reason-Codes. Daraus wird keine
+Geschmacksverträglichkeitsbehauptung abgeleitet.
 
 Da alle Kandidaten eines Attempts dieselbe Ausschlussregel besitzen, trägt diese innerhalb des Satzes nicht zur Paarähnlichkeit bei.
 
@@ -763,6 +812,22 @@ Da alle Kandidaten eines Attempts dieselbe Ausschlussregel besitzen, trägt dies
 - Spezifitäts-, Profil- und Neuigkeitsquoten gemäß den Zieltabellen.
 
 ### 15.2 MMR-ähnlicher Nutzen
+
+Für Profil, tatsächliche Spezifitätszahl und tatsächliches Neuigkeitsband gilt je Kategorie und Fallback:
+
+```text
+lower = max(0, target - quotaDeviation)
+upper = min(12, target + quotaDeviation)
+```
+
+Eine Aufnahme darf keinen Upper Bound überschreiten. Nach hypothetischer Aufnahme dürfen die insgesamt noch
+benötigten Lower-Bound-Plätze die verbleibenden Satzplätze nicht übersteigen; außerdem müssen im noch nicht
+ausgewählten Reservoir je Kategorie genügend passende Kandidaten für den Lower Bound verbleiben. Die Prüfung
+bleibt eine einfache Restfeasibility ohne globalen Solver oder Backtracking.
+
+Für jede der drei Quotendimensionen ist `deficit(category) = max(target-selectedCount, 0)`. Der Beitrag eines
+Kandidaten ist 0, wenn alle Defizite 0 sind, sonst sein Kategoriedefizit geteilt durch das maximale Defizit
+dieser Dimension. `quotaFit` ist der arithmetische Mittelwert der drei Beiträge.
 
 Für jeden noch wählbaren Kandidaten:
 
@@ -780,16 +845,19 @@ Der erste Kandidat verwendet `diversity = 1`.
 
 Der Kandidat mit maximalem Nutzen wird nicht stets deterministisch genommen.
 
-1. Topband: alle geeigneten Kandidaten höchstens `0,04` unter dem maximalen Nutzen.
-2. Gewicht innerhalb des Topbands:
+1. alle geeigneten Kandidaten kanonisch nach `canonicalSignature` ordnen,
+2. Topband: alle geeigneten Kandidaten höchstens `0,04` unter dem maximalen Nutzen,
+3. `minimumTopBandUtility` ist das kleinste tatsächlich vorhandene Utility im Topband.
+4. Gewicht innerhalb des Topbands:
 
 ```text
 selectionWeight = (1 + 20 × (utility - minimumTopBandUtility))²
 ```
 
-3. gewichtete Auswahl über den benannten Batch-Substream.
-4. Quoten, Caps und Ähnlichkeiten aktualisieren.
-5. bis zwölf Kandidaten wiederholen.
+5. mit `weightQuantization` / `HALF_EVEN` positiv ganzzahlig quantisieren und Summenüberlauf verhindern,
+6. gewichtete Auswahl ausschließlich über `batch-selection/<fallback>/<position>` im Scope
+   `batch/<batchNumber>`,
+7. Quoten, Caps und Ähnlichkeiten aktualisieren und bis zwölf Kandidaten wiederholen.
 
 Die Auswahl bleibt für denselben Seed vollständig reproduzierbar, erzeugt aber über verschiedene Seeds echte Variation.
 
@@ -808,6 +876,9 @@ Zusätzlich gilt:
 - bei Reservoirgröße ab 72 startet `STRICT`,
 - bei 36 bis 71 darf direkt `RELAXED_1` beginnen,
 - bei 12 bis 35 darf direkt `RELAXED_2` beginnen.
+
+Scheitert eine Stufe vor Kandidat 12, beginnt die nächste zulässige Stufe mit leerem Satz auf demselben
+Reservoir. Teilmengen werden nicht weitergetragen und es findet keine zweite Proposal-/Reservoirsuche statt.
 
 Nie gelockert werden:
 
@@ -834,6 +905,7 @@ Die Implementierung bildet sämtliche Defaults in einem unveränderlichen fachli
 | Kandidaten pro Satz | 12 | exakt 12 |
 | bevorzugte Reservoirgröße | 144 | 12 bis 2.000 |
 | strikte Reservoir-Mindestgröße | 72 | 12 bis bevorzugte Größe |
+| Mindestgröße für direkten Start in `RELAXED_1` | 36 | 12 bis strikte Mindestgröße |
 | maximale Proposal-Versuche | 5.000 | mindestens bevorzugte Größe, höchstens 1.000.000 |
 | Ausschlusswahrscheinlichkeit | 0,30 | 0 bis 1 |
 | Gewichtsquantisierung | `10^9` | `10^3` bis `10^12` |
@@ -858,6 +930,10 @@ Die Implementierung bildet sämtliche Defaults in einem unveränderlichen fachli
 | Kandidaten mit `DIFFICULT` strikt | 3 | 0 bis 12 |
 | MMR Qualität / Diversität / Quote | 0,55 / 0,30 / 0,15 | jeweils 0 bis 1, Summe exakt 1 |
 | Topbandbreite | 0,04 | 0 bis 0,25 |
+| informative Vorfahren, maximaler Ziehpoolanteil | 0,25 | 0 bis 1 |
+| Rollen-/Profil-Untergewichte | 0,90 / 0,10 | jeweils 0 bis 1, Summe exakt 1 |
+| Neuigkeitsband-/Last-Untergewichte | 0,60 / 0,40 | jeweils 0 bis 1, Summe exakt 1 |
+| Flag-/Dimensions-Untergewichte | 0,40 / 0,60 | jeweils 0 bis 1, Summe exakt 1 |
 | kanonische Payloadversion | 1 | positive ganze Zahl |
 | Verarbeitungslease für `PENDING`/`CONTEXT_READY` | 15 Minuten | 1 Minute bis 24 Stunden |
 
@@ -866,7 +942,7 @@ Die vollständigen Faktor-, Punkte-, Profil- und Quotentabellen aus den vorangeh
 Mindestens enthalten:
 
 - `generatorVersion = 1.0.0`,
-- `configurationVersion = 2026-08-12.1`,
+- `configurationVersion = 2026-08-12.2`,
 - `rngAlgorithm = SPLITMIX64_V1`,
 - `candidateSetSize = 12`,
 - Reservoir- und Versuchslimits,
@@ -885,6 +961,7 @@ Fail-fast-Validierung mindestens für:
 
 - positive und endliche Faktoren,
 - Score- und Ähnlichkeitsgewichte mit Summe 1,
+- jede Ähnlichkeits-Untergewichtsgruppe mit Summe exakt 1 und Vorfahrenanteil in `[0,1]`,
 - Zielquoten mit Summe 12 vor und nach jeder kontextabhängigen Projektion,
 - aufsteigende Fallbacklockerung,
 - `reservoirTarget >= reservoirMinimum >= candidateSetSize`,
@@ -968,8 +1045,11 @@ Reason-Codes sind stabile maschinenlesbare Großschreibungswerte. Freitext ist e
 - `PAIR_EXACT_OVERLAP`
 - `PAIR_ANCESTOR_OVERLAP`
 - `PAIR_SIMILARITY_LIMIT`
+- `CANDIDATE_SCORE_MINIMUM`
 - `CONCEPT_SET_CAP`
 - `ANCESTOR_SET_CAP`
+- `PROFILE_SET_CAP`
+- `DIFFICULT_SET_CAP`
 - `PROFILE_TARGET_DEVIATION`
 - `SPECIFICITY_TARGET_DEVIATION`
 - `NOVELTY_TARGET_DEVIATION`
@@ -1117,7 +1197,12 @@ Replayrelevante Payloads verwenden `canonicalPayloadVersion = 1` und folgenden B
 - Zeitpunkte als UTC-RFC-3339 mit Mikrosekundenauflösung und Suffix `Z`,
 - keine abgeleiteten Anzeigenamen oder aktuellen Katalogwerte außerhalb des gespeicherten Snapshots.
 
-Der Fingerprint ist SHA-256 über die kanonischen Bytes und wird als kleingeschriebene hexadezimale Zeichenfolge gespeichert. Der Set-Fingerprint umfasst Generator- und Konfigurationsversion, Payloadversion, Attempt-Ausschlussentscheidung, verwendete Fallbackstufe, Setdiagnose sowie die geordnete vollständige Kandidatenliste. Separate Snapshotfingerprints erlauben, eine Abweichung vor dem eigentlichen Generatorlauf zu lokalisieren.
+Der Fingerprint ist SHA-256 über die kanonischen Bytes und wird als kleingeschriebene hexadezimale
+Zeichenfolge gespeichert. Der Set-Fingerprint umfasst Generator- und Konfigurationsversion, Payloadversion,
+Batchnummer und abgeleiteten Batch-Seed, Attempt-Ausschlussentscheidung, verwendete Fallbackstufe,
+Setdiagnose einschließlich Reservoirmetriken und Fallbackversuchen sowie die geordnete vollständige
+Kandidatenliste in Auswahlreihenfolge. Nicht ausgewählte Reservoirkandidaten gehören nicht zur Set-Payload.
+Separate Snapshotfingerprints erlauben, eine Abweichung vor dem eigentlichen Generatorlauf zu lokalisieren.
 
 ## 21. Test- und Simulationsvertrag
 
@@ -1229,7 +1314,9 @@ Für den regulären Repository-Baseline-Katalog gelten vor der manuellen Abnahme
 - in `SEEKING_AFTER_THREE_FAMILIAR` bei `STRICT` exakt die projizierte Zielzahl abenteuerlicher Kandidaten,
 - bei Default-Ausschlusswahrscheinlichkeit im vollständigen Lauf eine tatsächliche Ausschlussquote von 25 % bis 35 %,
 - bei erzwungen ausgeschalteter beziehungsweise eingeschalteter Ausschlussvariante 0 % beziehungsweise 100 % geeignete Attempts mit Ausschluss,
-- pro Monat und Fixture mindestens 95 % unterschiedliche Set-Fingerprints über die 64 Seeds,
+- im vollständigen Kalibrierungslauf aus Phase 9F pro Monat und Fixture mindestens 95 % unterschiedliche
+  Set-Fingerprints über die dort verbindlichen 64 Seeds; die 16-Seed-Matrix aus Phase 9C2 berichtet diesen
+  Wert nur als Variationsmetrik und interpretiert ihn nicht als Ersatzgate,
 - kein einzelnes zufälliges Konzept über 5 % und die zehn häufigsten zusammen nicht über 30 % aller zufälligen Requirement-Slots der vollständigen Baseline.
 
 Die Konzentrations- und Ausschlussgrenzen sind bewusst breit. Schlagen sie fehl, wird die Ursache untersucht; die Grenzen werden nicht nachträglich bequem um das erste Ergebnis gemalt. Synthetische Dünnpools dürfen erwartbar erschöpfen oder Fallbacks nutzen, müssen aber ebenfalls null Hard-Rule- und Replayverletzungen besitzen.

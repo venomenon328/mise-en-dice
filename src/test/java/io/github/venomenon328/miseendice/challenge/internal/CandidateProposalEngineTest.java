@@ -39,7 +39,7 @@ class CandidateProposalEngineTest {
     @BeforeEach
     void setUp() {
         configuration = TestGeneratorConfiguration.defaults();
-        engine = new DefaultCandidateProposalEngine(configuration, "{\"configurationVersion\":\"2026-08-12.1\"}");
+        engine = new DefaultCandidateProposalEngine(configuration, "{\"configurationVersion\":\"2026-08-12.2\"}");
     }
 
     @Test

@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
+import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
 import io.github.venomenon328.miseendice.challenge.api.SeedSource;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -21,6 +22,12 @@ class GeneratorConfigurationModule {
     @Bean
     CandidateReservoirEngine candidateReservoirEngine(CandidateProposalEngine candidateProposalEngine) {
         return new DefaultCandidateReservoirEngine(candidateProposalEngine);
+    }
+
+    @Bean
+    CandidateSetEngine candidateSetEngine(CandidateReservoirEngine candidateReservoirEngine,
+                                          ObjectMapper objectMapper) {
+        return new DefaultCandidateSetEngine(candidateReservoirEngine, objectMapper);
     }
 
     @Bean

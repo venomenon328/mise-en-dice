@@ -8,6 +8,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration.Fa
 import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration.NoveltyConfiguration;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration.ProfileDefinition;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration.SelectionConfiguration;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration.SimilarityConfiguration;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.CandidateProfile;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.FallbackLevel;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyBand;
@@ -27,8 +28,8 @@ final class TestGeneratorConfiguration {
 
     static GeneratorConfiguration defaults() {
         return new GeneratorConfiguration(
-                "1.0.0", "2026-08-12.1", RngAlgorithm.SPLITMIX64_V1, 1,
-                12, 144, 72, 5_000, 1_000_000_000L, bd("0.30"),
+                "1.0.0", "2026-08-12.2", RngAlgorithm.SPLITMIX64_V1, 1,
+                12, 144, 72, 36, 5_000, 1_000_000_000L, bd("0.30"),
                 Map.of(Availability.EASY, bd("1.00"), Availability.PLANNED, bd("0.65"),
                         Availability.DIFFICULT, bd("0.20"), Availability.UNAVAILABLE, bd("0.00")),
                 new CooldownConfiguration(6, 9, 12, 16, bd("0.25"), bd("0.50"), bd("0.75")),
@@ -65,6 +66,8 @@ final class TestGeneratorConfiguration {
                         SimilarityComponent.ROLES_AND_PROFILE, bd("0.15"), SimilarityComponent.SPECIFICITY_MIX, bd("0.05"),
                         SimilarityComponent.NOVELTY, bd("0.10"), SimilarityComponent.AVAILABILITY_LOAD, bd("0.05"),
                         SimilarityComponent.COMPARABLE_PROPERTIES, bd("0.10")),
+                new SimilarityConfiguration(bd("0.25"), bd("0.90"), bd("0.10"), bd("0.60"), bd("0.40"),
+                        bd("0.40"), bd("0.60")),
                 new SelectionConfiguration(bd("0.55"), bd("0.30"), bd("0.15"), bd("0.04"), 20),
                 Map.of(FallbackLevel.STRICT, new FallbackConfiguration(55, bd("0.58"), 2, 4, 0, 4, 3),
                         FallbackLevel.RELAXED_1, new FallbackConfiguration(50, bd("0.65"), 2, 5, 1, 5, 4),
@@ -82,12 +85,14 @@ final class TestGeneratorConfiguration {
         return new GeneratorConfiguration(
                 defaults.generatorVersion(), defaults.configurationVersion(), defaults.rngAlgorithm(),
                 defaults.canonicalPayloadVersion(), defaults.candidateSetSize(), reservoirTarget,
-                reservoirStrictMinimum, maximumProposalAttempts, defaults.weightQuantization(),
+                reservoirStrictMinimum, Math.max(12, (reservoirStrictMinimum + 1) / 2), maximumProposalAttempts,
+                defaults.weightQuantization(),
                 bd(exclusionProbability), defaults.availabilityFactors(), defaults.cooldown(), defaults.exclusion(),
                 defaults.novelty(), defaults.anchorRoles(), defaults.supportRoles(), defaults.flavorRoles(),
                 defaults.profiles(), defaults.profileWeights(), defaults.profileSetTargets(),
                 defaults.specificityWeights(), defaults.specificitySetTargets(), defaults.cadenceSetTargets(),
-                defaults.scoreWeights(), defaults.similarityWeights(), defaults.selection(), defaults.fallbacks(),
+                defaults.scoreWeights(), defaults.similarityWeights(), defaults.similarity(), defaults.selection(),
+                defaults.fallbacks(),
                 defaults.processingLease());
     }
 

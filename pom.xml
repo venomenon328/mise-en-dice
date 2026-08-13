@@ -21,6 +21,7 @@
         <java.version>21</java.version>
         <spring-modulith.version>2.1.0</spring-modulith.version>
         <testcontainers.version>2.0.5</testcontainers.version>
+        <generator-baseline-exclude>**/CandidateSetBaselineIntegrationTest.java</generator-baseline-exclude>
     </properties>
 
     <dependencyManagement>
@@ -132,9 +133,27 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>${generator-baseline-exclude}</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>generator-baseline</id>
+            <properties>
+                <generator-baseline-exclude>**/__generator_baseline_enabled__.java</generator-baseline-exclude>
+            </properties>
+        </profile>
+    </profiles>
 </project>

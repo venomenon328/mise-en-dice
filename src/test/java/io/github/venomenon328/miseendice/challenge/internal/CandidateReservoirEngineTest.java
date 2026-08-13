@@ -356,7 +356,7 @@ class CandidateReservoirEngineTest {
 
         @Override
         public GeneratorDescriptor descriptor() {
-            return new GeneratorDescriptor("1.0.0", "2026-08-12.1", RngAlgorithm.SPLITMIX64_V1, 1, "{}");
+            return new GeneratorDescriptor("1.0.0", "2026-08-12.2", RngAlgorithm.SPLITMIX64_V1, 1, "{}");
         }
 
         @Override
