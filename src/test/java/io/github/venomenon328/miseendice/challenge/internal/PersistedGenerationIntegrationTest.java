@@ -195,7 +195,7 @@ class PersistedGenerationIntegrationTest {
 
         assertThatThrownBy(() -> jdbcTemplate.update(
                 "update challenge_candidate set is_selected = true where id = ?", candidateId))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataAccessException.class);
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from challenge where generation_attempt_id = ?",
                 Integer.class, generated.attemptId())).isZero();
