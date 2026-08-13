@@ -227,7 +227,6 @@ class JdbcGenerationRepository {
     }
 
     private PersistedBatch persistResult(long attemptId, CandidateSetResult result) {
-
         if (result instanceof GeneratedCandidateSet generated) {
             long batchId = insertGeneratedBatch(attemptId, generated);
             Map<Integer, Long> manualIds = manualIds(attemptId);
@@ -342,7 +341,10 @@ class JdbcGenerationRepository {
                 select challenge.id as challenge_id, challenge.shown_at, challenge.status,
                        session.id as session_id, attempt.attempt_type,
                        candidate.profile, candidate.actual_novelty_band,
-                       context.prepared_attempt_snapshot #>> '{exclusionDecision,ruleCode}' as exclusion_rule_code,
+                       coalesce(
+                           context.prepared_attempt_snapshot #>> '{exclusionDecision,ruleCode}',
+                           legacy_exclusion.code
+                       ) as exclusion_rule_code,
                        requirement.position, requirement.concept_code_snapshot,
                        requirement.novelty_level_snapshot, requirement.concept_snapshot::text
                 from challenge
@@ -351,6 +353,7 @@ class JdbcGenerationRepository {
                 join challenge_candidate candidate on candidate.id = challenge.selected_candidate_id
                 join candidate_requirement requirement on requirement.candidate_id = candidate.id
                 left join generation_context_snapshot context on context.generation_attempt_id = attempt.id
+                left join exclusion_rule legacy_exclusion on legacy_exclusion.id = candidate.exclusion_rule_id
                 order by challenge.shown_at desc, challenge.id desc, requirement.position
                 """, this::mapHistoryRow);
         Map<Long, HistoryBuilder> grouped = new LinkedHashMap<>();
