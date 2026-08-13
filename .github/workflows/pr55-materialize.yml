@@ -28,6 +28,25 @@ jobs:
           from pathlib import Path
           import subprocess
 
+          def replace_exact(path, old, new, expected=1):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f'{path}: expected {expected} occurrence(s), got {count}: {old!r}')
+              p.write_text(text.replace(old, new))
+
+          # The reviewed catalog correction changes final-state counts. Keep tests that
+          # deliberately target the predecessor state unchanged; update only assertions
+          # against the fully migrated/current projection.
+          projection_test = 'src/test/java/io/github/venomenon328/miseendice/catalog/internal/CatalogGeneratorProjectionIntegrationTest.java'
+          replace_exact(projection_test, '.hasSize(652);', '.hasSize(651);')
+          replace_exact(projection_test, '.hasSize(46)\n', '.hasSize(47)\n')
+
+          postgres_test = 'src/test/java/io/github/venomenon328/miseendice/PostgresIntegrationTest.java'
+          replace_exact(postgres_test, 'assertThat(activeDrawConceptCount).isEqualTo(652L);', 'assertThat(activeDrawConceptCount).isEqualTo(651L);')
+          replace_exact(postgres_test, 'assertThat(refinementCount).isEqualTo(777L);', 'assertThat(refinementCount).isEqualTo(780L);', expected=2)
+
           p = Path('.github/scripts/pr55_review_fix.py')
           text = p.read_text()
           if 'assert_seasonality_detail' in text:
