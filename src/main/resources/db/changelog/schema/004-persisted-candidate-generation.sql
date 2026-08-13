@@ -239,6 +239,10 @@ ALTER TABLE challenge_candidate
 CREATE INDEX ix_challenge_candidate_batch
     ON challenge_candidate (generation_batch_id, candidate_number);
 
+CREATE UNIQUE INDEX uq_challenge_candidate_signature_per_batch
+    ON challenge_candidate (generation_batch_id, canonical_signature)
+    WHERE canonical_signature IS NOT NULL;
+
 ALTER TABLE candidate_requirement
     ADD COLUMN concept_code_snapshot text,
     ADD COLUMN novelty_level_snapshot smallint,
