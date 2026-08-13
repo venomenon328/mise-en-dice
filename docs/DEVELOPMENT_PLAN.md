@@ -308,6 +308,8 @@ Das Repository-Baseline-Gate ist bestanden: Rollen, Neuigkeit und Beschaffbarkei
 
 ### Phase 9D: Persistenz und Generation Lifecycle (Issue #36)
 
+Die Phase-9D-Commands erzeugen ausschließlich Batch 1; Schema und interne Persistenzgrenze erlauben unter demselben eingefrorenen Context genau Batch 2 und verhindern Batch 3.
+
 - append-only Migration auf `generation_batch`,
 - historisch vollständige PostgreSQL-Materialisierung und Persistenz des `VisibleHistorySnapshot`,
 - atomare Persistenz von zwölf Kandidaten, Snapshots und Diagnosen,
