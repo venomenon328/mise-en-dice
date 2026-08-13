@@ -19,6 +19,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationContext.ManualR
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.AttemptView;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.BatchView;
+import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ContextView;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayResult;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayStatus;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
@@ -235,7 +236,40 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
 
     @Override
     public Optional<AttemptView> findAttempt(long attemptId) {
-        return repository.findAttemptView(attemptId);
+        return repository.findAttemptView(attemptId).map(view -> {
+            if (view.nextAction() != GenerationQueries.NextAction.AWAIT_CURATION) {
+                return view;
+            }
+            boolean hasGeneratedProductionBatch = view.batchNumbers().stream()
+                    .map(batchNumber -> repository.findBatchView(attemptId, batchNumber))
+                    .flatMap(Optional::stream)
+                    .anyMatch(batch -> !batch.legacyMigrated() && "GENERATED".equals(batch.status()));
+            return hasGeneratedProductionBatch ? view : view.withNextAction(GenerationQueries.NextAction.NONE);
+        });
+    }
+
+    @Override
+    public Optional<ContextView> findContext(long attemptId) {
+        if (repository.findAttemptState(attemptId).isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            GenerationSnapshotCodec.StoredContext context = repository.loadContext(attemptId);
+            return Optional.of(new ContextView(
+                    attemptId,
+                    context.configurationSnapshot(),
+                    context.catalogSnapshot(),
+                    context.requestSnapshot(),
+                    context.visibleHistorySnapshot(),
+                    context.preparedAttemptSnapshot(),
+                    context.contextFingerprint(),
+                    context.configurationFingerprint(),
+                    context.catalogFingerprint(),
+                    context.requestFingerprint(),
+                    context.historyFingerprint()));
+        } catch (GenerationSnapshotCodec.InvalidContextSnapshotException exception) {
+            return Optional.empty();
+        }
     }
 
     @Override
