@@ -48,18 +48,26 @@ class AdapterBoundaryTest {
     }
 
     @Test
-    void challengeUsesOnlyThePublicCatalogApiAndHasNoPersistenceDependency() {
+    void challengeUsesOnlyThePublicCatalogApiAndConfinesJdbcToItsRepositoryAdapter() {
         var classes = new ClassFileImporter()
                 .withImportOption(new ImportOption.DoNotIncludeTests())
                 .importPackages("io.github.venomenon328.miseendice");
 
         noClasses()
                 .that().resideInAPackage("..challenge..")
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "..catalog.internal..",
-                        "org.springframework.jdbc..",
-                        "javax.sql.."
-                )
+                .should().dependOnClassesThat().resideInAPackage("..catalog.internal..")
+                .check(classes);
+
+        noClasses()
+                .that().resideInAPackage("..challenge.api..")
+                .should().dependOnClassesThat().resideInAnyPackage("org.springframework.jdbc..", "javax.sql..")
+                .check(classes);
+
+        noClasses()
+                .that().resideInAPackage("..challenge.internal..")
+                .and().doNotHaveSimpleName("JdbcGenerationRepository")
+                .should().dependOnClassesThat().resideInAnyPackage("org.springframework.jdbc..", "javax.sql..")
+                .because("Phase 9D confines explicit SQL to the challenge persistence adapter")
                 .check(classes);
     }
 }

@@ -7,6 +7,7 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 - [`001-catalog-schema.sql`](../src/main/resources/db/changelog/schema/001-catalog-schema.sql) für Zutatenwissen und Generator-Metadaten
 - [`002-challenge-history-schema.sql`](../src/main/resources/db/changelog/schema/002-challenge-history-schema.sql) für Generierung, Kuratierung und sichtbare Challenge-Historie
 - [`003-administration-foundation.sql`](../src/main/resources/db/changelog/schema/003-administration-foundation.sql) für optimistisches Locking und Katalog-Audit
+- [`004-persisted-candidate-generation.sql`](../src/main/resources/db/changelog/schema/004-persisted-candidate-generation.sql) für Generation Context, Batches, Candidate-Snapshots und den Phase-9D-Lifecycle
 
 Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
 
@@ -188,6 +189,8 @@ challenge
 
 Phase 9D implementiert noch keine Kuratororchestrierung und kein Offer Set. Seine Persistenz muss jedoch verhindern, dass die spätere fachliche Kardinalität durch eine starre Annahme „eine Kurationsrunde = genau ein Generation Batch = genau ein ausgewählter Kandidat“ verbaut wird.
 
+Die append-only Migration `schema/004-persisted-candidate-generation.sql` setzt diesen Phase-9D-Ausschnitt um. Bestehende Kurationsrunden werden dabei als ausdrücklich markierte Legacy-Batches gespiegelt; vorhandene Candidate-, Requirement- und Challenge-IDs sowie ihre historischen Kurationsbezüge bleiben erhalten. Neue Generatorbatches benötigen weder eine Kurationsrunde noch Modell-, Prompt- oder Auswahlplatzhalter.
+
 ### Challenge Session
 
 `challenge_session` fasst Erstziehung und optionalen freiwilligen Reroll zusammen.
@@ -210,7 +213,7 @@ Ein erfolgreicher Batch enthält genau zwölf eindeutige Kandidaten. Phase 9D im
 
 Eine `curation_round` ist ausschließlich genau ein tatsächlicher externer Kuratorrequest. Modellname, Promptversion sowie exakter Request und Response liegen auf dieser Ebene. Die flexiblen API-Payloads bleiben `jsonb`; stabile Kernbeziehungen bleiben relational. Nicht kuratierte Batches erhalten keine Platzhaltermodelle oder Fake-Promptversionen.
 
-Eine Kurationsrunde besitzt einen primären neu erzeugten Generation Batch, darf aber über `curation_round_candidate` zusätzlich Kandidaten aus einem früheren Batch **desselben Attempts** referenzieren. Damit können die in [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) definierten Rollen `NEW`, `CARRY_OVER` und `LOCKED_CONTEXT` rekonstruiert werden.
+Die spätere Zuordnung einer Kurationsrunde erfolgt flexibel über `curation_round_candidate` zu Kandidaten desselben Attempts. Sie darf Kandidaten aus Batch 1 und Batch 2 gemeinsam referenzieren; Phase 9D schreibt deshalb weder einen primären Batch je Runde noch eine Eins-zu-eins-Kardinalität fest. Damit können die in [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) definierten Rollen `NEW`, `CARRY_OVER` und `LOCKED_CONTEXT` später rekonstruiert werden.
 
 Kuratorbewertungen speichern je bewerteter Kandidatenreferenz mindestens qualitative Klasse `GOOD`, `ACCEPTABLE` oder `BAD`, Rang und Reason-Codes. Ein `LOCKED_CONTEXT`-Kandidat bleibt bereits gesetzt und muss nicht so behandelt werden, als würde der zweite Kurator ihn erneut zur Disposition stellen.
 
@@ -278,7 +281,6 @@ Die Snapshots sind fachliche Aggregatdaten, keine HTTP-Formulare. Insbesondere e
 
 Unter anderem bleiben im Anwendungscode:
 
-- genau zwölf Kandidaten pro erfolgreich erzeugtem Generation Batch,
 - mindestens zwei spezifische Vorgaben in vollständig beziehungsweise teilweise zufällig erzeugten Challenges,
 - semantische Redundanzprüfung, etwa `Fisch` plus `Lachs`,
 - strukturelle Vielfalt anhand funktionaler Rollen,
@@ -289,7 +291,7 @@ Unter anderem bleiben im Anwendungscode:
 - Auffüllpriorität `GOOD` -> `ACCEPTABLE` -> `BAD`,
 - fachliche Entscheidung, welche Verfügbarkeitsstufen für Zufallsziehungen ausreichend sind.
 
-Die Datenbank soll dagegen geeignete strukturelle Grenzen absichern, insbesondere Bereich `1..3` für die gewünschte Angebotszahl, referenzielle Zugehörigkeit aller Kurationskandidaten zum selben Attempt und keine sichtbare Challenge aus einem nicht bestätigten Offer.
+Die Datenbank sichert in Phase 9D insbesondere Batchnummern `1..2`, lokal eindeutige Kandidatennummern `1..12`, genau zwölf vollständige Kandidaten mit je vier Requirements pro neuem `GENERATED`-Batch, keine Kandidaten bei `EXHAUSTED` und die Candidate→Batch→Attempt-Zugehörigkeit ab. Phase 10 ergänzt Bereich `1..3` für die gewünschte Angebotszahl, Kurationsreferenzen und die bestätigte Offer-Zugehörigkeit sichtbarer Challenges.
 
 Diese Regeln sind absichtlich nicht als konfigurierbare SQL-Regelmaschine modelliert.
 
@@ -315,6 +317,6 @@ docker compose up -d postgres
 ./mvnw spring-boot:run
 ```
 
-Der Master-Changelog führt beide Schemas, Referenzdaten, den initialen Katalog und anschließend den strukturellen Sanity-Check in fester Reihenfolge aus. Jeder Changeset wird von Liquibase genau einmal protokolliert; ein späterer Neustart führt weder die Katalog-Baseline erneut aus noch überschreibt er operative Daten. Eine vorhandene, außerhalb Liquibase erstellte Datenbank wird bewusst nicht übernommen.
+Der Master-Changelog führt die Schemas, Referenzdaten, den initialen Katalog, strukturelle Sanity-Checks und append-only Erweiterungen in fester Reihenfolge aus. Jeder Changeset wird von Liquibase genau einmal protokolliert; ein späterer Neustart führt weder die Katalog-Baseline erneut aus noch überschreibt er operative Daten. Eine vorhandene, außerhalb Liquibase erstellte Datenbank wird bewusst nicht übernommen.
 
 [`001-seed-sanity.sql`](../src/main/resources/db/changelog/checks/001-seed-sanity.sql) prüft beim ersten Aufbau insbesondere, dass der aktive Ziehungspool ausreichend groß ist und jeder aktive Zieh-Kandidat funktionale Rollen sowie Beschaffbarkeitsdaten für Georgia und Tobias besitzt. Die vollständige Ausführung wird zusätzlich in PostgreSQL-Testcontainers-Integrationstests geprüft.

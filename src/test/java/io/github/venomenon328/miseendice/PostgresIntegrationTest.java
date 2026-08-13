@@ -67,7 +67,7 @@ class PostgresIntegrationTest {
 
     @Test
     void applicationContextStartsWithTheCompleteLiquibaseBaseline() {
-        assertThat(count("databasechangelog")).isEqualTo(21);
+        assertThat(count("databasechangelog")).isEqualTo(22);
         assertThat(count("ingredient_concept")).isEqualTo(665);
         assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(663);
         assertThat(countWhere("ingredient_concept", "active and random_draw_enabled and challenge_specificity = 'OPEN'"))
@@ -129,7 +129,7 @@ class PostgresIntegrationTest {
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
 
-            assertThat(count(connection, "databasechangelog")).isEqualTo(21);
+            assertThat(count(connection, "databasechangelog")).isEqualTo(22);
             assertThat(countWhere(connection, "ingredient_concept", "version = 0")).isEqualTo(665);
             assertThat(countWhere(connection, "exclusion_rule", "version = 0"))
                     .isEqualTo(count(connection, "exclusion_rule"));
@@ -162,7 +162,7 @@ class PostgresIntegrationTest {
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
 
-            assertThat(count(connection, "databasechangelog")).isEqualTo(21);
+            assertThat(count(connection, "databasechangelog")).isEqualTo(22);
             assertThat(count(connection, "ingredient_refinement")).isEqualTo(735);
             assertThat(baseDrawWeight(connection, "BEER")).isEqualByComparingTo("0.2500");
             assertThat(baseDrawWeight(connection, "SHERRY")).isEqualByComparingTo("0.1234");
@@ -412,7 +412,7 @@ class PostgresIntegrationTest {
                 candidate
         ))
                 .isInstanceOf(UncategorizedSQLException.class)
-                .hasMessageContaining("is not marked as selected");
+                .hasMessageContaining("no completed legacy curation");
 
         jdbcTemplate.update("update challenge_candidate set is_selected = true where id = ?", candidate);
         insertRandomRequirements(candidate, 3);
@@ -481,18 +481,30 @@ class PostgresIntegrationTest {
     private long insertCandidate(long attemptId, boolean selected) {
         long round = insertReturningId(
                 """
-                insert into curation_round (generation_attempt_id, round_number, curator_model, prompt_version)
-                values (?, 1, 'test', 'test')
+                insert into curation_round (
+                    generation_attempt_id, round_number, curator_model, prompt_version, status, completed_at
+                ) values (?, 1, 'test', 'test', 'SELECTED', now())
+                returning id
+                """,
+                attemptId
+        );
+        long batch = insertReturningId(
+                """
+                insert into generation_batch
+                    (generation_attempt_id, batch_number, status, legacy_migrated)
+                values (?, 1, 'GENERATED', true)
                 returning id
                 """,
                 attemptId
         );
         return insertReturningId(
                 """
-                insert into challenge_candidate (curation_round_id, candidate_number, is_selected)
-                values (?, 1, ?)
+                insert into challenge_candidate
+                    (generation_batch_id, curation_round_id, candidate_number, is_selected)
+                values (?, ?, 1, ?)
                 returning id
                 """,
+                batch,
                 round,
                 selected
         );

@@ -78,7 +78,7 @@ class CatalogGapUpgradeIntegrationTest {
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
 
-            assertThat(count(connection, "databasechangelog")).isEqualTo(21);
+            assertThat(count(connection, "databasechangelog")).isEqualTo(22);
             assertThat(count(connection, "ingredient_concept")).isEqualTo(665);
             assertThat(count(connection, "ingredient_refinement")).isEqualTo(735);
             assertThat(value(connection,
@@ -95,7 +95,7 @@ class CatalogGapUpgradeIntegrationTest {
                     .isEqualTo(1);
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(count(connection, "databasechangelog")).isEqualTo(21);
+            assertThat(count(connection, "databasechangelog")).isEqualTo(22);
             assertThat(count(connection, "ingredient_concept")).isEqualTo(665);
             assertThat(count(connection, "ingredient_refinement")).isEqualTo(735);
         }

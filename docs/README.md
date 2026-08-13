@@ -35,4 +35,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Phase 9A bis 9C2 sind abgeschlossen. Als nächstes folgt Phase 9D / Issue #36 mit Persistenz, historischer Snapshotmaterialisierung, Generation Lifecycle, Replay, Konkurrenz und Restart. Die Phase-9D-Struktur darf die in [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) festgelegten späteren Mehrfachrunden-, Carry-over- und Multi-Offer-Kardinalitäten nicht verbauen; die eigentliche OpenAI- und Discord-Implementierung bleibt weiterhin nachgelagert.
+Phase 9A bis 9D sind abgeschlossen. Als nächstes folgt Phase 9E / Issue #37 mit Generator-Labor, Preview, Replaydarstellung und begrenzter Simulationsdiagnostik. Danach schließt Phase 9F / Issue #40 die breite Kalibrierung und fachliche Abnahme ab; OpenAI- und Discord-Implementierung bleiben weiterhin nachgelagert.

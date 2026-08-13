@@ -1082,14 +1082,14 @@ challenge_session
   └─ generation_attempt
        ├─ generation_manual_requirement (0..2)
        ├─ generation_context_snapshot (genau 1 ab CONTEXT_READY)
-       └─ generation_batch (1..n)
+       └─ generation_batch (1..2)
             └─ challenge_candidate (genau 12 bei GENERATED)
                  └─ candidate_requirement (genau 4)
 
 curation_round
-  ├─ verweist auf genau einen generation_batch
-  └─ curation_candidate_evaluation (je Kandidat genau 1)
-       └─ höchstens eine Evaluation ist ausgewählt
+  └─ curation_round_candidate (erst Phase 10)
+       ├─ verweist auf Kandidaten desselben Attempts aus Batch 1 oder 2
+       └─ trägt Kuratorbewertung und Teilnahmerolle
 ```
 
 Generator- und Kuratordaten bleiben damit auch dann getrennt, wenn derselbe Kandidat später erneut analysiert werden müsste.
@@ -1130,7 +1130,7 @@ Ein `GENERATED`-Batch enthält genau zwölf eindeutige Kandidaten. Ein `EXHAUSTE
 
 Kandidaten speichern generatorseitig Profil, Band, Gesamt- und Komponentenscores, Konfidenz, Reason-Codes und Kandidatensignatur. Requirements speichern damaligen Text, Quelle, Spezifität, Rollen, Neuigkeit, Beschaffbarkeit, relevante bekannte Eigenschaften und Gewichtsfaktoren.
 
-Kuratorscores, Kurator-Reason-Codes und Auswahlstatus gehören nicht auf den generatorseitigen Kandidaten. Sie werden später je `curation_round` und Kandidat in `curation_candidate_evaluation` gespeichert. Eine sichtbare `challenge` darf nur auf einen Kandidaten verweisen, der in einer zum selben Batch gehörenden `SELECTED`-Kuratierungsrunde ausgewählt wurde.
+Kuratorscores, Kurator-Reason-Codes und Auswahlstatus gehören nicht auf den generatorseitigen Kandidaten. Sie werden später je `curation_round` und Kandidat in der flexiblen Teilnahmerelation gespeichert. Phase 9D erzeugt weder diese Bewertung noch ein Offer oder eine sichtbare Challenge.
 
 ### 19.4 Attempt- und Batchzustände
 
@@ -1158,7 +1158,7 @@ Phase 10 darf den Lifecycle um erfolgreiche Kuratierung beziehungsweise sichtbar
 - Der vollständige Batch, seine Kandidaten, Requirements, Scores, Diagnosen und die Attempt-Statusänderung werden in einer kurzen Transaktion atomar gespeichert.
 - Unbekannte PostgreSQL- und Laufzeitfehler bleiben `TECHNICAL_GENERATION_FAILURE` und werden weder als Konkurrenz noch als Erschöpfung maskiert.
 
-Phase 9D implementiert zunächst Batch 1. Das Schema und der Seedvertrag erlauben Phase 10, nach `REJECTED_ALL` unter demselben Context Snapshot Batch 2, 3 und so weiter zu erzeugen; diese Orchestrierung wird nicht vorgezogen.
+Phase 9D implementiert ausschließlich Batch 1. Das Schema und der Seedvertrag erlauben Phase 10 genau einen Batch 2 unter demselben Context Snapshot; Batch 3 und unbeschränkte interne Regeneration werden verhindert. Diese Kuratororchestrierung wird nicht vorgezogen.
 
 ## 20. Replay
 
