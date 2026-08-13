@@ -40,3 +40,6 @@ jobs:
           p.write_text(text)
           import subprocess
           subprocess.run(['python', str(p)], check=True)
+      - name: Anchor repaired commit for takeover
+        if: success()
+        run: git push --force origin HEAD:refs/heads/agent/pr55-materialized
