@@ -35,6 +35,11 @@ public interface GeneratorLaboratory {
         LOADED_COOLDOWN_HISTORY
     }
 
+    enum PreviewStatus {
+        SUCCESS,
+        EXHAUSTED
+    }
+
     record HistoryScenarioDescriptor(HistoryScenario code, String version, String displayName, String description) {
     }
 
@@ -86,6 +91,7 @@ public interface GeneratorLaboratory {
     }
 
     sealed interface PreviewResult permits PreviewSuccess, PreviewExhausted {
+        PreviewStatus status();
         PreviewMetadata metadata();
         PreparedGenerationAttempt preparedAttempt();
         String rawPreparedAttemptJson();
@@ -121,6 +127,11 @@ public interface GeneratorLaboratory {
             }
         }
 
+        @Override
+        public PreviewStatus status() {
+            return PreviewStatus.SUCCESS;
+        }
+
         public Optional<PairEvidence> pair(int firstCandidateNumber, int secondCandidateNumber) {
             int first = Math.min(firstCandidateNumber, secondCandidateNumber);
             int second = Math.max(firstCandidateNumber, secondCandidateNumber);
@@ -140,6 +151,11 @@ public interface GeneratorLaboratory {
             if (exhaustedSet == null) {
                 throw new IllegalArgumentException("Exhausted previews require the typed exhausted set result");
             }
+        }
+
+        @Override
+        public PreviewStatus status() {
+            return PreviewStatus.EXHAUSTED;
         }
     }
 
