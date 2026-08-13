@@ -44,8 +44,21 @@ jobs:
           replace_exact(projection_test, '.hasSize(46)\n', '.hasSize(47)\n')
 
           postgres_test = 'src/test/java/io/github/venomenon328/miseendice/PostgresIntegrationTest.java'
-          replace_exact(postgres_test, 'assertThat(activeDrawConceptCount).isEqualTo(652L);', 'assertThat(activeDrawConceptCount).isEqualTo(651L);')
-          replace_exact(postgres_test, 'assertThat(refinementCount).isEqualTo(777L);', 'assertThat(refinementCount).isEqualTo(780L);', expected=2)
+          replace_exact(
+              postgres_test,
+              'assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(652);',
+              'assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(651);'
+          )
+          replace_exact(
+              postgres_test,
+              'assertThat(count("ingredient_refinement")).isEqualTo(777);',
+              'assertThat(count("ingredient_refinement")).isEqualTo(780);'
+          )
+          replace_exact(
+              postgres_test,
+              'assertThat(count(connection, "ingredient_refinement")).isEqualTo(777);',
+              'assertThat(count(connection, "ingredient_refinement")).isEqualTo(780);'
+          )
 
           p = Path('.github/scripts/pr55_review_fix.py')
           text = p.read_text()
