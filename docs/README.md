@@ -15,6 +15,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`analysis/candidate-generator-data-readiness.sql`](analysis/candidate-generator-data-readiness.sql): reproduzierbare PostgreSQL-Auswertung des aktiven Ziehpools
 - [`analysis/final-catalog-review-20260813.md`](analysis/final-catalog-review-20260813.md): verbindlicher fachlicher Review für den finalen Katalog
 - [`analysis/final-catalog-snapshot-contract-20260813.md`](analysis/final-catalog-snapshot-contract-20260813.md): Normalisierung, Upgrade-Schutz, Endfingerprint und Dimensionsabdeckung aus Issue #52
+- [`analysis/generator-laboratory-implementation-notes.md`](analysis/generator-laboratory-implementation-notes.md): kompakte Implementierungsgrenze des read-only Preview-/Replay-Kerns aus Phase 9E1
 
 ## Architektur, Betrieb und Umsetzung
 
@@ -37,4 +38,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Phase 9A bis 9D und die dazwischengeschaltete finale Katalog-Baseline aus Issue #52 sind abgeschlossen. Als nächstes folgt Phase 9E / Issue #37 mit Generator-Labor, Preview, Replaydarstellung und begrenzter Simulationsdiagnostik. Danach schließt Phase 9F / Issue #40 die breite Kalibrierung und fachliche Abnahme ab; OpenAI- und Discord-Implementierung bleiben weiterhin nachgelagert.
+Phase 9A bis 9D und die dazwischengeschaltete finale Katalog-Baseline aus Issue #52 sind abgeschlossen. Phase 9E ist in drei bewusst getrennte Pakete aufgeteilt: #37 liefert nicht persistierende Vorschau, Pair-/Setdiagnostik sowie read-only Batch-/Replaydiagnostik; #53 ergänzt den strikt begrenzten gemeinsamen Simulations-/Reportkern; #54 macht diese Simulation als dünnen Adminadapter zugänglich. Danach schließt Phase 9F / Issue #40 die breite Kalibrierung und fachliche Abnahme ab. OpenAI- und Discord-Implementierung bleiben weiterhin nachgelagert.
