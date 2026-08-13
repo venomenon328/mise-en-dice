@@ -43,3 +43,5 @@ databaseChangeLog:
       file: db/changelog/checks/003-catalog-gap-sanity.sql
   - include:
       file: db/changelog/schema/004-persisted-candidate-generation.sql
+  - include:
+      file: db/changelog/schema/005-persisted-generation-review-hardening.sql
