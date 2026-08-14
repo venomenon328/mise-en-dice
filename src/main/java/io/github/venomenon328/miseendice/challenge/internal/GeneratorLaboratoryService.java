@@ -108,11 +108,11 @@ class GeneratorLaboratoryService implements GeneratorLaboratory {
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
 
         GeneratorConfiguration configuration = properties.configuration();
-        GenerationAttemptRequest generationRequest = new GenerationAttemptRequest(
-                request.attemptType(), request.effectiveDate(), month, inputs.catalog(), inputs.history(), manuals,
-                rerollBlock, configuration, seed);
-        PreparedGenerationAttempt prepared = reservoirEngine.prepare(generationRequest);
-        CandidateSetEngine.CandidateSetResult generated = candidateSetEngine.generate(prepared, PREVIEW_BATCH_NUMBER);
+        GeneratorRunExecution.Result execution = GeneratorRunExecution.execute(new GeneratorRunExecution.Input(
+                request.attemptType(), request.effectiveDate(), seed, manuals, rerollBlock, inputs.catalog(),
+                inputs.history(), PREVIEW_BATCH_NUMBER), configuration, reservoirEngine, candidateSetEngine);
+        PreparedGenerationAttempt prepared = execution.preparedAttempt();
+        CandidateSetEngine.CandidateSetResult generated = execution.candidateSet();
         PreviewMetadata metadata = new PreviewMetadata(seed, request.effectiveDate(), month, request.attemptType(),
                 request.historyScenario(), SCENARIO_VERSION, configuration.generatorVersion(),
                 configuration.configurationVersion(), configuration.rngAlgorithm().name(),
@@ -121,8 +121,7 @@ class GeneratorLaboratoryService implements GeneratorLaboratory {
         String setJson = repository.snapshotCodec().json(generated);
 
         if (generated instanceof GeneratedCandidateSet result) {
-            return new PreviewSuccess(metadata, prepared, result,
-                    GeneratorLaboratoryDiagnostics.pairs(result, inputs.catalog(), configuration),
+            return new PreviewSuccess(metadata, prepared, result, execution.pairEvidence(),
                     preparedJson, setJson);
         }
         return new PreviewExhausted(metadata, prepared, (ExhaustedCandidateSet) generated, preparedJson, setJson);

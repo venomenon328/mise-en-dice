@@ -339,10 +339,19 @@ Issue #37 und Issue #40 bleiben eigenständige nachgelagerte Pakete; ihre Labor-
 - Replaydarstellung mit strukturierter erster Abweichung,
 - keine Simulations- oder Kalibrierungslogik.
 
-### Phase 9E2: Begrenzte Simulations- und Reportlogik (Issue #53)
+### Phase 9E2: Begrenzte Simulations- und Reportlogik (Issue #53, abgeschlossen)
 
-- gemeinsamer, begrenzter und nicht schreibender Simulations-/Reportkern,
-- keine neue Generatorpipeline und kein Adminadapter.
+- öffentliche transportneutrale `GeneratorSimulation` mit expliziten Seeds, Fall-/Deadline-/Abbruchgrenzen und
+  harter 4.096-Fälle-Grenze,
+- ein unter `REPEATABLE READ` eingefrorener Katalog-/Historien-Snapshot pro Lauf und danach strikt sequenzielle,
+  schreibfreie Ausführung über den gemeinsamen Preview-/Generator-Kern,
+- synthetische Mehrwochensequenzen mit expliziter sichtbarer Kandidatenposition sowie separater Erschöpfungs- und
+  Technikfehlerbehandlung,
+- begrenzter kanonischer JSON-Report mit Versions-, Seed- und Katalogidentität; Laufzeit bleibt außerhalb des
+  kanonischen Fingerprints,
+- kleines CI-Szenarioset und die vorhandene explizite Issue-#47-Baseline delegieren an denselben Simulations- und
+  Aggregationskern,
+- kein Adminadapter, kein fachliches Tuning und kein Phase-9F-Abnahmegate.
 
 ### Phase 9E3: Adminadapter für Simulation (Issue #54)
 

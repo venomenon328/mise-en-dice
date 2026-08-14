@@ -75,6 +75,22 @@ Alle Datenbanktests verwenden PostgreSQL 17 in Testcontainers; H2, JPA und Hiber
 ./mvnw clean verify
 ```
 
+### Begrenzter Generator-Simulationsreport
+
+Der transportneutrale Simulationskern schreibt nicht in die produktive Challenge-Historie. Das kleine,
+versionierte PostgreSQL-Szenarioset erzeugt einen kanonischen JSON-Report unter
+`target/generator-simulation/ci-scenarios-report.json`:
+
+```bash
+./mvnw clean verify -Dtest=GeneratorSimulationIntegrationTest
+```
+
+Die große 2.304-Fälle-Baseline bleibt bewusst opt-in und verwendet denselben Kern:
+
+```bash
+./mvnw clean verify -Pgenerator-baseline -Dtest=CandidateSetBaselineIntegrationTest
+```
+
 Zentrale Modellierungsentscheidungen sind insbesondere:
 
 - ein gemeinsames Zutatenkonzept statt einer starren Trennung zwischen „Zutat“ und „Kategorie“

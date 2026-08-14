@@ -1214,8 +1214,46 @@ Es entstehen weder Session, Attempt, Batch, Candidate noch Historienexposition.
 Persistierte Attempts und Batches werden ausschließlich aus ihren gespeicherten Snapshots angezeigt. Replay ist
 ebenfalls read-only und vergleicht Fingerprint, Kandidatenreihenfolge/-signatur, Gesamt- und Komponentenscores,
 Reason-Codes sowie Setevaluation. Die erste relevante Abweichung ist als begrenzter strukturierter Wert sichtbar;
-eine nicht unterstützte Version bleibt ausdrücklich kein Mismatch. Simulations-/Reportlogik folgt getrennt in #53,
-der zugehörige Adminadapter in #54; das Kalibrierungsgate bleibt #40.
+eine nicht unterstützte Version bleibt ausdrücklich kein Mismatch.
+
+### 20.3 Begrenzte Simulation und kanonischer Report (Phase 9E2 / Issue #53)
+
+`GeneratorSimulation` ist die kleine öffentliche, transportneutrale Application-API für einen begrenzten
+Simulationslauf. Ein Request benennt nur explizite Seeds (`SeedRange` oder feste Liste), einen stabilen
+`HistoryScenario`, `INITIAL` oder `REROLL`, null bis zwei Manuals, den REROLL-Hardblock, die effektiven Daten und
+eine sichtbare Kandidatenposition `1..12`. Eine Datumsfolge ist eine Sequenz; ihre Schritte sind strikt aufsteigend.
+Die API akzeptiert nie `SeedSource`, begrenzt jeden Application-Run fail-fast auf 4.096 Fälle und erlaubt dem
+aufrufenden Adapter nur strengere Grenzen.
+
+Zu Beginn eines Laufs materialisiert eine einzige read-only-`REPEATABLE READ`-Transaktion alle benötigten
+Monats-`CatalogGeneratorSnapshot`s sowie bei `PRODUCTION_VISIBLE` genau einen `VisibleHistorySnapshot`. Danach
+nutzen Preview und Simulation denselben reinen `GeneratorRunExecution`-Kern über diese Eingaben: kein JDBC-Zugriff,
+keine Produktionwrites, keine implizite Parallelisierung. Erfolgreiche Sequenzschritte schreiben ausschließlich eine
+synthetische, nicht persistierte Exposure aus der gewählten Kandidatenposition, deren Requirements, Profil,
+Ist-Neuigkeit und Ausschlussentscheidung fort. Erschöpfung oder ein technischer Fehler erzeugen keine Exposure und
+lassen die betroffene Sequenz ausdrücklich unvollständig.
+
+Der `SimulationReport` trennt fachliche Erschöpfung, technische Fehler und Replay-/Integritätsabweichungen. Seine
+Invariantenzähler lesen ausschließlich vorhandene Set-, Weight- und Diagnoseartefakte; er enthält keinen zweiten
+Hard-Rule- oder Statistikpfad. Frequenz- und Fingerprintlisten sind nach stabilen Schlüsseln sortiert und jeweils auf
+50 Einträge begrenzt. Der JSON-Report unter `target/generator-simulation/ci-scenarios-report.json` enthält eine
+kanonische Nutzlast mit Report-, Generator-, Konfigurations-, RNG- und Szenarioversion, Seedplan,
+`catalogFingerprintsByMonth` und Run-Katalogfingerprint. `elapsedMillis` liegt nur im separaten Laufzeitabschnitt und
+nie im kanonischen Reportfingerprint.
+
+Der kleine PostgreSQL-/Testcontainers-Reportweg ist absichtlich explizit und CI-tauglich:
+
+```bash
+./mvnw clean verify -Dtest=GeneratorSimulationIntegrationTest
+```
+
+Er schreibt den maschinenlesbaren Report, prüft seine kanonische Reproduzierbarkeit sowie die 4.096/4.097-Grenze und
+deckt INITIAL/REROLL, null bis zwei Manuals, echte und synthetische Historie, Sequenzfortschreibung, Timeout und
+technische Fehler ab. Die große Issue-#47-Matrix bleibt bewusst opt-in und delegiert ebenfalls an diesen Kern:
+
+```bash
+./mvnw clean verify -Pgenerator-baseline -Dtest=CandidateSetBaselineIntegrationTest
+```
 
 ## 21. Test- und Simulationsvertrag
 
@@ -1275,7 +1313,7 @@ Jedes Fixture läuft für alle zwölf Saisonmonate. Gezielte synthetische Fixtur
 
 ### 21.4 Reproduzierbare Suitegrößen
 
-**CI-Baseline:**
+**Explizite Issue-#47-Baseline (nicht Teil des normalen `verify`):**
 
 - 12 Monate × 8 Fixtures × 16 aufeinanderfolgende feste Seeds = 1.536 Attempts mit Defaultkonfiguration,
 - zusätzlich 12 Monate × 4 manualfreie Fixtures × 2 Konfigurationsvarianten (`exclusionProbability = 0` und `1`) × 8 feste Seeds = 768 Attempts,
