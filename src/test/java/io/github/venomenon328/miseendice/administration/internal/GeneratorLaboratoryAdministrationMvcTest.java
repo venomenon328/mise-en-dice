@@ -1,6 +1,9 @@
 package io.github.venomenon328.miseendice.administration.internal;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,6 +14,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Generated;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SimulationRequest;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -19,10 +24,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -56,6 +63,8 @@ class GeneratorLaboratoryAdministrationMvcTest {
     @Autowired WebApplicationContext context;
     @Autowired GenerationCommands generationCommands;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired GeneratorSimulationRequestGuard generatorSimulationRequestGuard;
+    @MockitoSpyBean GeneratorSimulation generatorSimulation;
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -121,6 +130,75 @@ class GeneratorLaboratoryAdministrationMvcTest {
 
     @Test
     @WithMockUser(username = "generator-lab-admin")
+    void simulationUsesTheSharedReadOnlyUseCaseForFullPageAndHtmxRequests() throws Exception {
+        int beforeSessions = count("challenge_session");
+        int beforeAttempts = count("generation_attempt");
+        int beforeBatches = count("generation_batch");
+        int beforeCandidates = count("challenge_candidate");
+        int beforeChallenges = count("challenge");
+        var request = post("/admin/generator/simulation")
+                .param("startSeed", "37000001")
+                .param("seedCount", "1")
+                .param("effectiveStartDate", "2026-08-13")
+                .param("monthCount", "1")
+                .param("attemptType", "INITIAL")
+                .param("historyScenario", "EMPTY_HISTORY")
+                .param("manual1Text", "").param("manual1ConceptId", "")
+                .param("manual2Text", "").param("manual2ConceptId", "")
+                .param("block1", "").param("block2", "").param("block3", "").param("block4", "");
+
+        mockMvc.perform(request).andExpect(status().isForbidden());
+        mockMvc.perform(request.with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Gemeinsamer Simulationsreport")))
+                .andExpect(content().string(containsString("Status COMPLETED")))
+                .andExpect(content().string(containsString("Kanonischer Report")));
+        var capturedFullPage = org.mockito.ArgumentCaptor.forClass(SimulationRequest.class);
+        verify(generatorSimulation).simulate(capturedFullPage.capture());
+        assertThatSharedSimulationRequest(capturedFullPage.getValue());
+        clearInvocations(generatorSimulation);
+        mockMvc.perform(request.with(csrf()).header("HX-Request", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("generator-simulation-result")))
+                .andExpect(content().string(containsString("Gemeinsamer Simulationsreport")));
+        var capturedHtmx = org.mockito.ArgumentCaptor.forClass(SimulationRequest.class);
+        verify(generatorSimulation).simulate(capturedHtmx.capture());
+        assertThatSharedSimulationRequest(capturedHtmx.getValue());
+
+        org.assertj.core.api.Assertions.assertThat(count("challenge_session")).isEqualTo(beforeSessions);
+        org.assertj.core.api.Assertions.assertThat(count("generation_attempt")).isEqualTo(beforeAttempts);
+        org.assertj.core.api.Assertions.assertThat(count("generation_batch")).isEqualTo(beforeBatches);
+        org.assertj.core.api.Assertions.assertThat(count("challenge_candidate")).isEqualTo(beforeCandidates);
+        org.assertj.core.api.Assertions.assertThat(count("challenge")).isEqualTo(beforeChallenges);
+    }
+
+    @Test
+    @WithMockUser(username = "generator-lab-admin")
+    void simulationRejectsASecondRequestFromTheSameAdminSessionBeforeStartingIt() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        org.assertj.core.api.Assertions.assertThat(generatorSimulationRequestGuard.tryAcquire(session.getId())).isTrue();
+        clearInvocations(generatorSimulation);
+        try {
+            mockMvc.perform(post("/admin/generator/simulation").with(csrf()).session(session)
+                            .param("startSeed", "37000001")
+                            .param("seedCount", "1")
+                            .param("effectiveStartDate", "2026-08-13")
+                            .param("monthCount", "1")
+                            .param("attemptType", "INITIAL")
+                            .param("historyScenario", "EMPTY_HISTORY")
+                            .param("manual1Text", "").param("manual1ConceptId", "")
+                            .param("manual2Text", "").param("manual2ConceptId", "")
+                            .param("block1", "").param("block2", "").param("block3", "").param("block4", ""))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("läuft bereits eine Simulation")));
+            verifyNoInteractions(generatorSimulation);
+        } finally {
+            generatorSimulationRequestGuard.release(session.getId());
+        }
+    }
+
+    @Test
+    @WithMockUser(username = "generator-lab-admin")
     void persistedBatchAndReplayUseReadOnlyQueries() throws Exception {
         Generated generated = (Generated) generationCommands.startNewSession(
                 new StartNewSession(LocalDate.of(2026, 8, 13), List.of(), 37_000_031L));
@@ -161,5 +239,18 @@ class GeneratorLaboratoryAdministrationMvcTest {
 
     private int count(String table) {
         return jdbcTemplate.queryForObject("select count(*) from " + table, Integer.class);
+    }
+
+    private static void assertThatSharedSimulationRequest(SimulationRequest request) {
+        org.assertj.core.api.Assertions.assertThat(request.callerCaseLimit()).isEqualTo(64);
+        org.assertj.core.api.Assertions.assertThat(request.plannedCases()).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(request.scenarios()).singleElement().satisfies(scenario -> {
+            org.assertj.core.api.Assertions.assertThat(scenario.effectiveDates()).hasSize(1);
+            org.assertj.core.api.Assertions.assertThat(scenario.visibleCandidatePosition()).isEqualTo(1);
+            org.assertj.core.api.Assertions.assertThat(scenario.exclusionVariant())
+                    .isEqualTo(GeneratorSimulation.ExclusionVariant.DEFAULT);
+        });
+        org.assertj.core.api.Assertions.assertThat(request.control().technicalErrorMode())
+                .isEqualTo(GeneratorSimulation.TechnicalErrorMode.FAIL_FAST);
     }
 }

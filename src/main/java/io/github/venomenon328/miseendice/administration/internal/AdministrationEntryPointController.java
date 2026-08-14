@@ -5,6 +5,10 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.PreviewResult;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation;
+import jakarta.servlet.http.HttpSession;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,27 +17,35 @@ import org.springframework.ui.Model;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /** Canonical administration entry points that do not belong to a catalog resource. */
 @Controller
 @ConditionalOnProperty(prefix = "mise-en-dice.administration", name = "enabled", havingValue = "true")
 class AdministrationEntryPointController {
+    private static final Duration SIMULATION_DEADLINE = Duration.ofSeconds(30);
     private static final Set<String> GENERATOR_PICKER_SLOTS = Set.of(
             "manual1ConceptId", "manual2ConceptId", "block1", "block2", "block3", "block4");
 
     private final GeneratorLaboratory generatorLaboratory;
     private final GenerationQueries generationQueries;
     private final CatalogQueries catalogQueries;
+    private final GeneratorSimulation generatorSimulation;
+    private final GeneratorSimulationRequestGuard generatorSimulationRequestGuard;
 
     AdministrationEntryPointController(
             GeneratorLaboratory generatorLaboratory,
             GenerationQueries generationQueries,
-            CatalogQueries catalogQueries
+            CatalogQueries catalogQueries,
+            GeneratorSimulation generatorSimulation,
+            GeneratorSimulationRequestGuard generatorSimulationRequestGuard
     ) {
         this.generatorLaboratory = generatorLaboratory;
         this.generationQueries = generationQueries;
         this.catalogQueries = catalogQueries;
+        this.generatorSimulation = generatorSimulation;
+        this.generatorSimulationRequestGuard = generatorSimulationRequestGuard;
     }
 
     @GetMapping("/admin/")
@@ -69,6 +81,43 @@ class AdministrationEntryPointController {
         return "admin/audit";
     }
 
+    @PostMapping("/admin/generator/simulation")
+    String generatorSimulation(
+            @RequestParam MultiValueMap<String, String> parameters,
+            @RequestHeader(value = "HX-Request", required = false) String htmxRequest,
+            HttpSession session,
+            Model model
+    ) {
+        GeneratorSimulationForm form = GeneratorSimulationForm.from(parameters);
+        model.addAttribute("simulationForm", form);
+        boolean htmx = "true".equalsIgnoreCase(htmxRequest);
+        if (!htmx) {
+            generatorBaseModel(model);
+        }
+        try {
+            GeneratorSimulation.SimulationRequest request = form.toRequest(
+                    catalogQueries, Instant.now().plus(SIMULATION_DEADLINE));
+            String sessionId = session.getId();
+            if (!generatorSimulationRequestGuard.tryAcquire(sessionId)) {
+                model.addAttribute("simulationErrors", List.of(
+                        "Für diese Administrationssitzung läuft bereits eine Simulation."));
+                return simulationView(htmx);
+            }
+            try {
+                model.addAttribute("simulationReport", generatorSimulation.simulate(request));
+            } finally {
+                generatorSimulationRequestGuard.release(sessionId);
+            }
+        } catch (IllegalArgumentException exception) {
+            model.addAttribute("simulationErrors", List.of(exception.getMessage()));
+        } catch (RuntimeException exception) {
+            model.addAttribute("simulationTechnicalError",
+                    "Technischer Fehler: Die Simulation wurde unvollständig abgebrochen ("
+                            + exception.getClass().getSimpleName() + ").");
+        }
+        return simulationView(htmx);
+    }
+
     @PostMapping("/admin/generator/replay")
     String generatorReplay(@RequestParam long attemptId, @RequestParam int batchNumber, Model model) {
         model.addAttribute("replayResult", generationQueries.replay(attemptId, batchNumber));
@@ -98,6 +147,13 @@ class AdministrationEntryPointController {
         if (!model.containsAttribute("previewForm")) {
             model.addAttribute("previewForm", GeneratorLaboratoryForm.defaults());
         }
+        if (!model.containsAttribute("simulationForm")) {
+            model.addAttribute("simulationForm", GeneratorSimulationForm.defaults());
+        }
+    }
+
+    private static String simulationView(boolean htmx) {
+        return htmx ? "admin/audit :: generatorSimulationResult" : "admin/audit";
     }
 
     private void loadPersistedGeneration(long attemptId, Integer requestedBatch, Model model) {

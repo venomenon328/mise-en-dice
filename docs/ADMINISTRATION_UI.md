@@ -1141,7 +1141,39 @@ Versionen, Fingerprints, historische Candidate-/Requirement-Snapshots und Legacy
 Replay ist ein read-only POST mit CSRF-Schutz und zeigt Match, nicht unterstützte Version, ungültigen Snapshot oder
 die erste strukturierte Differenz. Aktuelle Katalogwerte reparieren keine historischen Anzeige- oder Replaydaten.
 
-Simulation und Report folgen in #53, deren Adminadapter in #54; Kalibrierung ist #40 und nicht Teil dieser Ansicht.
+### Simulation (Phase 9E3 / Issue #54)
+
+Der klar getrennte Bereich **Simulation** ruft ausschließlich die öffentliche `GeneratorSimulation`-API auf. Er nimmt
+Startseed, Seedanzahl, Startdatum, einen Monatsdurchlauf von `1..12`, Historienszenario, INITIAL/REROLL sowie null bis
+zwei Manuals entgegen. Katalog-IDs aus dem vorhandenen Picker werden vor dem Lauf lesend über `CatalogQueries` auf
+stabile Codes aufgelöst. REROLL verlangt exakt vier unterschiedliche auflösbare Konzepte; INITIAL akzeptiert keinen
+versteckten Block. Generatorgewichte, Quoten, Ausschlussvariante und sichtbare Kandidatenposition sind nicht editierbar.
+
+```text
+Simulation
+  Startseed | Seedanzahl | Startdatum | Monatsanzahl
+  Historienszenario | INITIAL/REROLL
+  0–2 Manuals mit optionalem Katalogmatch
+  bei REROLL: vier auflösbare Hardblock-Konzepte
+  [Simulation starten]
+
+  Status: vollständig / TIMED_OUT / ABORTED / INCOMPLETE
+  Fälle, Erfolge, Erschöpfungen und technische Fehler
+  begrenzte Reportaggregate, Versionen, Seedpläne und Katalogfingerprints
+```
+
+Ein Request umfasst höchstens 64 expandierte Fälle und erhält ausschließlich serverseitig eine feste 30-Sekunden-
+Deadline mit `FAIL_FAST` für unbekannte technische Fehler. Jeder Monat ist ein eigener Single-Step-Szenarioschritt;
+die gewählte Historie startet je Monat neu. Die Seite zeigt unvollständige Läufe ausdrücklich als Teilreport und trennt
+fachliche Erschöpfung von technischen Fehlern. Frequenzlisten werden ohne erneute Sortierung oder Erweiterung aus dem
+begrenzt gelieferten Report gerendert.
+
+`POST /admin/generator/simulation` besitzt CSRF-Schutz und funktioniert als vollständiger servergerenderter POST ohne
+JavaScript. Mit HTMX liefert derselbe Endpunkt nur das Ergebnisfragment; das Submit wird währenddessen deaktiviert.
+Zusätzlich erlaubt ein flüchtiger, in `finally` freigegebener Guard höchstens einen laufenden Request pro
+Administrationssession. Es gibt weder Hintergrundjob noch persistierten Simulationszustand.
+
+Simulation und Report aus #53, ihr Adminadapter aus #54 und die Kalibrierung aus #40 bleiben getrennte Pakete.
 
 ## 26. Abnahmekriterium dieser Spezifikation
 
