@@ -117,6 +117,16 @@ public record GeneratorConfiguration(
         validateSelectionWeightBounds(reservoirTarget, weightQuantization, selection);
     }
 
+    /** Returns the same immutable generator contract with only the diagnostic exclusion mode changed. */
+    public GeneratorConfiguration withExclusionProbability(BigDecimal probability) {
+        return new GeneratorConfiguration(generatorVersion, configurationVersion, rngAlgorithm, canonicalPayloadVersion,
+                candidateSetSize, reservoirTarget, reservoirStrictMinimum, reservoirRelaxedOneMinimum,
+                maximumProposalAttempts, weightQuantization, probability, availabilityFactors, cooldown, exclusion,
+                novelty, anchorRoles, supportRoles, flavorRoles, profiles, profileWeights, profileSetTargets,
+                specificityWeights, specificitySetTargets, cadenceSetTargets, scoreWeights, similarityWeights,
+                similarity, selection, fallbacks, processingLease);
+    }
+
     public record SimilarityConfiguration(
             BigDecimal informativeAncestorMaximumDrawableShare,
             BigDecimal roleWeight,
