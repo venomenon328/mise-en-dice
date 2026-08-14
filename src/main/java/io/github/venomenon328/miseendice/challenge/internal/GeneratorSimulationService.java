@@ -146,10 +146,9 @@ class GeneratorSimulationService implements GeneratorSimulation {
                             verifyFrozenReplay(runInput, engines, generated, aggregates);
                             history = appendSyntheticExposure(history, scenario, seed, step, date,
                                     execution.preparedAttempt(), generated);
-                        } else {
+                        } else if (result instanceof ExhaustedCandidateSet) {
+                            // Exhaustion is a processed domain result. It creates no exposure, but later steps still run.
                             aggregates.exhaustedSets++;
-                            sequenceComplete = false;
-                            break;
                         }
                     } catch (RuntimeException exception) {
                         // Deliberately do not reinterpret unknown implementation/JDBC errors as generator exhaustion.
@@ -174,7 +173,7 @@ class GeneratorSimulationService implements GeneratorSimulation {
 
         if (completionStatus == CompletionStatus.COMPLETED && aggregates.incompleteSequences > 0) {
             completionStatus = CompletionStatus.INCOMPLETE;
-            completionDetail = "One or more sequences ended after an exhaustion or technical error.";
+            completionDetail = "One or more sequences ended after a technical error.";
         }
 
         Metadata metadata = metadata(request, inputs);
