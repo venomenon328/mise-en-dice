@@ -19,5 +19,5 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Candidate generator baseline
-        run: ./mvnw clean verify -Pgenerator-baseline -Dtest=CandidateSetBaselineIntegrationTest
+      - name: Verify
+        run: ./mvnw clean verify
