@@ -1,11 +1,11 @@
 # Kalibrierung und Abnahme des Kandidatengenerators
 
 Stand: 15. August 2026
-Status: technischer Stand vorbereitet und fokussiert geprüft; breite Endmessung, operativer Kataloglauf und manuelle Fachabnahme offen
+Status: technischer Stand vorbereitet und fokussiert geprüft; operativer Kataloglauf bestanden; breite Endmessung und manuelle Fachabnahme offen
 
 Dieses Dokument ist das Abnahmeprotokoll für Issue #40. Es trennt den reproduzierbaren Repository-Lauf, den
 read-only operativen Kataloglauf und die ausschließlich durch den Administrator vorzunehmende kulinarische
-Bewertung. Ein grünes technisches Gate ersetzt die letzten beiden Schritte nicht.
+Bewertung. Ein grünes technisches oder operatives Gate ersetzt die verbleibende manuelle Fachabnahme nicht.
 
 ## 1. Identität des Ausgangsstands
 
@@ -179,24 +179,25 @@ Ausgabe aber nicht zur bestandenen Fachabnahme.
 
 ## 5. Operativer Kataloglauf durch den Administrator
 
-Der operative redaktionelle PostgreSQL-Katalog wird nicht durch Repository-Fixtures ersetzt. Der Lauf erfolgt
-ausschließlich read-only über `/admin/generator` aus Issue #54. Vorher ist ein Backup nach dem normalen
-Betriebsverfahren sinnvoll; die Simulation selbst schreibt weder Sessions, Attempts, Batches, Kandidaten noch
-Challenges.
+Der operative redaktionelle PostgreSQL-Katalog wird nicht durch Repository-Fixtures ersetzt. Der Lauf erfolgte
+read-only über `/admin/generator` aus Issue #54 auf einer Preview-Instanz mit einer Kopie des operativen
+PostgreSQL-Datenbestands. Die Simulation schrieb weder Sessions, Attempts, Batches, Kandidaten noch Challenges.
 
 ### 5.1 Acht begrenzte Adminläufe
 
-Jeder Lauf verwendet vier Seeds über zwölf Monate und bleibt mit 48 Fällen unter dem Adapterlimit 64. Die feste
-Admin-Deadline beträgt fünf Minuten. Eine erste betriebliche Probe mit der vorherigen 30-Sekunden-Grenze endete nach
-8 von 48 Fällen als `TIMED_OUT`; dieser partielle Report wird nicht als Gate-Nachweis gewertet. Die längere Deadline
-ändert weder Falllimit noch Session-Doppelstartschutz und bleibt weiterhin eine harte Abbruchgrenze.
+Die Abnahme verwendete den Deployment-Commit `59b3e330cad6c0116a5ff8672c5e5eab0dcc8d42`, Generator `1.0.0`,
+Konfiguration `2026-08-15.1`, RNG `SPLITMIX64_V1`, Report `2026-08-13.1` und Szenario
+`ADMIN_GENERATOR_SIMULATION_V1`.
 
-Bei dieser partiellen Probe wurden außerdem Neuigkeits-Ziel/Ist-Abweichungen fälschlich in den allgemeinen
-Hard-Rule-Zähler aufgenommen. Das widersprach der verbindlichen 9C2-Klarstellung: außerhalb der separaten Recovery-
-Nullregel bleibt die tatsächliche Neuigkeitsverteilung ein Softziel. Der Invariantenzähler wurde entsprechend wieder
-auf Spezifitäts- und Profilquoten begrenzt; Ziel- und Ist-Neuigkeitsverteilungen bleiben vollständig im Report.
+Eine erste betriebliche Probe mit der vorherigen 30-Sekunden-Grenze endete nach 8 von 48 Fällen als `TIMED_OUT`;
+dieser partielle Report wurde nicht als Gate-Nachweis gewertet. Die Admin-Deadline wurde daraufhin auf fünf Minuten
+erhöht. OP-01 bis OP-07 liefen danach jeweils als vollständiger 48-Fälle-Request.
 
-Die Startseeds sind fest und nicht Teil des manuellen Acht-Satz-Korpus.
+OP-08 mit zwei Manuals benötigte auf dem Preview-VPS für 48 Fälle mehr als fünf Minuten und endete nach 26 Fällen
+als `TIMED_OUT`. Auch dieser partielle Report wurde nicht als Nachweis gewertet. Weil alle Monate unabhängige
+Single-Step-Szenarien sind, wurde exakt dieselbe Menge von 48 Seed-/Monatskombinationen anschließend deterministisch
+in vier vollständige 12-Fälle-Requests für Januar–März, April–Juni, Juli–September und Oktober–Dezember partitioniert.
+Die Deadline und das Falllimit wurden dafür nicht weiter aufgeweicht.
 
 | Lauf | Startseed | Historie / Typ | Manuals / REROLL-Block |
 |---|---:|---|---|
@@ -209,43 +210,87 @@ Die Startseeds sind fest und nicht Teil des manuellen Acht-Satz-Korpus.
 | `OP-07` | `40410600` | `EMPTY_HISTORY`, INITIAL | Manual 1: „Artischocke“, gematcht auf `ARTICHOKE` |
 | `OP-08` | `40410700` | `EMPTY_HISTORY`, INITIAL | Manual 1: „Speck“, gematcht auf `BACON`; Manual 2: „Use a waffle iron“, frei |
 
-Für jeden Lauf im Formular: Startdatum am 15. Januar des Prüfjahrs, `Seedanzahl = 4`, `Monatsanzahl = 12`. Die
-Katalog-IDs werden jeweils über den Picker des aktuell geprüften Deployments gewählt; fachlich verbindlich sind die
-oben festgeschriebenen stabilen Konzeptcodes und exakten Manual-Freitexte. Beim gematchten Manual bleibt der Freitext
-autoritativ; der Picker liefert nur die stabile Katalogzuordnung. Damit sind alle acht operativen Inputs unabhängig
-von technischen IDs reproduzierbar.
+Die Katalog-IDs wurden gegen den geprüften Datenbestand auf stabile Codes aufgelöst. Für OP-06 waren insbesondere
+`ARTICHOKE` = ID 83 und `BAMBOO_SHOOTS` = ID 82 im geprüften Snapshot vorhanden. Die während der Abnahme gefundenen
+Picker-/UX-Probleme sind separat als Issues #60 und #61 erfasst und verändern die Generatorergebnisse nicht.
 
-### 5.2 Zu protokollieren
+### 5.2 Operatives Ergebnis
 
-1. Generator-, Konfigurations-, RNG-, Report- und Szenarioversion aus dem Ergebnis übernehmen.
-2. `runCatalogFingerprint` und die Monatsfingerprints festhalten.
-3. Für jeden Lauf Fälle, Erfolge, Erschöpfungen, technische Fehler, Fallbacks, Proposal-P95/-Maximum,
-   Ausschlussquote, Konzentration und Pair-Mean/P95/Maximum eintragen.
-4. Jede Auffälligkeit einer Ursachenklasse aus Abschnitt 3 zuordnen; keine operative Einzelgewichtung als
-   Algorithmusfix verwenden.
-5. Anschließend die acht Preview-Eingaben aus Abschnitt 4 einzeln im Labor reproduzieren und die Rubrik ausfüllen.
+Über alle acht Szenarien wurden **384/384 geplante Fälle erfolgreich verarbeitet**. Es gab **0 fachliche
+Erschöpfungen, 0 technische Fehler, 0 Replay-/Integritätsabweichungen, 0 Hard-Rule-Verletzungen, 0
+Cooldown-Verletzungen und 0 REROLL-Verletzungen**. Die Fallbacksumme beträgt `STRICT/R1/R2 = 371/13/0`.
+
+| Lauf | Fälle | `STRICT/R1/R2` | Proposal Ø | Pair Mean / P95 / Max | Top 1 / Top 10 | kanonischer Report |
+|---|---:|---:|---:|---|---|---|
+| `OP-01` | 48/48 | 47/1/0 | 145,8542 | 0,288374 / 0,366967 / 0,406643 | 1,39 % / 8,90 % | `4ddc98abd2fb3c50dafd36ffe3b0d06dba13b3b70ce2fe5be42bc369a6110555` |
+| `OP-02` | 48/48 | 46/2/0 | 145,9375 | 0,285773 / 0,362784 / 0,409104 | 1,30 % / 8,46 % | `f34097fee8e875175242d402c6ccd7d1b643c2cd077ad783e1283c9ff7a73af1` |
+| `OP-03` | 48/48 | 46/2/0 | 145,7292 | 0,290351 / 0,364778 / 0,400639 | 0,91 % / 7,81 % | `fe3b6a92e0059b9a9a59cfaf789bd7a5780b90f62f18eb922fbc7f8e829e456c` |
+| `OP-04` | 48/48 | 45/3/0 | 145,7083 | 0,287328 / 0,365524 / 0,404276 | 1,43 % / 8,72 % | `4fee7393047bd72bb4105a8f54fa4363532cb0674c0eeb1afcbdcfa29aef536` |
+| `OP-05` | 48/48 | 47/1/0 | 145,8750 | 0,286874 / 0,363011 / 0,404112 | 1,43 % / 9,24 % | `8bfad2f08b84b94724f49ad052e7c5dabe161201d267b3b829cb14e1236c7391` |
+| `OP-06` | 48/48 | 44/4/0 | 145,7708 | 0,287005 / 0,365871 / 0,407781 | 1,30 % / 8,94 % | `9c7e2672797edf7147a830e3527c2d40bc02ce5cdede934d41d7062cbb3ab390` |
+| `OP-07` | 48/48 | 48/0/0 | 149,0625 | 0,286323 / 0,361027 / 0,406079 | 0,98 % / 7,70 % | `5331c6d12b100337d0222e82cf0690628dd9f18d1b705aa6c4e93b0632448456` |
+| `OP-08A` Jan–Mär | 12/12 | 12/0/0 | 165,5000 | 0,288057 / 0,364699 / 0,435843 | 2,08 % / 15,28 % | `89937cb3b4d66a2a8886af0cc78350fc82411ff5da9bfcddab0c40ee4e1b54db` |
+| `OP-08B` Apr–Jun | 12/12 | 12/0/0 | 166,8333 | 0,291309 / 0,372470 / 0,417469 | 2,43 % / 17,01 % | `b837ae104d8e24a7b0687c53b1e51b4cb3a97a6170a1728fcaef4f957dcf9c7c` |
+| `OP-08C` Jul–Sep | 12/12 | 12/0/0 | 167,2500 | 0,292404 / 0,373617 / 0,410857 | 1,39 % / 12,50 % | `1b624f1634895b2bf54d4e2679d35c391d28673db2c2e2636bd878a0465f5712` |
+| `OP-08D` Okt–Dez | 12/12 | 12/0/0 | 167,2500 | 0,293872 / 0,374159 / 0,434685 | 2,08 % / 16,32 % | `5f891ffbe549087138a307032f379407067998afed9b0b162c968a73e8319d50` |
+
+Der Adminreport stellt für Proposalversuche aktuell nur den Mittelwert dar; die im ursprünglichen Protokoll
+vorgesehenen Proposal-P95-/Maximumwerte konnten deshalb im operativen UI-Lauf nicht zusätzlich protokolliert werden.
+Die technische/fokussierte Kalibrierung deckt diese Quantile weiterhin ab. Dieser Darstellungsunterschied wird nicht
+als Generatorfehler gewertet.
+
+Für OP-01 bis OP-07 war der vollständige Zwölf-Monats-Run-Katalogfingerprint identisch:
+`063b73f4420d672137373777602515e6be90118dc2f826526adc6b3abf88b01b`. Die vier OP-08-Teilruns besitzen wegen ihrer
+jeweils drei materialisierten Monate erwartungsgemäß eigene Run-Katalogfingerprints:
+
+- OP-08A: `41b94b3db86a849b6e50cc36a21f3ab603c7c1db6e4f3e1b0e9850c20c5f3a64`
+- OP-08B: `837ae870743612a9cca04efa8c681e5dc1d1e81f570ceb4273d3c7db46e38852`
+- OP-08C: `9c4833f854ecd80fd0e92ce8d3269845b108549c303f13876f04cfa2847a46b4`
+- OP-08D: `10c21668c675590c395089778a13bb3262200f33045698f2053cd0501c90b92f`
+
+Die Monatsfingerprints waren über alle Läufe für denselben Monat identisch:
+
+| Monat | Katalogfingerprint |
+|---:|---|
+| 1 | `05d36287efcdf70b296a99cf7297f2902fc1d35175159775f61045236f60932d` |
+| 2 | `55ac5eeaa83d06522187c6227a97921191261267fd1e5e8c35045c6560f1a5d7` |
+| 3 | `f0e60cac3e60bf8d59c46f869ed71dce9914fb4761f39871e4a54d9f79bc98ea` |
+| 4 | `b2f020b47d74b168a08d91049df2b1c638fe9060dd2723b5952edf3322429f72` |
+| 5 | `388aa22188cf39587bf2d18ccb71c23eed587375e93fe377c28e0f0631ede67f` |
+| 6 | `16d3e9ef0e6291ceae5efb10b39a4aa13e2419933505babea978c4bde7d2b433` |
+| 7 | `6b22fa6f71a19838271633e7660ccd129579ab0288333da2df9819220e479f4f` |
+| 8 | `8d95ce655677c9f867e4d1d64933307b5e86c9eddcca737d645cf3892045f8f2` |
+| 9 | `5d3426bab8ea0a884080ad4df85c32bfd43488d8abc1053eedf536c1c43041f3` |
+| 10 | `767a003e6187f86aa87955330b1bbe6e339167f193d0196ecd53a951c5f46b09` |
+| 11 | `9ae173e6b00367cca26eb60f83313cafb291cb3ed5c3b72414a7115603493164` |
+| 12 | `c098fe105e6495052d7eb9ff751800610c81e244a71c708aab1cc4756a4c0773` |
 
 | Operativer Nachweis | Ergebnis |
 |---|---|
-| Datum / geprüfter Deployment-Commit | offen |
-| operativer Run-Katalogfingerprint | offen |
-| Versionen identisch zum technischen Lauf | offen |
-| 8 × 48 Fälle vollständig | offen |
-| technische Gates | offen |
-| Administratorname / Fachabnahme | offen |
+| Datum / geprüfter Deployment-Commit | 15. August 2026 / `59b3e330cad6c0116a5ff8672c5e5eab0dcc8d42` |
+| operativer Katalog | vollständiger Monatsnachweis; OP-01 bis OP-07 Run-Fingerprint `063b73f4…8b01b` |
+| Versionen identisch zum technischen Tuningstand | ja |
+| acht Szenarien / 384 Fälle vollständig | ja; OP-08 nach verworfener Timeout-Probe deterministisch 4 × 12 partitioniert |
+| technische Gates | bestanden; sämtliche Integritätszähler 0, keine Erschöpfung, `STRICT/R1/R2 = 371/13/0` |
+| manuelle Fachabnahme | offen |
+
+**Operatives Gate: bestanden.** Der reale redaktionelle Katalog zeigt auf dem getunten Generator keine technische
+oder fachliche Integritätsauffälligkeit. Die höhere Suchlast im Zwei-Manual-Szenario ist reproduzierbar sichtbar,
+führt in den vollständigen Teilruns aber weder zu Fallback noch Erschöpfung.
 
 ## 6. Gate-Ergebnis und verbleibende Grenzen
 
-- Reguläres Repository-Gate: `./mvnw clean verify` am 15. August 2026 mit 219 Tests, 0 Fehlern und 0 übersprungenen
-  Tests erfolgreich. Die Kalibrierungsklasse war standardmäßig ausgeschlossen.
+- Reguläres Repository-Gate: `Verify` und `Deployment Verify` waren auf dem für die operative Abnahme verwendeten
+  Code-Head `59b3e330cad6c0116a5ff8672c5e5eab0dcc8d42` erfolgreich. Die Kalibrierungsklasse bleibt standardmäßig
+  ausgeschlossen.
 - Fokussierte Endprüfung: 48/48 erfolgreich, 0 Erschöpfungen, 0 Hard-Rule- und Replay-Verstöße. Die gezielte
-  Profilprüfung von 112 Sequenzfällen, Partitionierungsäquivalenz und festem Korpus lief mit 3/3 grünen Tests;
-  das Korpus selbst war 8/8 erfolgreich.
-- Breites technisches End-Gate: **nicht ausgeführt und nicht als bestanden erklärt**; 2.304- und 9.216-Fälle-Läufe
-  wurden auf ausdrückliche Auftraggeberanweisung nicht wiederholt.
-- Operativer Kataloglauf: **offen**.
+  Profilprüfung von 112 Sequenzfällen, Partitionierungsäquivalenz und festem Korpus lief erfolgreich; das Korpus
+  selbst war technisch 8/8 erfolgreich.
+- Breites technisches End-Gate: **nicht ausgeführt und nicht als bestanden erklärt**; die ausdrücklich ausgeschlossenen
+  breiten Wiederholungsläufe bleiben unbestätigt.
+- Operativer Kataloglauf: **bestanden**, 384/384 erfolgreiche Fälle über alle acht Szenarien.
 - Manuelle fachliche Abnahme: **offen**.
-- Phase 9: **nicht abgeschlossen**, solange die beiden offenen Administratornachweise fehlen.
+- Phase 9: **nicht abgeschlossen**, solange die manuelle Administrator-Fachabnahme des festen Korpus fehlt.
 
 Bewusst verbleibende Grenzen: Der Generator prüft strukturelle Plausibilität und bekannte Metadaten, nicht allgemeine
 Geschmacksverträglichkeit oder Standardgerichte. Lückenhafte optionale Dimensionen senken die Konfidenz. Diese Grenze
