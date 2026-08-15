@@ -100,7 +100,7 @@ class GeneratorSimulationExhaustionRegressionTest {
     }
 
     @Test
-    void strictNoveltyQuotaDeviationIsCountedAsAQuotaAndHardRuleViolation() {
+    void strictNoveltyQuotaDeviationRemainsASoftSignal() {
         CandidateSetEngine scriptedSetEngine = (prepared, batchNumber) -> {
             CandidateSetEngine.CandidateSetResult actual = setEngine.generate(prepared, batchNumber);
             if (!(actual instanceof GeneratedCandidateSet generated)) {
@@ -141,8 +141,8 @@ class GeneratorSimulationExhaustionRegressionTest {
 
         assertThat(report.completion().status()).isEqualTo(GeneratorSimulation.CompletionStatus.COMPLETED);
         assertThat(report.metrics().successfulSets()).isEqualTo(1);
-        assertThat(report.metrics().quotaViolations()).isEqualTo(1);
-        assertThat(report.metrics().hardRuleViolations()).isEqualTo(1);
+        assertThat(report.metrics().quotaViolations()).isZero();
+        assertThat(report.metrics().hardRuleViolations()).isZero();
     }
 
     private GeneratorSimulation simulationWith(CandidateSetEngine scriptedSetEngine) {
