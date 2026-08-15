@@ -65,14 +65,12 @@ class GeneratorSimulationExhaustionRegressionTest {
     void domainExhaustionDoesNotAbortLaterStepsOrCreateAnIncompleteSequence() {
         AtomicInteger calls = new AtomicInteger();
         CandidateSetEngine scriptedSetEngine = (prepared, batchNumber) -> {
-            CandidateSetEngine.CandidateSetResult actual = setEngine.generate(prepared, batchNumber);
-            if (calls.getAndIncrement() != 0) {
-                return actual;
+            if (calls.getAndIncrement() == 0) {
+                var reservoir = reservoirEngine.generate(prepared, batchNumber);
+                return new ExhaustedCandidateSet(reservoir, batchNumber, prepared.request().attemptSeed(),
+                        List.of(), List.of(GeneratorReasonCode.GENERATION_EXHAUSTED));
             }
-            List<GeneratorReasonCode> diagnostics = new ArrayList<>(actual.diagnostics());
-            diagnostics.add(GeneratorReasonCode.GENERATION_EXHAUSTED);
-            return new ExhaustedCandidateSet(actual.reservoir(), actual.batchNumber(), actual.batchSeed(),
-                    actual.fallbackAttempts(), diagnostics);
+            return setEngine.generate(prepared, batchNumber);
         };
         GeneratorSimulation simulation = simulationWith(scriptedSetEngine);
         SimulationScenario scenario = new SimulationScenario(
