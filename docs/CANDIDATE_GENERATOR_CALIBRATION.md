@@ -196,13 +196,15 @@ sind fest und nicht Teil des manuellen Acht-Satz-Korpus.
 | `OP-03` | `40410200` | `RECOVERY_AFTER_ADVENTUROUS`, INITIAL | keine |
 | `OP-04` | `40410300` | `SEEKING_AFTER_THREE_FAMILIAR`, INITIAL | keine |
 | `OP-05` | `40410400` | `LOADED_COOLDOWN_HISTORY`, INITIAL | keine |
-| `OP-06` | `40410500` | `EMPTY_HISTORY`, REROLL | vier unterschiedliche Konzepte über den Picker |
-| `OP-07` | `40410600` | `EMPTY_HISTORY`, INITIAL | ein gematchtes Manual |
-| `OP-08` | `40410700` | `EMPTY_HISTORY`, INITIAL | ein gematchtes und ein freies Manual |
+| `OP-06` | `40410500` | `EMPTY_HISTORY`, REROLL | `ARTICHOKE`, `ASPARAGUS`, `BACON`, `BAMBOO_SHOOTS` |
+| `OP-07` | `40410600` | `EMPTY_HISTORY`, INITIAL | Manual 1: „Artischocke“, gematcht auf `ARTICHOKE` |
+| `OP-08` | `40410700` | `EMPTY_HISTORY`, INITIAL | Manual 1: „Speck“, gematcht auf `BACON`; Manual 2: „Use a waffle iron“, frei |
 
-Für jeden Lauf im Formular: Startdatum am 15. Januar des Prüfjahrs, `Seedanzahl = 4`, `Monatsanzahl = 12`. Beim
-REROLL sind vier aktuell vorhandene, unterschiedliche Konzepte auszuwählen. Beim gematchten Manual bleibt der
-Freitext autoritativ; der Picker liefert nur die stabile Katalogzuordnung.
+Für jeden Lauf im Formular: Startdatum am 15. Januar des Prüfjahrs, `Seedanzahl = 4`, `Monatsanzahl = 12`. Die
+Katalog-IDs werden jeweils über den Picker des aktuell geprüften Deployments gewählt; fachlich verbindlich sind die
+oben festgeschriebenen stabilen Konzeptcodes und exakten Manual-Freitexte. Beim gematchten Manual bleibt der Freitext
+autoritativ; der Picker liefert nur die stabile Katalogzuordnung. Damit sind alle acht operativen Inputs unabhängig
+von technischen IDs reproduzierbar.
 
 ### 5.2 Zu protokollieren
 
