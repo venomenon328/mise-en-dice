@@ -75,8 +75,8 @@ class GeneratorSimulationExhaustionRegressionTest {
         GeneratorSimulation simulation = simulationWith(scriptedSetEngine);
         SimulationScenario scenario = new SimulationScenario(
                 "EXHAUSTION_CONTINUES",
-                new SeedRange(53_000_090L, 1),
-                List.of(LocalDate.of(2026, 9, 3), LocalDate.of(2026, 9, 10)),
+                new SeedRange(53_000_001L, 1),
+                List.of(LocalDate.of(2026, 8, 13), LocalDate.of(2026, 8, 20)),
                 HistoryScenario.EMPTY_HISTORY,
                 AttemptType.INITIAL,
                 List.of(),
