@@ -56,7 +56,7 @@
         <section class="detail-card generator-stack" aria-labelledby="generator-simulation-heading">
             <div><p class="eyebrow">Phase 9E3 · Begrenzte Diagnose</p><h2 id="generator-simulation-heading">Simulation</h2><p>Der synchrone Lauf verwendet ausschließlich den gemeinsamen Simulationsreport. Er erzeugt keine Session, keinen Attempt, keinen Batch, keine Kandidaten und keine Challenge.</p></div>
             <div class="generator-warning"><strong>Feste Grenze:</strong> höchstens 64 Fälle pro Request und eine serverseitige Deadline von 30 Sekunden. Generatorparameter bleiben unveränderlich.</div>
-            <form class="catalog-filters generator-stack" method="post" th:action="@{/admin/generator/simulation}" hx-post="/admin/generator/simulation" hx-target="#generator-simulation-result" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" data-testid="generator-simulation-form" data-generator-simulation-case-limit="64">
+            <form class="catalog-filters generator-stack" method="post" th:action="@{/admin/generator/simulation}" hx-post="/admin/generator/simulation" hx-target="#generator-simulation-result" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" data-testid="generator-simulation-form" data-generator-simulation-form data-generator-simulation-case-limit="64">
                 <div class="generator-form-grid">
                     <label>Startseed<input type="number" name="startSeed" required th:value="${simulationForm.startSeed}"></label>
                     <label>Seedanzahl<input type="number" name="seedCount" min="1" max="64" required data-generator-simulation-seeds th:value="${simulationForm.seedCount}"></label>
