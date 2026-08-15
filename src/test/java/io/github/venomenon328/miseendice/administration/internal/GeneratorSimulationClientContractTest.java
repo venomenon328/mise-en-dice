@@ -26,7 +26,9 @@ class GeneratorSimulationClientContractTest {
     }
 
     private static String resource(String name) throws IOException {
-        try (InputStream input = GeneratorSimulationClientContractTest.class.getClassLoader().getResourceAsStream(name)) {
+        try (InputStream input = GeneratorSimulationClientContractTest.class
+                .getClassLoader()
+                .getResourceAsStream(name)) {
             assertThat(input).as("classpath resource %s", name).isNotNull();
             return new String(input.readAllBytes(), StandardCharsets.UTF_8);
         }
