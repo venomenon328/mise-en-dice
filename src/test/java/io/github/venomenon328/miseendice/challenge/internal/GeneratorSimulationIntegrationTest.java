@@ -78,10 +78,10 @@ class GeneratorSimulationIntegrationTest {
         assertThat(first.completion().status()).isEqualTo(GeneratorSimulation.CompletionStatus.COMPLETED);
         assertThat(first.completion().plannedCases()).isEqualTo(8);
         assertThat(first.completion().processedCases()).isEqualTo(8);
-        assertThat(first.metrics().successfulSets()).isEqualTo(7);
-        assertThat(first.metrics().exhaustedSets()).isEqualTo(1);
+        assertThat(first.metrics().successfulSets()).isEqualTo(8);
+        assertThat(first.metrics().exhaustedSets()).isZero();
         assertThat(first.metrics().technicalErrors()).isZero();
-        assertThat(first.metrics().replayChecks()).isEqualTo(7);
+        assertThat(first.metrics().replayChecks()).isEqualTo(8);
         assertThat(first.metrics().replayIntegrityMismatches()).isZero();
         assertThat(first.metrics().hardRuleViolations()).isZero();
         assertThat(first.metrics().quotaViolations()).isZero();

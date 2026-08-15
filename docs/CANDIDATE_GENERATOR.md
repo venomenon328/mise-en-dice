@@ -867,9 +867,9 @@ Die Kandidatennummern 1 bis 12 folgen der deterministischen Auswahlreihenfolge. 
 
 | Stufe | Mindestscore | Paarähnlichkeit | Konzeptcap | Vorfahrencap | Quotenabweichung | Profilcap | schwierige Kandidaten |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `STRICT` | 55 | 0,58 | 2 | 4 | 0 | 4 | 3 |
-| `RELAXED_1` | 50 | 0,65 | 2 | 5 | ±1 | 5 | 4 |
-| `RELAXED_2` | 45 | 0,72 | 3 | 6 | ±2 | 5 | 4 |
+| `STRICT` | 55 | 0,58 | 2 | 10 | 0 | 4 | 3 |
+| `RELAXED_1` | 50 | 0,65 | 2 | 11 | ±1 | 5 | 4 |
+| `RELAXED_2` | 45 | 0,72 | 3 | 12 | ±2 | 5 | 4 |
 
 Zusätzlich gilt:
 
@@ -942,7 +942,7 @@ Die vollständigen Faktor-, Punkte-, Profil- und Quotentabellen aus den vorangeh
 Mindestens enthalten:
 
 - `generatorVersion = 1.0.0`,
-- `configurationVersion = 2026-08-12.2`,
+- `configurationVersion = 2026-08-15.1`,
 - `rngAlgorithm = SPLITMIX64_V1`,
 - `candidateSetSize = 12`,
 - Reservoir- und Versuchslimits,
@@ -1254,6 +1254,22 @@ technische Fehler ab. Die große Issue-#47-Matrix bleibt bewusst opt-in und dele
 ```bash
 ./mvnw clean verify -Pgenerator-baseline -Dtest=CandidateSetBaselineIntegrationTest
 ```
+
+### 20.4 Vollständige Kalibrierung (Phase 9F / Issue #40)
+
+Der vollständige 9.216-Attempt-Lauf ist ebenfalls strikt opt-in. Sein versioniertes Manifest partitioniert die
+6.144 Default- und 3.072 Ausschlussfokus-Fälle in vier sequentielle `GeneratorSimulation`-Requests, von denen keiner
+die harte Application-Grenze von 4.096 Fällen überschreitet. Zusätzliche Mehrwochensequenzen bleiben davon getrennt.
+
+```bash
+./mvnw clean verify -Pgenerator-calibration -Dtest=CandidateGeneratorCalibrationIntegrationTest
+```
+
+Der Runner ist standardmäßig durch Surefire ausgeschlossen und wird in keinem GitHub-Actions-, PR-, Push-, Nightly-
+oder Scheduled-Workflow aufgerufen. Er schreibt kanonische Rohreports ausschließlich unter
+`target/generator-calibration/`. Zusammenfassung, Ursachenklassifikation, festes Acht-Satz-Korpus und die Anleitung
+für den read-only operativen Adminlauf stehen in [`CANDIDATE_GENERATOR_CALIBRATION.md`](CANDIDATE_GENERATOR_CALIBRATION.md).
+Der technische Lauf erklärt weder den operativen Kataloglauf noch die Administratorbewertung für bestanden.
 
 ## 21. Test- und Simulationsvertrag
 
