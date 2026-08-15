@@ -186,8 +186,17 @@ Challenges.
 
 ### 5.1 Acht begrenzte Adminläufe
 
-Jeder Lauf verwendet vier Seeds über zwölf Monate und bleibt mit 48 Fällen unter dem Adapterlimit 64. Die Startseeds
-sind fest und nicht Teil des manuellen Acht-Satz-Korpus.
+Jeder Lauf verwendet vier Seeds über zwölf Monate und bleibt mit 48 Fällen unter dem Adapterlimit 64. Die feste
+Admin-Deadline beträgt fünf Minuten. Eine erste betriebliche Probe mit der vorherigen 30-Sekunden-Grenze endete nach
+8 von 48 Fällen als `TIMED_OUT`; dieser partielle Report wird nicht als Gate-Nachweis gewertet. Die längere Deadline
+ändert weder Falllimit noch Session-Doppelstartschutz und bleibt weiterhin eine harte Abbruchgrenze.
+
+Bei dieser partiellen Probe wurden außerdem Neuigkeits-Ziel/Ist-Abweichungen fälschlich in den allgemeinen
+Hard-Rule-Zähler aufgenommen. Das widersprach der verbindlichen 9C2-Klarstellung: außerhalb der separaten Recovery-
+Nullregel bleibt die tatsächliche Neuigkeitsverteilung ein Softziel. Der Invariantenzähler wurde entsprechend wieder
+auf Spezifitäts- und Profilquoten begrenzt; Ziel- und Ist-Neuigkeitsverteilungen bleiben vollständig im Report.
+
+Die Startseeds sind fest und nicht Teil des manuellen Acht-Satz-Korpus.
 
 | Lauf | Startseed | Historie / Typ | Manuals / REROLL-Block |
 |---|---:|---|---|

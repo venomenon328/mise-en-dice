@@ -450,10 +450,9 @@ class GeneratorSimulationService implements GeneratorSimulation {
                 hardRuleViolations++;
             }
             if (generated.fallbackLevel() == FallbackLevel.STRICT) {
+                // Actual novelty distribution remains a soft target outside the separate Recovery hard rule.
                 if (generated.evaluation().specificity().deviations().values().stream().anyMatch(value -> value != 0)
                         || generated.evaluation().profiles().deviations().values().stream()
-                        .anyMatch(value -> value != 0)
-                        || generated.evaluation().novelty().deviations().values().stream()
                         .anyMatch(value -> value != 0)) {
                     quotaViolations++;
                     hardRuleViolations++;
