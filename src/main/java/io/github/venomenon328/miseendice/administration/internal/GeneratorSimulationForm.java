@@ -13,6 +13,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.Simul
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.TechnicalErrorMode;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -62,7 +63,7 @@ record GeneratorSimulationForm(
         plannedCases(requestedSeeds, requestedMonths);
         int seeds = boundedPositiveInt(requestedSeeds, "Seedanzahl", MAXIMUM_CASES);
         int months = boundedPositiveInt(requestedMonths, "Monatsanzahl", MAXIMUM_MONTHS);
-        LocalDate firstDate = LocalDate.parse(required(effectiveStartDate, "Startdatum"));
+        LocalDate firstDate = date(effectiveStartDate);
         AttemptType type = enumValue(AttemptType.class, attemptType, "Attempt-Typ");
         HistoryScenario history = enumValue(HistoryScenario.class, historyScenario, "Historienszenario");
 
@@ -190,6 +191,14 @@ record GeneratorSimulationForm(
             return Enum.valueOf(type, required(value, field));
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException(field + " ist ungültig.", exception);
+        }
+    }
+
+    private static LocalDate date(String value) {
+        try {
+            return LocalDate.parse(required(value, "Startdatum"));
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException("Startdatum muss ein gültiges Datum sein.", exception);
         }
     }
 

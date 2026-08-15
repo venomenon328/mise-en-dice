@@ -73,6 +73,12 @@ class GeneratorSimulationFormTest {
     }
 
     @Test
+    void normalizesMalformedDatesToFormValidationErrors() {
+        assertThatIllegalArgumentException().isThrownBy(() -> form("1", "1", "not-a-date", "1", "INITIAL", "", "", "", "", "", "", "", "")
+                .toRequest(catalogQueries(), DEADLINE)).withMessageContaining("Startdatum muss ein gültiges Datum sein");
+    }
+
+    @Test
     void requestGuardAllowsOnlyOneRunningRequestPerSessionAndReleasesIt() {
         var guard = new GeneratorSimulationRequestGuard();
 

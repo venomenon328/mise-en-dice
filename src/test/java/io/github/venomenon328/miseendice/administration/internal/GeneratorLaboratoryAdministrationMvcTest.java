@@ -2,8 +2,12 @@ package io.github.venomenon328.miseendice.administration.internal;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -15,9 +19,19 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Generated;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.Completion;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.CompletionStatus;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.Concentration;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.FrequencyList;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.Metadata;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.Metrics;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.NumericSummary;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SimulationRequest;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SimulationReport;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -101,7 +115,13 @@ class GeneratorLaboratoryAdministrationMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Generator-Labor")))
                 .andExpect(content().string(containsString("Vorschauen persistieren nichts")))
-                .andExpect(content().string(containsString("Attempt / Batch laden")));
+                .andExpect(content().string(containsString("Attempt / Batch laden")))
+                .andExpect(content().string(containsString("id=\"generator-simulation-result\"")))
+                .andExpect(content().string(containsString("data-generator-simulation-case-limit=\"64\"")));
+        mockMvc.perform(get("/admin/assets/catalog.js"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("seedCount * monthCount > maximumCases")))
+                .andExpect(content().string(containsString("setCustomValidity(message)")));
     }
 
     @Test
@@ -199,6 +219,43 @@ class GeneratorLaboratoryAdministrationMvcTest {
 
     @Test
     @WithMockUser(username = "generator-lab-admin")
+    void simulationTreatsMalformedDatesAsValidationErrors() throws Exception {
+        clearInvocations(generatorSimulation);
+        mockMvc.perform(simulationRequest("not-a-date").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Simulation nicht gestartet.")))
+                .andExpect(content().string(containsString("Startdatum muss ein gültiges Datum sein.")));
+        verifyNoInteractions(generatorSimulation);
+    }
+
+    @Test
+    @WithMockUser(username = "generator-lab-admin")
+    void simulationRendersEachIncompleteStatusAndTechnicalFailuresDistinctly() throws Exception {
+        try {
+            for (CompletionStatus status : List.of(
+                    CompletionStatus.TIMED_OUT, CompletionStatus.ABORTED, CompletionStatus.INCOMPLETE)) {
+                doReturn(simulationReport(status)).when(generatorSimulation).simulate(any());
+                mockMvc.perform(simulationRequest().with(csrf()))
+                        .andExpect(status().isOk())
+                        .andExpect(content().string(containsString("Status " + status)))
+                        .andExpect(content().string(containsString("Unvollständiger Report.")))
+                        .andExpect(content().string(containsString(
+                                "Die vorhandenen Aggregate betreffen nur bearbeitete Fälle")));
+                clearInvocations(generatorSimulation);
+            }
+            doThrow(new IllegalStateException("unexpected infrastructure failure"))
+                    .when(generatorSimulation).simulate(any());
+            mockMvc.perform(simulationRequest().with(csrf()))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("Technischer Fehler: Die Simulation wurde unvollständig abgebrochen")))
+                    .andExpect(content().string(containsString("Kein fachliches Erschöpfungsergebnis wurde daraus abgeleitet.")));
+        } finally {
+            reset(generatorSimulation);
+        }
+    }
+
+    @Test
+    @WithMockUser(username = "generator-lab-admin")
     void persistedBatchAndReplayUseReadOnlyQueries() throws Exception {
         Generated generated = (Generated) generationCommands.startNewSession(
                 new StartNewSession(LocalDate.of(2026, 8, 13), List.of(), 37_000_031L));
@@ -239,6 +296,39 @@ class GeneratorLaboratoryAdministrationMvcTest {
 
     private int count(String table) {
         return jdbcTemplate.queryForObject("select count(*) from " + table, Integer.class);
+    }
+
+    private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder simulationRequest() {
+        return simulationRequest("2026-08-13");
+    }
+
+    private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder simulationRequest(String effectiveStartDate) {
+        return post("/admin/generator/simulation")
+                .param("startSeed", "37000001")
+                .param("seedCount", "1")
+                .param("effectiveStartDate", effectiveStartDate)
+                .param("monthCount", "1")
+                .param("attemptType", "INITIAL")
+                .param("historyScenario", "EMPTY_HISTORY")
+                .param("manual1Text", "").param("manual1ConceptId", "")
+                .param("manual2Text", "").param("manual2ConceptId", "")
+                .param("block1", "").param("block2", "").param("block3", "").param("block4", "");
+    }
+
+    private static SimulationReport simulationReport(CompletionStatus status) {
+        FrequencyList emptyFrequencies = new FrequencyList(List.of(), 0);
+        NumericSummary zeros = new NumericSummary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+        return new SimulationReport(
+                new Metadata("test-report", "test-generator", "test-config", "test-rng", 1, "test-scenario",
+                        Map.of(), "test-catalog", Map.of(), List.of("test-seeds")),
+                new Completion(status, 1, 0, 1, 0, 1, "test-detail"),
+                new Metrics(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        emptyFrequencies, emptyFrequencies, emptyFrequencies, emptyFrequencies,
+                        new Concentration(BigDecimal.ZERO, BigDecimal.ZERO, 0),
+                        emptyFrequencies, emptyFrequencies, emptyFrequencies, emptyFrequencies, emptyFrequencies,
+                        emptyFrequencies, emptyFrequencies, zeros, zeros, zeros, zeros, zeros, zeros, zeros, zeros,
+                        List.of(), 0),
+                "test-fingerprint", 0);
     }
 
     private static void assertThatSharedSimulationRequest(SimulationRequest request) {

@@ -56,12 +56,12 @@
         <section class="detail-card generator-stack" aria-labelledby="generator-simulation-heading">
             <div><p class="eyebrow">Phase 9E3 · Begrenzte Diagnose</p><h2 id="generator-simulation-heading">Simulation</h2><p>Der synchrone Lauf verwendet ausschließlich den gemeinsamen Simulationsreport. Er erzeugt keine Session, keinen Attempt, keinen Batch, keine Kandidaten und keine Challenge.</p></div>
             <div class="generator-warning"><strong>Feste Grenze:</strong> höchstens 64 Fälle pro Request und eine serverseitige Deadline von 30 Sekunden. Generatorparameter bleiben unveränderlich.</div>
-            <form class="catalog-filters generator-stack" method="post" th:action="@{/admin/generator/simulation}" hx-post="/admin/generator/simulation" hx-target="#generator-simulation-result" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" data-testid="generator-simulation-form">
+            <form class="catalog-filters generator-stack" method="post" th:action="@{/admin/generator/simulation}" hx-post="/admin/generator/simulation" hx-target="#generator-simulation-result" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" data-testid="generator-simulation-form" data-generator-simulation-case-limit="64">
                 <div class="generator-form-grid">
                     <label>Startseed<input type="number" name="startSeed" required th:value="${simulationForm.startSeed}"></label>
-                    <label>Seedanzahl<input type="number" name="seedCount" min="1" max="64" required th:value="${simulationForm.seedCount}"></label>
+                    <label>Seedanzahl<input type="number" name="seedCount" min="1" max="64" required data-generator-simulation-seeds th:value="${simulationForm.seedCount}"></label>
                     <label>Startdatum<input type="date" name="effectiveStartDate" required th:value="${simulationForm.effectiveStartDate}"></label>
-                    <label>Monatsanzahl<input type="number" name="monthCount" min="1" max="12" required th:value="${simulationForm.monthCount}"></label>
+                    <label>Monatsanzahl<input type="number" name="monthCount" min="1" max="12" required data-generator-simulation-months th:value="${simulationForm.monthCount}"></label>
                     <label>Attempt-Typ<select name="attemptType"><option th:each="type : ${attemptTypes}" th:value="${type.name()}" th:selected="${simulationForm.attemptType == type.name()}" th:text="${type.name()}">INITIAL</option></select></label>
                     <label>Historie<select name="historyScenario"><option th:each="scenario : ${laboratoryScenarios}" th:value="${scenario.code.name()}" th:selected="${simulationForm.historyScenario == scenario.code.name()}" th:text="${scenario.displayName}">Szenario</option></select></label>
                 </div>
@@ -133,7 +133,8 @@
     <div th:each="candidate : ${conceptCandidates}"><code th:text="|ID ${candidate.id}|">ID</code> <strong th:text="${candidate.displayName}">Name</strong> <span th:text="|(${candidate.code})|">Code</span><small th:if="${!candidate.active}"> inaktiv</small></div>
 </section>
 
-<section th:fragment="generatorSimulationResult" id="generator-simulation-result" class="detail-card generator-stack" th:if="${simulationReport != null or simulationErrors != null or simulationTechnicalError != null}" data-testid="generator-simulation-result">
+<section th:fragment="generatorSimulationResult" id="generator-simulation-result" class="detail-card generator-stack" data-testid="generator-simulation-result">
+    <th:block th:if="${simulationReport != null or simulationErrors != null or simulationTechnicalError != null}">
     <div th:if="${simulationErrors != null}" class="generator-error" role="alert"><strong>Simulation nicht gestartet.</strong><p th:each="error : ${simulationErrors}" th:text="${error}">Fehler</p></div>
     <div th:if="${simulationTechnicalError != null}" class="generator-error" role="alert"><strong th:text="${simulationTechnicalError}">Technischer Fehler</strong><p>Kein fachliches Erschöpfungsergebnis wurde daraus abgeleitet.</p></div>
     <th:block th:if="${simulationReport != null}">
@@ -146,6 +147,7 @@
         <section class="detail-section"><div class="detail-section-heading"><p class="section-kicker">Satzdiversität</p><h3>Pair-Metriken und Invarianten</h3></div><div class="generator-meta"><span th:text="|Pair Mean Ø ${simulationReport.metrics.setPairMean.mean}|">Mean</span><span th:text="|Pair P95 Ø ${simulationReport.metrics.setPairPercentile95.mean}|">P95</span><span th:text="|Pair Maximum Ø ${simulationReport.metrics.setPairMaximum.mean}|">Maximum</span><span th:text="|Hard-Rule-Verletzungen ${simulationReport.metrics.hardRuleViolations}|">Hard Rules</span><span th:text="|Cooldown-Verletzungen ${simulationReport.metrics.cooldownViolations}|">Cooldown</span><span th:text="|REROLL-Verletzungen ${simulationReport.metrics.rerollViolations}|">REROLL</span></div><details><summary>Fingerprintvariation</summary><table class="generator-table"><tr th:each="entry : ${simulationReport.metrics.fingerprintVariation}"><th th:text="${entry.scenarioCode}">Szenario</th><td th:text="|${entry.distinctFingerprints} verschieden bei ${entry.successfulSets} Erfolgen|">Variation</td></tr></table></details></section>
         <section class="detail-section"><div class="detail-section-heading"><p class="section-kicker">Reproduzierbarkeit</p><h3>Seeds und Katalogidentität</h3></div><div class="generator-meta"><span th:each="seedPlan : ${simulationReport.metadata.seedPlanDescriptions}" th:text="${seedPlan}">Seedplan</span><span th:text="|Run-Katalog ${simulationReport.metadata.runCatalogFingerprint}|">Katalog</span><span th:text="|Kanonischer Report ${simulationReport.canonicalFingerprint}|">Fingerprint</span></div><details><summary>Monats-Katalogfingerprints</summary><table class="generator-table"><tr th:each="entry : ${simulationReport.metadata.catalogFingerprintsByMonth}"><th th:text="|Monat ${entry.key}|">Monat</th><td><code th:text="${entry.value}">Fingerprint</code></td></tr></table></details></section>
     </th:block>
+</th:block>
 </section>
 </body>
 </html>

@@ -540,6 +540,44 @@
 (() => {
     "use strict";
 
+    const simulationForm = document.querySelector("[data-generator-simulation-form]");
+    if (!simulationForm) {
+        return;
+    }
+
+    const seeds = simulationForm.querySelector("[data-generator-simulation-seeds]");
+    const months = simulationForm.querySelector("[data-generator-simulation-months]");
+    const maximumCases = Number(simulationForm.dataset.generatorSimulationCaseLimit);
+    if (!seeds || !months || !Number.isSafeInteger(maximumCases) || maximumCases < 1) {
+        return;
+    }
+
+    function positiveInteger(input) {
+        const value = Number(input.value);
+        return Number.isSafeInteger(value) && value > 0 ? value : null;
+    }
+
+    function synchronizeSimulationCaseLimit() {
+        const seedCount = positiveInteger(seeds);
+        const monthCount = positiveInteger(months);
+        seeds.max = String(monthCount === null ? maximumCases : Math.floor(maximumCases / monthCount));
+        months.max = String(seedCount === null ? 12 : Math.min(12, Math.floor(maximumCases / seedCount)));
+        const exceedsCaseLimit = seedCount !== null && monthCount !== null && seedCount * monthCount > maximumCases;
+        const message = exceedsCaseLimit
+            ? `Seedanzahl × Monatsanzahl darf höchstens ${maximumCases} Fälle ergeben.`
+            : "";
+        seeds.setCustomValidity(message);
+        months.setCustomValidity(message);
+    }
+
+    seeds.addEventListener("input", synchronizeSimulationCaseLimit);
+    months.addEventListener("input", synchronizeSimulationCaseLimit);
+    synchronizeSimulationCaseLimit();
+})();
+
+(() => {
+    "use strict";
+
     function exclusionEditor() {
         return document.querySelector("[data-exclusion-target-list]")?.closest("form");
     }
