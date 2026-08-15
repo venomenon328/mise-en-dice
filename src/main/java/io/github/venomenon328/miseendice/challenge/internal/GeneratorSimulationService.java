@@ -452,6 +452,8 @@ class GeneratorSimulationService implements GeneratorSimulation {
             if (generated.fallbackLevel() == FallbackLevel.STRICT) {
                 if (generated.evaluation().specificity().deviations().values().stream().anyMatch(value -> value != 0)
                         || generated.evaluation().profiles().deviations().values().stream()
+                        .anyMatch(value -> value != 0)
+                        || generated.evaluation().novelty().deviations().values().stream()
                         .anyMatch(value -> value != 0)) {
                     quotaViolations++;
                     hardRuleViolations++;
