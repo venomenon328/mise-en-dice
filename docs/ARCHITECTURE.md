@@ -340,6 +340,12 @@ Historie einmal unter `REPEATABLE READ` ein; im anschließenden streng sequenzie
 Grundlage für die explizite #47-Baseline. #54 darf ihn nur als begrenzten Adminadapter aufrufen und #40 nur für
 Kalibrierung auswerten; beide schaffen keine zweite Generator-, Historien-, Hard-Rule- oder Statistikimplementierung.
 
+Der #54-Adminadapter beschränkt diese öffentliche API zusätzlich auf 64 expandierte Fälle, eine feste serverseitige
+30-Sekunden-Deadline und einen flüchtigen Session-Guard. Er übersetzt nur das Webformular und Katalog-IDs über
+`CatalogQueries`, rechnet keine Metrik nach und besitzt keinen JDBC-Zugriff. #40 wertet denselben Kern ausschließlich
+zur Kalibrierung aus; weder #54 noch #40 schaffen eine zweite Generator-, Historien-, Hard-Rule- oder
+Statistikimplementierung.
+
 ## 11. Entwicklungsreihenfolge
 
 Die aktuelle Reihenfolge ist:

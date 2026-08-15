@@ -353,10 +353,14 @@ Issue #37 und Issue #40 bleiben eigenständige nachgelagerte Pakete; ihre Labor-
   Aggregationskern,
 - kein Adminadapter, kein fachliches Tuning und kein Phase-9F-Abnahmegate.
 
-### Phase 9E3: Adminadapter für Simulation (Issue #54)
+### Phase 9E3: Adminadapter für Simulation (Issue #54, abgeschlossen)
 
-- dünne geschützte Verwaltungsansicht über den gemeinsamen Simulationskern,
-- keine Duplizierung von Generator-, Statistik- oder Persistenzlogik.
+- dünne geschützte Verwaltungsansicht über den gemeinsamen Simulationskern mit maximal 64 expandierten Fällen,
+  fester serverseitiger 30-Sekunden-Deadline und `FAIL_FAST`,
+- deterministische Single-Step-Monatsexpansion, ID→Code-Auflösung nur über `CatalogQueries` sowie 0–2 Manuals und
+  explizitem REROLL-Viererblock,
+- Full-Page-/No-JS-POST und HTMX-Ergebnisfragment mit CSRF- und flüchtigem Session-Doppelstartschutz,
+- keine Duplizierung von Generator-, Statistik- oder Persistenzlogik und keine operativen Generation-/Challenge-Writes.
 
 ### Phase 9F: Kalibrierung und Abschlussgate (Issue #40)
 
