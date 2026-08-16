@@ -77,6 +77,29 @@ class GeneratorLaboratoryEmptyStateMvcRegressionTest {
                 .andExpect(content().string(not(containsString("Noch kein Ergebnis"))));
     }
 
+    @Test
+    @WithMockUser(username = "generator-lab-admin")
+    void pickerEndpointSupportsExactTechnicalCodesAndDifferentSequentialSearches() throws Exception {
+        mockMvc.perform(conceptSearch("ARTICHOKE"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("(ARTICHOKE)")));
+
+        mockMvc.perform(conceptSearch("ASPARAGUS"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("(ASPARAGUS)")))
+                .andExpect(content().string(not(containsString("(ARTICHOKE)"))));
+
+        mockMvc.perform(conceptSearch("BAMBOO_SHOOTS"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("(BAMBOO_SHOOTS)")));
+    }
+
+    private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder conceptSearch(String search) {
+        return get("/admin/generator/concepts")
+                .param("slot", "manual1ConceptId")
+                .param("search", search);
+    }
+
     private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder simulationRequest(
             String effectiveStartDate
     ) {
