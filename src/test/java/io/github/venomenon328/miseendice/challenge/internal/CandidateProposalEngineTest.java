@@ -195,20 +195,28 @@ class CandidateProposalEngineTest {
     }
 
     @Test
-    void attemptExclusionAndRerollBlockAreAppliedToEveryRandomSlot() {
+    void attemptExclusionStillAppliesWhileLegacyRerollBlockIsIgnored() {
         CatalogGeneratorSnapshot catalog = catalog(false);
         GeneratorExclusionRule exclusion = catalog.exclusionRules().getFirst();
-        GenerationContext excluded = new GenerationContext(AttemptType.REROLL, LocalDate.of(2026, 8, 12), 8,
+        GenerationContext reroll = new GenerationContext(AttemptType.REROLL, LocalDate.of(2026, 8, 12), 8,
                 catalog, VisibleHistorySnapshot.empty(), List.of(), Set.of("ANIMAL_A"),
                 AttemptExclusionDecision.selected(exclusion), NoveltyCadence.NEUTRAL,
                 Map.of(NoveltyBand.FAMILIAR, 3, NoveltyBand.BALANCED, 7, NoveltyBand.ADVENTUROUS, 2),
                 configuration, 77L, 1);
 
-        AcceptedProposal accepted = findAccepted(excluded);
-
-        assertThat(accepted.requirements()).filteredOn(requirement -> requirement.source() == RequirementSource.RANDOM)
-                .extracting(requirement -> requirement.concept().code())
-                .doesNotContain("ANIMAL_A", "SEASONING_A");
+        assertThat(reroll.rerollBlockedConceptCodes()).isEmpty();
+        boolean sawFormerlyBlockedConcept = false;
+        for (long ordinal = 0; ordinal < 2_000; ordinal++) {
+            if (engine.propose(reroll, ordinal) instanceof AcceptedProposal accepted) {
+                List<String> randomCodes = accepted.requirements().stream()
+                        .filter(requirement -> requirement.source() == RequirementSource.RANDOM)
+                        .map(requirement -> requirement.concept().code())
+                        .toList();
+                assertThat(randomCodes).doesNotContain("SEASONING_A");
+                sawFormerlyBlockedConcept |= randomCodes.contains("ANIMAL_A");
+            }
+        }
+        assertThat(sawFormerlyBlockedConcept).isTrue();
     }
 
     @Test
