@@ -31,11 +31,7 @@ record GeneratorSimulationForm(
         String manual1Text,
         String manual1ConceptId,
         String manual2Text,
-        String manual2ConceptId,
-        String block1,
-        String block2,
-        String block3,
-        String block4
+        String manual2ConceptId
 ) {
     static final int MAXIMUM_CASES = 64;
     private static final int MAXIMUM_MONTHS = 12;
@@ -43,7 +39,7 @@ record GeneratorSimulationForm(
 
     static GeneratorSimulationForm defaults() {
         return new GeneratorSimulationForm("", "1", LocalDate.now().toString(), "1", "INITIAL",
-                "PRODUCTION_VISIBLE", "", "", "", "", "", "", "", "");
+                "PRODUCTION_VISIBLE", "", "", "", "");
     }
 
     static GeneratorSimulationForm from(MultiValueMap<String, String> values) {
@@ -51,8 +47,7 @@ record GeneratorSimulationForm(
                 text(values, "startSeed"), text(values, "seedCount"), text(values, "effectiveStartDate"),
                 text(values, "monthCount"), text(values, "attemptType"), text(values, "historyScenario"),
                 text(values, "manual1Text"), text(values, "manual1ConceptId"),
-                text(values, "manual2Text"), text(values, "manual2ConceptId"),
-                text(values, "block1"), text(values, "block2"), text(values, "block3"), text(values, "block4"));
+                text(values, "manual2Text"), text(values, "manual2ConceptId"));
     }
 
     SimulationRequest toRequest(CatalogQueries catalogQueries, Instant deadline) {
@@ -122,7 +117,7 @@ record GeneratorSimulationForm(
     private static int plannedCases(long seeds, long months) {
         long planned;
         try {
-            planned = Math.multiplyExact((long) seeds, months);
+            planned = Math.multiplyExact(seeds, months);
         } catch (ArithmeticException exception) {
             throw new IllegalArgumentException("Die geplante Fallzahl läuft über.", exception);
         }
