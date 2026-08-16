@@ -8,7 +8,7 @@
     <script defer src="/webjars/htmx.org/2.0.4/dist/htmx.min.js"></script>
     <script defer th:src="@{/admin/assets/catalog.js}"></script>
     <style>
-        .generator-stack{display:grid;gap:1rem}.generator-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.generator-form-grid .wide{grid-column:1/-1}.generator-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.generator-card{border:1px solid var(--line,#ddd);border-radius:.8rem;padding:.8rem;min-width:0}.generator-meta{display:flex;flex-wrap:wrap;gap:.35rem .8rem}.generator-meta code,.generator-card code{overflow-wrap:anywhere}.generator-pairs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}.generator-pairs details{border:1px solid var(--line,#ddd);border-radius:.6rem;padding:.5rem}.generator-json{max-height:24rem;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem}.generator-warning{border-left:.3rem solid #a66b00;padding:.7rem;background:#fff9eb}.generator-success{border-left:.3rem solid #39834f;padding:.7rem;background:#f2fff5}.generator-error{border-left:.3rem solid #b42318;padding:.7rem;background:#fff3f2}.generator-picker-results{display:grid;gap:.25rem;max-height:12rem;overflow:auto}.generator-table{width:100%;border-collapse:collapse}.generator-table th,.generator-table td{padding:.4rem;border-bottom:1px solid var(--line,#ddd);text-align:left;vertical-align:top}@media(max-width:850px){.generator-form-grid,.generator-card-grid,.generator-pairs{grid-template-columns:1fr}}
+        .generator-stack{display:grid;gap:1rem}.generator-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.generator-form-grid .wide{grid-column:1/-1}.generator-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.generator-card{border:1px solid var(--line,#ddd);border-radius:.8rem;padding:.8rem;min-width:0}.generator-meta{display:flex;flex-wrap:wrap;gap:.35rem .8rem}.generator-meta code,.generator-card code{overflow-wrap:anywhere}.generator-pairs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}.generator-pairs details{border:1px solid var(--line,#ddd);border-radius:.6rem;padding:.5rem}.generator-json{max-height:24rem;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem}.generator-warning{border-left:.3rem solid #a66b00;padding:.7rem;background:#fff9eb}.generator-success{border-left:.3rem solid #39834f;padding:.7rem;background:#f2fff5}.generator-error{border-left:.3rem solid #b42318;padding:.7rem;background:#fff3f2}.generator-picker-results{display:grid;gap:.25rem;max-height:12rem;overflow:auto}.generator-table{width:100%;border-collapse:collapse}.generator-table th,.generator-table td{padding:.4rem;border-bottom:1px solid var(--line,#ddd);text-align:left;vertical-align:top}.generator-run-indicator[hidden],.generator-run-indicator.htmx-indicator{display:none}.generator-run-indicator.htmx-request{display:block}@media(max-width:850px){.generator-form-grid,.generator-card-grid,.generator-pairs{grid-template-columns:1fr}}
     </style>
 </head>
 <body>
@@ -29,7 +29,7 @@
         <div class="section-title"><div><p class="eyebrow">Phase 9E1 · Read-only Diagnose</p><h1>Generator-Labor</h1></div></div>
         <div class="generator-warning"><strong>Kein Challenge-Flow.</strong> Vorschauen persistieren nichts, verändern keine Cooldowns und erzeugen keine Historienexposition. Scores sind Generatorheuristiken; die spätere semantische Restprüfung bleibt Aufgabe des Kurators.</div>
 
-        <form class="catalog-filters generator-stack" method="post" th:action="@{/admin/generator/preview}" data-testid="generator-preview-form">
+        <form class="catalog-filters generator-stack" method="post" th:action="@{/admin/generator/preview}" data-testid="generator-preview-form" data-generator-preview-form>
             <div class="generator-form-grid">
                 <label>Datum<input type="date" name="effectiveDate" required th:value="${previewForm.effectiveDate}"></label>
                 <label>Attempt-Typ<select name="attemptType"><option th:each="type : ${attemptTypes}" th:value="${type.name()}" th:selected="${previewForm.attemptType == type.name()}" th:text="${type.name()}">INITIAL</option></select></label>
@@ -44,19 +44,20 @@
                     <label>Manual 2<input name="manual2Text" th:value="${previewForm.manual2Text}" placeholder="Freitext"></label>
                     <label>Katalog-ID 2 (optional)<input type="number" min="1" name="manual2ConceptId" th:value="${previewForm.manual2ConceptId}"></label>
                 </div>
-                <details><summary>Katalogmatch suchen</summary><p class="hint">Die Suche zeigt stabile ID und Code; die ID kann oben übernommen werden.</p><input type="search" name="search" placeholder="Name oder Code" hx-get="/admin/generator/concepts" hx-trigger="keyup changed delay:300ms" hx-target="#generator-manual-search" hx-vals='{"slot":"manual1ConceptId"}'><div id="generator-manual-search"></div></details>
+                <details><summary>Katalogmatch suchen</summary><p class="hint">Die Suche zeigt stabile ID und Code; die ID kann oben übernommen werden.</p><input type="search" name="search" placeholder="Name oder Code" hx-get="/admin/generator/concepts" hx-trigger="keyup changed delay:300ms" hx-sync="this:replace" hx-target="#generator-manual-search" hx-vals='{"slot":"manual1ConceptId"}'><div id="generator-manual-search"></div></details>
             </fieldset>
 
-            <fieldset class="advanced-filters"><legend>Diagnostischer REROLL-Hardblock</legend><p class="hint">Nur bei Typ REROLL: exakt vier unterschiedliche Katalog-IDs. Es wird kein echter Reroll erzeugt.</p><div class="generator-form-grid"><label>Block 1<input type="number" min="1" name="block1" th:value="${previewForm.block1}"></label><label>Block 2<input type="number" min="1" name="block2" th:value="${previewForm.block2}"></label><label>Block 3<input type="number" min="1" name="block3" th:value="${previewForm.block3}"></label><label>Block 4<input type="number" min="1" name="block4" th:value="${previewForm.block4}"></label></div><details><summary>Block-Konzept suchen</summary><input type="search" name="search" placeholder="Name oder Code" hx-get="/admin/generator/concepts" hx-trigger="keyup changed delay:300ms" hx-target="#generator-block-search" hx-vals='{"slot":"block1"}'><div id="generator-block-search"></div></details></fieldset>
+            <fieldset class="advanced-filters"><legend>Diagnostischer REROLL-Hardblock</legend><p class="hint">Nur bei Typ REROLL: exakt vier unterschiedliche Katalog-IDs. Es wird kein echter Reroll erzeugt.</p><div class="generator-form-grid"><label>Block 1<input type="number" min="1" name="block1" th:value="${previewForm.block1}"></label><label>Block 2<input type="number" min="1" name="block2" th:value="${previewForm.block2}"></label><label>Block 3<input type="number" min="1" name="block3" th:value="${previewForm.block3}"></label><label>Block 4<input type="number" min="1" name="block4" th:value="${previewForm.block4}"></label></div><details><summary>Block-Konzept suchen</summary><input type="search" name="search" placeholder="Name oder Code" hx-get="/admin/generator/concepts" hx-trigger="keyup changed delay:300ms" hx-sync="this:replace" hx-target="#generator-block-search" hx-vals='{"slot":"block1"}'><div id="generator-block-search"></div></details></fieldset>
 
-            <button class="button button--primary" type="submit">Vorschau erzeugen</button>
+            <button class="button button--primary" type="submit" data-generator-preview-submit>Vorschau erzeugen</button>
         </form>
+        <div class="generator-warning generator-run-indicator" data-generator-preview-indicator hidden role="status" aria-live="polite"><strong>Vorschau läuft …</strong> Der aktuelle Lauf bleibt nicht persistierend.</div>
         <div th:if="${previewErrors}" class="generator-error" role="alert"><p th:each="error : ${previewErrors}" th:text="${error}">Fehler</p></div>
 
         <section class="detail-card generator-stack" aria-labelledby="generator-simulation-heading">
             <div><p class="eyebrow">Phase 9E3 · Begrenzte Diagnose</p><h2 id="generator-simulation-heading">Simulation</h2><p>Der synchrone Lauf verwendet ausschließlich den gemeinsamen Simulationsreport. Er erzeugt keine Session, keinen Attempt, keinen Batch, keine Kandidaten und keine Challenge.</p></div>
             <div class="generator-warning"><strong>Feste Grenze:</strong> höchstens 64 Fälle pro Request und eine serverseitige Deadline von 5 Minuten. Generatorparameter bleiben unveränderlich.</div>
-            <form class="catalog-filters generator-stack" method="post" th:action="@{/admin/generator/simulation}" hx-post="/admin/generator/simulation" hx-target="#generator-simulation-result" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" data-testid="generator-simulation-form" data-generator-simulation-form data-generator-simulation-case-limit="64">
+            <form class="catalog-filters generator-stack" method="post" th:action="@{/admin/generator/simulation}" hx-post="/admin/generator/simulation" hx-target="#generator-simulation-result" hx-swap="outerHTML" hx-indicator="#generator-simulation-indicator" hx-disabled-elt="find button[type='submit']" data-testid="generator-simulation-form" data-generator-simulation-form data-generator-simulation-case-limit="64">
                 <div class="generator-form-grid">
                     <label>Startseed<input type="number" name="startSeed" required th:value="${simulationForm.startSeed}"></label>
                     <label>Seedanzahl<input type="number" name="seedCount" min="1" max="64" required data-generator-simulation-seeds th:value="${simulationForm.seedCount}"></label>
@@ -67,11 +68,12 @@
                 </div>
                 <fieldset class="advanced-filters"><legend>Manuelle Vorgaben</legend><p class="hint">Null bis zwei Manuals; ein Katalogmatch ohne Freitext ist ungültig.</p>
                     <div class="generator-form-grid"><label>Manual 1<input name="manual1Text" th:value="${simulationForm.manual1Text}" placeholder="Freitext"></label><label>Katalog-ID 1 (optional)<input type="number" min="1" name="manual1ConceptId" th:value="${simulationForm.manual1ConceptId}"></label><label>Manual 2<input name="manual2Text" th:value="${simulationForm.manual2Text}" placeholder="Freitext"></label><label>Katalog-ID 2 (optional)<input type="number" min="1" name="manual2ConceptId" th:value="${simulationForm.manual2ConceptId}"></label></div>
-                    <details><summary>Katalogmatch suchen</summary><p class="hint">Die gemeinsame Katalogsuche liefert die stabile ID, die vor dem Lauf auf den Code aufgelöst wird.</p><input type="search" name="search" placeholder="Name oder Code" hx-get="/admin/generator/concepts" hx-trigger="keyup changed delay:300ms" hx-target="#generator-simulation-manual-search" hx-vals='{"slot":"manual1ConceptId"}'><div id="generator-simulation-manual-search"></div></details>
+                    <details><summary>Katalogmatch suchen</summary><p class="hint">Die gemeinsame Katalogsuche liefert die stabile ID, die vor dem Lauf auf den Code aufgelöst wird.</p><input type="search" name="search" placeholder="Name oder Code" hx-get="/admin/generator/concepts" hx-trigger="keyup changed delay:300ms" hx-sync="this:replace" hx-target="#generator-simulation-manual-search" hx-vals='{"slot":"manual1ConceptId"}'><div id="generator-simulation-manual-search"></div></details>
                 </fieldset>
-                <fieldset class="advanced-filters"><legend>REROLL-Hardblock</legend><p class="hint">Nur bei REROLL: exakt vier unterschiedliche, auflösbare Katalog-IDs. INITIAL akzeptiert keinen Block.</p><div class="generator-form-grid"><label>Block 1<input type="number" min="1" name="block1" th:value="${simulationForm.block1}"></label><label>Block 2<input type="number" min="1" name="block2" th:value="${simulationForm.block2}"></label><label>Block 3<input type="number" min="1" name="block3" th:value="${simulationForm.block3}"></label><label>Block 4<input type="number" min="1" name="block4" th:value="${simulationForm.block4}"></label></div><details><summary>Block-Konzept suchen</summary><input type="search" name="search" placeholder="Name oder Code" hx-get="/admin/generator/concepts" hx-trigger="keyup changed delay:300ms" hx-target="#generator-simulation-block-search" hx-vals='{"slot":"block1"}'><div id="generator-simulation-block-search"></div></details></fieldset>
+                <fieldset class="advanced-filters"><legend>REROLL-Hardblock</legend><p class="hint">Nur bei REROLL: exakt vier unterschiedliche, auflösbare Katalog-IDs. INITIAL akzeptiert keinen Block.</p><div class="generator-form-grid"><label>Block 1<input type="number" min="1" name="block1" th:value="${simulationForm.block1}"></label><label>Block 2<input type="number" min="1" name="block2" th:value="${simulationForm.block2}"></label><label>Block 3<input type="number" min="1" name="block3" th:value="${simulationForm.block3}"></label><label>Block 4<input type="number" min="1" name="block4" th:value="${simulationForm.block4}"></label></div><details><summary>Block-Konzept suchen</summary><input type="search" name="search" placeholder="Name oder Code" hx-get="/admin/generator/concepts" hx-trigger="keyup changed delay:300ms" hx-sync="this:replace" hx-target="#generator-simulation-block-search" hx-vals='{"slot":"block1"}'><div id="generator-simulation-block-search"></div></details></fieldset>
                 <button class="button button--primary" type="submit">Simulation starten</button>
             </form>
+            <div id="generator-simulation-indicator" class="generator-warning generator-run-indicator htmx-indicator" role="status" aria-live="polite"><strong>Simulation läuft …</strong> Bitte den laufenden Request abwarten; eine zweite Simulation wird serverseitig weiterhin abgewiesen.</div>
         </section>
 
         <section class="detail-card generator-stack">
@@ -82,8 +84,6 @@
     </section>
 
     <section class="catalog-detail-column generator-stack" aria-live="polite">
-        <section th:if="${previewResult == null and persistedAttempt == null and simulationReport == null and simulationErrors == null and simulationTechnicalError == null}" class="detail-card detail-empty"><p class="eyebrow">Diagnose</p><h2>Noch kein Ergebnis</h2><p>Erzeuge links eine nicht persistierende Vorschau, Simulation oder lade einen gespeicherten Generation Attempt.</p></section>
-
         <section th:replace="~{admin/audit :: generatorSimulationResult}"></section>
 
         <section th:if="${previewResult != null}" class="detail-card generator-stack" data-testid="generator-preview-result">
@@ -133,8 +133,9 @@
     <div th:each="candidate : ${conceptCandidates}"><code th:text="|ID ${candidate.id}|">ID</code> <strong th:text="${candidate.displayName}">Name</strong> <span th:text="|(${candidate.code})|">Code</span><small th:if="${!candidate.active}"> inaktiv</small></div>
 </section>
 
-<section th:fragment="generatorSimulationResult" id="generator-simulation-result" class="detail-card generator-stack" data-testid="generator-simulation-result">
-    <th:block th:if="${simulationReport != null or simulationErrors != null or simulationTechnicalError != null}">
+<section th:fragment="generatorSimulationResult" id="generator-simulation-result" class="generator-stack" data-testid="generator-simulation-result">
+    <section th:if="${previewResult == null and persistedAttempt == null and simulationReport == null and simulationErrors == null and simulationTechnicalError == null}" class="detail-card detail-empty"><p class="eyebrow">Diagnose</p><h2>Noch kein Ergebnis</h2><p>Erzeuge links eine nicht persistierende Vorschau, Simulation oder lade einen gespeicherten Generation Attempt.</p></section>
+    <section th:if="${simulationReport != null or simulationErrors != null or simulationTechnicalError != null}" class="detail-card generator-stack">
     <div th:if="${simulationErrors != null}" class="generator-error" role="alert"><strong>Simulation nicht gestartet.</strong><p th:each="error : ${simulationErrors}" th:text="${error}">Fehler</p></div>
     <div th:if="${simulationTechnicalError != null}" class="generator-error" role="alert"><strong th:text="${simulationTechnicalError}">Technischer Fehler</strong><p>Kein fachliches Erschöpfungsergebnis wurde daraus abgeleitet.</p></div>
     <th:block th:if="${simulationReport != null}">
@@ -147,7 +148,27 @@
         <section class="detail-section"><div class="detail-section-heading"><p class="section-kicker">Satzdiversität</p><h3>Pair-Metriken und Invarianten</h3></div><div class="generator-meta"><span th:text="|Pair Mean Ø ${simulationReport.metrics.setPairMean.mean}|">Mean</span><span th:text="|Pair P95 Ø ${simulationReport.metrics.setPairPercentile95.mean}|">P95</span><span th:text="|Pair Maximum Ø ${simulationReport.metrics.setPairMaximum.mean}|">Maximum</span><span th:text="|Hard-Rule-Verletzungen ${simulationReport.metrics.hardRuleViolations}|">Hard Rules</span><span th:text="|Cooldown-Verletzungen ${simulationReport.metrics.cooldownViolations}|">Cooldown</span><span th:text="|REROLL-Verletzungen ${simulationReport.metrics.rerollViolations}|">REROLL</span></div><details><summary>Fingerprintvariation</summary><table class="generator-table"><tr th:each="entry : ${simulationReport.metrics.fingerprintVariation}"><th th:text="${entry.scenarioCode}">Szenario</th><td th:text="|${entry.distinctFingerprints} verschieden bei ${entry.successfulSets} Erfolgen|">Variation</td></tr></table></details></section>
         <section class="detail-section"><div class="detail-section-heading"><p class="section-kicker">Reproduzierbarkeit</p><h3>Seeds und Katalogidentität</h3></div><div class="generator-meta"><span th:each="seedPlan : ${simulationReport.metadata.seedPlanDescriptions}" th:text="${seedPlan}">Seedplan</span><span th:text="|Run-Katalog ${simulationReport.metadata.runCatalogFingerprint}|">Katalog</span><span th:text="|Kanonischer Report ${simulationReport.canonicalFingerprint}|">Fingerprint</span></div><details><summary>Monats-Katalogfingerprints</summary><table class="generator-table"><tr th:each="entry : ${simulationReport.metadata.catalogFingerprintsByMonth}"><th th:text="|Monat ${entry.key}|">Monat</th><td><code th:text="${entry.value}">Fingerprint</code></td></tr></table></details></section>
     </th:block>
-</th:block>
+    </section>
 </section>
+<script th:if="${generatorLab}">
+    (() => {
+        "use strict";
+        const previewForm = document.querySelector("[data-generator-preview-form]");
+        if (!previewForm) {
+            return;
+        }
+        previewForm.addEventListener("submit", () => {
+            const indicator = document.querySelector("[data-generator-preview-indicator]");
+            if (indicator) {
+                indicator.hidden = false;
+            }
+            const submit = previewForm.querySelector("[data-generator-preview-submit]");
+            if (submit) {
+                submit.disabled = true;
+                submit.textContent = "Vorschau läuft …";
+            }
+        });
+    })();
+</script>
 </body>
 </html>

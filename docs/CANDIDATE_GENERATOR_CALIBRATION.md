@@ -1,11 +1,12 @@
 # Kalibrierung und Abnahme des Kandidatengenerators
 
-Stand: 15. August 2026
-Status: technischer Stand vorbereitet und fokussiert geprüft; operativer Kataloglauf bestanden; breite Endmessung und manuelle Fachabnahme offen
+Stand: 16. August 2026
+Status: Phase 9 abgeschlossen; operativer Kataloglauf und manuelle Fachabnahme bestanden; breite Endmessung bewusst nicht wiederholt und nicht als bestanden erklärt
 
 Dieses Dokument ist das Abnahmeprotokoll für Issue #40. Es trennt den reproduzierbaren Repository-Lauf, den
 read-only operativen Kataloglauf und die ausschließlich durch den Administrator vorzunehmende kulinarische
-Bewertung. Ein grünes technisches oder operatives Gate ersetzt die verbleibende manuelle Fachabnahme nicht.
+Bewertung. Die finale fachliche Freigabe stützt sich auf die dokumentierten technischen und operativen Nachweise
+sowie das manuell geprüfte feste Korpus; der ausdrücklich nicht wiederholte breite Endlauf bleibt davon getrennt.
 
 ## 1. Identität des Ausgangsstands
 
@@ -137,7 +138,7 @@ die Rohdiagnose liegt nach der gezielten Korpusmethode oder dem expliziten Runne
 
 | Korpus | Seed | Monat / Kontext | Eingabe | technisches Ergebnis |
 |---|---:|---|---|---|
-| `MC-01` | `40400001` | Januar, leere Historie | INITIAL, keine Manuals | `STRICT`, `NO_BEEF`, Fingerprint `e92a90200f87…e14e57ff` |
+| `MC-01` | `40400001` | Januar, leere Historie | INITIAL, keine Manuals | ursprünglicher Lauf: `STRICT`, `NO_BEEF`, Fingerprint `e92a90200f87…e14e57ff`; nach #62 auf Produktion erneut geprüft |
 | `MC-02` | `40400002` | April, neutrale Historie | INITIAL, Manual „Artischocke“ gematcht | `STRICT`, `NO_PORK`, Fingerprint `382f59658287…b4d1f3cc` |
 | `MC-03` | `40400003` | Juli, Recovery | INITIAL, „Speck“ gematcht + freies Manual | `STRICT`, kein Ausschluss, Fingerprint `391bd9d85472…6c91cdf3` |
 | `MC-04` | `40400004` | Oktober, Seeking Variety | INITIAL, keine Manuals | `STRICT`, `NO_POULTRY`, Fingerprint `40a5d3363c0a…fa631cf4` |
@@ -147,7 +148,12 @@ die Rohdiagnose liegt nach der gezielten Korpusmethode oder dem expliziten Runne
 | `MC-08` | `40400008` | Februar, neutrale Historie | INITIAL, freies Manual „Cook without an oven“ | `STRICT`, kein Ausschluss, Fingerprint `8c670e790f7d…92e13674` |
 
 Die technische Materialisierung war für alle acht Fälle erfolgreich und deckt Vorschauen mit und ohne Ausschluss ab.
-Das ist nur die Reproduzierbarkeits- und Vollständigkeitsprüfung; die folgende kulinarische Bewertung bleibt offen.
+MC-01 wurde zunächst wegen der in Issue #62 dokumentierten Kataloglücke blockiert: `NO_BEEF` erfasste `VEAL` noch
+nicht. Nach der Korrektur über Migration 017 wurde MC-01 am 16. August 2026 auf der Produktionsinstanz mit
+`main`-Commit `3ffc239fc357a8b8579aeb77b1de637e6f6562db` erneut erzeugt. Der Prepared Attempt enthielt `VEAL` samt
+Konkretisierungen im Ausschluss, im Zwölfer-Satz erschien kein Kalbfleisch; der Administrator bewertete den neuen
+Satz ausdrücklich als fachlich OK. Der alte MC-01-Fingerprint bleibt nur historische Identität des Vor-Korrektur-Laufs
+und ist kein Sollwert für den geänderten Katalogzustand.
 
 ### 4.1 Bewertungsrubrik
 
@@ -165,17 +171,17 @@ eine kurze Begründung. Die Kriterien bedeuten:
 
 | Korpus | Lösbarkeit | Offenheit | Spannung | Vielfalt | Neuigkeit | Beschaffbarkeit | Ausschluss | Datenvertrauen | Notiz |
 |---|---|---|---|---|---|---|---|---|---|
-| `MC-01` | offen | offen | offen | offen | offen | offen | offen | offen | |
-| `MC-02` | offen | offen | offen | offen | offen | offen | offen | offen | |
-| `MC-03` | offen | offen | offen | offen | offen | offen | offen | offen | |
-| `MC-04` | offen | offen | offen | offen | offen | offen | offen | offen | |
-| `MC-05` | offen | offen | offen | offen | offen | offen | offen | offen | |
-| `MC-06` | offen | offen | offen | offen | offen | offen | offen | offen | |
-| `MC-07` | offen | offen | offen | offen | offen | offen | offen | offen | |
-| `MC-08` | offen | offen | offen | offen | offen | offen | offen | offen | |
+| `MC-01` | OK | OK | OK | OK | OK | OK | OK | OK | nach #62 auf Produktion erneut erzeugt und freigegeben |
+| `MC-02` | OK | OK | OK | OK | OK | OK | OK | OK | fachlich abgenommen |
+| `MC-03` | OK | OK | OK | OK | OK | OK | OK | OK | fachlich abgenommen |
+| `MC-04` | OK | OK | OK | OK | OK | OK | OK | OK | fachlich abgenommen |
+| `MC-05` | OK | OK | OK | OK | OK | OK | OK | OK | fachlich abgenommen |
+| `MC-06` | OK | OK | OK | OK | OK | OK | OK | OK | fachlich abgenommen |
+| `MC-07` | OK | OK | OK | OK | OK | OK | OK | OK | fachlich abgenommen |
+| `MC-08` | OK | OK | OK | OK | OK | OK | OK | OK | fachlich abgenommen |
 
-**Manuelles Gate:** nicht durchgeführt. Codex erklärt Diagnosen und sortiert Auffälligkeiten vor, erklärt die eigene
-Ausgabe aber nicht zur bestandenen Fachabnahme.
+**Manuelles Gate: bestanden.** Die endgültige fachliche Freigabe stammt vom Administrator; die technische Diagnose
+und Vorauswertung ersetzen diese Entscheidung nicht.
 
 ## 5. Operativer Kataloglauf durch den Administrator
 
@@ -272,7 +278,7 @@ Die Monatsfingerprints waren über alle Läufe für denselben Monat identisch:
 | Versionen identisch zum technischen Tuningstand | ja |
 | acht Szenarien / 384 Fälle vollständig | ja; OP-08 nach verworfener Timeout-Probe deterministisch 4 × 12 partitioniert |
 | technische Gates | bestanden; sämtliche Integritätszähler 0, keine Erschöpfung, `STRICT/R1/R2 = 371/13/0` |
-| manuelle Fachabnahme | offen |
+| manuelle Fachabnahme | bestanden; finales MC-01-Replay nach #62 am 16. August 2026 auf Produktion fachlich freigegeben |
 
 **Operatives Gate: bestanden.** Der reale redaktionelle Katalog zeigt auf dem getunten Generator keine technische
 oder fachliche Integritätsauffälligkeit. Die höhere Suchlast im Zwei-Manual-Szenario ist reproduzierbar sichtbar,
@@ -289,8 +295,10 @@ führt in den vollständigen Teilruns aber weder zu Fallback noch Erschöpfung.
 - Breites technisches End-Gate: **nicht ausgeführt und nicht als bestanden erklärt**; die ausdrücklich ausgeschlossenen
   breiten Wiederholungsläufe bleiben unbestätigt.
 - Operativer Kataloglauf: **bestanden**, 384/384 erfolgreiche Fälle über alle acht Szenarien.
-- Manuelle fachliche Abnahme: **offen**.
-- Phase 9: **nicht abgeschlossen**, solange die manuelle Administrator-Fachabnahme des festen Korpus fehlt.
+- Manuelle fachliche Abnahme: **bestanden**; MC-01 wurde nach der Katalogkorrektur aus #62 auf Produktion erneut
+  reproduziert und ausdrücklich fachlich freigegeben.
+- Phase 9: **abgeschlossen**. Der nicht wiederholte breite Endlauf bleibt als bewusst unbestätigter Nachweis dokumentiert
+  und wird durch den Abschluss nicht rückwirkend als bestanden umgedeutet.
 
 Bewusst verbleibende Grenzen: Der Generator prüft strukturelle Plausibilität und bekannte Metadaten, nicht allgemeine
 Geschmacksverträglichkeit oder Standardgerichte. Lückenhafte optionale Dimensionen senken die Konfidenz. Diese Grenze
