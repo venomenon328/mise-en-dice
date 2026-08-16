@@ -1,7 +1,6 @@
 package io.github.venomenon328.miseendice.challenge.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Availability;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.CatalogGeneratorSnapshot;
@@ -9,7 +8,6 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Specificity;
 import io.github.venomenon328.miseendice.challenge.api.GenerationAttemptRequest;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
-import io.github.venomenon328.miseendice.challenge.api.GeneratorValidationException;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -21,13 +19,19 @@ import org.junit.jupiter.api.Test;
 class GenerationAttemptRequestTest {
 
     @Test
-    void rerollBlockRejectsCodesOutsideTheFrozenCatalogWithoutRequiringFourCatalogBackedRequirements() {
-        assertThatThrownBy(() -> request(Set.of("A", "B", "UNKNOWN")))
-                .isInstanceOf(GeneratorValidationException.class)
-                .hasMessageContaining("frozen catalog snapshot");
+    void rerollLegacyBlockInputIsNormalizedAwayInGeneratorV11() {
+        GenerationAttemptRequest request = request(Set.of("A", "B", "UNKNOWN"));
 
-        GenerationAttemptRequest partialCatalogBlock = request(Set.of("A", "B"));
-        assertThat(partialCatalogBlock.rerollBlockedConceptCodes()).containsExactlyInAnyOrder("A", "B");
+        assertThat(request.rerollBlockedConceptCodes()).isEmpty();
+    }
+
+    @Test
+    void initialLegacyBlockInputIsAlsoNormalizedAway() {
+        GenerationAttemptRequest request = new GenerationAttemptRequest(AttemptType.INITIAL,
+                LocalDate.of(2026, 8, 12), 8, catalog(), VisibleHistorySnapshot.empty(), List.of(), Set.of("A"),
+                TestGeneratorConfiguration.defaults(), 35L);
+
+        assertThat(request.rerollBlockedConceptCodes()).isEmpty();
     }
 
     private static GenerationAttemptRequest request(Set<String> block) {

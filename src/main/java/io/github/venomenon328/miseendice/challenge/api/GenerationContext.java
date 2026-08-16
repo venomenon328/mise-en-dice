@@ -30,7 +30,8 @@ public record GenerationContext(
 ) {
     public GenerationContext {
         if (attemptType == null || effectiveDate == null || catalog == null || visibleHistory == null
-                || exclusionDecision == null || noveltyCadence == null || configuration == null) {
+                || exclusionDecision == null || noveltyCadence == null || configuration == null
+                || rerollBlockedConceptCodes == null) {
             throw invalid("Generation context fields must not be null");
         }
         if (seasonMonth < 1 || seasonMonth > 12 || seasonMonth != catalog.seasonMonth()) {
@@ -49,13 +50,11 @@ public record GenerationContext(
                 throw invalid("Manual requirement positions must be unique");
             }
         }
-        rerollBlockedConceptCodes = Set.copyOf(rerollBlockedConceptCodes);
-        if (attemptType == AttemptType.INITIAL && !rerollBlockedConceptCodes.isEmpty()) {
-            throw invalid("INITIAL context must not contain a REROLL block");
-        }
-        if (attemptType == AttemptType.REROLL && rerollBlockedConceptCodes.size() > 4) {
-            throw invalid("REROLL may block at most four catalog concepts");
-        }
+
+        // Kept as a snapshot-compatibility component for historic v1.0 payloads only.
+        // Generator v1.1 obtains reroll repetition effects exclusively from exact visible-history cooldowns.
+        rerollBlockedConceptCodes = Set.of();
+
         noveltyTargetDistribution = Map.copyOf(noveltyTargetDistribution);
         if (!noveltyTargetDistribution.keySet().equals(Set.of(NoveltyBand.values()))
                 || noveltyTargetDistribution.values().stream().anyMatch(value -> value == null || value < 0)
@@ -63,9 +62,9 @@ public record GenerationContext(
                 != configuration.candidateSetSize()) {
             throw invalid("Novelty target distribution must cover all bands and sum to set size");
         }
-        if (!configuration.generatorVersion().equals("1.0.0")) {
+        if (!configuration.generatorVersion().equals("1.1.0")) {
             throw new GeneratorValidationException(GeneratorReasonCode.UNSUPPORTED_GENERATOR_VERSION,
-                    "Only generator version 1.0.0 is implemented");
+                    "Only generator version 1.1.0 is implemented");
         }
     }
 

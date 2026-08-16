@@ -159,15 +159,16 @@ class CandidateReservoirEngineTest {
     }
 
     @Test
-    void rerollHardBlockIsForwardedUnchangedToEveryBatchContext() {
+    void legacyRerollHardBlockIsNormalizedAwayBeforeBatchContexts() {
         Set<String> blocked = Set.of("A", "B", "C", "D");
         GeneratorConfiguration configuration = configuration(144, 72, 5_000, "0.00");
         DefaultCandidateReservoirEngine engine = engineRejectingEverything();
         PreparedGenerationAttempt prepared = engine.prepare(request(configuration, catalog(defaultRules()),
                 VisibleHistorySnapshot.empty(), List.of(), blocked, AttemptType.REROLL, 13L));
 
-        assertThat(engine.contextForBatch(prepared, 1).rerollBlockedConceptCodes()).isEqualTo(blocked);
-        assertThat(engine.contextForBatch(prepared, 27).rerollBlockedConceptCodes()).isEqualTo(blocked);
+        assertThat(prepared.request().rerollBlockedConceptCodes()).isEmpty();
+        assertThat(engine.contextForBatch(prepared, 1).rerollBlockedConceptCodes()).isEmpty();
+        assertThat(engine.contextForBatch(prepared, 27).rerollBlockedConceptCodes()).isEmpty();
     }
 
     @Test

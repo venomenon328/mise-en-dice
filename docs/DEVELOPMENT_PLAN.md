@@ -357,8 +357,8 @@ Issue #37 und Issue #40 bleiben eigenständige nachgelagerte Pakete; ihre Labor-
 
 - dünne geschützte Verwaltungsansicht über den gemeinsamen Simulationskern mit maximal 64 expandierten Fällen,
   fester serverseitiger Fünf-Minuten-Deadline und `FAIL_FAST`,
-- deterministische Single-Step-Monatsexpansion, ID→Code-Auflösung nur über `CatalogQueries` sowie 0–2 Manuals und
-  explizitem REROLL-Viererblock,
+- deterministische Single-Step-Monatsexpansion, ID→Code-Auflösung nur über `CatalogQueries` sowie 0–2 Manuals,
+- REROLL-Diagnostik ausschließlich über Attempt-Typ und sichtbares Historienszenario; ab Generator 1.1 keine editierbaren REROLL-Block-IDs,
 - Full-Page-/No-JS-POST und HTMX-Ergebnisfragment mit CSRF- und flüchtigem Session-Doppelstartschutz,
 - keine Duplizierung von Generator-, Statistik- oder Persistenzlogik und keine operativen Generation-/Challenge-Writes.
 
@@ -398,7 +398,20 @@ Die bewusst nicht erneut ausgeführte breite Endmatrix bleibt eine dokumentierte
 bestandene Messung ausgegeben. Die isolierten Generator-Labor-UX-Nacharbeiten aus Issues #60 und #61 verändern den
 fachlichen Phase-9-Abschluss nicht.
 
-OpenAI-Aufruf, Kuratorauswahl, sichtbare Challenge, Discord und freiwilliger Reroll-Dialog bleiben außerhalb von Phase 9. Nicht gewählte spätere Kurationsangebote zählen ausdrücklich nicht zum `VisibleHistorySnapshot`.
+### Nachschärfung nach Phase 9: REROLL-Semantik (Issue #63)
+
+Issue #63 korrigiert nach dem historischen Phase-9-Abschluss eine unnötig enge Annahme des Generatorvertrags:
+
+- Ein freiwilliger REROLL verwirft das präsentierte Offer Set als Kombination und ist kein Zutaten-Ablehnungssignal.
+- Generatorversion `1.1.0` entfernt deshalb den dedizierten ingredient-level REROLL-Hardblock.
+- Der normale Cooldown bleibt exakt codebasiert; Parent-, Child-, Refinement- oder Sibling-Expansion findet nicht statt.
+- Labor und Simulation besitzen ab v1.1 keine operativen REROLL-Blockfelder mehr.
+- Historische v1.0-Snapshotfelder und Reason-Codes bleiben lesbar; Replay wird über die Generatorversion sauber getrennt.
+- Die zukünftige persistente Exposition eines vollständig rerollten sichtbaren Offer Sets mit 1–3 Optionen wird **nicht** in Issue #63 vorgezogen, sondern gehört in Phase 10/11.
+
+Der historische Kalibrierungsbericht bleibt für Generator 1.0 unverändert wahr. Für #63 gelten gezielte REROLL-/Cooldown-/Replayregressionen und der normale `./mvnw clean verify`; der bewusst nicht wiederholte 9.216er-Lauf wird nicht nachträglich erfunden.
+
+OpenAI-Aufruf, Kuratorauswahl, sichtbare Challenge und Discord bleiben außerhalb von Phase 9. Die künftige Historienprojektion unterscheidet bestätigte Challenges, Cooldown-only-Exposition rerollter Offer Sets und vollständig interne/nicht gewählte Kandidaten ausdrücklich.
 
 ## Phase 10: Begrenzte Kuratierung, Multi-Offer-Lifecycle und OpenAI-Adapter
 
@@ -416,6 +429,8 @@ Dieses Paket schafft die fachliche und persistente Grenze noch ohne Discord-Adap
 - `curation_round_candidate` oder gleichwertige relationale Referenz für `NEW`, `CARRY_OVER` und `LOCKED_CONTEXT`,
 - finales `curated_offer_set` mit exakt der angeforderten Zahl positionsgebundener Angebote,
 - mindestens ein `GOOD` als Voraussetzung für ein erfolgreiches Offer Set,
+- persistierbarer Präsentationszustand des Offer Sets als Vorbereitung auf Bestätigung oder den einmaligen freiwilligen Reroll,
+- fachlich saubere Möglichkeit, ein vollständig präsentiertes und später rerolltes Offer Set samt seinen exakten Candidate-/Requirement-Snapshots historisch zu referenzieren,
 - klare Trennung von Generatorstatus, Kuratorstatus, Offerstatus und späterer Challenge-Bestätigung,
 - Replay-/Auditdaten für Request, Response, Modell, Promptversion, Bewertungen und Auswahlpfad.
 
@@ -424,6 +439,7 @@ Dieses Paket schafft die fachliche und persistente Grenze noch ohne Discord-Adap
 - eine Kurationsrunde kann Kandidaten aus mehreren Generation Batches desselben Attempts nachvollziehbar referenzieren,
 - ein erfolgreiches Offer Set enthält exakt `1..3` Angebote und mindestens einen `GOOD`,
 - ein unvollständiges oder ausschließlich `BAD`/`ACCEPTABLE` enthaltendes Ergebnis wird nicht als erfolgreicher Offer-Satz maskiert,
+- die persistente Grenze kann später unterscheiden, ob ein Offer Set niemals präsentiert, normal durch Bestätigung beendet oder vollständig rerollt wurde,
 - noch kein Discord- oder OpenAI-Netzwerkadapter ist für die fachlichen Tests erforderlich.
 
 ### Phase 10B: OpenAI-Adapter und strikt gedeckelte Kurationsorchestrierung
@@ -453,7 +469,7 @@ Dieses Paket implementiert den tatsächlichen externen Kurator und die höchsten
 - bereits gelockte gute Kandidaten werden durch Runde 2 nicht verdrängt,
 - ein brauchbarer Carry-over aus Runde 1 kann einen schlechteren neuen Kandidaten schlagen,
 - nach erfolgreicher Kuratierung existiert exakt die gewünschte Zahl von Angeboten,
-- nicht gewählte Angebote erzeugen keinerlei Generatorhistorie.
+- noch nicht präsentierte oder normal nicht gewählte Angebote erzeugen keinerlei Generatorhistorie.
 
 ## Phase 11: Discord-Bot für Ziehung, Auswahl, Bestätigung und Reroll
 
@@ -463,20 +479,23 @@ Der eigenständige Discord-Adapter verwendet ausschließlich die öffentlichen C
 
 - vor der Ziehung kompakte Auswahl `1`, `2` oder `3` Angebote; Default `1`,
 - Erzeugung über denselben fachlichen Generation-/Kurations-Use-Case unabhängig von der gewählten Zahl,
-- übersichtliche Darstellung exakt der kuratierten Angebote,
+- übersichtliche Darstellung exakt der kuratierten Angebote und persistente Markierung dieser tatsächlichen Präsentation,
 - Auswahl genau einer stabilen Candidate-/Offer-ID,
-- explizite Bestätigung vor Erzeugung der sichtbaren Challenge,
-- nur die bestätigte Challenge fließt in Cooldown und Neuigkeitskadenz ein,
-- nicht gewählte Angebote bleiben auditierbar, sind generatorisch aber „nicht gesehen“,
-- gemeinsamer einmaliger Reroll der bestätigten Challenge,
-- Reroll verwendet dieselbe gewünschte Optionszahl und blockiert nur die vier Vorgaben der tatsächlich bestätigten ursprünglichen Challenge.
+- explizite Bestätigung vor Erzeugung der operativen Challenge,
+- im normalen Weg fließt nur die bestätigte Challenge in Cooldown und Neuigkeitskadenz ein; die übrigen Angebote bleiben generatorisch „nicht gesehen“,
+- alternativ vor Bestätigung genau einer Option: gemeinsamer einmaliger Reroll des **gesamten präsentierten Offer Sets**,
+- beim Offer-Set-Reroll werden die exakten Katalogkonzepte aller 1–3 tatsächlich sichtbaren Angebote als **ein gemeinsames Cooldown-only-Expositionsereignis** persistiert/projiziert,
+- diese Exposition erhöht die Historienentfernung genau einmal, expandiert nicht auf Descendants/Ancestors/Siblings und beeinflusst nicht die Neuigkeitskadenz,
+- der anschließende `REROLL`-Generation-Attempt verwendet ausschließlich diesen normalen exakten Historien-Cooldown; es gibt keinen separaten Vierer-Hardblock,
+- Reroll verwendet dieselbe gewünschte Optionszahl.
 
 ### Gate
 
-- bloßes Anzeigen von Angeboten erzeugt noch keine `challenge`,
-- Manipulation von Discord-IDs kann keinen Kandidaten außerhalb des aktuellen Offer Sets bestätigen,
-- genau eine Option wird atomar bestätigt,
-- nicht gewählte Optionen beeinflussen weder normalen Cooldown noch Reroll-Hardblock,
+- bloßes internes Kuratieren erzeugt noch keine Exposition; erst tatsächliche Discord-Präsentation kann für einen späteren Reroll relevant werden,
+- Manipulation von Discord-IDs kann keinen Kandidaten außerhalb des aktuellen Offer Sets bestätigen oder rerollen,
+- genau eine Option wird atomar bestätigt **oder** das komplette aktuelle Offer Set wird atomar als rerollt markiert; beides zugleich ist ausgeschlossen,
+- bei normaler Bestätigung beeinflussen nicht gewählte Optionen weder Cooldown noch Neuigkeitskadenz,
+- bei vollständigem Offer-Set-Reroll wirken ausschließlich die exakten sichtbaren Konzeptcodes als eine Cooldownposition; Parent-/Child-/Sibling-Expansion findet nicht statt,
 - der freiwillige Reroll bleibt genau einmal gemeinsam möglich und ist von internen Kurationsrunden getrennt.
 
 Persönliche Konkretisierungen, Zusatz-Zutaten, Grundpläne und Ergebnisdokumentation folgen in späteren Paketen.

@@ -1,11 +1,11 @@
 # Kuratierung und Challenge-Auswahl
 
-Stand: 13. August 2026  
+Stand: 16. August 2026  
 Status: verbindliche Fachspezifikation für die Kuratierungs- und Auswahlphasen nach Phase 9
 
 Dieses Dokument konkretisiert die Produktvision für den Übergang vom bereits generierten Zwölfer-Satz zur tatsächlich sichtbaren Challenge. Es ist gemeinsam mit [`VISION.md`](VISION.md), [`DATA_MODEL.md`](DATA_MODEL.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md) und [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md) verbindlich.
 
-Phase 9 erzeugt weiterhin genau zwölf harte gültige und als Satz ausreichend diverse Kandidaten pro erfolgreichem `generation_batch`. Die hier beschriebene Logik verändert weder Generatorregeln noch Generatorquoten. Sie definiert ausschließlich, wie der spätere Kurator daraus ein bis drei präsentierbare Optionen bildet und wie die Nutzer daraus genau eine Challenge bestätigen.
+Phase 9 erzeugt weiterhin genau zwölf harte gültige und als Satz ausreichend diverse Kandidaten pro erfolgreichem `generation_batch`. Die hier beschriebene Logik verändert weder Generatorregeln noch Generatorquoten. Sie definiert ausschließlich, wie der spätere Kurator daraus ein bis drei präsentierbare Optionen bildet und wie die Nutzer daraus genau eine Challenge bestätigen oder das gesamte sichtbare Offer Set einmalig rerollen.
 
 ## 1. Ziele und Grundsätze
 
@@ -18,7 +18,8 @@ Die Kuratierung soll:
 - die Zahl externer API-Aufrufe strikt und technisch erzwingbar begrenzen,
 - bei schwacher Kandidatenlage lieber einen vertretbaren Fallback anbieten als unbegrenzt neu zu generieren,
 - aber mindestens einen vom Kurator tatsächlich als gut eingestuften Kandidaten verlangen,
-- nicht gewählte Angebote generatorisch so behandeln, als wären sie nie sichtbar gewesen.
+- nicht gewählte Angebote eines normal bestätigten Offer Sets generatorisch so behandeln, als wären sie nie sichtbar gewesen,
+- einen freiwilligen Reroll als Ablehnung des präsentierten Offer Sets als Kombination verstehen, nicht als Zutatenpräferenz.
 
 Der Generator bleibt die primäre Qualitätsinstanz der Vorauswahl. Der Kurator ist kein Reparaturbetrieb für formal ungültige Kandidaten, sondern die semantische letzte Prüfung und Auswahl innerhalb eines bereits brauchbaren Zwölfer-Satzes.
 
@@ -32,7 +33,8 @@ Der Generator bleibt die primäre Qualitätsinstanz der Vorauswahl. Der Kurator 
 - **Locked GOOD:** in einer früheren Kurationsrunde als `GOOD` gesetzter Kandidat, der bei einer notwendigen zweiten Runde verbindlich erhalten bleibt.
 - **Carry-over Fallback:** einer der besten noch nicht gesetzten Kandidaten aus Runde 1, der in Runde 2 mit den neu generierten Kandidaten verglichen werden darf.
 - **Curated Offer Set:** der nach Abschluss der Kuratierung persistierte Satz aus exakt der angeforderten Zahl von `1..3` Optionen.
-- **Confirmed Challenge:** genau eine vom Nutzer aus dem Offer Set ausdrücklich bestätigte Option; erst sie wird zur sichtbaren `challenge`.
+- **Confirmed Challenge:** genau eine vom Nutzer aus dem Offer Set ausdrücklich bestätigte Option; erst sie wird zur operativen `challenge`.
+- **Rerolled Offer Exposure:** das vollständig verworfene, bereits präsentierte Offer Set. Es erzeugt genau ein gemeinsames Cooldown-Ereignis für seine exakten Katalogkonzepte, aber keine bestätigte Challenge und keine Neuigkeitskadenz-Exposition.
 
 `GOOD`, `ACCEPTABLE` und `BAD` sind qualitative Kuratorurteile, keine scheinpräzisen numerischen Qualitätswerte. Eine Rangfolge innerhalb der Klassen ist trotzdem verbindlich.
 
@@ -164,7 +166,7 @@ Die Anwendung validiert die Response vollständig. Unbekannte Kandidaten-IDs, fe
 
 Die Phase-9D-Persistenz muss spätere Kuratierung nicht implementieren, darf deren Kardinalitäten aber nicht verbauen.
 
-Das Zielmodell nach Phase 10 soll mindestens folgende Konzepte sauber abbilden können:
+Das Zielmodell nach Phase 10/11 soll mindestens folgende Konzepte sauber abbilden können:
 
 - `curation_round` als einzelner externer Kuratoraufruf,
 - einen primären neu erzeugten Generation Batch je fachlicher Runde,
@@ -174,42 +176,57 @@ Das Zielmodell nach Phase 10 soll mindestens folgende Konzepte sauber abbilden k
 - ein finales `curated_offer_set` pro erfolgreichem Generation Attempt,
 - `requested_offer_count` im Bereich `1..3`,
 - exakt diese Zahl positionsgebundener `curated_offer`-Einträge bei Erfolg,
-- die eindeutige spätere Nutzerbestätigung genau eines Angebots.
+- die eindeutige spätere Nutzerbestätigung genau eines Angebots,
+- den Zeitpunkt beziehungsweise Status der tatsächlichen Präsentation des Offer Sets,
+- einen einmaligen freiwilligen Reroll des vollständig präsentierten Offer Sets,
+- die für diesen Reroll nötige historisch stabile Cooldown-Exposition der exakten Katalogkonzepte aller gezeigten Angebote als **ein** gemeinsames Expositionsereignis.
 
 Ein Kandidat aus einem früheren Batch darf in Runde 2 nur verwendet werden, wenn er zum selben `generation_attempt` gehört. Locked-Kontext, Carry-over und neu erzeugte Kandidaten müssen im persistierten Request eindeutig rekonstruierbar bleiben.
 
 Die konkrete Tabellenform wird im Implementierungspaket festgelegt. Entscheidend ist die fachliche Trennung:
 
-> Generation Batch erzeugt Kandidaten. Curation Round bewertet Kandidaten. Curated Offer Set ist das präsentierbare Ergebnis. Challenge entsteht erst durch Nutzerbestätigung.
+> Generation Batch erzeugt Kandidaten. Curation Round bewertet Kandidaten. Curated Offer Set ist das präsentierbare Ergebnis. Challenge entsteht erst durch Nutzerbestätigung; ein vorheriger Reroll des gesamten sichtbaren Offer Sets erzeugt nur die definierte Cooldown-Exposition.
 
 ## 10. Nutzerbestätigung und Historienwirkung
 
 Discord präsentiert nach erfolgreicher Kuratierung exakt ein bis drei Angebote entsprechend `requested_offer_count`.
 
-Der Nutzer wählt genau eine Option und bestätigt sie ausdrücklich per Interaktion. Erst diese Bestätigung erzeugt beziehungsweise aktiviert die sichtbare `challenge`.
+Im normalen Erfolgsweg wählt der Nutzer genau eine Option und bestätigt sie ausdrücklich per Interaktion. Erst diese Bestätigung erzeugt beziehungsweise aktiviert die operative `challenge`.
 
-Nicht gewählte Angebote:
+Nicht gewählte Angebote eines **normal bestätigten** Offer Sets:
 
 - bleiben aus technischen Gründen für Audit, Replay und Diagnose nachvollziehbar,
 - erzeugen **keinen** Cooldown,
 - beeinflussen **keine** Neuigkeitskadenz,
-- zählen **nicht** als sichtbare Historienexposition,
+- zählen **nicht** als normale sichtbare Challenge-Historie,
 - werden beim späteren Generator so behandelt, als wären sie nie angeboten worden.
 
-Für [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md) bedeutet „sichtbare Challenge“ daher immer eine tatsächlich bestätigte `challenge`, nicht einen lediglich im Discord dargestellten Kurationskandidaten.
+Davon getrennt ist der freiwillige Reroll aus Abschnitt 11: Wird das gesamte bereits präsentierte Offer Set verworfen, waren genau diese 1–3 Optionen tatsächlich sichtbar. Sie erzeugen deshalb ein Cooldown-only-Expositionsereignis, obwohl keine davon bestätigt wurde.
+
+Für [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md) umfasst „sichtbare Exposition“ daher zwei klar getrennte Quellen:
+
+1. eine bestätigte `challenge`, die den normalen Historienvertrag einschließlich Neuigkeitskadenz erfüllt,
+2. ein vollständig rerolltes, zuvor präsentiertes Offer Set, das ausschließlich den exakten Zutaten-Cooldown beeinflusst.
+
+Interne Zwölfer-Sätze, Kuratorablehnungen und niemals präsentierte Kandidaten bleiben in beiden Fällen unsichtbar.
 
 ## 11. Freiwilliger Reroll
 
-Der bereits definierte gemeinsame einmalige Reroll bleibt unverändert:
+Der gemeinsame freiwillige Reroll bezieht sich auf das **vollständig präsentierte Offer Set**, nicht auf eine einzelne bereits bestätigte Challenge und nicht auf einzelne Zutaten.
 
-- Er ist erst nach Bestätigung einer sichtbaren Challenge möglich.
-- Die bestätigte ursprüngliche Challenge zählt zur sichtbaren Historie und ihre vier Vorgaben werden für den Reroll wie spezifiziert blockiert.
-- Nicht gewählte Angebote des ursprünglichen Offer Sets werden **nicht** zusätzlich blockiert.
-- Der Reroll erzeugt einen eigenen `REROLL`-Generation-Attempt derselben Session.
+- Er ist genau einmal pro Session möglich und wird gemeinsam bestätigt.
+- Er erfolgt, solange das aktuelle Offer Set mit 1–3 Optionen sichtbar ist und **bevor** eine Option als Challenge bestätigt wurde.
+- Er verwirft das komplette aktuelle Offer Set. Es gibt kein „tausche nur Option 2“ und kein „diese Zutat gefällt uns nicht“-Signal.
+- Die exakten Katalogkonzepte aller 1–3 tatsächlich gezeigten Optionen werden als **ein gemeinsames Cooldown-Expositionsereignis** historisch erfasst. Die Zahl der angezeigten Optionen lässt den Cooldownabstand dadurch nicht schneller altern.
+- Der Cooldown gilt ausschließlich für dieselben Konzeptcodes. Vorfahren, Nachfahren, Konkretisierungen und Geschwister werden durch den Reroll nicht zusätzlich gesperrt.
+- Es gibt keinen dedizierten REROLL-Hardblock im Generator und keine Sonderregel für hohe Neuigkeitsstufen.
+- Die rerollten, aber nicht bestätigten Angebote beeinflussen **nicht** `RECOVERY`, `SEEKING_VARIETY` oder andere Neuigkeitskadenzentscheidungen. Ihr historischer Effekt ist auf den exakten Zutaten-Cooldown begrenzt.
+- Der Reroll erzeugt einen eigenen `REROLL`-Generation-Attempt derselben Session. Dessen Generator liest die bereits erfasste Cooldown-Exposition über die normale Historienprojektion.
 - Für diesen Attempt gilt erneut das harte Budget von höchstens zwei externen Kuratorrequests.
 - Die gewünschte Optionszahl der Session bleibt erhalten.
+- Nach dem Reroll gibt es keine zweite freiwillige Neuziehung.
 
-Interne zweite Generierungs-/Kurationsrunden sind weiterhin kein freiwilliger Reroll und verbrauchen ihn nicht.
+Interne zweite Generierungs-/Kurationsrunden sind weiterhin kein freiwilliger Reroll und verbrauchen ihn nicht. Die konkrete Persistenz des Cooldown-only-Expositionsereignisses wird in Phase 10/11 umgesetzt und ausdrücklich **nicht** als Phase-9-Generatorfunktion vorgezogen.
 
 ## 12. Discord-Interaktion
 
@@ -219,7 +236,7 @@ Die erste Discord-Umsetzung soll die Optionszahl kompakt wählbar machen, beispi
 - `2`,
 - `3`.
 
-Nach der Kuratierung werden die Optionen klar getrennt dargestellt. Die endgültige Challenge entsteht nicht durch bloßes Anzeigen, sondern durch eine explizite Auswahl und Bestätigung einer der angebotenen Candidate-IDs.
+Nach der Kuratierung werden die Optionen klar getrennt dargestellt. Die endgültige Challenge entsteht nicht durch bloßes Anzeigen, sondern durch eine explizite Auswahl und Bestätigung einer der angebotenen Candidate-IDs. Solange noch keine Option bestätigt wurde, kann stattdessen der einmalige gemeinsame Reroll des gesamten Offer Sets ausgelöst werden.
 
 Der Discord-Adapter übermittelt nur stabile IDs und verwendet öffentliche Challenge-Application-APIs. Er entscheidet weder selbst über Generatorregeln noch über Kuratorfallbacks oder Historienwirkung.
 
@@ -233,8 +250,9 @@ Nicht Bestandteil dieser Entscheidung sind:
 - Nutzerbewertung der Kuratorqualität während des Auswahlflows,
 - Rezept- oder Musterlösungserzeugung,
 - persönliche Konkretisierungen und zusätzliche Zutaten,
-- Änderung der Phase-9-Generatorquoten abhängig von `requested_offer_count`.
+- Änderung der Phase-9-Generatorquoten abhängig von `requested_offer_count`,
+- Zutatenpräferenzlernen aus einem freiwilligen Reroll.
 
 ## 14. Leitentscheidung in Kurzform
 
-> Ein Attempt erzeugt zunächst einen diversen Zwölfer-Satz und lässt ihn gemeinsam kuratieren. Ein bis drei gewünschte Angebote stammen aus derselben Kuratierung. Reicht die Zahl guter Kandidaten nicht, gibt es höchstens eine zweite Generation und einen zweiten Kuratoraufruf; gute Kandidaten aus Runde 1 bleiben gesetzt, wenige Fallbacks dürfen mitgenommen werden. Nach spätestens zwei externen Requests ist Schluss. Bei mindestens einem guten Kandidaten wird die gewünschte Optionszahl mit den besten verfügbaren Fallbacks aufgefüllt. Erst die Nutzerbestätigung genau einer Option erzeugt Historienexposition; alle nicht gewählten Angebote sind generatorisch unsichtbar.
+> Ein Attempt erzeugt zunächst einen diversen Zwölfer-Satz und lässt ihn gemeinsam kuratieren. Ein bis drei gewünschte Angebote stammen aus derselben Kuratierung. Reicht die Zahl guter Kandidaten nicht, gibt es höchstens eine zweite Generation und einen zweiten Kuratoraufruf; gute Kandidaten aus Runde 1 bleiben gesetzt, wenige Fallbacks dürfen mitgenommen werden. Nach spätestens zwei externen Requests ist Schluss. Bei mindestens einem guten Kandidaten wird die gewünschte Optionszahl mit den besten verfügbaren Fallbacks aufgefüllt. Im normalen Weg erzeugt erst die Bestätigung einer Option Historienwirkung; die übrigen Angebote bleiben unsichtbar. Wird stattdessen das komplette bereits präsentierte Offer Set einmalig rerollt, werden dessen exakte Katalogkonzepte als ein einziges Cooldown-only-Expositionsereignis erfasst. Daraus folgt kein Descendant-Block, keine Neuigkeitskadenzwirkung und kein Zutatenpräferenzsignal.

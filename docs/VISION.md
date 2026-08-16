@@ -1,6 +1,6 @@
 # Produktvision: Mise en Dice
 
-Stand: 13. August 2026
+Stand: 16. August 2026
 
 ## 1. Zweck
 
@@ -169,7 +169,7 @@ Er trennt:
 
 Funktionale Rollen, Spezifität, Beschaffbarkeit, Neuigkeit und der Konkretisierungsgraph tragen die harten Strukturregeln. Kulinarische Dimensionen sind aufgrund ihrer derzeit lückenhaften Abdeckung nur ein niedrig gewichtetes Softsignal; fehlende Werte werden nicht als niedrige Werte ausgelegt. Der Generator prüft damit strukturelle Plausibilität, behauptet aber keine allgemeine paarweise Geschmacksverträglichkeit.
 
-Außergewöhnlichkeit wird innerhalb eines Kandidaten, im Zwölfer-Satz und über sichtbare Challenges dosiert. Nach einer abenteuerlichen sichtbaren Challenge folgt eine Recovery-Runde ohne abenteuerliche Kandidaten; nach mehreren sehr vertrauten Challenges darf ihr Anteil kontrolliert steigen.
+Außergewöhnlichkeit wird innerhalb eines Kandidaten, im Zwölfer-Satz und über bestätigte sichtbare Challenges dosiert. Nach einer abenteuerlichen bestätigten Challenge folgt eine Recovery-Runde ohne abenteuerliche Kandidaten; nach mehreren sehr vertrauten bestätigten Challenges darf ihr Anteil kontrolliert steigen. Ein lediglich präsentiertes und anschließend vollständig rerolltes Offer Set beeinflusst dagegen nur den exakten Zutaten-Cooldown, nicht die Neuigkeitskadenz.
 
 Alle Zufallsentscheidungen verwenden einen gespeicherten Seed, einen benannten RNG, kanonische Eingaben sowie Generator- und Konfigurationsversionen. Harte Regeln werden nie gelockert; begrenzte Fallbacks betreffen ausschließlich dokumentierte Softziele.
 
@@ -206,22 +206,25 @@ Nach Ausschöpfung der erlaubten Runden gilt: Wenn mindestens ein Kandidat als `
 
 Die API-Antwort soll strukturiert und kompakt sein, insbesondere über Candidate-ID, qualitative Klasse, Rang und feste Reason-Codes. Freie Prosa ist für den produktiven Ablauf nicht notwendig.
 
-Die vollständige Kurations-, Carry-over-, Fallback-, API-Budget- und Bestätigungssemantik steht in [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md).
+Die vollständige Kurations-, Carry-over-, Fallback-, API-Budget-, Bestätigungs- und Reroll-Semantik steht in [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md).
 
 Welches konkrete Modell verwendet wird (z. B. Terra oder Sol), ist noch nicht entschieden und soll austauschbar bleiben.
 
 ## 6. Reroll
 
-Für eine bereits sichtbare Challenge ist derzeit **genau ein gemeinsamer Reroll** vorgesehen.
+Für das aktuell präsentierte Offer Set ist **genau ein gemeinsamer Reroll** vorgesehen.
 
 Arbeitsregeln:
 
-- Der Reroll ersetzt die komplette Challenge, nicht nur eine einzelne ungeliebte Vorgabe.
-- Die ursprüngliche Challenge bleibt in der Historie als verworfen erhalten.
-- Der Reroll darf nur erfolgen, bevor persönliche Konkretisierungen und Zusatz-Zutaten verbindlich festgelegt wurden.
+- Der Reroll verwirft das komplette sichtbare Offer Set mit seinen ein bis drei Optionen, bevor eine Option als Challenge bestätigt wurde.
+- Er tauscht weder gezielt eine einzelne Option noch eine einzelne ungeliebte Zutat aus. Ein Reroll bedeutet „diese Kombination beziehungsweise dieses Angebot noch einmal neu“, nicht „diese Zutaten wollen wir nicht“.
+- Die exakten Katalogkonzepte aller tatsächlich gezeigten Optionen werden für den normalen Wiederholungs-Cooldown als **ein gemeinsames Expositionsereignis** erfasst. Ein Offer Set mit drei Optionen lässt historische Abstände nicht dreimal schneller altern als eines mit einer Option.
+- Der Cooldown wird nicht auf Vorfahren, Nachfahren, Konkretisierungen oder Geschwister erweitert. `Spargel` im verworfenen Angebot sperrt also nicht automatisch `grünen Spargel`.
+- Es gibt keinen zusätzlichen REROLL-Zutatenblock und keine Sonderbehandlung sehr hoher Neuigkeitsstufen.
+- Die rerollten, aber nicht bestätigten Optionen beeinflussen die Neuigkeitskadenz nicht. Recovery und Seeking-Variety beruhen weiterhin auf bestätigten sichtbaren Challenges.
+- Technische Fehler oder intern vom Kurator verworfene Kandidaten verbrauchen den Reroll nicht und erzeugen keinerlei Exposition.
+- Wird dagegen eine Option normal bestätigt, beeinflusst nur diese bestätigte Challenge Cooldown und Neuigkeitskadenz; die übrigen Angebote bleiben generatorisch unsichtbar.
 - Der Reroll soll von beiden Beteiligten gemeinsam bestätigt werden.
-- Technische Fehler oder intern vom Kurator verworfene Kandidaten verbrauchen den Reroll nicht.
-- Nicht gewählte Challenge-Angebote sind keine sichtbaren Challenges und erzeugen weder Cooldown noch Neuigkeitswirkung.
 - Nach einem Reroll gibt es keine zweite freiwillige Neuziehung.
 
 ## 7. Zutaten- und Kategorienbasis
@@ -289,12 +292,12 @@ Discord ist vorgesehen für:
 - vor einer Ziehung die gewünschte Zahl von `1..3` Challenge-Angeboten wählen; Default `1`,
 - Challenge-Angebote ziehen und anzeigen,
 - genau eine angebotene Candidate-ID auswählen und ausdrücklich als Challenge bestätigen,
-- gemeinsamen Reroll auslösen und bestätigen,
+- alternativ vor der Bestätigung den gemeinsamen einmaligen Reroll des gesamten sichtbaren Offer Sets auslösen und bestätigen,
 - später persönliche Konkretisierungen und drei Zusatz-Zutaten verdeckt erfassen,
 - Entscheidungen beider Personen gleichzeitig offenlegen,
 - später gegebenenfalls Ergebnisse und Bewertungen dokumentieren.
 
-Nur die ausdrücklich bestätigte Option wird zur sichtbaren Challenge und beeinflusst Cooldowns beziehungsweise Neuigkeitskadenz. Nicht gewählte Angebote bleiben für Audit und Replay nachvollziehbar, sind für den Generator aber so zu behandeln, als wären sie nie angeboten worden.
+Im normalen Auswahlweg wird nur die ausdrücklich bestätigte Option zur operativen Challenge und beeinflusst Cooldown und Neuigkeitskadenz. Nicht gewählte Angebote bleiben für Audit und Replay nachvollziehbar, sind für den Generator aber so zu behandeln, als wären sie nie angeboten worden. Nur wenn das **gesamte** sichtbare Offer Set stattdessen rerollt wird, erzeugen seine exakten Katalogkonzepte die in Abschnitt 6 definierte Cooldown-only-Exposition.
 
 Discord-Bot und Verwaltungsoberfläche verwenden dieselbe fachliche Logik und dieselbe persistente Datenbasis. Eine unnötig verteilte Architektur ist für zwei Benutzer nicht das Ziel.
 
@@ -302,13 +305,14 @@ Discord-Bot und Verwaltungsoberfläche verwenden dieselbe fachliche Logik und di
 
 Später kann das System den gesamten Ablauf begleiten:
 
-1. Eine der kuratierten Optionen wird ausdrücklich bestätigt und ihre vier Vorgaben werden veröffentlicht.
-2. Beide konkretisieren allgemeine Vorgaben unabhängig voneinander.
-3. Beide wählen unabhängig ihre drei zusätzlichen Zutaten.
-4. Optional wird jeweils ein sehr kurzer Grundplan hinterlegt.
-5. Erst wenn beide festgelegt haben, werden die Entscheidungen gegenseitig sichtbar.
-6. Beide kochen unabhängig.
-7. Nachher werden Gericht, Foto und Fazit dokumentiert.
+1. Ein bis drei kuratierte Optionen werden angezeigt; anschließend wird entweder einmalig das gesamte Offer Set rerollt oder genau eine Option ausdrücklich bestätigt.
+2. Nach Bestätigung werden ihre vier Vorgaben zur operativen Challenge veröffentlicht.
+3. Beide konkretisieren allgemeine Vorgaben unabhängig voneinander.
+4. Beide wählen unabhängig ihre drei zusätzlichen Zutaten.
+5. Optional wird jeweils ein sehr kurzer Grundplan hinterlegt.
+6. Erst wenn beide festgelegt haben, werden die Entscheidungen gegenseitig sichtbar.
+7. Beide kochen unabhängig.
+8. Nachher werden Gericht, Foto und Fazit dokumentiert.
 
 Ein klassischer Gesamtsieger ist nicht zwingend sinnvoll, insbesondere wenn beide die Gerichte des anderen nicht probieren können. Interessanter sind Vergleich und Reflexion über Auswahlentscheidungen, gelungene Verbindungen und Fehlentscheidungen.
 
@@ -356,7 +360,7 @@ Als nächste Schritte folgen:
 6. Persistenz, Replay, Konkurrenz und Kalibrierung des Kandidatengenerators gemäß [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md),
 7. strukturierter Kuratorvertrag und persistentes Multi-Offer-Lifecycle gemäß [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md),
 8. OpenAI-Anbindung mit strikt gedeckelter Orchestrierung,
-9. Discord-Flow für Auswahl von `1..3` Angeboten, Bestätigung genau einer Challenge und einen gemeinsamen Reroll,
+9. Discord-Flow für Auswahl von `1..3` Angeboten, Bestätigung genau einer Challenge und einen gemeinsamen Offer-Set-Reroll,
 10. später: persönliche Auswahl, Historie und Ergebnisdokumentation.
 
 ## 13. Leitprinzip in einem Satz

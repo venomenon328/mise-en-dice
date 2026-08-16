@@ -6,7 +6,6 @@ import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.ExhaustedCandidateSet;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.GeneratedCandidateSet;
-import io.github.venomenon328.miseendice.challenge.api.GenerationAttemptRequest;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext.ManualRequirement;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory;
@@ -22,7 +21,6 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorValidationExcept
 import io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt;
 import io.github.venomenon328.miseendice.challenge.api.SeedSource;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
@@ -67,7 +65,7 @@ class GeneratorLaboratoryService implements GeneratorLaboratory {
     public List<HistoryScenarioDescriptor> scenarios() {
         return List.of(
                 scenario(HistoryScenario.PRODUCTION_VISIBLE, "Produktive sichtbare Historie",
-                        "Ausschließlich tatsächlich bestätigte sichtbare Challenges."),
+                        "Aktuell persistierte sichtbare Exposition; interne Kandidaten zählen nie."),
                 scenario(HistoryScenario.EMPTY_HISTORY, "Leere Historie", "Keine vorherige sichtbare Challenge."),
                 scenario(HistoryScenario.NEUTRAL_HISTORY, "Neutrale Historie",
                         "Ausgewogene Vorhistorie ohne Recovery- oder Variety-Signal."),
@@ -102,14 +100,10 @@ class GeneratorLaboratoryService implements GeneratorLaboratory {
                                 invalid("Matched manual concept " + manual.matchedConceptId()
                                         + " is absent from the catalog snapshot"))))
                 .toList();
-        Set<String> rerollBlock = request.rerollBlockedConceptIds().stream()
-                .map(id -> inputs.catalog().conceptById(id).orElseThrow(() ->
-                        invalid("REROLL block concept " + id + " is absent from the catalog snapshot")).code())
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
 
         GeneratorConfiguration configuration = properties.configuration();
         GeneratorRunExecution.Result execution = GeneratorRunExecution.execute(new GeneratorRunExecution.Input(
-                request.attemptType(), request.effectiveDate(), seed, manuals, rerollBlock, inputs.catalog(),
+                request.attemptType(), request.effectiveDate(), seed, manuals, Set.of(), inputs.catalog(),
                 inputs.history(), PREVIEW_BATCH_NUMBER), configuration, reservoirEngine, candidateSetEngine);
         PreparedGenerationAttempt prepared = execution.preparedAttempt();
         CandidateSetEngine.CandidateSetResult generated = execution.candidateSet();

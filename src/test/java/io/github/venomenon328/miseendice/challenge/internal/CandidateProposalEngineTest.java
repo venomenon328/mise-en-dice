@@ -22,7 +22,10 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyCad
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RequirementSource;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
+import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleChallenge;
+import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleRequirement;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -195,20 +198,67 @@ class CandidateProposalEngineTest {
     }
 
     @Test
-    void attemptExclusionAndRerollBlockAreAppliedToEveryRandomSlot() {
+    void attemptExclusionStillAppliesWhileLegacyRerollBlockIsIgnored() {
         CatalogGeneratorSnapshot catalog = catalog(false);
         GeneratorExclusionRule exclusion = catalog.exclusionRules().getFirst();
-        GenerationContext excluded = new GenerationContext(AttemptType.REROLL, LocalDate.of(2026, 8, 12), 8,
+        GenerationContext reroll = new GenerationContext(AttemptType.REROLL, LocalDate.of(2026, 8, 12), 8,
                 catalog, VisibleHistorySnapshot.empty(), List.of(), Set.of("ANIMAL_A"),
                 AttemptExclusionDecision.selected(exclusion), NoveltyCadence.NEUTRAL,
                 Map.of(NoveltyBand.FAMILIAR, 3, NoveltyBand.BALANCED, 7, NoveltyBand.ADVENTUROUS, 2),
                 configuration, 77L, 1);
 
-        AcceptedProposal accepted = findAccepted(excluded);
+        assertThat(reroll.rerollBlockedConceptCodes()).isEmpty();
+        boolean sawFormerlyBlockedConcept = false;
+        for (long ordinal = 0; ordinal < 2_000; ordinal++) {
+            if (engine.propose(reroll, ordinal) instanceof AcceptedProposal accepted) {
+                List<String> randomCodes = accepted.requirements().stream()
+                        .filter(requirement -> requirement.source() == RequirementSource.RANDOM)
+                        .map(requirement -> requirement.concept().code())
+                        .toList();
+                assertThat(randomCodes).doesNotContain("SEASONING_A");
+                sawFormerlyBlockedConcept |= randomCodes.contains("ANIMAL_A");
+            }
+        }
+        assertThat(sawFormerlyBlockedConcept).isTrue();
+    }
 
-        assertThat(accepted.requirements()).filteredOn(requirement -> requirement.source() == RequirementSource.RANDOM)
-                .extracting(requirement -> requirement.concept().code())
-                .doesNotContain("ANIMAL_A", "SEASONING_A");
+    @Test
+    void rerolledVisibleExposureBlocksOnlyTheExactConceptAndNotItsDescendant() {
+        CatalogGeneratorSnapshot base = catalog(false);
+        GeneratorConcept parent = base.conceptByCode("VEGETABLE_OPEN").orElseThrow();
+        List<GeneratorConcept> relatedConcepts = base.concepts().stream().map(concept ->
+                concept.code().equals("VEGETABLE_A")
+                        ? new GeneratorConcept(concept.id(), concept.code(), concept.displayName(), concept.active(),
+                        concept.randomDrawEnabled(), concept.specificity(), concept.baseDrawWeight(),
+                        concept.noveltyLevel(), concept.functionalRoles(), concept.culinaryFlags(),
+                        concept.culinaryDimensions(), concept.availabilityByParticipant(), concept.seasonMultiplier(),
+                        Set.of(parent.code()), concept.directDescendantCodes(), Set.of(parent.code()),
+                        concept.transitiveDescendantCodes())
+                        : concept).toList();
+        CatalogGeneratorSnapshot related = new CatalogGeneratorSnapshot(8, base.activeParticipantCodes(),
+                relatedConcepts, base.exclusionRules());
+        VisibleHistorySnapshot history = new VisibleHistorySnapshot(List.of(new VisibleChallenge(
+                Instant.parse("2026-08-11T18:00:00Z"), "rerolled-offer-set", AttemptType.INITIAL, "REROLLED",
+                List.of(visibleRequirement("VEGETABLE_OPEN"), visibleRequirement("OLD_A"),
+                        visibleRequirement("OLD_B"), visibleRequirement("OLD_C")),
+                CandidateProfile.FLEXIBLE_BALANCED, NoveltyBand.BALANCED, null)));
+        GenerationContext reroll = new GenerationContext(AttemptType.REROLL, LocalDate.of(2026, 8, 12), 8,
+                related, history, List.of(), Set.of(), AttemptExclusionDecision.none(), NoveltyCadence.NEUTRAL,
+                Map.of(NoveltyBand.FAMILIAR, 3, NoveltyBand.BALANCED, 7, NoveltyBand.ADVENTUROUS, 2),
+                configuration, 7788L, 1);
+
+        boolean sawDescendant = false;
+        for (long ordinal = 0; ordinal < 2_000; ordinal++) {
+            if (engine.propose(reroll, ordinal) instanceof AcceptedProposal accepted) {
+                List<String> randomCodes = accepted.requirements().stream()
+                        .filter(requirement -> requirement.source() == RequirementSource.RANDOM)
+                        .map(requirement -> requirement.concept().code())
+                        .toList();
+                assertThat(randomCodes).doesNotContain("VEGETABLE_OPEN");
+                sawDescendant |= randomCodes.contains("VEGETABLE_A");
+            }
+        }
+        assertThat(sawDescendant).isTrue();
     }
 
     @Test
@@ -269,6 +319,10 @@ class CandidateProposalEngineTest {
                 NoveltyCadence.NEUTRAL,
                 Map.of(NoveltyBand.FAMILIAR, 3, NoveltyBand.BALANCED, 7, NoveltyBand.ADVENTUROUS, 2),
                 configuration, seed, 1);
+    }
+
+    private VisibleRequirement visibleRequirement(String conceptCode) {
+        return new VisibleRequirement(conceptCode, 1, Set.of(), Set.of(), Set.of());
     }
 
     private CatalogGeneratorSnapshot catalog(boolean includeLegacy) {

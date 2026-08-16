@@ -1,6 +1,6 @@
 # Spezifikation der privaten Webverwaltung
 
-Stand: 12. August 2026
+Stand: 16. August 2026
 
 Dieses Dokument beschreibt die verbindliche fachliche, gestalterische und technische Spezifikation der privaten Webverwaltung von Mise en Dice. Es konkretisiert die in [`ARCHITECTURE.md`](ARCHITECTURE.md) festgelegten Leitplanken und bildet die Grundlage für die anschließenden Implementierungspakete.
 
@@ -1126,11 +1126,13 @@ Wenn einer dieser Punkte später relevant wird, wird er als eigenes Paket spezif
 `/admin/generator` ist eine geschützte serverseitig gerenderte Diagnoseansicht. Sie ergänzt die Katalogverwaltung,
 ersetzt aber keinen produktiven Challenge-Flow und enthält keine Katalogbearbeitung.
 
-Die Preview nimmt fachliches Datum, INITIAL/REROLL, optionalen Seed, einen stabilen Historienszenariocode,
-null bis zwei manuelle Vorgaben sowie für REROLL exakt vier gematchte Hardblockkonzepte entgegen. Der verwendete
-Seed wird angezeigt. Die Aktion verwendet die öffentliche Challenge-API, besitzt CSRF-Schutz und erzeugt weder
-Session, Attempt, Batch, Candidate noch sichtbare Challenge; sie verändert deshalb weder Cooldowns noch
-Neuigkeitskadenz.
+Die Preview nimmt fachliches Datum, INITIAL/REROLL, optionalen Seed, einen stabilen Historienszenariocode und
+null bis zwei manuelle Vorgaben entgegen. Der verwendete Seed wird angezeigt. Ab Generator 1.1 besitzt die Oberfläche
+**keine REROLL-Hardblock-IDs mehr**: ein diagnostischer REROLL erhält Wiederholungswirkung ausschließlich aus den exakten
+Konzeptcodes des gewählten sichtbaren Historiensnapshots und dem normalen Cooldown. Der Konkretisierungsgraph erweitert
+diesen Cooldown nicht auf Parent-, Child- oder Sibling-Konzepte. Die Aktion verwendet die öffentliche Challenge-API,
+besitzt CSRF-Schutz und erzeugt weder Session, Attempt, Batch, Candidate noch sichtbare Challenge; sie verändert deshalb
+weder Cooldowns noch Neuigkeitskadenz.
 
 Die Ergebnisansicht zeigt die zwölf Kandidaten mit Requirements, Ziel-/Ist-Neuigkeit, Scores und Reason-Codes,
 Setquoten, Reservoir-/Fallbackdiagnostik, Nutzung, Auswahlentscheidungen und die bestehende PairAssessment als
@@ -1140,21 +1142,24 @@ Ein Persisted-Abschnitt lädt Attempt und Batch ausschließlich über `Generatio
 Versionen, Fingerprints, historische Candidate-/Requirement-Snapshots und Legacy-Grenzen bleiben sichtbar.
 Replay ist ein read-only POST mit CSRF-Schutz und zeigt Match, nicht unterstützte Version, ungültigen Snapshot oder
 die erste strukturierte Differenz. Aktuelle Katalogwerte reparieren keine historischen Anzeige- oder Replaydaten.
+Historische Generator-1.0-Snapshots dürfen dabei noch den damaligen REROLL-Block enthalten; er wird nicht als neue
+Generator-1.1-Regel interpretiert.
 
 ### Simulation (Phase 9E3 / Issue #54)
 
 Der klar getrennte Bereich **Simulation** ruft ausschließlich die öffentliche `GeneratorSimulation`-API auf. Er nimmt
 Startseed, Seedanzahl, Startdatum, einen Monatsdurchlauf von `1..12`, Historienszenario, INITIAL/REROLL sowie null bis
 zwei Manuals entgegen. Katalog-IDs aus dem vorhandenen Picker werden vor dem Lauf lesend über `CatalogQueries` auf
-stabile Codes aufgelöst. REROLL verlangt exakt vier unterschiedliche auflösbare Konzepte; INITIAL akzeptiert keinen
-versteckten Block. Generatorgewichte, Quoten, Ausschlussvariante und sichtbare Kandidatenposition sind nicht editierbar.
+stabile Codes aufgelöst. Generatorgewichte, Quoten, Ausschlussvariante und sichtbare Kandidatenposition sind nicht editierbar.
+REROLL besitzt auch hier keine separaten Blockfelder; die Simulation verwendet ausschließlich die normale exakte
+Cooldown-Semantik ihres Historienszenarios.
 
 ```text
 Simulation
   Startseed | Seedanzahl | Startdatum | Monatsanzahl
   Historienszenario | INITIAL/REROLL
   0–2 Manuals mit optionalem Katalogmatch
-  bei REROLL: vier auflösbare Hardblock-Konzepte
+  REROLL: normaler exakter Cooldown aus dem gewählten Historienszenario
   [Simulation starten]
 
   Status: vollständig / TIMED_OUT / ABORTED / INCOMPLETE
@@ -1162,18 +1167,20 @@ Simulation
   begrenzte Reportaggregate, Versionen, Seedpläne und Katalogfingerprints
 ```
 
-Ein Request umfasst höchstens 64 expandierte Fälle und erhält ausschließlich serverseitig eine feste 30-Sekunden-
-Deadline mit `FAIL_FAST` für unbekannte technische Fehler. Jeder Monat ist ein eigener Single-Step-Szenarioschritt;
-die gewählte Historie startet je Monat neu. Die Seite zeigt unvollständige Läufe ausdrücklich als Teilreport und trennt
-fachliche Erschöpfung von technischen Fehlern. Frequenzlisten werden ohne erneute Sortierung oder Erweiterung aus dem
-begrenzt gelieferten Report gerendert.
+Ein Request umfasst höchstens 64 expandierte Fälle und erhält ausschließlich serverseitig eine feste Deadline mit
+`FAIL_FAST` für unbekannte technische Fehler. Jeder Monat ist ein eigener Single-Step-Szenarioschritt; die gewählte
+Historie startet je Monat neu. Die Seite zeigt unvollständige Läufe ausdrücklich als Teilreport und trennt fachliche
+Erschöpfung von technischen Fehlern. Frequenzlisten werden ohne erneute Sortierung oder Erweiterung aus dem begrenzt
+gelieferten Report gerendert.
 
 `POST /admin/generator/simulation` besitzt CSRF-Schutz und funktioniert als vollständiger servergerenderter POST ohne
 JavaScript. Mit HTMX liefert derselbe Endpunkt nur das Ergebnisfragment; das Submit wird währenddessen deaktiviert.
 Zusätzlich erlaubt ein flüchtiger, in `finally` freigegebener Guard höchstens einen laufenden Request pro
 Administrationssession. Es gibt weder Hintergrundjob noch persistierten Simulationszustand.
 
-Simulation und Report aus #53, ihr Adminadapter aus #54 und die Kalibrierung aus #40 bleiben getrennte Pakete.
+Simulation und Report aus #53, ihr Adminadapter aus #54 und die historische Kalibrierung aus #40 bleiben getrennte
+Pakete. Die spätere Persistenz eines tatsächlich sichtbaren, vollständig rerollten Offer Sets mit 1–3 Optionen ist
+Phase 10/11 und wird im Generator-Labor nicht simuliert oder gespeichert.
 
 ## 26. Abnahmekriterium dieser Spezifikation
 

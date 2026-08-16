@@ -42,21 +42,11 @@ public record GenerationAttemptRequest(
                 throw invalid("Manual requirement positions must be unique");
             }
         }
-        if (rerollBlockedConceptCodes.stream().anyMatch(code -> code == null || code.isBlank())) {
-            throw invalid("REROLL block codes must be non-blank catalog concept codes");
-        }
-        rerollBlockedConceptCodes = Set.copyOf(rerollBlockedConceptCodes);
-        if (attemptType == AttemptType.INITIAL && !rerollBlockedConceptCodes.isEmpty()) {
-            throw invalid("INITIAL request must not contain a REROLL block");
-        }
-        if (attemptType == AttemptType.REROLL) {
-            if (rerollBlockedConceptCodes.size() > 4) {
-                throw invalid("REROLL may block at most four catalog concepts");
-            }
-            if (rerollBlockedConceptCodes.stream().anyMatch(code -> catalog.conceptByCode(code).isEmpty())) {
-                throw invalid("REROLL block must contain only concepts from the frozen catalog snapshot");
-            }
-        }
+
+        // Generator v1.1 no longer interprets a REROLL as rejection of individual ingredients.
+        // Keep the record component so historic v1.0 request snapshots remain structurally readable,
+        // but normalize all newly constructed requests to the new no-dedicated-block semantics.
+        rerollBlockedConceptCodes = Set.of();
     }
 
     private static GeneratorValidationException invalid(String detail) {

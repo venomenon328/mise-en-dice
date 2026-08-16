@@ -15,7 +15,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -32,11 +31,7 @@ record GeneratorSimulationForm(
         String manual1Text,
         String manual1ConceptId,
         String manual2Text,
-        String manual2ConceptId,
-        String block1,
-        String block2,
-        String block3,
-        String block4
+        String manual2ConceptId
 ) {
     static final int MAXIMUM_CASES = 64;
     private static final int MAXIMUM_MONTHS = 12;
@@ -44,7 +39,7 @@ record GeneratorSimulationForm(
 
     static GeneratorSimulationForm defaults() {
         return new GeneratorSimulationForm("", "1", LocalDate.now().toString(), "1", "INITIAL",
-                "PRODUCTION_VISIBLE", "", "", "", "", "", "", "", "");
+                "PRODUCTION_VISIBLE", "", "", "", "");
     }
 
     static GeneratorSimulationForm from(MultiValueMap<String, String> values) {
@@ -52,8 +47,7 @@ record GeneratorSimulationForm(
                 text(values, "startSeed"), text(values, "seedCount"), text(values, "effectiveStartDate"),
                 text(values, "monthCount"), text(values, "attemptType"), text(values, "historyScenario"),
                 text(values, "manual1Text"), text(values, "manual1ConceptId"),
-                text(values, "manual2Text"), text(values, "manual2ConceptId"),
-                text(values, "block1"), text(values, "block2"), text(values, "block3"), text(values, "block4"));
+                text(values, "manual2Text"), text(values, "manual2ConceptId"));
     }
 
     SimulationRequest toRequest(CatalogQueries catalogQueries, Instant deadline) {
@@ -68,7 +62,6 @@ record GeneratorSimulationForm(
         HistoryScenario history = enumValue(HistoryScenario.class, historyScenario, "Historienszenario");
 
         List<ManualInput> manuals = manualInputs(catalogQueries);
-        Set<String> rerollBlock = rerollBlock(type, catalogQueries);
         List<SimulationScenario> scenarios = new ArrayList<>(months);
         for (int offset = 0; offset < months; offset++) {
             LocalDate date = firstDate.plusMonths(offset);
@@ -79,7 +72,7 @@ record GeneratorSimulationForm(
                     history,
                     type,
                     manuals,
-                    rerollBlock,
+                    Set.of(),
                     1,
                     ExclusionVariant.DEFAULT));
         }
@@ -114,35 +107,6 @@ record GeneratorSimulationForm(
         manuals.add(new ManualInput(position, text, conceptCode));
     }
 
-    private Set<String> rerollBlock(AttemptType type, CatalogQueries catalogQueries) {
-        List<String> values = List.of(block1, block2, block3, block4);
-        boolean hasBlockInput = values.stream().anyMatch(value -> !value.isBlank());
-        if (type == AttemptType.INITIAL) {
-            if (hasBlockInput) {
-                throw new IllegalArgumentException("INITIAL akzeptiert keinen REROLL-Hardblock.");
-            }
-            return Set.of();
-        }
-        if (!hasBlockInput || values.stream().anyMatch(String::isBlank)) {
-            throw new IllegalArgumentException("REROLL benötigt genau vier Katalog-Konzept-IDs.");
-        }
-        LinkedHashSet<Long> ids = new LinkedHashSet<>();
-        for (String value : values) {
-            ids.add(positiveLong(value, "REROLL-Konzept-ID"));
-        }
-        if (ids.size() != 4) {
-            throw new IllegalArgumentException("REROLL benötigt vier unterschiedliche Katalog-Konzept-IDs.");
-        }
-        LinkedHashSet<String> codes = new LinkedHashSet<>();
-        for (Long id : ids) {
-            codes.add(resolveCode(catalogQueries, id));
-        }
-        if (codes.size() != 4) {
-            throw new IllegalArgumentException("REROLL benötigt vier unterschiedliche auflösbare Katalogkonzepte.");
-        }
-        return Set.copyOf(codes);
-    }
-
     private static String resolveCode(CatalogQueries catalogQueries, long conceptId) {
         return catalogQueries.findConcept(conceptId)
                 .map(CatalogQueries.CatalogConceptDetail::code)
@@ -153,7 +117,7 @@ record GeneratorSimulationForm(
     private static int plannedCases(long seeds, long months) {
         long planned;
         try {
-            planned = Math.multiplyExact((long) seeds, months);
+            planned = Math.multiplyExact(seeds, months);
         } catch (ArithmeticException exception) {
             throw new IllegalArgumentException("Die geplante Fallzahl läuft über.", exception);
         }
