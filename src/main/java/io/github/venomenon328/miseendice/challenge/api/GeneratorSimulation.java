@@ -20,7 +20,7 @@ public interface GeneratorSimulation {
 
     int MAXIMUM_CASES = 4_096;
     int MAXIMUM_REPORT_ENTRIES = 50;
-    String REPORT_VERSION = "2026-08-13.1";
+    String REPORT_VERSION = "2026-08-16.1";
 
     SimulationReport simulate(SimulationRequest request);
 
@@ -126,16 +126,11 @@ public interface GeneratorSimulation {
             if (manualRequirements.stream().anyMatch(manual -> manual == null || !positions.add(manual.position()))) {
                 throw new IllegalArgumentException("Simulation manual positions must be unique");
             }
-            rerollBlockedConceptCodes = Set.copyOf(rerollBlockedConceptCodes);
-            if (rerollBlockedConceptCodes.stream().anyMatch(codeValue -> codeValue == null || codeValue.isBlank())) {
-                throw new IllegalArgumentException("Simulation REROLL blocks must contain non-blank concept codes");
-            }
-            if (attemptType == AttemptType.INITIAL && !rerollBlockedConceptCodes.isEmpty()) {
-                throw new IllegalArgumentException("INITIAL simulation scenarios must not contain a REROLL block");
-            }
-            if (attemptType == AttemptType.REROLL && rerollBlockedConceptCodes.size() != 4) {
-                throw new IllegalArgumentException("REROLL simulation scenarios require exactly four blocked concepts");
-            }
+
+            // Retained in the report/request shape for historic v1.0 fixtures only. New simulations never hard-block
+            // individual ingredients merely because the attempt type is REROLL.
+            rerollBlockedConceptCodes = Set.of();
+
             if (visibleCandidatePosition < 1 || visibleCandidatePosition > 12) {
                 throw new IllegalArgumentException("Synthetic sequence exposure needs a visible candidate position from 1 to 12");
             }
