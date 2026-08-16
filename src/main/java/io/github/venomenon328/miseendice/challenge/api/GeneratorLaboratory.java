@@ -20,7 +20,7 @@ import java.util.Set;
  */
 public interface GeneratorLaboratory {
 
-    String SCENARIO_VERSION = "2026-08-13.1";
+    String SCENARIO_VERSION = "2026-08-16.1";
 
     PreviewResult preview(PreviewRequest request);
 
@@ -69,7 +69,6 @@ public interface GeneratorLaboratory {
                 throw new IllegalArgumentException("Laboratory preview fields must not be null");
             }
             manualRequirements = List.copyOf(manualRequirements);
-            rerollBlockedConceptIds = List.copyOf(rerollBlockedConceptIds);
             if (manualRequirements.size() > 2) {
                 throw new IllegalArgumentException("At most two manual requirements are supported");
             }
@@ -77,16 +76,9 @@ public interface GeneratorLaboratory {
             if (manualRequirements.stream().anyMatch(manual -> !positions.add(manual.position()))) {
                 throw new IllegalArgumentException("Manual positions must be unique");
             }
-            if (rerollBlockedConceptIds.stream().anyMatch(id -> id == null || id <= 0)
-                    || new LinkedHashSet<>(rerollBlockedConceptIds).size() != rerollBlockedConceptIds.size()) {
-                throw new IllegalArgumentException("REROLL block concept ids must be unique and positive");
-            }
-            if (attemptType == AttemptType.INITIAL && !rerollBlockedConceptIds.isEmpty()) {
-                throw new IllegalArgumentException("INITIAL previews must not contain a REROLL hard block");
-            }
-            if (attemptType == AttemptType.REROLL && rerollBlockedConceptIds.size() != 4) {
-                throw new IllegalArgumentException("REROLL previews require exactly four blocked concepts");
-            }
+
+            // Compatibility slot for historic v1.0 laboratory payloads. Generator v1.1 uses only visible-history cooldown.
+            rerollBlockedConceptIds = List.of();
         }
     }
 
