@@ -21,7 +21,7 @@ class GeneratorSimulationFormTest {
 
     @Test
     void createsIndependentSingleStepMonthsWithFixedAdapterControls() {
-        var request = form("37000001", "2", "2026-01-31", "3", "INITIAL", "", "", "", "", "", "", "", "")
+        var request = form("37000001", "2", "2026-01-31", "3", "INITIAL", "", "", "", "")
                 .toRequest(catalogQueries(), DEADLINE);
 
         assertThat(request.callerCaseLimit()).isEqualTo(64);
@@ -42,9 +42,9 @@ class GeneratorSimulationFormTest {
     }
 
     @Test
-    void resolvesManualMatchButNormalizesLegacyRerollBlockInputsAway() {
-        var request = form("37000001", "1", "2026-08-13", "1", "REROLL", "manual", "10", "", "",
-                "10", "11", "12", "13").toRequest(catalogQueries(), DEADLINE);
+    void resolvesManualMatchForRerollWithoutDedicatedBlockInput() {
+        var request = form("37000001", "1", "2026-08-13", "1", "REROLL", "manual", "10", "", "")
+                .toRequest(catalogQueries(), DEADLINE);
 
         var scenario = request.scenarios().getFirst();
         assertThat(scenario.manualRequirements()).singleElement()
@@ -54,35 +54,31 @@ class GeneratorSimulationFormTest {
 
     @Test
     void rerollNeedsNoDedicatedBlock() {
-        var request = form("37000001", "1", "2026-08-13", "1", "REROLL", "", "", "", "",
-                "", "", "", "").toRequest(catalogQueries(), DEADLINE);
+        var request = form("37000001", "1", "2026-08-13", "1", "REROLL", "", "", "", "")
+                .toRequest(catalogQueries(), DEADLINE);
 
         assertThat(request.scenarios().getFirst().rerollBlockedConceptCodes()).isEmpty();
     }
 
     @Test
     void enforcesCaseBoundsAndReportsArithmeticOverflowBeforeCallingTheApplication() {
-        assertThat(form("1", "64", "2026-08-13", "1", "INITIAL", "", "", "", "", "", "", "", "")
+        assertThat(form("1", "64", "2026-08-13", "1", "INITIAL", "", "", "", "")
                 .toRequest(catalogQueries(), DEADLINE).plannedCases()).isEqualTo(64);
-        assertThatIllegalArgumentException().isThrownBy(() -> form("1", "65", "2026-08-13", "1", "INITIAL", "", "", "", "", "", "", "", "")
+        assertThatIllegalArgumentException().isThrownBy(() -> form("1", "65", "2026-08-13", "1", "INITIAL", "", "", "", "")
                 .toRequest(catalogQueries(), DEADLINE)).withMessageContaining("höchstens 64");
-        assertThatIllegalArgumentException().isThrownBy(() -> form("1", Long.toString(Long.MAX_VALUE), "2026-08-13", "12", "INITIAL", "", "", "", "", "", "", "", "")
+        assertThatIllegalArgumentException().isThrownBy(() -> form("1", Long.toString(Long.MAX_VALUE), "2026-08-13", "12", "INITIAL", "", "", "", "")
                 .toRequest(catalogQueries(), DEADLINE)).withMessageContaining("läuft über");
     }
 
     @Test
-    void rejectsIncompleteManualMatchButIgnoresLegacyInitialBlockFields() {
-        assertThatIllegalArgumentException().isThrownBy(() -> form("1", "1", "2026-08-13", "1", "INITIAL", "", "10", "", "", "", "", "", "")
+    void rejectsIncompleteManualMatch() {
+        assertThatIllegalArgumentException().isThrownBy(() -> form("1", "1", "2026-08-13", "1", "INITIAL", "", "10", "", "")
                 .toRequest(catalogQueries(), DEADLINE)).withMessageContaining("Manualtext");
-
-        var request = form("1", "1", "2026-08-13", "1", "INITIAL", "", "", "", "", "10", "", "", "")
-                .toRequest(catalogQueries(), DEADLINE);
-        assertThat(request.scenarios().getFirst().rerollBlockedConceptCodes()).isEmpty();
     }
 
     @Test
     void normalizesMalformedDatesToFormValidationErrors() {
-        assertThatIllegalArgumentException().isThrownBy(() -> form("1", "1", "not-a-date", "1", "INITIAL", "", "", "", "", "", "", "", "")
+        assertThatIllegalArgumentException().isThrownBy(() -> form("1", "1", "not-a-date", "1", "INITIAL", "", "", "", "")
                 .toRequest(catalogQueries(), DEADLINE)).withMessageContaining("Startdatum muss ein gültiges Datum sein");
     }
 
@@ -98,11 +94,10 @@ class GeneratorSimulationFormTest {
 
     private static GeneratorSimulationForm form(
             String startSeed, String seedCount, String date, String monthCount, String type,
-            String manual1, String manual1Id, String manual2, String manual2Id,
-            String block1, String block2, String block3, String block4
+            String manual1, String manual1Id, String manual2, String manual2Id
     ) {
         return new GeneratorSimulationForm(startSeed, seedCount, date, monthCount, type, "EMPTY_HISTORY",
-                manual1, manual1Id, manual2, manual2Id, block1, block2, block3, block4);
+                manual1, manual1Id, manual2, manual2Id);
     }
 
     private static CatalogQueries catalogQueries() {
