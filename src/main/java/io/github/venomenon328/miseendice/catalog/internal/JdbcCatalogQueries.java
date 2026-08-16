@@ -168,18 +168,18 @@ public class JdbcCatalogQueries implements CatalogQueries {
 
     @Override
     public List<CatalogRelationCandidate> searchRelationCandidates(String searchTerm, long excludedConceptId) {
-        String normalized = searchTerm == null ? "" : searchTerm.strip().toLowerCase(Locale.ROOT)
-                .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        String normalized = searchTerm == null ? "" : searchTerm.strip().toLowerCase(Locale.ROOT);
         List<ConceptRow> rows = jdbcTemplate.query(
                 """
                 select id, display_name, code, active, random_draw_enabled, challenge_specificity,
                        base_draw_weight, novelty_level, curator_note, version, updated_at
                 from ingredient_concept
-                where id <> ? and (lower(display_name) like ? escape '\' or lower(code) like ? escape '\')
+                where id <> ?
+                  and (position(? in lower(display_name)) > 0 or position(? in lower(code)) > 0)
                 order by lower(display_name), id
                 limit 40
                 """,
-                this::mapConceptRow, excludedConceptId, "%" + normalized + "%", "%" + normalized + "%"
+                this::mapConceptRow, excludedConceptId, normalized, normalized
         );
         if (rows.isEmpty()) {
             return List.of();
