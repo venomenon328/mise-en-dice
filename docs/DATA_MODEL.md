@@ -1,6 +1,6 @@
 # Datenmodell
 
-Stand: 13. August 2026
+Stand: 16. August 2026
 
 Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt als explizit geordnete Liquibase-Changesets vor:
 
@@ -119,15 +119,26 @@ Ein fehlender Saisonwert bedeutet Faktor `1.0`. Saisonfaktoren müssen größer 
 
 Das effektive Ziehungsgewicht wird nicht persistiert, sondern zur Laufzeit berechnet.
 
-## 8. Cooldown und Wiederholungen
+## 8. Cooldown, Sichtbarkeit und Wiederholungen
 
 Es gibt bewusst kein `last_used` auf `ingredient_concept` und keine persistierte Cooldown-Tabelle.
 
-Die Challenge-Historie ist die Quelle der Wahrheit. In der ersten Regelversion soll nur die **exakt als Challenge-Vorgabe gezogene Vorgabe** einen Cooldown beziehungsweise Gewichtsabschlag für dieselbe Vorgabe auslösen.
+Die Historienprojektion ist die Quelle der Wahrheit. In der Generatorregel ab Version 1.1 löst ausschließlich eine **exakte Konzeptcode-Exposition** einen Cooldown beziehungsweise Gewichtsabschlag für denselben Konzeptcode aus.
 
-Die Konkretisierungshierarchie erzeugt zunächst keine automatische Eltern-, Kind- oder Geschwister-Sperre. Insbesondere soll eine sehr offene Vorgabe nicht dazu führen, dass anschließend ihr gesamter semantischer Bereich blockiert wird.
+Die Konkretisierungshierarchie erzeugt keine automatische Eltern-, Kind- oder Geschwister-Sperre. Insbesondere soll eine sehr offene Vorgabe nicht dazu führen, dass anschließend ihr gesamter semantischer Bereich blockiert wird. `ASPARAGUS` im Cooldown sperrt deshalb nicht `GREEN_ASPARAGUS`; umgekehrt sperrt ein spezifischer Nachfahr nicht automatisch seinen Parent.
 
-Nur bestätigte Challenge-Vorgaben beeinflussen diese Logik. Später dokumentierte persönliche Konkretisierungen oder Zusatz-Zutaten tun dies nicht automatisch. Ebenso erzeugen kuratierte, im Discord angebotene, aber nicht gewählte Kandidaten keinerlei Cooldown oder Neuigkeitswirkung; für den Generator gelten sie als nicht exponiert.
+Historienwirkung wird nach Ursache getrennt:
+
+1. **Bestätigte Challenge:** Die vier bestätigten Requirements beeinflussen den normalen exakten Cooldown und, soweit die fachlichen Voraussetzungen erfüllt sind, auch Neuigkeitskadenz und weitere Challenge-Historienmetriken.
+2. **Vollständig rerolltes sichtbares Offer Set:** Wenn später in Phase 10/11 ein tatsächlich präsentiertes Offer Set mit 1–3 Optionen vor Auswahl einer Challenge verworfen wird, werden die exakten Katalogkonzepte aller gezeigten Optionen als **ein gemeinsames Cooldown-only-Expositionsereignis** gespeichert beziehungsweise projiziert. Dieses Ereignis beeinflusst weder Neuigkeitskadenz noch bestätigte Challenge-Historie.
+
+Ein Offer Set mit drei Optionen zählt dabei als eine Expositionsposition und nicht als drei nacheinander vergangene Challenges. Dadurch hängt das Altern des Cooldownfensters nicht von `requested_offer_count` ab.
+
+Interne Zwölfer-Sätze, Kuratorablehnungen und niemals präsentierte Kandidaten erzeugen keine Exposition. Wird aus einem präsentierten Offer Set normal genau eine Option bestätigt, bleiben die übrigen Angebote für Cooldown und Neuigkeitskadenz generatorisch unsichtbar.
+
+Persönliche Konkretisierungen oder Zusatz-Zutaten beeinflussen die Generatorhistorie ebenfalls nicht automatisch.
+
+Der frühere dedizierte Vierer-REROLL-Hardblock aus Generator 1.0 ist ab Generator 1.1 keine fachliche Regel mehr. Historische Snapshotfelder dürfen lesbar bleiben; neue REROLL-Attempts erhalten Wiederholungswirkung ausschließlich über die normale Historienprojektion.
 
 ## 9. Ausschlussregeln
 
@@ -185,7 +196,13 @@ challenge_session
 
 challenge
   └─ verweist auf genau ein bestätigtes curated_offer
+
+cooldown_exposure (fachliches Ziel, konkrete Tabellenform Phase 10/11)
+  └─ kann genau ein vollständig rerolltes sichtbares curated_offer_set referenzieren
+       └─ enthält dessen exakte exponierte Konzeptcodes als eine gemeinsame Cooldownposition
 ```
+
+`cooldown_exposure` beschreibt hier eine fachliche Zielrolle, **keinen vorweggenommenen Tabellennamen**. Die konkrete append-only Tabellenform wird erst mit dem Offer-/Discord-Lifecycle festgelegt.
 
 Phase 9D implementiert noch keine Kuratororchestrierung und kein Offer Set. Seine Persistenz muss jedoch verhindern, dass die spätere fachliche Kardinalität durch eine starre Annahme „eine Kurationsrunde = genau ein Generation Batch = genau ein ausgewählter Kandidat“ verbaut wird.
 
@@ -199,7 +216,7 @@ Die spätere Kurationsphase speichert für die Session die gewünschte Zahl prä
 
 ### Generation Attempt
 
-`generation_attempt` repräsentiert den Versuch, eine sichtbare Challenge zu erzeugen. Pro Session erlaubt die Datenbank höchstens einen `INITIAL`- und einen `REROLL`-Attempt. Interne Neuversuche wegen zu weniger guter Kuratorergebnisse erzeugen keinen weiteren Reroll-Attempt.
+`generation_attempt` repräsentiert den Versuch, ein Offer Set und daraus gegebenenfalls eine Challenge zu erzeugen. Pro Session erlaubt die Datenbank höchstens einen `INITIAL`- und einen `REROLL`-Attempt. Interne Neuversuche wegen zu weniger guter Kuratorergebnisse erzeugen keinen weiteren Reroll-Attempt.
 
 Im Zielmodell besitzt der Attempt den unveränderlichen Request- und Context-Rahmen: Attempt-Seed, RNG, Generator- und Konfigurationsversion, wirksamen Monat, manuelle Vorgaben, Ausschlussentscheidung sowie Konfigurations-, Katalog-, Eingabe- und Historiensnapshot. Zustände `PENDING`, `CONTEXT_READY`, `GENERATED`, `EXHAUSTED` und `FAILED` unterscheiden fehlenden Snapshot, laufende Berechnung, vollständigen Generatorerfolg, fachliche Erschöpfung und technischen Fehler. Die spätere Kurationsphase ergänzt klar getrennte Kurations-/Offer-Zustände statt Generatorzustände umzudeuten.
 
@@ -236,19 +253,30 @@ Das Set speichert mindestens:
 - `requested_offer_count` im Bereich `1..3`,
 - Abschlussstatus,
 - die maßgebliche letzte Kurationsrunde beziehungsweise den nachvollziehbaren Orchestrierungsstand,
-- exakt `requested_offer_count` positionsgebundene `curated_offer`-Einträge bei Erfolg.
+- exakt `requested_offer_count` positionsgebundene `curated_offer`-Einträge bei Erfolg,
+- später den Zustand beziehungsweise Zeitpunkt der tatsächlichen Präsentation,
+- ob dieses präsentierte Set normal durch Auswahl einer Option beendet oder vollständig freiwillig rerollt wurde.
 
 Jeder `curated_offer` verweist auf einen `challenge_candidate` desselben Attempts und auf die maßgebliche Kuratorbewertung, aus der seine Klasse und Rangfolge nachvollziehbar bleiben. Ein erfolgreiches Offer Set enthält mindestens einen `GOOD`-Kandidaten. Weitere Plätze dürfen nach Ausschöpfung des strikt begrenzten Kuratorbudgets aus `ACCEPTABLE` und notfalls den bestgerankten `BAD`-Kandidaten bestehen.
 
 Ein Set, das die angeforderte Zahl nicht vollständig enthält oder überhaupt keinen `GOOD`-Kandidaten besitzt, darf nicht als erfolgreich angeboten werden. Bei vollständiger Kurationserschöpfung entsteht kein scheinbar erfolgreiches Offer Set.
 
-### Sichtbare Challenge
+Wird ein **präsentiertes** Offer Set vollständig rerollt, müssen alle dabei tatsächlich gezeigten Katalogkonzepte historisch stabil genug gespeichert beziehungsweise über Candidate-Snapshots referenzierbar bleiben, um genau ein Cooldown-only-Expositionsereignis zu materialisieren. Es wird nicht aus später veränderten Katalogbeziehungen rekonstruiert.
 
-Eine sichtbare `challenge` entsteht erst, wenn der Nutzer genau einen `curated_offer` ausdrücklich bestätigt. Datenbank und Application Service stellen sicher, dass Session, Attempt, Offer Set, Offer, Candidate und dessen vier Requirements zusammengehören.
+### Sichtbare Challenge und rerollte Offer-Exposition
 
-Nicht gewählte Angebote bleiben für Audit, Replay und Diagnose erhalten, sind aber **keine sichtbare Historienexposition**. Sie erzeugen weder Cooldown noch Neuigkeitswirkung und werden auch bei einem späteren freiwilligen Reroll nicht zusätzlich blockiert.
+Eine operative `challenge` entsteht erst, wenn der Nutzer genau einen `curated_offer` ausdrücklich bestätigt. Datenbank und Application Service stellen sicher, dass Session, Attempt, Offer Set, Offer, Candidate und dessen vier Requirements zusammengehören.
 
-Ein freiwilliger Reroll überschreibt die alte Challenge nicht. Die ursprüngliche Challenge kann auf `REROLLED` gesetzt werden; der zweite Attempt erzeugt nach erneuter Kuratierung und Nutzerbestätigung eine neue Challenge unter derselben Session.
+Wird eine Option normal bestätigt, bleiben die übrigen Angebote für Audit, Replay und Diagnose erhalten, sind aber **keine Historienexposition**. Sie erzeugen weder Cooldown noch Neuigkeitswirkung.
+
+Davon getrennt ist der freiwillige Reroll **vor** Bestätigung einer Option. Das vollständig präsentierte Offer Set wird dabei verworfen. Es entsteht keine `challenge`, aber die exakten Katalogkonzepte aller tatsächlich gezeigten 1–3 Optionen erzeugen als eine gemeinsame Position eine Cooldown-only-Exposition. Diese Exposition:
+
+- wirkt ausschließlich auf dieselben Konzeptcodes,
+- expandiert nicht über `ingredient_refinement`,
+- beeinflusst weder Neuigkeitskadenz noch bestätigte Challenge-Historie,
+- darf die historische Distanz nur um eine Position erhöhen, unabhängig von der Zahl gezeigter Angebote.
+
+Der REROLL-`generation_attempt` verwendet diese Exposition über die normale Historienprojektion. Es existiert kein separater ingredient-level REROLL-Hardblock mehr.
 
 ## 12. Historische Snapshots
 
@@ -258,9 +286,11 @@ Die Fremdschlüssel auf die aktuellen Katalogeinträge bleiben für Auswertungen
 
 Phase 9 erweitert die Snapshots um sämtliche replay- und diagnosewirksamen Werte. Auf Attempt-/Context-Ebene gehören dazu insbesondere Konfiguration, Katalogprojektion, sichtbare Historie, Attempt-Seed, RNG, Versionen und Ausschlussentscheidung. Auf Batch-Ebene liegen Batchnummer, abgeleiteter Batch-Seed, Rejection-Zähler, Fallbackstufe und Set-Fingerprint. Kandidaten und Requirements speichern damalige Rollen, Neuigkeit, Beschaffbarkeit, verwendete Gewichtsfaktoren, relevante bekannte Eigenschaften, Scores und Reason-Codes.
 
-Phase 10 ergänzt Kuratorrequest/-response, qualitative Bewertungen, Ränge, Kandidatenteilnahme je Kurationsrunde, Carry-over-/Locked-Kontext und das finale Offer Set. Diese Daten dienen Replay und Diagnose, dürfen aber nicht mit dem `VisibleHistorySnapshot` des Generators verwechselt werden: Nur ausdrücklich bestätigte Challenges zählen dort als Exposition.
+Phase 10 ergänzt Kuratorrequest/-response, qualitative Bewertungen, Ränge, Kandidatenteilnahme je Kurationsrunde, Carry-over-/Locked-Kontext und das finale Offer Set. Phase 10/11 müssen außerdem die tatsächliche Präsentation und einen freiwilligen vollständigen Offer-Set-Reroll so persistieren, dass dessen Cooldown-only-Exposition ohne Rückgriff auf aktuelle Katalogwerte reproduzierbar ist.
 
-Replay verwendet diese historischen Snapshots und nicht den aktuellen Katalog. Eine nicht mehr unterstützte Generatorversion wird ausdrücklich als nicht unterstützt klassifiziert; sie wird nicht mit aktuellen Regeln scheinbar reproduziert.
+Diese Daten dürfen nicht mit bestätigter Challenge-Historie gleichgesetzt werden: Bestätigte Challenges wirken auf den vollständigen Historienvertrag; ein rerolltes unbestätigtes Offer Set wirkt nur auf den exakten Zutaten-Cooldown; intern verworfene oder normal nicht gewählte Angebote wirken gar nicht.
+
+Replay verwendet historische Snapshots und nicht den aktuellen Katalog. Eine nicht mehr unterstützte Generatorversion wird ausdrücklich als nicht unterstützt klassifiziert; sie wird nicht mit aktuellen Regeln scheinbar reproduziert. Der historische v1.0-REROLL-Block darf deshalb in Alt-Snapshots lesbar bleiben, ohne von v1.1 erneut angewendet zu werden.
 
 ## 13. Administrationsversionen und Katalog-Audit
 
@@ -289,9 +319,10 @@ Unter anderem bleiben im Anwendungscode:
 - fachliche Bewertung und Rangfolge des Kurators,
 - Auswahl der Carry-over-Fallbacks,
 - Auffüllpriorität `GOOD` -> `ACCEPTABLE` -> `BAD`,
-- fachliche Entscheidung, welche Verfügbarkeitsstufen für Zufallsziehungen ausreichend sind.
+- fachliche Entscheidung, welche Verfügbarkeitsstufen für Zufallsziehungen ausreichend sind,
+- exakte Cooldown-Semantik und die Trennung zwischen bestätigter Challenge-Historie und Cooldown-only-Offer-Exposition.
 
-Die Datenbank sichert in Phase 9D insbesondere Batchnummern `1..2`, lokal eindeutige Kandidatennummern `1..12`, genau zwölf vollständige Kandidaten mit je vier Requirements pro neuem `GENERATED`-Batch, keine Kandidaten bei `EXHAUSTED` und die Candidate→Batch→Attempt-Zugehörigkeit ab. Phase 10 ergänzt Bereich `1..3` für die gewünschte Angebotszahl, Kurationsreferenzen und die bestätigte Offer-Zugehörigkeit sichtbarer Challenges.
+Die Datenbank sichert in Phase 9D insbesondere Batchnummern `1..2`, lokal eindeutige Kandidatennummern `1..12`, genau zwölf vollständige Kandidaten mit je vier Requirements pro neuem `GENERATED`-Batch, keine Kandidaten bei `EXHAUSTED` und die Candidate→Batch→Attempt-Zugehörigkeit ab. Phase 10 ergänzt Bereich `1..3` für die gewünschte Angebotszahl, Kurationsreferenzen und die bestätigte Offer-Zugehörigkeit sichtbarer Challenges. Phase 10/11 ergänzen die persistente Präsentations-/Reroll-Exposition; Issue #63 zieht dafür bewusst keine Schemaänderung vor.
 
 Diese Regeln sind absichtlich nicht als konfigurierbare SQL-Regelmaschine modelliert.
 
@@ -299,6 +330,7 @@ Diese Regeln sind absichtlich nicht als konfigurierbare SQL-Regelmaschine modell
 
 Die Struktur soll folgende Erweiterungen ermöglichen, bildet sie aber noch nicht ab:
 
+- persistente Präsentations- und Cooldown-only-Exposition rerollter Offer Sets,
 - persönliche Konkretisierungen offener Vorgaben,
 - drei zusätzliche Zutaten pro Person,
 - optionaler Grundplan,
@@ -321,4 +353,4 @@ Der Master-Changelog führt die Schemas, Referenzdaten, den initialen Katalog, s
 
 Die einmalige Finalisierung in `catalog/016-final-catalog-snapshot.sql` bildet dabei eine bewusst enge Upgrade-Brücke: Als Ausgangszustand sind nur die unberührte Repository-Baseline und die dokumentierte Produktions-Fixture vom 13. August 2026 zulässig. Ein kanonischer, codebasierter Precondition-Fingerprint schließt technische IDs, Zeitstempel und Optimistic-Locking-Versionen aus und lehnt jeden anderen fachlichen Zustand vor dem ersten Schreibzugriff sichtbar ab. Beide zulässigen Pfade ergeben denselben normalisierten SHA-256-Snapshot `26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52`; bestehende IDs bleiben beim Upgrade erhalten. Nach der einmaligen Ausführung ist wieder die laufende Datenbank redaktionelle Quelle der Wahrheit.
 
-[`001-seed-sanity.sql`](../src/main/resources/db/changelog/checks/001-seed-sanity.sql) prüft beim ersten Aufbau insbesondere, dass der aktive Ziehungspool ausreichend groß ist und jeder aktive Zieh-Kandidat funktionale Rollen sowie Beschaffbarkeitsdaten für Georgia und Tobias besitzt. Die vollständige Ausführung wird zusätzlich in PostgreSQL-Testcontainers-Integrationstests geprüft.
+[`001-seed-sanity.sql`](../src/main/resources/db/changelog/checks/001_seed_sanity.sql) prüft beim ersten Aufbau insbesondere, dass der aktive Ziehungspool ausreichend groß ist und jeder aktive Zieh-Kandidat funktionale Rollen sowie Beschaffbarkeitsdaten für Georgia und Tobias besitzt. Die vollständige Ausführung wird zusätzlich in PostgreSQL-Testcontainers-Integrationstests geprüft.
