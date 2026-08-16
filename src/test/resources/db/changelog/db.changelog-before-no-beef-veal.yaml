@@ -45,5 +45,3 @@ databaseChangeLog:
       file: db/changelog/schema/004-persisted-candidate-generation.sql
   - include:
       file: db/changelog/catalog/016-final-catalog-snapshot.sql
-  - include:
-      file: db/changelog/catalog/017-no-beef-veal-exclusion.sql

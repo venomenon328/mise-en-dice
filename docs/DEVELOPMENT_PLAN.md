@@ -372,6 +372,12 @@ Issue #37 und Issue #40 bleiben eigenständige nachgelagerte Pakete; ihre Labor-
 - ausschließlich evidenzbasiertes Tuning innerhalb des spezifizierten Modells,
 - verbindlicher Kalibrierungsbericht.
 
+Der technische Lieferstand verwendet dafür ein eigenes, im normalen Verify ausgeschlossenes Profil
+`generator-calibration`. Rohreports bleiben unter `target/generator-calibration/`; das versionierte Acht-Satz-Korpus,
+die Bewertungsrubrik und die operative Schrittfolge stehen in
+[`CANDIDATE_GENERATOR_CALIBRATION.md`](CANDIDATE_GENERATOR_CALIBRATION.md). Phase 9 bleibt ausdrücklich offen, bis
+der Administrator den redaktionellen Katalog über den #54-Adapter geprüft und das Korpus fachlich abgenommen hat.
+
 ### Abschlussgate
 
 Phase 9 ist erst abgeschlossen, wenn:

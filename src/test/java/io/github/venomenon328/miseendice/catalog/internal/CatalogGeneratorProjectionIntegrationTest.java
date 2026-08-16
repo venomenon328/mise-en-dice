@@ -94,6 +94,17 @@ class CatalogGeneratorProjectionIntegrationTest {
             assertThat(rule.targets()).anyMatch(CatalogGeneratorProjection.GeneratorExclusionTarget::includeRefinements);
             assertThat(rule.expandedTargetCodes().size()).isGreaterThan(rule.targets().size());
         });
+
+        var noBeef = snapshot.exclusionRules().stream()
+                .filter(rule -> rule.code().equals("NO_BEEF"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(noBeef.targets()).anySatisfy(target -> {
+            assertThat(target.conceptCode()).isEqualTo("VEAL");
+            assertThat(target.includeRefinements()).isTrue();
+        });
+        assertThat(noBeef.expandedTargetCodes())
+                .contains("VEAL", "VEAL_CUTLET", "VEAL_LIVER", "VEAL_SHANK", "WHITE_SAUSAGE");
     }
 
     @Test
@@ -101,7 +112,7 @@ class CatalogGeneratorProjectionIntegrationTest {
         var descriptor = proposalEngine.descriptor();
 
         assertThat(descriptor.generatorVersion()).isEqualTo("1.0.0");
-        assertThat(descriptor.configurationVersion()).isEqualTo("2026-08-12.2");
+        assertThat(descriptor.configurationVersion()).isEqualTo("2026-08-15.1");
         assertThat(descriptor.canonicalConfigurationSnapshot()).contains(
                 "candidateSetSize", "scoreWeights", "SPLITMIX64_V1");
     }

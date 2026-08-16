@@ -67,7 +67,7 @@ class PostgresIntegrationTest {
 
     @Test
     void applicationContextStartsWithTheCompleteLiquibaseBaseline() {
-        assertThat(count("databasechangelog")).isEqualTo(23);
+        assertThat(count("databasechangelog")).isEqualTo(24);
         assertThat(count("ingredient_concept")).isEqualTo(698);
         assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(651);
         assertThat(countWhere("ingredient_concept", "active and random_draw_enabled and challenge_specificity = 'OPEN'"))
@@ -129,7 +129,7 @@ class PostgresIntegrationTest {
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
 
-            assertThat(count(connection, "databasechangelog")).isEqualTo(23);
+            assertThat(count(connection, "databasechangelog")).isEqualTo(24);
             assertThat(countWhere(connection, "ingredient_concept", "version = 0")).isEqualTo(698);
             assertThat(countWhere(connection, "exclusion_rule", "version = 0"))
                     .isEqualTo(count(connection, "exclusion_rule"));

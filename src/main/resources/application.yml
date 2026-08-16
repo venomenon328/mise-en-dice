@@ -16,7 +16,7 @@ mise-en-dice:
   generator:
     configuration:
       generator-version: 1.0.0
-      configuration-version: 2026-08-12.2
+      configuration-version: 2026-08-15.1
       rng-algorithm: SPLITMIX64_V1
       canonical-payload-version: 1
       candidate-set-size: 12
@@ -121,7 +121,7 @@ mise-en-dice:
           minimum-score: 55
           maximum-pair-similarity: 0.58
           concept-cap: 2
-          ancestor-cap: 4
+          ancestor-cap: 10
           quota-deviation: 0
           profile-cap: 4
           difficult-candidate-cap: 3
@@ -129,7 +129,7 @@ mise-en-dice:
           minimum-score: 50
           maximum-pair-similarity: 0.65
           concept-cap: 2
-          ancestor-cap: 5
+          ancestor-cap: 11
           quota-deviation: 1
           profile-cap: 5
           difficult-candidate-cap: 4
@@ -137,7 +137,7 @@ mise-en-dice:
           minimum-score: 45
           maximum-pair-similarity: 0.72
           concept-cap: 3
-          ancestor-cap: 6
+          ancestor-cap: 12
           quota-deviation: 2
           profile-cap: 5
           difficult-candidate-cap: 4

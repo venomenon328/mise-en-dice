@@ -22,6 +22,7 @@
         <spring-modulith.version>2.1.0</spring-modulith.version>
         <testcontainers.version>2.0.5</testcontainers.version>
         <generator-baseline-exclude>**/CandidateSetBaselineIntegrationTest.java</generator-baseline-exclude>
+        <generator-calibration-exclude>**/CandidateGeneratorCalibrationIntegrationTest.java</generator-calibration-exclude>
     </properties>
 
     <dependencyManagement>
@@ -138,6 +139,7 @@
                 <configuration>
                     <excludes>
                         <exclude>${generator-baseline-exclude}</exclude>
+                        <exclude>${generator-calibration-exclude}</exclude>
                     </excludes>
                 </configuration>
             </plugin>
@@ -153,6 +155,12 @@
             <id>generator-baseline</id>
             <properties>
                 <generator-baseline-exclude>**/__generator_baseline_enabled__.java</generator-baseline-exclude>
+            </properties>
+        </profile>
+        <profile>
+            <id>generator-calibration</id>
+            <properties>
+                <generator-calibration-exclude>**/__generator_calibration_enabled__.java</generator-calibration-exclude>
             </properties>
         </profile>
     </profiles>

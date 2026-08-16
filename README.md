@@ -91,6 +91,17 @@ Die große 2.304-Fälle-Baseline bleibt bewusst opt-in und verwendet denselben K
 ./mvnw clean verify -Pgenerator-baseline -Dtest=CandidateSetBaselineIntegrationTest
 ```
 
+Die vollständige 9.216-Fälle-Kalibrierung ist ebenfalls ausschließlich manuell und schreibt ihre Rohreports unter
+`target/generator-calibration/`:
+
+```bash
+./mvnw clean verify -Pgenerator-calibration -Dtest=CandidateGeneratorCalibrationIntegrationTest
+```
+
+Keiner der beiden breiten Läufe wird von GitHub Actions, PRs, Pushes oder Zeitplänen gestartet. Bericht,
+manuelles Acht-Satz-Korpus und operative Adminanleitung stehen in
+[`docs/CANDIDATE_GENERATOR_CALIBRATION.md`](docs/CANDIDATE_GENERATOR_CALIBRATION.md).
+
 Zentrale Modellierungsentscheidungen sind insbesondere:
 
 - ein gemeinsames Zutatenkonzept statt einer starren Trennung zwischen „Zutat“ und „Kategorie“
@@ -100,8 +111,8 @@ Zentrale Modellierungsentscheidungen sind insbesondere:
 - persistente Audit-Historie für Kandidatensätze und Kuratorentscheidungen
 - freie manuelle Vorgaben, die den Zufallsgenerator und seine Regeln bewusst übersteuern können
 
-Der initiale Katalog umfasst **665 Zutatenkonzepte**, davon **663 zufällig ziehbar**. Darunter befinden sich **87 offene** und **576 spezifische** Vorgaben. Jeder aktive Zieh-Kandidat besitzt mindestens eine funktionale Rolle sowie eine Beschaffbarkeitseinschätzung für Georgia und Tobias.
+Der finale aktive Katalogstand umfasst **698 Zutatenkonzepte**, davon **651 zufällig ziehbar**. Darunter befinden sich **62 offene** und **589 spezifische** Vorgaben. Jeder aktive Zieh-Kandidat besitzt mindestens eine funktionale Rolle sowie eine Beschaffbarkeitseinschätzung für Georgia und Tobias.
 
 ## Status
 
-Produktvision, Datenmodell, Anwendungsfundament, umfangreicher initialer Zutatenkatalog, die vollständige Katalogadministration einschließlich Ausschlüssen, begrenzten Bulk-Aktionen und Auditansicht sowie das Produktions- und Branch-Preview-Deployment sind umgesetzt. Direkte Parent-/Child-Kanten und Bulk-Rollenänderungen werden gemeinsam mit Rollen und Spezifität gegen den resultierenden Graphen validiert; Mehrfach-Eltern bleiben erhalten. Als nächster fachlicher Schritt folgen Generierungsregeln und der Kandidatengenerator.
+Produktvision, Datenmodell, Anwendungsfundament, finaler Zutatenkatalog, vollständige Katalogadministration und der reproduzierbare Kandidatengenerator einschließlich Persistenz, Replay, Labor und begrenzter Simulation sind umgesetzt. Phase 9F bereitet die breite technische Kalibrierung, den read-only operativen Kataloglauf und die ausdrückliche manuelle Fachabnahme vor. OpenAI-Kurator und Discord bleiben bis zum vollständigen Phase-9-Gate nachgelagert.
