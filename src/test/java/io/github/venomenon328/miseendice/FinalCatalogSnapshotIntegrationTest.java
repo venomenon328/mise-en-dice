@@ -40,6 +40,8 @@ class FinalCatalogSnapshotIntegrationTest {
 
     private static final String BEFORE_FINAL_CHANGELOG =
             "db/changelog/db.changelog-before-final-catalog.yaml";
+    private static final String FINAL_SNAPSHOT_CHANGELOG =
+            "db/changelog/db.changelog-before-no-beef-veal.yaml";
     private static final String MASTER_CHANGELOG = "db/changelog/db.changelog-master.yaml";
     private static final String SNAPSHOT_RESOURCE =
             "db/catalog/final-catalog-snapshot-20260813.txt";
@@ -135,7 +137,7 @@ class FinalCatalogSnapshotIntegrationTest {
         try (Connection fresh = connection(freshDatabase);
              Connection baseline = connection(baselineDatabase);
              Connection production = connection(productionDatabase)) {
-            runLiquibase(fresh, MASTER_CHANGELOG);
+            runLiquibase(fresh, FINAL_SNAPSHOT_CHANGELOG);
 
             runLiquibase(baseline, BEFORE_FINAL_CHANGELOG);
             Map<String, Long> baselineIds = conceptIds(baseline);
@@ -149,8 +151,8 @@ class FinalCatalogSnapshotIntegrationTest {
                             "f90ba3058230969f5cda13cb93f227c2",
                             "759d87bdee666f18e94b787eb4b99217");
 
-            runLiquibase(baseline, MASTER_CHANGELOG);
-            runLiquibase(production, MASTER_CHANGELOG);
+            runLiquibase(baseline, FINAL_SNAPSHOT_CHANGELOG);
+            runLiquibase(production, FINAL_SNAPSHOT_CHANGELOG);
 
             assertThat(conceptIds(baseline)).containsAllEntriesOf(baselineIds);
             assertThat(conceptIds(production)).containsAllEntriesOf(productionIds);
@@ -163,6 +165,21 @@ class FinalCatalogSnapshotIntegrationTest {
             assertThat(fingerprint(fresh)).isEqualTo(FINAL_SHA_256);
             assertThat(fingerprint(baseline)).isEqualTo(FINAL_SHA_256);
             assertThat(fingerprint(production)).isEqualTo(FINAL_SHA_256);
+
+            Map<String, Long> finalFreshIds = conceptIds(fresh);
+            Map<String, Long> finalBaselineIds = conceptIds(baseline);
+            Map<String, Long> finalProductionIds = conceptIds(production);
+
+            runLiquibase(fresh, MASTER_CHANGELOG);
+            runLiquibase(baseline, MASTER_CHANGELOG);
+            runLiquibase(production, MASTER_CHANGELOG);
+
+            assertThat(conceptIds(fresh)).isEqualTo(finalFreshIds);
+            assertThat(conceptIds(baseline)).isEqualTo(finalBaselineIds);
+            assertThat(conceptIds(production)).isEqualTo(finalProductionIds);
+            assertNoBeefIncludesVeal(fresh);
+            assertNoBeefIncludesVeal(baseline);
+            assertNoBeefIncludesVeal(production);
         }
     }
 
@@ -203,7 +220,7 @@ class FinalCatalogSnapshotIntegrationTest {
             assertThat(value(connection,
                     "select version from ingredient_concept where code = 'TOMATO'", Integer.class)).isEqualTo(7);
             assertThat(value(connection,
-                    "select count(*) from databasechangelog", Integer.class)).isEqualTo(23);
+                    "select count(*) from databasechangelog", Integer.class)).isEqualTo(24);
         }
     }
 
@@ -289,6 +306,7 @@ class FinalCatalogSnapshotIntegrationTest {
             assertThat(expandedExclusionTargets(connection, "NO_READY_SAUCES"))
                     .contains("READY_SAUCES_AND_PASTES", "TOMATO_SAUCE", "MISO", "SOY_SAUCE")
                     .doesNotContain("TOMATO_PRODUCTS", "CANNED_TOMATOES", "TAHINI", "PEANUT_BUTTER");
+            assertNoBeefIncludesVeal(connection);
         }
     }
 
@@ -472,6 +490,13 @@ class FinalCatalogSnapshotIntegrationTest {
             }
         }
         return targets;
+    }
+
+    private static void assertNoBeefIncludesVeal(Connection connection) throws Exception {
+        assertThat(directExclusionTargets(connection, "NO_BEEF"))
+                .contains("BEEF:true", "BEEF_STOCK:false", "VEAL:true");
+        assertThat(expandedExclusionTargets(connection, "NO_BEEF"))
+                .contains("VEAL", "VEAL_CUTLET", "VEAL_LIVER", "VEAL_SHANK", "WHITE_SAUSAGE");
     }
 
     private static String redundantEdgesSql() {
