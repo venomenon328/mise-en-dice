@@ -25,8 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @ConditionalOnProperty(prefix = "mise-en-dice.administration", name = "enabled", havingValue = "true")
 class AdministrationEntryPointController {
     private static final Duration SIMULATION_DEADLINE = Duration.ofMinutes(5);
-    private static final Set<String> GENERATOR_PICKER_SLOTS = Set.of(
-            "manual1ConceptId", "manual2ConceptId", "block1", "block2", "block3", "block4");
+    private static final Set<String> GENERATOR_PICKER_SLOTS = Set.of("manual1ConceptId", "manual2ConceptId");
 
     private final GeneratorLaboratory generatorLaboratory;
     private final GenerationQueries generationQueries;
