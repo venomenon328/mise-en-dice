@@ -39,9 +39,8 @@ record GeneratorLaboratoryForm(
         List<ManualInput> manuals = new ArrayList<>();
         if (!manual1Text.isBlank()) manuals.add(new ManualInput(1, manual1Text, positive(manual1ConceptId)));
         if (!manual2Text.isBlank()) manuals.add(new ManualInput(2, manual2Text, positive(manual2ConceptId)));
-        List<Long> blocks = type == AttemptType.REROLL
-                ? List.of(required(block1), required(block2), required(block3), required(block4)) : List.of();
-        return new PreviewRequest(type, date, optionalLong(seed), manuals, scenario, blocks);
+        // The block fields are retained temporarily for historic form binding only; generator v1.1 ignores them.
+        return new PreviewRequest(type, date, optionalLong(seed), manuals, scenario, List.of());
     }
 
     private static String text(MultiValueMap<String, String> values, String key) {
@@ -57,12 +56,6 @@ record GeneratorLaboratoryForm(
     private static Long positive(String value) {
         Long parsed = optionalLong(value);
         if (parsed != null && parsed <= 0) throw new IllegalArgumentException("Konzept-IDs müssen positiv sein.");
-        return parsed;
-    }
-
-    private static long required(String value) {
-        Long parsed = positive(value);
-        if (parsed == null) throw new IllegalArgumentException("REROLL benötigt vier Katalog-Konzept-IDs.");
         return parsed;
     }
 }
