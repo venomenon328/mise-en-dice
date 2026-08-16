@@ -28,7 +28,7 @@ final class TestGeneratorConfiguration {
 
     static GeneratorConfiguration defaults() {
         return new GeneratorConfiguration(
-                "1.0.0", "2026-08-12.2", RngAlgorithm.SPLITMIX64_V1, 1,
+                "1.1.0", "2026-08-12.2", RngAlgorithm.SPLITMIX64_V1, 1,
                 12, 144, 72, 36, 5_000, 1_000_000_000L, bd("0.30"),
                 Map.of(Availability.EASY, bd("1.00"), Availability.PLANNED, bd("0.65"),
                         Availability.DIFFICULT, bd("0.20"), Availability.UNAVAILABLE, bd("0.00")),
