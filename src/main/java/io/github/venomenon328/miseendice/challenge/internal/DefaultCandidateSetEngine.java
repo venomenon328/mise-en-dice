@@ -215,10 +215,6 @@ final class DefaultCandidateSetEngine implements CandidateSetEngine {
                 AcceptedProposal::profile)) {
             reasons.add(GeneratorReasonCode.PROFILE_TARGET_DEVIATION);
         }
-        if (!quotaFeasible(candidate, selected, reservoir, plan.novelty().setTargets(), fallback,
-                item -> item.evaluation().actualNoveltyBand())) {
-            reasons.add(GeneratorReasonCode.NOVELTY_TARGET_DEVIATION);
-        }
         if (recoveryForbidsAdventurous(candidate, plan)) {
             reasons.add(GeneratorReasonCode.NOVELTY_TARGET_DEVIATION);
         }

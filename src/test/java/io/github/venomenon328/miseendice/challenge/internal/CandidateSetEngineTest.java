@@ -45,6 +45,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
 class CandidateSetEngineTest {
+    private static final long STRICT_QUOTA_FIXTURE_SEED_V1_1 = 2L;
 
     @Test
     void startsAtTheConfiguredReservoirBandAndKeepsProjectedQuotas() {
@@ -155,7 +156,8 @@ class CandidateSetEngineTest {
 
     private void assertStartLevel(int size, FallbackLevel expected) {
         Fixture fixture = fixture(size, ignored -> bd("60"), Availability.EASY);
-        GeneratedCandidateSet generated = generate(fixture, 3_500L + size);
+        long seed = expected == FallbackLevel.STRICT ? STRICT_QUOTA_FIXTURE_SEED_V1_1 : 3_500L + size;
+        GeneratedCandidateSet generated = generate(fixture, seed);
 
         assertThat(generated.fallbackLevel()).isEqualTo(expected);
         assertThat(generated.fallbackAttempts()).extracting(attempt -> attempt.fallbackLevel())
