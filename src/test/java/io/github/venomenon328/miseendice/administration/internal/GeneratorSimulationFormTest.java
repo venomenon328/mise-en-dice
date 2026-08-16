@@ -12,9 +12,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class GeneratorSimulationFormTest {
@@ -44,14 +42,22 @@ class GeneratorSimulationFormTest {
     }
 
     @Test
-    void resolvesManualAndRerollIdsOnlyThroughThePublicCatalogQuery() {
+    void resolvesManualMatchButNormalizesLegacyRerollBlockInputsAway() {
         var request = form("37000001", "1", "2026-08-13", "1", "REROLL", "manual", "10", "", "",
                 "10", "11", "12", "13").toRequest(catalogQueries(), DEADLINE);
 
         var scenario = request.scenarios().getFirst();
         assertThat(scenario.manualRequirements()).singleElement()
                 .satisfies(manual -> assertThat(manual.matchedConceptCode()).isEqualTo("CODE_10"));
-        assertThat(scenario.rerollBlockedConceptCodes()).containsExactlyInAnyOrder("CODE_10", "CODE_11", "CODE_12", "CODE_13");
+        assertThat(scenario.rerollBlockedConceptCodes()).isEmpty();
+    }
+
+    @Test
+    void rerollNeedsNoDedicatedBlock() {
+        var request = form("37000001", "1", "2026-08-13", "1", "REROLL", "", "", "", "",
+                "", "", "", "").toRequest(catalogQueries(), DEADLINE);
+
+        assertThat(request.scenarios().getFirst().rerollBlockedConceptCodes()).isEmpty();
     }
 
     @Test
@@ -65,11 +71,13 @@ class GeneratorSimulationFormTest {
     }
 
     @Test
-    void rejectsHiddenInitialBlockAndIncompleteManualMatch() {
+    void rejectsIncompleteManualMatchButIgnoresLegacyInitialBlockFields() {
         assertThatIllegalArgumentException().isThrownBy(() -> form("1", "1", "2026-08-13", "1", "INITIAL", "", "10", "", "", "", "", "", "")
                 .toRequest(catalogQueries(), DEADLINE)).withMessageContaining("Manualtext");
-        assertThatIllegalArgumentException().isThrownBy(() -> form("1", "1", "2026-08-13", "1", "INITIAL", "", "", "", "", "10", "", "", "")
-                .toRequest(catalogQueries(), DEADLINE)).withMessageContaining("akzeptiert keinen REROLL-Hardblock");
+
+        var request = form("1", "1", "2026-08-13", "1", "INITIAL", "", "", "", "", "10", "", "", "")
+                .toRequest(catalogQueries(), DEADLINE);
+        assertThat(request.scenarios().getFirst().rerollBlockedConceptCodes()).isEmpty();
     }
 
     @Test
