@@ -9,6 +9,7 @@ public enum GeneratorReasonCode {
     AVAILABILITY_MISSING,
     AVAILABILITY_UNAVAILABLE,
     EXACT_COOLDOWN_BLOCKED,
+    /** Historic generator-v1.0 diagnostic; generator v1.1 never emits this reason. */
     REROLL_EXACT_BLOCKED,
     EXCLUSION_TARGET_BLOCKED,
     PROFILE_SLOT_INELIGIBLE,
