@@ -13,7 +13,7 @@ class GeneratorLaboratoryFrontendRegressionTest {
     void pickerRequestsReplaceOlderRequestsAndPendingStatesAreVisible() throws IOException {
         String template = resource("templates/admin/audit.html");
 
-        assertThat(occurrences(template, "hx-sync=\"this:replace\"")).isEqualTo(4);
+        assertThat(occurrences(template, "hx-sync=\"this:replace\"")).isEqualTo(2);
         assertThat(template)
                 .contains("hx-indicator=\"#generator-simulation-indicator\"")
                 .contains("id=\"generator-simulation-indicator\"")

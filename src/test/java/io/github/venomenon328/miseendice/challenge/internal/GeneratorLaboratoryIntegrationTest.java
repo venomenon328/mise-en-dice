@@ -10,11 +10,9 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.Previ
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.PreviewSuccess;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyCadence;
-import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RequirementSource;
 import io.github.venomenon328.miseendice.challenge.api.SeedSource;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -87,22 +85,13 @@ class GeneratorLaboratoryIntegrationTest {
         assertThat(counts()).containsExactly(0, 0, 0, 0);
     }
 
-    @Test void rerollPreviewBlocksFourConceptsWithoutCreatingAReroll() {
+    @Test void rerollPreviewIgnoresLegacyHardBlockInputsWithoutCreatingAReroll() {
         List<Long> ids = jdbcTemplate.queryForList("select id from ingredient_concept "
                 + "where active and random_draw_enabled order by code, id limit 4", Long.class);
-        Set<String> codes = ids.stream().map(id -> jdbcTemplate.queryForObject(
-                "select code from ingredient_concept where id = ?", String.class, id))
-                .collect(java.util.stream.Collectors.toSet());
         PreviewSuccess result = success(laboratory.preview(new PreviewRequest(AttemptType.REROLL, DATE,
                 37_000_021L, List.of(), HistoryScenario.EMPTY_HISTORY, ids)));
 
-        assertThat(result.preparedAttempt().request().rerollBlockedConceptCodes())
-                .containsExactlyInAnyOrderElementsOf(codes);
-        assertThat(result.generatedSet().candidates()).allSatisfy(candidate ->
-                assertThat(candidate.requirements().stream()
-                        .filter(requirement -> requirement.source() == RequirementSource.RANDOM)
-                        .map(requirement -> requirement.concept().code()).toList())
-                        .doesNotContainAnyElementsOf(codes));
+        assertThat(result.preparedAttempt().request().rerollBlockedConceptCodes()).isEmpty();
         assertThat(counts()).containsExactly(0, 0, 0, 0);
     }
 

@@ -216,16 +216,10 @@ class PersistedGenerationIntegrationTest {
     }
 
     @Test
-    void onlyConfirmedChallengesEnterHistoryAndDriveTheRerollHardBlock() {
+    void onlyConfirmedChallengesEnterHistoryAndDriveExactCooldown() {
         Generated unconfirmed = generated(commands.startNewSession(
                 new StartNewSession(DATE, List.of(), 47_000_011L)));
         assertThat(repository.visibleHistory().challengesNewestFirst()).isEmpty();
-        Set<String> unconfirmedCodes = new HashSet<>(jdbcTemplate.queryForList("""
-                select distinct requirement.concept_code_snapshot
-                from candidate_requirement requirement
-                join challenge_candidate candidate on candidate.id = requirement.candidate_id
-                where candidate.generation_batch_id = ? and requirement.concept_code_snapshot is not null
-                """, String.class, queries.findBatch(unconfirmed.attemptId(), 1).orElseThrow().batchId()));
 
         LegacyConfirmedChallenge legacy = createConfirmedLegacyChallenge();
         assertThat(queries.findAttempt(legacy.attemptId()).orElseThrow().nextAction())
@@ -261,12 +255,17 @@ class PersistedGenerationIntegrationTest {
 
         Generated reroll = generated(commands.startReroll(new StartExistingSession(
                 legacy.sessionId(), DATE.plusDays(1), List.of(), 47_000_012L)));
-        List<String> blocked = jdbcTemplate.queryForList("""
+        List<String> legacyBlocked = jdbcTemplate.queryForList("""
                 select jsonb_array_elements_text(request_snapshot -> 'rerollBlockedConceptCodes')
                 from generation_context_snapshot where generation_attempt_id = ?
                 """, String.class, reroll.attemptId());
-        assertThat(blocked).containsExactlyInAnyOrderElementsOf(legacy.codes());
-        assertThat(blocked).noneMatch(code -> unconfirmedCodes.contains(code) && !legacy.codes().contains(code));
+        assertThat(legacyBlocked).isEmpty();
+        assertThat(queries.findBatch(reroll.attemptId(), 1).orElseThrow().candidates()).allSatisfy(candidate ->
+                assertThat(candidate.requirements().stream()
+                        .filter(requirement -> "RANDOM".equals(requirement.source()))
+                        .map(requirement -> requirement.conceptCodeSnapshot())
+                        .toList())
+                        .doesNotContainAnyElementsOf(legacy.codes()));
     }
 
     @Test
