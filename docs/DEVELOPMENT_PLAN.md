@@ -1,6 +1,6 @@
 # Entwicklungsplan
 
-Stand: 13. August 2026
+Stand: 16. August 2026
 
 Dieses Dokument beschreibt die aktuelle Umsetzungsreihenfolge. Die [`VISION.md`](VISION.md) beschreibt das gewünschte Produkt; dieser Plan legt fest, in welcher technischen Reihenfolge die dafür notwendigen Bausteine entstehen. Die konkrete Webspezifikation steht in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md).
 
@@ -255,7 +255,7 @@ Dieses Paket schließt die vollständige Katalogverwaltung ab.
 - Auditdaten machen normale redaktionelle Änderungen ohne Roh-JSON verständlich nachvollziehbar,
 - die in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md) beschriebene erste vollständige Webverwaltung ist funktional abgedeckt.
 
-## Phase 9: Generierungsregeln und Kandidatengenerator
+## Phase 9: Generierungsregeln und Kandidatengenerator (abgeschlossen mit Issue #40)
 
 Phase 9 liefert einen reproduzierbaren, historienbewussten und kontrolliert zufälligen Zwölfer-Satz. Der spätere Kurator erhält ausschließlich harte gültige und als Satz ausreichend diverse Kandidaten; er ist nicht dafür verantwortlich, einen schwachen Zufallsgenerator zu retten.
 
@@ -356,13 +356,13 @@ Issue #37 und Issue #40 bleiben eigenständige nachgelagerte Pakete; ihre Labor-
 ### Phase 9E3: Adminadapter für Simulation (Issue #54, abgeschlossen)
 
 - dünne geschützte Verwaltungsansicht über den gemeinsamen Simulationskern mit maximal 64 expandierten Fällen,
-  fester serverseitiger 30-Sekunden-Deadline und `FAIL_FAST`,
+  fester serverseitiger Fünf-Minuten-Deadline und `FAIL_FAST`,
 - deterministische Single-Step-Monatsexpansion, ID→Code-Auflösung nur über `CatalogQueries` sowie 0–2 Manuals und
   explizitem REROLL-Viererblock,
 - Full-Page-/No-JS-POST und HTMX-Ergebnisfragment mit CSRF- und flüchtigem Session-Doppelstartschutz,
 - keine Duplizierung von Generator-, Statistik- oder Persistenzlogik und keine operativen Generation-/Challenge-Writes.
 
-### Phase 9F: Kalibrierung und Abschlussgate (Issue #40)
+### Phase 9F: Kalibrierung und Abschlussgate (Issue #40, abgeschlossen)
 
 - feste automatisierte Szenario- und Seedmatrix,
 - reproduzierbarer Repository-Baseline-Lauf,
@@ -375,19 +375,28 @@ Issue #37 und Issue #40 bleiben eigenständige nachgelagerte Pakete; ihre Labor-
 Der technische Lieferstand verwendet dafür ein eigenes, im normalen Verify ausgeschlossenes Profil
 `generator-calibration`. Rohreports bleiben unter `target/generator-calibration/`; das versionierte Acht-Satz-Korpus,
 die Bewertungsrubrik und die operative Schrittfolge stehen in
-[`CANDIDATE_GENERATOR_CALIBRATION.md`](CANDIDATE_GENERATOR_CALIBRATION.md). Phase 9 bleibt ausdrücklich offen, bis
-der Administrator den redaktionellen Katalog über den #54-Adapter geprüft und das Korpus fachlich abgenommen hat.
+[`CANDIDATE_GENERATOR_CALIBRATION.md`](CANDIDATE_GENERATOR_CALIBRATION.md).
 
-### Abschlussgate
+Der operative Kataloglauf wurde bestanden und das feste Korpus durch den Administrator fachlich abgenommen. MC-01
+wurde nach der in Issue #62 korrigierten `NO_BEEF`/`VEAL`-Lücke am 16. August 2026 auf Produktion erneut reproduziert
+und freigegeben. Der ausdrücklich nicht wiederholte breite 9.216-Fälle-Endlauf bleibt im Kalibrierungsbericht als
+**nicht ausgeführt und nicht als bestanden erklärt** dokumentiert; der Phase-9-Abschluss deutet diesen Nachweis nicht
+rückwirkend um.
 
-Phase 9 ist erst abgeschlossen, wenn:
+### Erfülltes Abschlussgate
 
-- Hard Rules, Scores, Diversität und Replay implementiert sind,
-- Seed, Versionen und vollständige Eingabe-/Konfigurationssnapshots persistiert werden,
-- PostgreSQL-, Konkurrenz-, Restart- und Replaytests grün sind,
-- breite Simulationen keine Hard-Rule-Verletzung oder unkontrollierte Erschöpfung zeigen,
-- der operative Kataloglauf dokumentiert ist,
-- und eine repräsentative Seed-Auswahl ausdrücklich fachlich abgenommen wurde.
+Phase 9 ist abgeschlossen:
+
+- Hard Rules, Scores, Diversität und Replay sind implementiert,
+- Seed, Versionen und vollständige Eingabe-/Konfigurationssnapshots werden persistiert,
+- PostgreSQL-, Konkurrenz-, Restart- und Replaytests sind grün,
+- die ausgeführten fokussierten und operativen Simulationen zeigen keine Hard-Rule-Verletzung oder unkontrollierte Erschöpfung,
+- der operative Kataloglauf ist dokumentiert,
+- und die repräsentative Seed-Auswahl wurde ausdrücklich fachlich abgenommen.
+
+Die bewusst nicht erneut ausgeführte breite Endmatrix bleibt eine dokumentierte Nachweisgrenze und wird nicht als
+bestandene Messung ausgegeben. Die isolierten Generator-Labor-UX-Nacharbeiten aus Issues #60 und #61 verändern den
+fachlichen Phase-9-Abschluss nicht.
 
 OpenAI-Aufruf, Kuratorauswahl, sichtbare Challenge, Discord und freiwilliger Reroll-Dialog bleiben außerhalb von Phase 9. Nicht gewählte spätere Kurationsangebote zählen ausdrücklich nicht zum `VisibleHistorySnapshot`.
 
