@@ -10,6 +10,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md): verbindliche Bedien-, Interaktions-, Locking-, Audit- und Sicherheitsentscheidungen für die private Katalogverwaltung
 - [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md): verbindliche Regeln für Gewichtung, harte Kandidatengültigkeit, Scores, Diversität, Determinismus, Replay und Simulation
 - [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md): verbindlicher Vertrag für 1–3 kuratierte Angebote, maximal zwei externe Kuratoraufrufe, Carry-over, Nutzerbestätigung und Historienwirkung
+- [`CHALLENGE_VOTING_AND_PARTICIPATION.md`](CHALLENGE_VOTING_AND_PARTICIPATION.md): verbindliche Mehrnutzer-Semantik für Electorate-Snapshots, geheime Abstimmung, Tie-Break, einmaligen Reroll und von der Stimmberechtigung getrennte Challenge-Teilnahme
 - [`CANDIDATE_GENERATOR_9C2_REVIEW_CLARIFICATION.md`](CANDIDATE_GENERATOR_9C2_REVIEW_CLARIFICATION.md): verbindliche Nachschärfung aus dem Review von PR #49 zu tatsächlichen Neuigkeitsquoten und zur ausschließlich expliziten großen Baselinesimulation; ersetzt für Issue #47 widersprechende ältere 9C2-Formulierungen
 - [`CANDIDATE_GENERATOR_DATA_READINESS.md`](CANDIDATE_GENERATOR_DATA_READINESS.md): gemessene Metadatenabdeckung und Gate für den Generatorstart
 - [`CANDIDATE_GENERATOR_CALIBRATION.md`](CANDIDATE_GENERATOR_CALIBRATION.md): reproduzierbare Phase-9F-Matrix, technische Auswertung, festes manuelles Acht-Satz-Korpus und operatives Administratorprotokoll
