@@ -55,5 +55,3 @@ databaseChangeLog:
       file: db/changelog/schema/007-bounded-curator-dispatch.sql
   - include:
       file: db/changelog/schema/008-offer-decision-lifecycle.sql
-  - include:
-      file: db/changelog/schema/009-challenge-voting-participation.sql

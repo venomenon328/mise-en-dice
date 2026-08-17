@@ -353,15 +353,15 @@ Bereits abgeschlossen sind:
 2. umfangreiche initiale Katalogbefüllung,
 3. Spring-Boot-/Liquibase-/PostgreSQL-Anwendungsfundament,
 4. Spezifikation und Umsetzung der privaten Katalogverwaltung,
-5. Spezifikation sowie fachlicher Kern des reproduzierbaren Kandidatengenerators bis einschließlich diverser Zwölfer-Auswahl.
+5. Spezifikation sowie fachlicher Kern des reproduzierbaren Kandidatengenerators bis einschließlich diverser Zwölfer-Auswahl,
+6. persistente Generator-, Replay-, Konkurrenz- und Kalibrierungsgrundlage,
+7. strukturierter Kuratorvertrag, begrenzte produktive Orchestrierung und Multi-Offer-Lifecycle,
+8. transportneutraler Offer-Decision-/Reroll-Lifecycle für Auswahl von `1..3` Angeboten und Bestätigung genau einer Challenge,
+9. transportneutraler Teilnehmer-, Electorate- und Voting-Core mit persistenter Teilnahme.
 
 Als nächste Schritte folgen:
 
-6. Persistenz, Replay, Konkurrenz und Kalibrierung des Kandidatengenerators gemäß [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md),
-7. strukturierter Kuratorvertrag und persistentes Multi-Offer-Lifecycle gemäß [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md),
-8. OpenAI-Anbindung mit strikt gedeckelter Orchestrierung,
-9. transportneutraler Offer-Decision-/Reroll-Lifecycle für Auswahl von `1..3` Angeboten und Bestätigung genau einer Challenge,
-10. transportneutraler Teilnehmer-, Electorate- und Voting-Core, danach ein dünner Discord-Adapter,
+10. ein dünner Discord-Adapter für Darstellung, Interaktion und externe Identitätsauflösung ohne eigene Fachlogik,
 11. später: persönliche Auswahl, Historie und Ergebnisdokumentation.
 
 ## 13. Leitprinzip in einem Satz

@@ -68,6 +68,7 @@ class AdapterBoundaryTest {
                 .and().doNotHaveSimpleName("JdbcGenerationRepository")
                 .and().doNotHaveSimpleName("JdbcCurationRepository")
                 .and().doNotHaveSimpleName("JdbcOfferDecisionRepository")
+                .and().doNotHaveSimpleName("JdbcSelectionVotingRepository")
                 .should().dependOnClassesThat().resideInAnyPackage("org.springframework.jdbc..", "javax.sql..")
                 .because("explicit SQL is confined to the challenge persistence adapters")
                 .check(classes);
