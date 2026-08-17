@@ -57,8 +57,9 @@ class LegacyVisibleHistoryIntegrationTest {
                 """, Long.class, attemptId);
         long roundId = jdbcTemplate.queryForObject("""
                 insert into curation_round (
-                    generation_attempt_id, round_number, curator_model, prompt_version, status, completed_at
-                ) values (?, 1, 'legacy-model', 'legacy-prompt', 'SELECTED', now()) returning id
+                    generation_attempt_id, round_number, curator_model, prompt_version, status, completed_at,
+                    legacy_migrated
+                ) values (?, 1, 'legacy-model', 'legacy-prompt', 'SELECTED', now(), true) returning id
                 """, Long.class, attemptId);
         var exclusion = jdbcTemplate.queryForMap("""
                 select id, code, display_text from exclusion_rule order by id limit 1

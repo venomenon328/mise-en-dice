@@ -1,0 +1,522 @@
+--liquibase formatted sql
+--changeset venomenon328:005-curation-offer-lifecycle splitStatements:false
+
+-- Phase 10A: transport-neutral curation requests and persistent multi-offer lifecycle.
+-- This is deliberately additive. Pre-Phase-10 curation rows remain explicit legacy
+-- history and never acquire new contract semantics by inference.
+
+ALTER TABLE challenge_session
+    ADD COLUMN requested_offer_count smallint NOT NULL DEFAULT 1,
+    ADD CONSTRAINT ck_challenge_session_requested_offer_count
+        CHECK (requested_offer_count BETWEEN 1 AND 3);
+
+ALTER TABLE generation_attempt
+    ADD COLUMN curation_status text NOT NULL DEFAULT 'NOT_STARTED',
+    ADD COLUMN curation_terminal_reason_code text,
+    ADD COLUMN curation_terminal_detail text,
+    ADD CONSTRAINT ck_generation_attempt_curation_status
+        CHECK (curation_status IN (
+            'NOT_STARTED', 'REQUEST_PENDING', 'RESPONSE_RECORDED',
+            'OFFER_READY', 'EXHAUSTED', 'FAILED', 'LEGACY'
+        ));
+
+ALTER TABLE curation_round
+    DROP CONSTRAINT ck_curation_round_number,
+    DROP CONSTRAINT ck_curation_round_status,
+    DROP CONSTRAINT ck_curation_round_completion,
+    ADD COLUMN legacy_migrated boolean NOT NULL DEFAULT false,
+    ADD COLUMN primary_generation_batch_id bigint REFERENCES generation_batch(id) ON DELETE RESTRICT,
+    ADD COLUMN request_purpose text,
+    ADD COLUMN contract_version text,
+    ADD COLUMN terminal_reason_code text,
+    ADD COLUMN terminal_detail text;
+
+-- Existing rows are a preserved record of the former round/candidate model. They
+-- retain their old values and are intentionally excluded from new-row constraints.
+UPDATE curation_round SET legacy_migrated = true;
+
+UPDATE generation_attempt attempt
+SET curation_status = 'LEGACY'
+WHERE EXISTS (
+    SELECT 1 FROM curation_round round_row
+    WHERE round_row.generation_attempt_id = attempt.id
+      AND round_row.legacy_migrated
+);
+
+ALTER TABLE curation_round
+    ADD CONSTRAINT ck_curation_round_number
+        CHECK (legacy_migrated OR round_number BETWEEN 1 AND 2),
+    ADD CONSTRAINT ck_curation_round_status
+        CHECK (status IN (
+            'PENDING', 'SELECTED', 'REJECTED_ALL', 'ERROR',
+            'COMPLETED', 'TECHNICAL_ERROR', 'INVALID_RESPONSE'
+        )),
+    ADD CONSTRAINT ck_curation_round_completion
+        CHECK (
+            (status = 'PENDING' AND completed_at IS NULL)
+            OR (status <> 'PENDING' AND completed_at IS NOT NULL)
+        ),
+    ADD CONSTRAINT ck_curation_round_request_purpose
+        CHECK (request_purpose IS NULL OR request_purpose IN (
+            'INITIAL_PASS', 'TECHNICAL_RETRY', 'QUALITY_FOLLOW_UP'
+        )),
+    ADD CONSTRAINT ck_curation_round_new_contract
+        CHECK (
+            legacy_migrated
+            OR (
+                primary_generation_batch_id IS NOT NULL
+                AND request_purpose IS NOT NULL
+                AND contract_version = 'CURATION_CONTRACT_V1'
+                AND request_payload IS NOT NULL
+                AND status IN ('PENDING', 'COMPLETED', 'TECHNICAL_ERROR', 'INVALID_RESPONSE')
+            )
+        ),
+    ADD CONSTRAINT ck_curation_round_terminal_detail
+        CHECK (
+            (status IN ('TECHNICAL_ERROR', 'INVALID_RESPONSE') AND terminal_reason_code IS NOT NULL)
+            OR (status NOT IN ('TECHNICAL_ERROR', 'INVALID_RESPONSE')
+                AND terminal_reason_code IS NULL AND terminal_detail IS NULL)
+        );
+
+CREATE INDEX ix_curation_round_primary_batch
+    ON curation_round (primary_generation_batch_id)
+    WHERE primary_generation_batch_id IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION validate_curation_round_primary_batch()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    batch_attempt_id bigint;
+    batch_status text;
+    batch_legacy boolean;
+BEGIN
+    IF NEW.primary_generation_batch_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT generation_attempt_id, status, legacy_migrated
+      INTO batch_attempt_id, batch_status, batch_legacy
+      FROM generation_batch
+     WHERE id = NEW.primary_generation_batch_id;
+
+    IF batch_attempt_id IS NULL THEN
+        RAISE EXCEPTION 'primary generation batch % does not exist', NEW.primary_generation_batch_id;
+    END IF;
+    IF batch_attempt_id <> NEW.generation_attempt_id THEN
+        RAISE EXCEPTION 'primary generation batch % does not belong to curation attempt %',
+            NEW.primary_generation_batch_id, NEW.generation_attempt_id;
+    END IF;
+    IF NOT NEW.legacy_migrated AND (batch_legacy OR batch_status <> 'GENERATED') THEN
+        RAISE EXCEPTION 'new curation round requires a non-legacy generated primary batch';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_curation_round_validate_primary_batch
+BEFORE INSERT OR UPDATE OF generation_attempt_id, primary_generation_batch_id, legacy_migrated
+ON curation_round
+FOR EACH ROW
+EXECUTE FUNCTION validate_curation_round_primary_batch();
+
+CREATE TABLE curation_round_candidate (
+    id                              bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    curation_round_id               bigint NOT NULL REFERENCES curation_round(id) ON DELETE CASCADE,
+    challenge_candidate_id          bigint NOT NULL REFERENCES challenge_candidate(id) ON DELETE RESTRICT,
+    request_position                smallint NOT NULL,
+    participation_type              text NOT NULL,
+    source_round_candidate_id       bigint REFERENCES curation_round_candidate(id) ON DELETE RESTRICT,
+    evaluation_class                text,
+    evaluation_rank                 smallint,
+    reason_codes                    jsonb,
+    diagnostics                     jsonb,
+    created_at                      timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT uq_curation_round_candidate UNIQUE (curation_round_id, challenge_candidate_id),
+    CONSTRAINT uq_curation_round_candidate_request_position UNIQUE (curation_round_id, request_position),
+    CONSTRAINT ck_curation_round_candidate_request_position CHECK (request_position > 0),
+    CONSTRAINT ck_curation_round_candidate_participation CHECK (
+        participation_type IN ('NEW', 'CARRY_OVER', 'LOCKED_CONTEXT')
+    ),
+    CONSTRAINT ck_curation_round_candidate_evaluation_class CHECK (
+        evaluation_class IS NULL OR evaluation_class IN ('GOOD', 'ACCEPTABLE', 'BAD')
+    ),
+    CONSTRAINT ck_curation_round_candidate_evaluation_rank CHECK (
+        evaluation_rank IS NULL OR evaluation_rank > 0
+    ),
+    CONSTRAINT ck_curation_round_candidate_evaluation_shape CHECK (
+        (participation_type = 'LOCKED_CONTEXT'
+            AND source_round_candidate_id IS NOT NULL
+            AND evaluation_class IS NULL AND evaluation_rank IS NULL
+            AND reason_codes IS NULL AND diagnostics IS NULL)
+        OR
+        (participation_type = 'NEW'
+            AND source_round_candidate_id IS NULL
+            AND ((evaluation_class IS NULL AND evaluation_rank IS NULL
+                    AND reason_codes IS NULL AND diagnostics IS NULL)
+                 OR (evaluation_class IS NOT NULL AND evaluation_rank IS NOT NULL
+                    AND reason_codes IS NOT NULL)))
+        OR
+        (participation_type = 'CARRY_OVER'
+            AND source_round_candidate_id IS NOT NULL
+            AND ((evaluation_class IS NULL AND evaluation_rank IS NULL
+                    AND reason_codes IS NULL AND diagnostics IS NULL)
+                 OR (evaluation_class IS NOT NULL AND evaluation_rank IS NOT NULL
+                    AND reason_codes IS NOT NULL)))
+    ),
+    CONSTRAINT ck_curation_round_candidate_reason_codes CHECK (
+        reason_codes IS NULL OR jsonb_typeof(reason_codes) = 'array'
+    ),
+    CONSTRAINT ck_curation_round_candidate_diagnostics CHECK (
+        diagnostics IS NULL OR jsonb_typeof(diagnostics) = 'object'
+    )
+);
+
+CREATE INDEX ix_curation_round_candidate_candidate
+    ON curation_round_candidate (challenge_candidate_id);
+
+CREATE OR REPLACE FUNCTION validate_curation_round_candidate_context()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    round_attempt_id bigint;
+    round_number smallint;
+    round_primary_batch_id bigint;
+    round_is_legacy boolean;
+    candidate_attempt_id bigint;
+    candidate_batch_id bigint;
+    candidate_batch_status text;
+    candidate_batch_legacy boolean;
+    source_round_id bigint;
+    source_round_number smallint;
+    source_attempt_id bigint;
+    source_candidate_id bigint;
+    source_evaluation text;
+BEGIN
+    SELECT round_row.generation_attempt_id, round_row.round_number,
+           round_row.primary_generation_batch_id, round_row.legacy_migrated
+      INTO round_attempt_id, round_number, round_primary_batch_id, round_is_legacy
+      FROM curation_round round_row WHERE round_row.id = NEW.curation_round_id;
+    IF round_attempt_id IS NULL THEN
+        RAISE EXCEPTION 'curation round % does not exist', NEW.curation_round_id;
+    END IF;
+    IF round_is_legacy THEN
+        RAISE EXCEPTION 'legacy curation rounds cannot acquire phase-10 candidate participation';
+    END IF;
+
+    SELECT batch.generation_attempt_id, candidate.generation_batch_id, batch.status, batch.legacy_migrated
+      INTO candidate_attempt_id, candidate_batch_id, candidate_batch_status, candidate_batch_legacy
+      FROM challenge_candidate candidate
+      JOIN generation_batch batch ON batch.id = candidate.generation_batch_id
+     WHERE candidate.id = NEW.challenge_candidate_id;
+    IF candidate_attempt_id IS NULL THEN
+        RAISE EXCEPTION 'challenge candidate % does not exist', NEW.challenge_candidate_id;
+    END IF;
+    IF candidate_attempt_id <> round_attempt_id THEN
+        RAISE EXCEPTION 'candidate % belongs to a different generation attempt', NEW.challenge_candidate_id;
+    END IF;
+    IF candidate_batch_legacy OR candidate_batch_status <> 'GENERATED' THEN
+        RAISE EXCEPTION 'curation candidate % must originate from a generated non-legacy batch',
+            NEW.challenge_candidate_id;
+    END IF;
+
+    IF NEW.participation_type = 'NEW' THEN
+        IF candidate_batch_id <> round_primary_batch_id THEN
+            RAISE EXCEPTION 'NEW candidate % must originate from the round primary batch', NEW.challenge_candidate_id;
+        END IF;
+        RETURN NEW;
+    END IF;
+
+    SELECT source.curation_round_id, source_round.round_number, source_round.generation_attempt_id,
+           source.challenge_candidate_id, source.evaluation_class
+      INTO source_round_id, source_round_number, source_attempt_id, source_candidate_id, source_evaluation
+      FROM curation_round_candidate source
+      JOIN curation_round source_round ON source_round.id = source.curation_round_id
+     WHERE source.id = NEW.source_round_candidate_id;
+    IF source_round_id IS NULL OR source_attempt_id <> round_attempt_id
+       OR source_round_number >= round_number OR source_candidate_id <> NEW.challenge_candidate_id THEN
+        RAISE EXCEPTION 'carry-over or locked context must reference the same candidate in an earlier round of this attempt';
+    END IF;
+    IF NEW.participation_type = 'LOCKED_CONTEXT' AND source_evaluation <> 'GOOD' THEN
+        RAISE EXCEPTION 'locked context must originate from an earlier GOOD evaluation';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_curation_round_candidate_validate_context
+BEFORE INSERT OR UPDATE OF curation_round_id, challenge_candidate_id, participation_type, source_round_candidate_id
+ON curation_round_candidate
+FOR EACH ROW
+EXECUTE FUNCTION validate_curation_round_candidate_context();
+
+CREATE OR REPLACE FUNCTION assert_curation_round_complete(target_round_id bigint)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    round_status text;
+    round_is_legacy boolean;
+    evaluated_count integer;
+    ranked_count integer;
+    missing_reason_codes integer;
+BEGIN
+    SELECT status, legacy_migrated INTO round_status, round_is_legacy
+    FROM curation_round WHERE id = target_round_id;
+    IF NOT FOUND OR round_is_legacy THEN
+        RETURN;
+    END IF;
+
+    SELECT count(*) FILTER (WHERE participation_type <> 'LOCKED_CONTEXT'),
+           count(*) FILTER (WHERE participation_type <> 'LOCKED_CONTEXT' AND evaluation_class IS NOT NULL),
+           count(*) FILTER (WHERE participation_type <> 'LOCKED_CONTEXT'
+                                  AND (reason_codes IS NULL OR jsonb_array_length(reason_codes) = 0))
+      INTO evaluated_count, ranked_count, missing_reason_codes
+      FROM curation_round_candidate WHERE curation_round_id = target_round_id;
+
+    IF round_status = 'COMPLETED' THEN
+        IF evaluated_count = 0 OR evaluated_count <> ranked_count OR missing_reason_codes <> 0 THEN
+            RAISE EXCEPTION 'completed curation round % requires every non-locked candidate to be evaluated', target_round_id;
+        END IF;
+        IF EXISTS (
+            SELECT 1 FROM curation_round_candidate
+             WHERE curation_round_id = target_round_id
+               AND participation_type <> 'LOCKED_CONTEXT'
+               AND evaluation_rank NOT BETWEEN 1 AND evaluated_count
+        ) OR (
+            SELECT count(DISTINCT evaluation_rank) FROM curation_round_candidate
+             WHERE curation_round_id = target_round_id
+               AND participation_type <> 'LOCKED_CONTEXT'
+        ) <> evaluated_count THEN
+            RAISE EXCEPTION 'completed curation round % requires a gapless unique rank sequence', target_round_id;
+        END IF;
+    ELSIF round_status IN ('TECHNICAL_ERROR', 'INVALID_RESPONSE') AND EXISTS (
+        SELECT 1 FROM curation_round_candidate
+         WHERE curation_round_id = target_round_id AND evaluation_class IS NOT NULL
+    ) THEN
+        RAISE EXCEPTION 'failed curation round % must not persist partial evaluations', target_round_id;
+    END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION validate_curation_round_complete_trigger()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    PERFORM assert_curation_round_complete(CASE WHEN TG_OP = 'DELETE' THEN OLD.id ELSE NEW.id END);
+    RETURN NULL;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER trg_curation_round_complete
+AFTER INSERT OR UPDATE ON curation_round
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validate_curation_round_complete_trigger();
+
+CREATE OR REPLACE FUNCTION validate_curation_round_candidate_complete_trigger()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF TG_OP = 'DELETE' OR TG_OP = 'UPDATE' THEN
+        PERFORM assert_curation_round_complete(OLD.curation_round_id);
+    END IF;
+    IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+        PERFORM assert_curation_round_complete(NEW.curation_round_id);
+    END IF;
+    RETURN NULL;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER trg_curation_round_candidate_complete
+AFTER INSERT OR UPDATE OR DELETE ON curation_round_candidate
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validate_curation_round_candidate_complete_trigger();
+
+CREATE TABLE curated_offer_set (
+    id                      bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    generation_attempt_id   bigint NOT NULL UNIQUE REFERENCES generation_attempt(id) ON DELETE RESTRICT,
+    requested_offer_count   smallint NOT NULL,
+    status                  text NOT NULL DEFAULT 'CURATED_UNPRESENTED',
+    selection_path          jsonb NOT NULL,
+    curated_at              timestamptz NOT NULL DEFAULT now(),
+    presented_at            timestamptz,
+    decided_at              timestamptz,
+
+    CONSTRAINT ck_curated_offer_set_requested_offer_count CHECK (requested_offer_count BETWEEN 1 AND 3),
+    CONSTRAINT ck_curated_offer_set_status CHECK (status IN (
+        'CURATED_UNPRESENTED', 'PRESENTED_PENDING_DECISION', 'CONFIRMED', 'REROLLED'
+    )),
+    CONSTRAINT ck_curated_offer_set_selection_path CHECK (jsonb_typeof(selection_path) = 'object'),
+    CONSTRAINT ck_curated_offer_set_presentation_state CHECK (
+        (status = 'CURATED_UNPRESENTED' AND presented_at IS NULL AND decided_at IS NULL)
+        OR (status = 'PRESENTED_PENDING_DECISION' AND presented_at IS NOT NULL AND decided_at IS NULL)
+        OR (status IN ('CONFIRMED', 'REROLLED') AND presented_at IS NOT NULL AND decided_at IS NOT NULL)
+    )
+);
+
+CREATE TABLE curated_offer (
+    id                              bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    curated_offer_set_id            bigint NOT NULL REFERENCES curated_offer_set(id) ON DELETE CASCADE,
+    position                        smallint NOT NULL,
+    challenge_candidate_id          bigint NOT NULL REFERENCES challenge_candidate(id) ON DELETE RESTRICT,
+    curation_round_candidate_id     bigint NOT NULL REFERENCES curation_round_candidate(id) ON DELETE RESTRICT,
+
+    CONSTRAINT uq_curated_offer_position UNIQUE (curated_offer_set_id, position),
+    CONSTRAINT uq_curated_offer_candidate UNIQUE (curated_offer_set_id, challenge_candidate_id),
+    CONSTRAINT ck_curated_offer_position CHECK (position > 0)
+);
+
+CREATE INDEX ix_curated_offer_candidate ON curated_offer (challenge_candidate_id);
+
+CREATE OR REPLACE FUNCTION validate_curated_offer_set_context()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    session_count smallint;
+BEGIN
+    SELECT session.requested_offer_count INTO session_count
+    FROM generation_attempt attempt
+    JOIN challenge_session session ON session.id = attempt.challenge_session_id
+    WHERE attempt.id = NEW.generation_attempt_id;
+    IF session_count IS NULL THEN
+        RAISE EXCEPTION 'generation attempt % does not exist', NEW.generation_attempt_id;
+    END IF;
+    IF NEW.requested_offer_count <> session_count THEN
+        RAISE EXCEPTION 'curated offer set count must match its session requested offer count';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_curated_offer_set_validate_context
+BEFORE INSERT OR UPDATE OF generation_attempt_id, requested_offer_count
+ON curated_offer_set
+FOR EACH ROW EXECUTE FUNCTION validate_curated_offer_set_context();
+
+CREATE OR REPLACE FUNCTION validate_curated_offer_context()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    offer_attempt_id bigint;
+    offer_count smallint;
+    candidate_attempt_id bigint;
+    candidate_batch_status text;
+    candidate_batch_legacy boolean;
+    evaluated_candidate_id bigint;
+    round_attempt_id bigint;
+    round_status text;
+BEGIN
+    SELECT generation_attempt_id, requested_offer_count INTO offer_attempt_id, offer_count
+      FROM curated_offer_set WHERE id = NEW.curated_offer_set_id;
+    IF offer_attempt_id IS NULL THEN
+        RAISE EXCEPTION 'curated offer set % does not exist', NEW.curated_offer_set_id;
+    END IF;
+    IF NEW.position NOT BETWEEN 1 AND offer_count THEN
+        RAISE EXCEPTION 'offer position % is outside its requested offer count', NEW.position;
+    END IF;
+
+    SELECT batch.generation_attempt_id, batch.status, batch.legacy_migrated
+      INTO candidate_attempt_id, candidate_batch_status, candidate_batch_legacy
+      FROM challenge_candidate candidate
+      JOIN generation_batch batch ON batch.id = candidate.generation_batch_id
+     WHERE candidate.id = NEW.challenge_candidate_id;
+    IF candidate_attempt_id <> offer_attempt_id OR candidate_batch_status <> 'GENERATED' OR candidate_batch_legacy THEN
+        RAISE EXCEPTION 'offer candidate must belong to a generated non-legacy batch of the offer attempt';
+    END IF;
+    IF (SELECT count(*) FROM candidate_requirement WHERE candidate_id = NEW.challenge_candidate_id) <> 4 THEN
+        RAISE EXCEPTION 'offer candidate % must contain exactly four requirement snapshots', NEW.challenge_candidate_id;
+    END IF;
+
+    SELECT evaluated.challenge_candidate_id, round_row.generation_attempt_id, round_row.status
+      INTO evaluated_candidate_id, round_attempt_id, round_status
+      FROM curation_round_candidate evaluated
+      JOIN curation_round round_row ON round_row.id = evaluated.curation_round_id
+     WHERE evaluated.id = NEW.curation_round_candidate_id;
+    IF evaluated_candidate_id <> NEW.challenge_candidate_id OR round_attempt_id <> offer_attempt_id
+       OR round_status <> 'COMPLETED'
+       OR NOT EXISTS (SELECT 1 FROM curation_round_candidate WHERE id = NEW.curation_round_candidate_id
+                      AND evaluation_class IS NOT NULL) THEN
+        RAISE EXCEPTION 'offer must reference a completed evaluation of the same candidate in the same attempt';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_curated_offer_validate_context
+BEFORE INSERT OR UPDATE OF curated_offer_set_id, position, challenge_candidate_id, curation_round_candidate_id
+ON curated_offer
+FOR EACH ROW EXECUTE FUNCTION validate_curated_offer_context();
+
+CREATE OR REPLACE FUNCTION assert_curated_offer_set_complete(target_set_id bigint)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    set_status text;
+    requested_count smallint;
+    actual_count integer;
+    good_count integer;
+BEGIN
+    SELECT status, requested_offer_count INTO set_status, requested_count
+      FROM curated_offer_set WHERE id = target_set_id;
+    IF NOT FOUND OR set_status <> 'CURATED_UNPRESENTED' THEN
+        RETURN;
+    END IF;
+    SELECT count(*), count(*) FILTER (WHERE participation.evaluation_class = 'GOOD')
+      INTO actual_count, good_count
+      FROM curated_offer offer
+      JOIN curation_round_candidate participation ON participation.id = offer.curation_round_candidate_id
+     WHERE offer.curated_offer_set_id = target_set_id;
+    IF actual_count <> requested_count OR good_count < 1
+       OR EXISTS (
+           SELECT 1 FROM curated_offer
+            WHERE curated_offer_set_id = target_set_id
+            GROUP BY curated_offer_set_id
+            HAVING min(position) <> 1 OR max(position) <> requested_count
+       ) THEN
+        RAISE EXCEPTION 'curated offer set % must atomically contain positions 1..% and at least one GOOD',
+            target_set_id, requested_count;
+    END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION validate_curated_offer_set_complete_trigger()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    PERFORM assert_curated_offer_set_complete(CASE WHEN TG_OP = 'DELETE' THEN OLD.id ELSE NEW.id END);
+    RETURN NULL;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER trg_curated_offer_set_complete
+AFTER INSERT OR UPDATE ON curated_offer_set
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validate_curated_offer_set_complete_trigger();
+
+CREATE OR REPLACE FUNCTION validate_curated_offer_complete_trigger()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF TG_OP = 'DELETE' OR TG_OP = 'UPDATE' THEN
+        PERFORM assert_curated_offer_set_complete(OLD.curated_offer_set_id);
+    END IF;
+    IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+        PERFORM assert_curated_offer_set_complete(NEW.curated_offer_set_id);
+    END IF;
+    RETURN NULL;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER trg_curated_offer_complete
+AFTER INSERT OR UPDATE OR DELETE ON curated_offer
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validate_curated_offer_complete_trigger();

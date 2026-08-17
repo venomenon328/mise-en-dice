@@ -47,5 +47,3 @@ databaseChangeLog:
       file: db/changelog/catalog/016-final-catalog-snapshot.sql
   - include:
       file: db/changelog/catalog/017-no-beef-veal-exclusion.sql
-  - include:
-      file: db/changelog/schema/005-curation-offer-lifecycle.sql

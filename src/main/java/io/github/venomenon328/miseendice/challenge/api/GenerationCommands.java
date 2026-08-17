@@ -24,13 +24,23 @@ public interface GenerationCommands {
     record StartNewSession(
             LocalDate effectiveDate,
             List<ManualRequirementInput> manualRequirements,
-            Long explicitSeed
+            Long explicitSeed,
+            int requestedOfferCount
     ) {
         public StartNewSession {
             if (effectiveDate == null || manualRequirements == null || manualRequirements.size() > 2) {
                 throw new IllegalArgumentException("An effective date and at most two manual requirements are required");
             }
+            if (requestedOfferCount < 1 || requestedOfferCount > 3) {
+                throw new IllegalArgumentException("Requested offer count must be between 1 and 3");
+            }
             manualRequirements = List.copyOf(manualRequirements);
+        }
+
+        /** Compatibility constructor retaining the pre-10A single-offer default. */
+        public StartNewSession(LocalDate effectiveDate, List<ManualRequirementInput> manualRequirements,
+                               Long explicitSeed) {
+            this(effectiveDate, manualRequirements, explicitSeed, 1);
         }
     }
 

@@ -450,8 +450,9 @@ class PersistedGenerationIntegrationTest {
                 """, Long.class, attemptId);
         long roundId = jdbcTemplate.queryForObject("""
                 insert into curation_round (
-                    generation_attempt_id, round_number, curator_model, prompt_version, status, completed_at
-                ) values (?, 1, 'legacy-model', 'legacy-prompt', 'SELECTED', now()) returning id
+                    generation_attempt_id, round_number, curator_model, prompt_version, status, completed_at,
+                    legacy_migrated
+                ) values (?, 1, 'legacy-model', 'legacy-prompt', 'SELECTED', now(), true) returning id
                 """, Long.class, attemptId);
         long candidateId = jdbcTemplate.queryForObject("""
                 insert into challenge_candidate (

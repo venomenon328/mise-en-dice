@@ -66,8 +66,9 @@ class AdapterBoundaryTest {
         noClasses()
                 .that().resideInAPackage("..challenge.internal..")
                 .and().doNotHaveSimpleName("JdbcGenerationRepository")
+                .and().doNotHaveSimpleName("JdbcCurationRepository")
                 .should().dependOnClassesThat().resideInAnyPackage("org.springframework.jdbc..", "javax.sql..")
-                .because("Phase 9D confines explicit SQL to the challenge persistence adapter")
+                .because("explicit SQL is confined to the challenge persistence adapters")
                 .check(classes);
     }
 }

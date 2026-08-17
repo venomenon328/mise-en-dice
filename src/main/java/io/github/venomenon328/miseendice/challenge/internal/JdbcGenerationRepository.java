@@ -59,8 +59,10 @@ class JdbcGenerationRepository {
                 objectMapper, reservoirEngine, generatorProperties.configuration());
     }
 
-    long createSession() {
-        return jdbcTemplate.queryForObject("insert into challenge_session default values returning id", Long.class);
+    long createSession(int requestedOfferCount) {
+        return jdbcTemplate.queryForObject(
+                "insert into challenge_session (requested_offer_count) values (?) returning id", Long.class,
+                requestedOfferCount);
     }
 
     boolean lockSession(long sessionId) {

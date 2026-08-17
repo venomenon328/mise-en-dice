@@ -138,8 +138,49 @@ class PersistedGenerationMigrationIntegrationTest {
                             + legacySuccessWithoutBatch)).isEqualTo("FAILED:CONTEXT_SNAPSHOT_INVALID");
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(24);
+            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(25);
             assertThat(countWhere(connection, "generation_batch", "generation_attempt_id = " + attempt)).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void upgradesTheImmediatelyPreviousMainAndKeepsLegacyCurationExplicit() throws Exception {
+        String databaseName = "curation_upgrade_" + UUID.randomUUID().toString().replace("-", "");
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            statement.execute("create database " + databaseName);
+        }
+        String url = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + databaseName);
+        try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+            runLiquibase(connection, "db/changelog/db.changelog-before-curation.yaml");
+            long session;
+            long attempt;
+            long round;
+            try (Statement statement = connection.createStatement()) {
+                session = returning(statement, "insert into challenge_session default values returning id");
+                attempt = returning(statement, """
+                        insert into generation_attempt (
+                            challenge_session_id, attempt_type, status, generator_version, completed_at
+                        ) values (%d, 'INITIAL', 'GENERATED', 'legacy-generator', now()) returning id
+                        """.formatted(session));
+                round = returning(statement, """
+                        insert into curation_round (
+                            generation_attempt_id, round_number, curator_model, prompt_version, status
+                        ) values (%d, 1, 'legacy-model', 'legacy-prompt', 'PENDING') returning id
+                        """.formatted(attempt));
+            }
+
+            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+
+            assertThat(value(connection, "select requested_offer_count from challenge_session where id = " + session))
+                    .isEqualTo("1");
+            assertThat(value(connection, "select legacy_migrated from curation_round where id = " + round))
+                    .isEqualTo("t");
+            assertThat(value(connection, "select status from curation_round where id = " + round))
+                    .isEqualTo("PENDING");
+            assertThat(value(connection, "select curation_status from generation_attempt where id = " + attempt))
+                    .isEqualTo("LEGACY");
+            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(25);
         }
     }
 
