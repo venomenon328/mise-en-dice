@@ -275,8 +275,8 @@ class GeneratorSimulationService implements GeneratorSimulation {
             GeneratedCandidateSet generated
     ) {
         Instant visibleAt = date.atTime(12, 0).toInstant(ZoneOffset.UTC);
-        if (!history.challengesNewestFirst().isEmpty()
-                && !visibleAt.isAfter(history.challengesNewestFirst().getFirst().visibleAt())) {
+        if (!history.cooldownExposuresNewestFirst().isEmpty()
+                && !visibleAt.isAfter(history.cooldownExposuresNewestFirst().getFirst().visibleAt())) {
             throw new IllegalArgumentException("Sequence date " + date
                     + " is not after the frozen visible-history exposure it would extend");
         }
@@ -298,7 +298,7 @@ class GeneratorSimulationService implements GeneratorSimulation {
         List<VisibleChallenge> extended = new ArrayList<>(history.challengesNewestFirst().size() + 1);
         extended.add(exposure);
         extended.addAll(history.challengesNewestFirst());
-        return new VisibleHistorySnapshot(extended);
+        return new VisibleHistorySnapshot(extended, history.rerollExposuresNewestFirst());
     }
 
     private CompletionStatus controlStatus(SimulationRequest request) {

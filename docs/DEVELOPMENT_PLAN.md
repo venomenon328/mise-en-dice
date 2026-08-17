@@ -407,7 +407,7 @@ Issue #63 korrigiert nach dem historischen Phase-9-Abschluss eine unnötig enge 
 - Der normale Cooldown bleibt exakt codebasiert; Parent-, Child-, Refinement- oder Sibling-Expansion findet nicht statt.
 - Labor und Simulation besitzen ab v1.1 keine operativen REROLL-Blockfelder mehr.
 - Historische v1.0-Snapshotfelder und Reason-Codes bleiben lesbar; Replay wird über die Generatorversion sauber getrennt.
-- Die zukünftige persistente Exposition eines vollständig rerollten sichtbaren Offer Sets mit 1–3 Optionen wird **nicht** in Issue #63 vorgezogen, sondern gehört in Phase 10/11.
+- Die persistente Exposition eines vollständig rerollten sichtbaren Offer Sets mit 1–3 Optionen war bewusst nicht Teil von Issue #63 und wird in Phase 11A durch Issue #76 umgesetzt.
 
 Der historische Kalibrierungsbericht bleibt für Generator 1.0 unverändert wahr. Für #63 gelten gezielte REROLL-/Cooldown-/Replayregressionen und der normale `./mvnw clean verify`; der bewusst nicht wiederholte 9.216er-Lauf wird nicht nachträglich erfunden.
 
@@ -492,32 +492,37 @@ Dieses Paket implementiert den tatsächlichen externen Kurator und die höchsten
 - Lokale HTTP-Adaptertests und echte PostgreSQL-Tests decken Statusklassen einschließlich Responses-`failed`, Header und Timeouts, Prompt/Schema, Konkurrenz, gespeicherte Result-Replays bei deaktiviertem Adapter, unklare Crash-Ausgänge, Migration und die Ein-/Zwei-Request-Pfade ab. Der normale Build ruft OpenAI nicht auf.
 - Discord-Präsentation, Bestätigung, sichtbare Challenge, freiwilliger Reroll und dessen Historienexposition verbleiben vollständig in Phase 11.
 
-## Phase 11: Discord-Bot für Ziehung, Auswahl, Bestätigung und Reroll
+## Phase 11: Entscheidung über kuratierte Angebote
 
-Der eigenständige Discord-Adapter verwendet ausschließlich die öffentlichen Challenge-Application-APIs aus Phase 10. Er besitzt keine eigene Generator-, Kurator-, Fallback- oder Persistenzlogik.
+### Phase 11A: Persistenter, transportneutraler Offer-Decision-Lifecycle (Issue #76)
+
+Phase 11A stellt ausschließlich die öffentlichen Challenge-Application-APIs für Präsentation, Bestätigung, Reroll und Resume bereit. Sie materialisiert die Präsentation genau einmal, bestätigt genau einen `curated_offer` als operative `challenge` und verwendet dabei die Offer-Referenz statt des Legacy-Felds `is_selected` als Fachautorität.
+
+Ein Reroll markiert das vollständige präsentierte Set atomar als `REROLLED` und persistiert genau eine Exposition mit den exakten damaligen Requirement-Codes. Diese Snapshot-Exposition erweitert nur den Zutaten-Cooldown um genau eine Historienposition: ohne Refinement-Expansion und ohne Neuigkeitskadenz. Anschließend setzt sie den bestehenden Generation-/Kurationspfad mit einem `REROLL`-Attempt fort; nach jedem Commit- oder Crashfenster ist derselbe Workflow idempotent fortsetzbar. PostgreSQL schützt die Zustandsübergänge, die Referenzen, die Vollständigkeit und Confirm-vs.-Reroll-Konkurrenz.
+
+Phase 11A enthält ausdrücklich keinen Discord-SDK-, Gateway-, Command-, Button-, Message- oder User-ID-Code.
+
+### Phase 11B: Transportneutraler Voting-/Participation-Core (ausstehend)
+
+Phase 11B folgt der verbindlichen Spezifikation [`CHALLENGE_VOTING_AND_PARTICIPATION.md`](CHALLENGE_VOTING_AND_PARTICIPATION.md): persistente Teilnehmer- und Electorate-Snapshots, geheime Votes, einmaliger Tie-Break, Reroll-Voting sowie initiale und nachträglich veränderbare Challenge-Teilnahme. Sie orchestriert ausschließlich über die öffentlichen Phase-11A-APIs und enthält weder Discord- noch andere Transporttypen.
 
 ### Scope
 
-- vor der Ziehung kompakte Auswahl `1`, `2` oder `3` Angebote; Default `1`,
-- Erzeugung über denselben fachlichen Generation-/Kurations-Use-Case unabhängig von der gewählten Zahl,
-- übersichtliche Darstellung exakt der kuratierten Angebote und persistente Markierung dieser tatsächlichen Präsentation,
-- Auswahl genau einer stabilen Candidate-/Offer-ID,
-- explizite Bestätigung vor Erzeugung der operativen Challenge,
-- im normalen Weg fließt nur die bestätigte Challenge in Cooldown und Neuigkeitskadenz ein; die übrigen Angebote bleiben generatorisch „nicht gesehen“,
-- alternativ vor Bestätigung genau einer Option: gemeinsamer einmaliger Reroll des **gesamten präsentierten Offer Sets**,
-- beim Offer-Set-Reroll werden die exakten Katalogkonzepte aller 1–3 tatsächlich sichtbaren Angebote als **ein gemeinsames Cooldown-only-Expositionsereignis** persistiert/projiziert,
-- diese Exposition erhöht die Historienentfernung genau einmal, expandiert nicht auf Descendants/Ancestors/Siblings und beeinflusst nicht die Neuigkeitskadenz,
-- der anschließende `REROLL`-Generation-Attempt verwendet ausschließlich diesen normalen exakten Historien-Cooldown; es gibt keinen separaten Vierer-Hardblock,
-- Reroll verwendet dieselbe gewünschte Optionszahl.
+- Electorate-Snapshot und geheime, bis zum Abschluss änderbare Votes,
+- persistente Mehrheitsauswertung und einmaliger Tie-Break,
+- erste und optionale zweite Voting-Runde nach Reroll,
+- getrennte Challenge-Teilnahme mit späteren Beitritten,
+- keine Veränderung des Generator-, Kurator- oder Historienvertrags aus 11A.
+
+### Phase 11C: Dünner Discord-Adapter (ausstehend)
+
+Erst Phase 11C rendert Offers und Votingstatus, transportiert Slash-/Component-Interaktionen und ordnet Discord-IDs zu den 11B-Teilnehmern zu. Der Adapter verwendet ausschließlich die öffentlichen APIs aus 11A und 11B; er besitzt keine eigene Generator-, Kurator-, Voting-, Fallback- oder Persistenzlogik.
 
 ### Gate
 
-- bloßes internes Kuratieren erzeugt noch keine Exposition; erst tatsächliche Discord-Präsentation kann für einen späteren Reroll relevant werden,
-- Manipulation von Discord-IDs kann keinen Kandidaten außerhalb des aktuellen Offer Sets bestätigen oder rerollen,
-- genau eine Option wird atomar bestätigt **oder** das komplette aktuelle Offer Set wird atomar als rerollt markiert; beides zugleich ist ausgeschlossen,
-- bei normaler Bestätigung beeinflussen nicht gewählte Optionen weder Cooldown noch Neuigkeitskadenz,
-- bei vollständigem Offer-Set-Reroll wirken ausschließlich die exakten sichtbaren Konzeptcodes als eine Cooldownposition; Parent-/Child-/Sibling-Expansion findet nicht statt,
-- der freiwillige Reroll bleibt genau einmal gemeinsam möglich und ist von internen Kurationsrunden getrennt.
+- Discord darf nur transportieren und rendern,
+- ein Vote, eine Entscheidung oder ein Reroll wird niemals außerhalb der 11A-/11B-Application-Services persistiert,
+- die in 11A garantierte Offer-Autorität, exakte Cooldown-Exposition und Confirm-vs.-Reroll-Serialisierung bleiben unverändert.
 
 Persönliche Konkretisierungen, Zusatz-Zutaten, Grundpläne und Ergebnisdokumentation folgen in späteren Paketen.
 

@@ -11,6 +11,7 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 - [`005-curation-offer-lifecycle.sql`](../src/main/resources/db/changelog/schema/005-curation-offer-lifecycle.sql) für den Phase-10A-Kuratorvertrag, Bewertungsreferenzen und persistente Offer Sets
 - [`006-curation-state-machine-hardening.sql`](../src/main/resources/db/changelog/schema/006-curation-state-machine-hardening.sql) für terminale Kurationsübergänge, Request-Shapes und dauerhafte Offer-Integrität
 - [`007-bounded-curator-dispatch.sql`](../src/main/resources/db/changelog/schema/007-bounded-curator-dispatch.sql) für das harte externe Requestbudget sowie Provider-Audit- und Restartzustände aus Phase 10B
+- [`008-offer-decision-lifecycle.sql`](../src/main/resources/db/changelog/schema/008-offer-decision-lifecycle.sql) für Phase 11A: autoritative Offer-Bestätigung, exakt persistierte Reroll-Exposition und REROLL-Integrität
 
 Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
 
@@ -133,7 +134,7 @@ Die Konkretisierungshierarchie erzeugt keine automatische Eltern-, Kind- oder Ge
 Historienwirkung wird nach Ursache getrennt:
 
 1. **Bestätigte Challenge:** Die vier bestätigten Requirements beeinflussen den normalen exakten Cooldown und, soweit die fachlichen Voraussetzungen erfüllt sind, auch Neuigkeitskadenz und weitere Challenge-Historienmetriken.
-2. **Vollständig rerolltes sichtbares Offer Set:** Wenn später in Phase 10/11 ein tatsächlich präsentiertes Offer Set mit 1–3 Optionen vor Auswahl einer Challenge verworfen wird, werden die exakten Katalogkonzepte aller gezeigten Optionen als **ein gemeinsames Cooldown-only-Expositionsereignis** gespeichert beziehungsweise projiziert. Dieses Ereignis beeinflusst weder Neuigkeitskadenz noch bestätigte Challenge-Historie.
+2. **Vollständig rerolltes sichtbares Offer Set:** Wenn Phase 11A ein tatsächlich präsentiertes Offer Set mit 1–3 Optionen vor Auswahl einer Challenge verwirft, werden die exakten damaligen Requirement-Codes aller gezeigten Optionen als **ein gemeinsames Cooldown-only-Expositionsereignis** gespeichert und projiziert. Dieses Ereignis beeinflusst weder Neuigkeitskadenz noch bestätigte Challenge-Historie.
 
 Ein Offer Set mit drei Optionen zählt dabei als eine Expositionsposition und nicht als drei nacheinander vergangene Challenges. Dadurch hängt das Altern des Cooldownfensters nicht von `requested_offer_count` ab.
 
@@ -198,14 +199,14 @@ challenge_session
             └─ curated_offer (Positionen 1..requested_offer_count)
 
 challenge
-  └─ verweist auf genau ein bestätigtes curated_offer
+  └─ verweist bei neuen Challenges auf genau ein bestätigtes curated_offer; nur bei Migration 008 eingefrorene Legacy-Zeilen bleiben ohne diese Referenz lesbar
 
-cooldown_exposure (fachliches Ziel, konkrete Tabellenform Phase 10/11)
-  └─ kann genau ein vollständig rerolltes sichtbares curated_offer_set referenzieren
-       └─ enthält dessen exakte exponierte Konzeptcodes als eine gemeinsame Cooldownposition
+reroll_offer_exposure (Phase 11A)
+  └─ referenziert genau ein vollständig rerolltes sichtbares curated_offer_set derselben Session
+       └─ besitzt positionsgebundene Snapshot-Requirements mit dessen exakten Konzeptcodes als eine gemeinsame Cooldownposition
 ```
 
-`cooldown_exposure` beschreibt hier eine fachliche Zielrolle, **keinen vorweggenommenen Tabellennamen**. Die konkrete append-only Tabellenform wird erst mit dem Offer-/Discord-Lifecycle festgelegt.
+`reroll_offer_exposure` und seine Snapshot-Requirements sind die in Phase 11A eingeführte append-only Tabellenform für diese Cooldown-only-Rolle. Der spätere 11B-Voting-Core und der erst danach folgende 11C-Discord-Adapter schreiben sie nicht selbst, sondern verwenden ausschließlich die öffentlichen Offer-Decision-Commands.
 
 Phase 9D implementiert noch keine Kuratororchestrierung und kein Offer Set. Seine Persistenz muss jedoch verhindern, dass die spätere fachliche Kardinalität durch eine starre Annahme „eine Kurationsrunde = genau ein Generation Batch = genau ein ausgewählter Kandidat“ verbaut wird.
 
@@ -272,11 +273,11 @@ Jeder `curated_offer` verweist auf einen `challenge_candidate` desselben Attempt
 
 Ein Set, das die angeforderte Zahl nicht vollständig enthält oder überhaupt keinen `GOOD`-Kandidaten besitzt, darf nicht als erfolgreich angeboten werden. Bei vollständiger Kurationserschöpfung entsteht kein scheinbar erfolgreiches Offer Set.
 
-Phase 10A erzeugt ausschließlich `CURATED_UNPRESENTED`. Das Schema kennt daneben bereits `PRESENTED_PENDING_DECISION`, `CONFIRMED` und `REROLLED`, setzt diese aber noch nicht produktiv. Die Vollständigkeit von Positionen `1..N` und mindestens einem `GOOD` gilt unabhängig von diesem späteren Status und kann daher nicht durch einen Statuswechsel aufgehoben werden. Wird ein **später präsentiertes** Offer Set vollständig rerollt, genügen die stabilen Candidate-/Requirement-Snapshots und Offerreferenzen für genau ein Cooldown-only-Expositionsereignis; seine operative Materialisierung bleibt Phase 11 und wird nicht aus später veränderten Katalogbeziehungen rekonstruiert.
+Phase 10A erzeugt weiterhin ausschließlich `CURATED_UNPRESENTED`; Phase 11A überführt dieses Set genau einmal nach `PRESENTED_PENDING_DECISION` und anschließend ausschließlich nach `CONFIRMED` oder `REROLLED`. Die Vollständigkeit von Positionen `1..N` und mindestens einem `GOOD` gilt unabhängig vom Status und kann daher nicht durch einen Statuswechsel aufgehoben werden. PostgreSQL erlaubt keine Rückkehr aus einem terminalen Zustand.
 
 ### Sichtbare Challenge und rerollte Offer-Exposition
 
-Eine operative `challenge` entsteht erst, wenn der Nutzer genau einen `curated_offer` ausdrücklich bestätigt. Datenbank und Application Service stellen sicher, dass Session, Attempt, Offer Set, Offer, Candidate und dessen vier Requirements zusammengehören.
+Eine operative `challenge` entsteht erst, wenn genau ein `curated_offer` ausdrücklich bestätigt wird. `challenge.curated_offer_id` ist dafür die neue autoritative, eindeutige Fremdreferenz. `legacy_pre_offer_decision` wird einmalig durch Migration 008 für damals bereits vorhandene Challenge-Zeilen ohne Offer gesetzt und ist danach unveränderlich; ein späterer Insert kann ihn nicht setzen. Das Legacy-Feld `is_selected` bleibt nur für diese historische Lesbarkeit erhalten. Datenbank und Application Service stellen sicher, dass Session, Attempt, Offer Set, Offer, Candidate und dessen vier Requirements zusammengehören.
 
 Wird eine Option normal bestätigt, bleiben die übrigen Angebote für Audit, Replay und Diagnose erhalten, sind aber **keine Historienexposition**. Sie erzeugen weder Cooldown noch Neuigkeitswirkung.
 
@@ -289,6 +290,8 @@ Davon getrennt ist der freiwillige Reroll **vor** Bestätigung einer Option. Das
 
 Der REROLL-`generation_attempt` verwendet diese Exposition über die normale Historienprojektion. Es existiert kein separater ingredient-level REROLL-Hardblock mehr.
 
+Die Exposition liegt als genau eine `reroll_offer_exposure` pro Session und rerolltem Offer Set mit positionsgebundenen `reroll_offer_exposure_requirement`-Zeilen vor. Jede Zeile kopiert Quelle, Concept-ID, exakten Code und Anzeigetext aus dem damaligen Candidate-Requirement; die Historienprojektion wertet davon ausschließlich die Codes aus und konsultiert weder den aktuellen Katalog noch Refinement-Relationen. Sie führt keine Challenge-/Profil-/Neuigkeitseigenschaften und kann deshalb keine Neuigkeitskadenz beeinflussen.
+
 ## 12. Historische Snapshots
 
 Änderungen am Zutatenkatalog sollen historische Challenges nicht unlesbar machen. Deshalb speichern Kandidaten die tatsächlich verwendeten Anzeigetexte ihrer Vorgaben als `display_text_snapshot` und gegebenenfalls den Text der Ausschlussregel als `exclusion_text_snapshot`.
@@ -297,7 +300,7 @@ Die Fremdschlüssel auf die aktuellen Katalogeinträge bleiben für Auswertungen
 
 Phase 9 erweitert die Snapshots um sämtliche replay- und diagnosewirksamen Werte. Auf Attempt-/Context-Ebene gehören dazu insbesondere Konfiguration, Katalogprojektion, sichtbare Historie, Attempt-Seed, RNG, Versionen und Ausschlussentscheidung. Auf Batch-Ebene liegen Batchnummer, abgeleiteter Batch-Seed, Rejection-Zähler, Fallbackstufe und Set-Fingerprint. Kandidaten und Requirements speichern damalige Rollen, Neuigkeit, Beschaffbarkeit, verwendete Gewichtsfaktoren, relevante bekannte Eigenschaften, Scores und Reason-Codes.
 
-Phase 10A ergänzt Kuratorrequest/-response, qualitative Bewertungen, Ränge, Kandidatenteilnahme je Kurationsrunde, Carry-over-/Locked-Kontext und das finale Offer Set. Phase 11 muss außerdem die tatsächliche Präsentation und einen freiwilligen vollständigen Offer-Set-Reroll so persistieren, dass dessen Cooldown-only-Exposition ohne Rückgriff auf aktuelle Katalogwerte reproduzierbar ist.
+Phase 10A ergänzt Kuratorrequest/-response, qualitative Bewertungen, Ränge, Kandidatenteilnahme je Kurationsrunde, Carry-over-/Locked-Kontext und das finale Offer Set. Phase 11A ergänzt die tatsächliche Präsentation, die autoritative Offer-Bestätigung und den freiwilligen vollständigen Offer-Set-Reroll mit dessen reproduzierbarer Snapshot-Exposition ohne Rückgriff auf aktuelle Katalogwerte.
 
 Diese Daten dürfen nicht mit bestätigter Challenge-Historie gleichgesetzt werden: Bestätigte Challenges wirken auf den vollständigen Historienvertrag; ein rerolltes unbestätigtes Offer Set wirkt nur auf den exakten Zutaten-Cooldown; intern verworfene oder normal nicht gewählte Angebote wirken gar nicht.
 

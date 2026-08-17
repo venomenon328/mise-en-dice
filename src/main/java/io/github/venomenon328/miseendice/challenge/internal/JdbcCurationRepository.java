@@ -333,12 +333,12 @@ class JdbcCurationRepository {
     private CurationQueries.OfferSetView offerSet(ResultSet result) throws SQLException {
         long id = result.getLong("id");
         List<CurationQueries.OfferView> offers = jdbcTemplate.query("""
-                select offer.position, offer.challenge_candidate_id, offer.curation_round_candidate_id,
+                select offer.id, offer.position, offer.challenge_candidate_id, offer.curation_round_candidate_id,
                        participation.evaluation_class, participation.evaluation_rank
                 from curated_offer offer
                 join curation_round_candidate participation on participation.id = offer.curation_round_candidate_id
                 where offer.curated_offer_set_id = ? order by offer.position
-                """, (row, number) -> new CurationQueries.OfferView(row.getInt("position"),
+                """, (row, number) -> new CurationQueries.OfferView(row.getLong("id"), row.getInt("position"),
                 row.getLong("challenge_candidate_id"), row.getLong("curation_round_candidate_id"),
                 CurationModel.Evaluation.valueOf(row.getString("evaluation_class")),
                 (Integer) row.getObject("evaluation_rank"), candidateSnapshot(row.getLong("challenge_candidate_id"))), id);

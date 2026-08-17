@@ -121,6 +121,8 @@ class PersistedGenerationMigrationIntegrationTest {
             assertThat(countWhere(connection, "candidate_requirement",
                     "candidate_id = " + candidate + " and concept_code_snapshot is not null")).isEqualTo(4);
             assertThat(countWhere(connection, "challenge", "generation_attempt_id = " + attempt)).isEqualTo(1);
+            assertThat(value(connection, "select legacy_pre_offer_decision from challenge where generation_attempt_id = "
+                    + attempt)).isEqualTo("t");
             assertThat(countWhere(connection, "generation_batch",
                     "generation_attempt_id = " + attempt + " and batch_number = 1 and legacy_migrated"))
                     .isEqualTo(1);
@@ -138,7 +140,7 @@ class PersistedGenerationMigrationIntegrationTest {
                             + legacySuccessWithoutBatch)).isEqualTo("FAILED:CONTEXT_SNAPSHOT_INVALID");
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(27);
+            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(28);
             assertThat(countWhere(connection, "generation_batch", "generation_attempt_id = " + attempt)).isEqualTo(1);
         }
     }
@@ -180,21 +182,24 @@ class PersistedGenerationMigrationIntegrationTest {
             assertThat(value(connection, "select curation_status from generation_attempt where id = " + attempt))
                     .isEqualTo("LEGACY");
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(27);
+            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(28);
         }
     }
 
     @Test
-    void upgradesImmediatelyPreviousMainWithBoundedDispatchColumnsAndConstraints() throws Exception {
+    void upgradesCurrentMainWithOfferDecisionLifecycleAndSecondStartIsNoOp() throws Exception {
         String databaseName = "bounded_curation_upgrade_" + UUID.randomUUID().toString().replace("-", "");
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
             statement.execute("create database " + databaseName);
         }
         String url = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + databaseName);
         try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword())) {
-            runLiquibase(connection, "db/changelog/db.changelog-before-bounded-curation.yaml");
+            runLiquibase(connection, "db/changelog/db.changelog-before-offer-decision.yaml");
             assertThat(countWhere(connection, "information_schema.columns",
                     "table_schema = 'public' and table_name = 'curation_round' and column_name = 'dispatch_status'"))
+                    .isEqualTo(1);
+            assertThat(countWhere(connection, "information_schema.columns",
+                    "table_schema = 'public' and table_name = 'challenge' and column_name = 'curated_offer_id'"))
                     .isZero();
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
@@ -208,8 +213,17 @@ class PersistedGenerationMigrationIntegrationTest {
                     + "where table_schema = 'public' and table_name = 'curation_round' "
                     + "and column_name = 'dispatch_status'"))
                     .contains("UNCLAIMED");
+            assertThat(countWhere(connection, "information_schema.columns",
+                    "table_schema = 'public' and table_name = 'challenge' and column_name = 'curated_offer_id'"))
+                    .isEqualTo(1);
+            assertThat(countWhere(connection, "information_schema.columns",
+                    "table_schema = 'public' and table_name = 'challenge' and column_name = 'legacy_pre_offer_decision'"))
+                    .isEqualTo(1);
+            assertThat(countWhere(connection, "information_schema.tables",
+                    "table_schema = 'public' and table_name = 'reroll_offer_exposure'"))
+                    .isEqualTo(1);
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(27);
+            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(28);
         }
     }
 

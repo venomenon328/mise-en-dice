@@ -246,6 +246,22 @@ final class GenerationSnapshotCodec {
             item.put("visibleAt", challenge.visibleAt().toString());
             return item;
         }).toList());
+        value.put("rerollExposuresNewestFirst", snapshot.rerollExposuresNewestFirst().stream().map(exposure -> {
+            Map<String, Object> item = sortedMap();
+            item.put("offerSetKey", exposure.offerSetKey());
+            item.put("requirements", exposure.requirements().stream().map(requirement -> {
+                Map<String, Object> requirementValue = sortedMap();
+                requirementValue.put("ancestorCodes", requirement.ancestorCodes().stream().sorted().toList());
+                requirementValue.put("conceptCode", requirement.conceptCode());
+                requirementValue.put("flags", requirement.flags().stream().sorted().toList());
+                requirementValue.put("noveltyLevel", requirement.noveltyLevel());
+                requirementValue.put("roles", requirement.roles().stream().sorted().toList());
+                return requirementValue;
+            }).toList());
+            item.put("sessionKey", exposure.sessionKey());
+            item.put("visibleAt", exposure.visibleAt().toString());
+            return item;
+        }).toList());
         return value;
     }
 

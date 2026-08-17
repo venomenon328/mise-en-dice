@@ -67,7 +67,7 @@ class PostgresIntegrationTest {
 
     @Test
     void applicationContextStartsWithTheCompleteLiquibaseBaseline() {
-        assertThat(count("databasechangelog")).isEqualTo(27);
+        assertThat(count("databasechangelog")).isEqualTo(28);
         assertThat(count("ingredient_concept")).isEqualTo(698);
         assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(651);
         assertThat(countWhere("ingredient_concept", "active and random_draw_enabled and challenge_specificity = 'OPEN'"))
@@ -129,7 +129,7 @@ class PostgresIntegrationTest {
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
 
-            assertThat(count(connection, "databasechangelog")).isEqualTo(27);
+            assertThat(count(connection, "databasechangelog")).isEqualTo(28);
             assertThat(countWhere(connection, "ingredient_concept", "version = 0")).isEqualTo(698);
             assertThat(countWhere(connection, "exclusion_rule", "version = 0"))
                     .isEqualTo(count(connection, "exclusion_rule"));
@@ -345,24 +345,16 @@ class PostgresIntegrationTest {
     }
 
     @Test
-    void rerollAttemptRequiresAnInitialAttempt() {
+    void rerollAttemptRequiresACommittedRerollExposure() {
         long session = insertReturningId("insert into challenge_session default values returning id");
+        insertAttempt(session, "INITIAL");
 
         assertThatThrownBy(() -> jdbcTemplate.update(
                 "insert into generation_attempt (challenge_session_id, attempt_type, generator_version) values (?, 'REROLL', 'test')",
                 session
         ))
                 .isInstanceOf(UncategorizedSQLException.class)
-                .hasMessageContaining("reroll attempt requires an initial attempt");
-
-        insertAttempt(session, "INITIAL");
-        insertAttempt(session, "REROLL");
-
-        assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from generation_attempt where challenge_session_id = ?",
-                Integer.class,
-                session
-        )).isEqualTo(2);
+                .hasMessageContaining("requires a committed rerolled offer exposure");
     }
 
     @Test
@@ -399,7 +391,7 @@ class PostgresIntegrationTest {
     }
 
     @Test
-    void visibleChallengeRequiresItsSelectedCandidateAndExactlyFourRequirements() {
+    void visibleChallengeRequiresItsConfirmedOfferAndExactlyFourRequirements() {
         long attempt = insertAttempt(
                 insertReturningId("insert into challenge_session default values returning id"),
                 "INITIAL"
@@ -412,10 +404,9 @@ class PostgresIntegrationTest {
                 candidate
         ))
                 .isInstanceOf(UncategorizedSQLException.class)
-                .hasMessageContaining("no completed legacy curation");
+                .hasMessageContaining("must contain exactly four requirements");
 
-        jdbcTemplate.update("update challenge_candidate set is_selected = true where id = ?", candidate);
-        insertRandomRequirements(candidate, 3);
+        insertRandomRequirements(candidate, 4);
 
         assertThatThrownBy(() -> jdbcTemplate.update(
                 "insert into challenge (generation_attempt_id, selected_candidate_id) values (?, ?)",
@@ -423,20 +414,16 @@ class PostgresIntegrationTest {
                 candidate
         ))
                 .isInstanceOf(UncategorizedSQLException.class)
-                .hasMessageContaining("must contain exactly four requirements");
+                .hasMessageContaining("new challenges require a confirmed curated offer");
 
-        insertRandomRequirements(candidate, 1);
-        jdbcTemplate.update(
-                "insert into challenge (generation_attempt_id, selected_candidate_id) values (?, ?)",
+        jdbcTemplate.update("update challenge_candidate set is_selected = true where id = ?", candidate);
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "insert into challenge (generation_attempt_id, selected_candidate_id, legacy_pre_offer_decision) values (?, ?, true)",
                 attempt,
                 candidate
-        );
-
-        assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from challenge where generation_attempt_id = ?",
-                Integer.class,
-                attempt
-        )).isEqualTo(1);
+        ))
+                .isInstanceOf(UncategorizedSQLException.class)
+                .hasMessageContaining("legacy challenge marker is reserved for rows present before migration 008");
     }
 
     private void rerunLiquibase() throws Exception {

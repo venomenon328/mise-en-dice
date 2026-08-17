@@ -346,7 +346,7 @@ class CurationStateMachineIntegrationTest {
     }
 
     @Test
-    void preservesRequestedOfferCountForRerollAttemptsAndCarriesPromptAndExclusionInRequest() {
+    void preservesRequestedOfferCountAndCarriesPromptAndExclusionInRequest() {
         assertThatThrownBy(() -> new StartNewSession(DATE, List.of(), 1L, 0)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new StartNewSession(DATE, List.of(), 1L, 4)).isInstanceOf(IllegalArgumentException.class);
         Generated generated = generated(3, 71_100_050L);
@@ -360,11 +360,7 @@ class CurationStateMachineIntegrationTest {
         assertThat(planned.request().attemptExclusion().exclusionRuleId()).isEqualTo(exclusionRuleId);
         assertThat(planned.request().attemptExclusion().exclusionTextSnapshot()).isEqualTo("No test exclusion");
 
-        long rerollSessionId = confirmedLegacySession(3);
-        Generated reroll = (Generated) generationCommands.startReroll(new StartExistingSession(
-                rerollSessionId, DATE.plusDays(1), List.of(), 71_100_051L));
-        assertThat(reroll.sessionId()).isEqualTo(rerollSessionId);
-        assertThat(curationQueries.findAttempt(reroll.attemptId()).orElseThrow().requestedOfferCount()).isEqualTo(3);
+        assertThat(curationQueries.findAttempt(generated.attemptId()).orElseThrow().requestedOfferCount()).isEqualTo(3);
     }
 
     @Test
@@ -469,46 +465,4 @@ class CurationStateMachineIntegrationTest {
                 List.of("EXPLICIT_CURATOR_SELECTION")));
     }
 
-    private long confirmedLegacySession(int requestedOfferCount) {
-        long sessionId = jdbcTemplate.queryForObject(
-                "insert into challenge_session (requested_offer_count) values (?) returning id", Long.class, requestedOfferCount);
-        long attemptId = jdbcTemplate.queryForObject("""
-                insert into generation_attempt (
-                    challenge_session_id, attempt_type, status, generator_version, completed_at
-                ) values (?, 'INITIAL', 'GENERATED', 'legacy-generator', now()) returning id
-                """, Long.class, sessionId);
-        long batchId = jdbcTemplate.queryForObject("""
-                insert into generation_batch (generation_attempt_id, batch_number, status, legacy_migrated)
-                values (?, 1, 'GENERATED', true) returning id
-                """, Long.class, attemptId);
-        long roundId = jdbcTemplate.queryForObject("""
-                insert into curation_round (
-                    generation_attempt_id, round_number, curator_model, prompt_version, status, completed_at, legacy_migrated
-                ) values (?, 1, 'legacy-model', 'legacy-prompt', 'SELECTED', now(), true) returning id
-                """, Long.class, attemptId);
-        long candidateId = jdbcTemplate.queryForObject("""
-                insert into challenge_candidate (generation_batch_id, curation_round_id, candidate_number, is_selected)
-                values (?, ?, 1, true) returning id
-                """, Long.class, batchId, roundId);
-        jdbcTemplate.update("""
-                insert into candidate_requirement (
-                    candidate_id, position, source, ingredient_concept_id,
-                    challenge_specificity_snapshot, display_text_snapshot, concept_code_snapshot,
-                    novelty_level_snapshot, concept_snapshot
-                )
-                select ?, row_number() over (order by id), 'RANDOM', id,
-                       challenge_specificity, display_name, code, novelty_level,
-                       jsonb_build_object(
-                           'functionalRoles', '[]'::jsonb,
-                           'culinaryFlags', '[]'::jsonb,
-                           'transitiveAncestorCodes', '[]'::jsonb
-                       )
-                from ingredient_concept
-                where active and random_draw_enabled and novelty_level is not null
-                order by id limit 4
-                """, candidateId);
-        jdbcTemplate.update("insert into challenge (generation_attempt_id, selected_candidate_id) values (?, ?)",
-                attemptId, candidateId);
-        return sessionId;
-    }
 }

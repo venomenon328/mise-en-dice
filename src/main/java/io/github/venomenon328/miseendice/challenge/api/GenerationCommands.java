@@ -10,6 +10,13 @@ public interface GenerationCommands {
 
     GenerationOutcome startInitial(StartExistingSession command);
 
+    /** Starts or resumes the single REROLL attempt from the persisted INITIAL input after a committed offer reroll. */
+    GenerationOutcome startReroll(StartRerollSession command);
+
+    /**
+     * Compatibility entry point. REROLL input is deliberately ignored: Phase 11A always copies the INITIAL input.
+     */
+    @Deprecated(forRemoval = false)
     GenerationOutcome startReroll(StartExistingSession command);
 
     record ManualRequirementInput(int position, String displayText, Long matchedIngredientConceptId) {
@@ -56,6 +63,14 @@ public interface GenerationCommands {
                 throw new IllegalArgumentException("A session, effective date, and at most two manuals are required");
             }
             manualRequirements = List.copyOf(manualRequirements);
+        }
+    }
+
+    record StartRerollSession(long sessionId, Long explicitSeed) {
+        public StartRerollSession {
+            if (sessionId <= 0) {
+                throw new IllegalArgumentException("A positive session ID is required for a reroll");
+            }
         }
     }
 

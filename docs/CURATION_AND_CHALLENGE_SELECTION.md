@@ -226,7 +226,7 @@ Der gemeinsame freiwillige Reroll bezieht sich auf das **vollständig präsentie
 - Die gewünschte Optionszahl der Session bleibt erhalten.
 - Nach dem Reroll gibt es keine zweite freiwillige Neuziehung.
 
-Interne zweite Generierungs-/Kurationsrunden sind weiterhin kein freiwilliger Reroll und verbrauchen ihn nicht. Die konkrete Persistenz des Cooldown-only-Expositionsereignisses wird in Phase 10/11 umgesetzt und ausdrücklich **nicht** als Phase-9-Generatorfunktion vorgezogen.
+Interne zweite Generierungs-/Kurationsrunden sind weiterhin kein freiwilliger Reroll und verbrauchen ihn nicht. Phase 11A persistiert das Cooldown-only-Expositionsereignis ausdrücklich außerhalb der Phase-9-Generatorfunktion.
 
 ## 12. Discord-Interaktion
 
@@ -278,3 +278,13 @@ Der OpenAI-Adapter sendet genau einen direkten Responses-API-Request je `dispatc
 Ein retryfähiger technischer Fehler von Runde 1 darf den zweiten und letzten Slot als vollständigen `TECHNICAL_RETRY` desselben Batches verwenden; danach ist keine Qualitätsrunde mehr möglich. Strukturell ungültiger Output ist terminal und wird nicht erneut gesendet. Fehlen nach einer erfolgreichen Runde 1 `GOOD`-Optionen, entsteht Batch 2 ausschließlich aus dem eingefrorenen Attempt-Kontext. Alle Runde-1-`GOOD`s werden gelockt, höchstens die besten benötigten übrigen Kandidaten werden Carry-over und alle zwölf Kandidaten des zweiten Batches sind neu. Ein technischer Fehler in dieser Qualitätsrunde oder ein erschöpfter Batch 2 erlaubt den dokumentierten Runde-1-Fallback nur bei mindestens einem `GOOD`; andernfalls entsteht kein Offer Set.
 
 Phase 10B endet weiterhin bei `CURATED_UNPRESENTED`. Discord-Ausgabe, Nutzerbestätigung, Challenge-Materialisierung, freiwilliger Reroll und Cooldown-only-Exposition gehören ausschließlich zu Phase 11.
+
+## 17. Phase-11A-Implementierung
+
+Issue #76 implementiert den Phase-11-Anteil bis einschließlich der transportneutralen Persistenzgrenze. `OfferDecisionCommands` präsentiert ein fertig kuratiertes Set idempotent, bestätigt einen stabilen `curated_offer` oder rerollt das gesamte präsentierte Set; `OfferDecisionQueries` liefert die dafür persistierten Ansichten. Eine neue Challenge erhält ihre autoritative `curated_offer_id`; `is_selected` bleibt allein ein Legacy-Lesepfad.
+
+Die Datenbank erzwingt die Übergänge `CURATED_UNPRESENTED` → `PRESENTED_PENDING_DECISION` → genau eines von `CONFIRMED` oder `REROLLED`, die vollständige Entscheidung und die Offer-/Attempt-Zugehörigkeit. Damit können konkurrierende Confirm- und Reroll-Requests weder zwei Challenges noch eine Challenge neben einer Reroll-Exposition erzeugen. Wiederholungen derselben bestätigten Offer-ID oder desselben Rerolls lesen den bereits persistierten Stand und setzen den Ablauf idempotent fort.
+
+Beim Reroll entsteht vor dem nächsten Generatorlauf genau ein persistiertes Snapshot-Ereignis. Es kopiert sämtliche Requirement-Codes aller Offers in ihrer sichtbaren Position. Die Historie verarbeitet diesen Satz ausschließlich als eine Cooldownposition mit exakten Codes; es gibt keine Refinement-Expansion und keine Neuigkeitskadenzwirkung. Erst danach nutzt der REROLL-Attempt denselben Generation- und `CurationOrchestrationCommands`-Pfad wie der Erstlauf. Jede Commit-Grenze ist restartfähig; unbekannte Infrastruktur- oder Datenbankfehler werden nicht als Konflikt oder Erschöpfung übersetzt.
+
+Discord-SDK, Gateway, Commands, Buttons, Messages und User-IDs sind nicht Teil von Phase 11A. Phase 11B ergänzt davor ausschließlich den transportneutralen Voting-/Participation-Core; der Discord-Adapter folgt erst in Phase 11C.

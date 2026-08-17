@@ -575,8 +575,8 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
     }
 
     private static int exactHistoryDistance(String code, GenerationContext context) {
-        for (int index = 0; index < context.visibleHistory().challengesNewestFirst().size(); index++) {
-            if (context.visibleHistory().challengesNewestFirst().get(index).requirements().stream()
+        for (int index = 0; index < context.visibleHistory().cooldownExposuresNewestFirst().size(); index++) {
+            if (context.visibleHistory().cooldownExposuresNewestFirst().get(index).requirements().stream()
                     .map(VisibleRequirement::conceptCode).anyMatch(code::equals)) return index + 1;
         }
         return Integer.MAX_VALUE;

@@ -16,6 +16,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.Requiremen
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleChallenge;
+import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleRerollExposure;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleRequirement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -139,6 +140,15 @@ class JdbcGenerationRepository {
                 """, (result, row) -> new ManualRequirementRow(
                 result.getInt("position"), result.getString("display_text"),
                 (Long) result.getObject("matched_ingredient_concept_id")), attemptId);
+    }
+
+    boolean hasRerollOfferExposure(long sessionId) {
+        Boolean result = jdbcTemplate.queryForObject("""
+                select exists (
+                    select 1 from reroll_offer_exposure where challenge_session_id = ?
+                )
+                """, Boolean.class, sessionId);
+        return Boolean.TRUE.equals(result);
     }
 
     void saveContext(long attemptId, UUID operationToken, GenerationSnapshotCodec.EncodedContext context,
@@ -363,7 +373,24 @@ class JdbcGenerationRepository {
             grouped.computeIfAbsent(row.challengeId(), ignored -> new HistoryBuilder(row)).requirements.add(
                     visibleRequirement(row));
         }
-        return new VisibleHistorySnapshot(grouped.values().stream().map(HistoryBuilder::build).toList());
+        List<RerollHistoryRow> rerollRows = jdbcTemplate.query("""
+                select exposure.id as exposure_id, exposure.exposed_at, exposure.challenge_session_id,
+                       exposure.curated_offer_set_id, requirement.curated_offer_id,
+                       requirement.requirement_position, requirement.concept_code_snapshot,
+                       requirement.ingredient_concept_id
+                from reroll_offer_exposure exposure
+                join reroll_offer_exposure_requirement requirement
+                  on requirement.reroll_offer_exposure_id = exposure.id
+                join curated_offer offer on offer.id = requirement.curated_offer_id
+                order by exposure.exposed_at desc, exposure.id desc, offer.position, requirement.requirement_position
+                """, this::mapRerollHistoryRow);
+        Map<Long, RerollHistoryBuilder> rerolls = new LinkedHashMap<>();
+        for (RerollHistoryRow row : rerollRows) {
+            rerolls.computeIfAbsent(row.exposureId(), ignored -> new RerollHistoryBuilder(row)).requirements.add(
+                    new VisibleRequirement(row.conceptCode(), null, Set.of(), Set.of(), Set.of()));
+        }
+        return new VisibleHistorySnapshot(grouped.values().stream().map(HistoryBuilder::build).toList(),
+                rerolls.values().stream().map(RerollHistoryBuilder::build).toList());
     }
 
     Set<String> confirmedInitialRequirementCodes(long sessionId) {
@@ -503,6 +530,13 @@ class JdbcGenerationRepository {
                 (Integer) result.getObject("novelty_level_snapshot"), result.getString("concept_snapshot"));
     }
 
+    private RerollHistoryRow mapRerollHistoryRow(ResultSet result, int row) throws SQLException {
+        return new RerollHistoryRow(result.getLong("exposure_id"), instant(result, "exposed_at"),
+                result.getLong("challenge_session_id"), result.getLong("curated_offer_set_id"),
+                result.getLong("curated_offer_id"), result.getInt("requirement_position"),
+                result.getString("concept_code_snapshot"), (Long) result.getObject("ingredient_concept_id"));
+    }
+
     private AttemptState mapAttemptState(ResultSet result, int row) throws SQLException {
         return new AttemptState(result.getLong("challenge_session_id"), result.getLong("id"),
                 AttemptType.valueOf(result.getString("attempt_type")), result.getString("status"),
@@ -562,6 +596,10 @@ class JdbcGenerationRepository {
                               Integer noveltyLevel, String conceptSnapshot) {
     }
 
+    private record RerollHistoryRow(long exposureId, Instant exposedAt, long sessionId, long offerSetId,
+                                    long offerId, int position, String conceptCode, Long ingredientConceptId) {
+    }
+
     private static final class HistoryBuilder {
         private final HistoryRow first;
         private final List<VisibleRequirement> requirements = new ArrayList<>();
@@ -580,6 +618,20 @@ class JdbcGenerationRepository {
                             : io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyBand
                             .valueOf(first.noveltyBand()),
                     first.exclusionRuleCode());
+        }
+    }
+
+    private static final class RerollHistoryBuilder {
+        private final RerollHistoryRow first;
+        private final List<VisibleRequirement> requirements = new ArrayList<>();
+
+        private RerollHistoryBuilder(RerollHistoryRow first) {
+            this.first = first;
+        }
+
+        private VisibleRerollExposure build() {
+            return new VisibleRerollExposure(first.exposedAt(), Long.toString(first.sessionId()),
+                    Long.toString(first.offerSetId()), requirements);
         }
     }
 
