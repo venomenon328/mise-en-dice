@@ -79,8 +79,9 @@ class CatalogDeactivationPreservationIntegrationTest {
                     returning id
                     """, Long.class, sessionId);
             long roundId = jdbcTemplate.queryForObject("""
-                    insert into curation_round (generation_attempt_id, round_number, curator_model, prompt_version)
-                    values (?, 1, 'issue11-test', 'issue11-test')
+                    insert into curation_round (
+                        generation_attempt_id, round_number, curator_model, prompt_version, legacy_migrated
+                    ) values (?, 1, 'issue11-test', 'issue11-test', true)
                     returning id
                     """, Long.class, attemptId);
             long batchId = jdbcTemplate.queryForObject("""

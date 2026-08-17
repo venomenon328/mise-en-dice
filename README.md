@@ -115,4 +115,4 @@ Der finale aktive Katalogstand umfasst **698 Zutatenkonzepte**, davon **651 zuf�
 
 ## Status
 
-Produktvision, Datenmodell, Anwendungsfundament, finaler Zutatenkatalog, vollständige Katalogadministration und der reproduzierbare Kandidatengenerator einschließlich Persistenz, Replay, Labor und begrenzter Simulation sind umgesetzt. Phase 9F bereitet die breite technische Kalibrierung, den read-only operativen Kataloglauf und die ausdrückliche manuelle Fachabnahme vor. OpenAI-Kurator und Discord bleiben bis zum vollständigen Phase-9-Gate nachgelagert.
+Produktvision, Datenmodell, Anwendungsfundament, finaler Zutatenkatalog, vollständige Katalogadministration und der reproduzierbare Kandidatengenerator einschließlich Persistenz, Replay, Labor und Kalibrierung sind umgesetzt. Phase 10A ergänzt den transportneutralen Kuratorvertrag sowie den persistenten Multi-Offer-Lifecycle bis zum kuratierten, noch nicht präsentierten Offer Set. OpenAI-Kuratororchestrierung sowie Discord-Präsentation, Bestätigung und Reroll bleiben bewusst nachgelagert.

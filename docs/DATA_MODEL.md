@@ -8,6 +8,8 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 - [`002-challenge-history-schema.sql`](../src/main/resources/db/changelog/schema/002-challenge-history-schema.sql) für Generierung, Kuratierung und sichtbare Challenge-Historie
 - [`003-administration-foundation.sql`](../src/main/resources/db/changelog/schema/003-administration-foundation.sql) für optimistisches Locking und Katalog-Audit
 - [`004-persisted-candidate-generation.sql`](../src/main/resources/db/changelog/schema/004-persisted-candidate-generation.sql) für Generation Context, Batches, Candidate-Snapshots und den Phase-9D-Lifecycle
+- [`005-curation-offer-lifecycle.sql`](../src/main/resources/db/changelog/schema/005-curation-offer-lifecycle.sql) für den Phase-10A-Kuratorvertrag, Bewertungsreferenzen und persistente Offer Sets
+- [`006-curation-state-machine-hardening.sql`](../src/main/resources/db/changelog/schema/006-curation-state-machine-hardening.sql) für terminale Kurationsübergänge, Request-Shapes und dauerhafte Offer-Integrität
 
 Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
 
@@ -178,7 +180,7 @@ challenge_session
                  └─ candidate_requirement
 ```
 
-Phase 9D migriert append-only zunächst auf die in [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md) festgelegte Trennung von Generation und Kuratierung. Die spätere Phase 10 erweitert diese Trennung gemäß [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) um Carry-over und ein finales Offer Set. Das fachliche Zielmodell lautet:
+Phase 9D migriert append-only zunächst auf die in [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md) festgelegte Trennung von Generation und Kuratierung. Die append-only Phase 10A erweitert diese Trennung gemäß [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) um Carry-over und ein finales Offer Set. Das fachliche Zielmodell lautet:
 
 ```text
 challenge_session
@@ -208,11 +210,13 @@ Phase 9D implementiert noch keine Kuratororchestrierung und kein Offer Set. Sein
 
 Die append-only Migration `schema/004-persisted-candidate-generation.sql` setzt diesen Phase-9D-Ausschnitt um. Bestehende Kurationsrunden werden dabei als ausdrücklich markierte Legacy-Batches gespiegelt; vorhandene Candidate-, Requirement- und Challenge-IDs sowie ihre historischen Kurationsbezüge bleiben erhalten. Neue Generatorbatches benötigen weder eine Kurationsrunde noch Modell-, Prompt- oder Auswahlplatzhalter.
 
+`schema/005-curation-offer-lifecycle.sql` markiert die vor diesem Changeset vorhandenen `curation_round`-Zeilen zusätzlich als Legacy-Historie. Ihre alten Status, `challenge_candidate.curation_round_id`, `is_selected` und `curator_evaluation` bleiben lesbar, sind aber keine Autorität für neue Offers. Es rekonstruiert insbesondere keine alten Offer Sets. `schema/006-curation-state-machine-hardening.sql` ergänzt ausschließlich neue Felder, Constraints und Trigger; es migriert vorhandene 005-Request-Payloads mit ihrer gespeicherten Prompt- und Attempt-Ausschlussinformation. Nur neue, nicht historische Runden verwenden den unten beschriebenen Vertrag.
+
 ### Challenge Session
 
 `challenge_session` fasst Erstziehung und optionalen freiwilligen Reroll zusammen.
 
-Die spätere Kurationsphase speichert für die Session die gewünschte Zahl präsentierter Angebote `requested_offer_count` im Bereich `1..3`, Default `1`. Ein Reroll verwendet dieselbe Zahl, sofern die Produktspezifikation später nicht ausdrücklich eine erneute Wahl erlaubt.
+Phase 10A speichert für die Session die gewünschte Zahl präsentierter Angebote `requested_offer_count` im Bereich `1..3`, Default `1`; bestehende Sessions wurden auf `1` migriert. Sie ist kein Generatorinput: weder Context- noch Set-Fingerprint, Generator- oder Konfigurationsversion enthalten sie. Ein Reroll verwendet dieselbe gespeicherte Zahl, sofern die Produktspezifikation später nicht ausdrücklich eine erneute Wahl erlaubt.
 
 ### Generation Attempt
 
@@ -230,7 +234,11 @@ Ein erfolgreicher Batch enthält genau zwölf eindeutige Kandidaten. Phase 9D im
 
 Eine `curation_round` ist ausschließlich genau ein tatsächlicher externer Kuratorrequest. Modellname, Promptversion sowie exakter Request und Response liegen auf dieser Ebene. Die flexiblen API-Payloads bleiben `jsonb`; stabile Kernbeziehungen bleiben relational. Nicht kuratierte Batches erhalten keine Platzhaltermodelle oder Fake-Promptversionen.
 
-Die spätere Zuordnung einer Kurationsrunde erfolgt flexibel über `curation_round_candidate` zu Kandidaten desselben Attempts. Sie darf Kandidaten aus Batch 1 und Batch 2 gemeinsam referenzieren; Phase 9D schreibt deshalb weder einen primären Batch je Runde noch eine Eins-zu-eins-Kardinalität fest. Damit können die in [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) definierten Rollen `NEW`, `CARRY_OVER` und `LOCKED_CONTEXT` später rekonstruiert werden.
+Phase 10A implementiert die flexible Zuordnung einer Kurationsrunde über `curation_round_candidate` zu Kandidaten desselben Attempts. Eine neue Runde referenziert einen primären erfolgreichen Batch, darf jedoch Kandidaten aus Batch 1 und Batch 2 gemeinsam enthalten. `NEW` stammt aus diesem primären Batch; `CARRY_OVER` und `LOCKED_CONTEXT` referenzieren dieselbe Candidate-ID in einer früheren Runde desselben Attempts. Ein Locked Context muss aus einer früheren `GOOD`-Bewertung stammen und wird weder bewertet noch gerankt. PostgreSQL-Trigger sichern Attempt-, Batch- und Herkunftszugehörigkeit auch bei manipulierten IDs ab.
+
+Neue Runden tragen `INITIAL_PASS`, `TECHNICAL_RETRY` oder `QUALITY_FOLLOW_UP`, die stabile Vertragsversion, Modell-/Promptversion, exakten Request und später exakte Response. Der Request enthält außerdem die Promptversion, `requested_offer_count`, offene Plätze und den unveränderlichen Attempt-Ausschluss-Snapshot. Kann ein späterer Adapter Output nicht in den strukturierten Responsevertrag deserialisieren, liegt dessen unverändertes Original als Text auf der Runde; der Status bleibt ausdrücklich `INVALID_RESPONSE`, nie ein technischer Generatorfehler. `PENDING`, `COMPLETED`, `TECHNICAL_ERROR` und `INVALID_RESPONSE` unterscheiden Request, vollständig validiertes Ergebnis und die beiden Fehlerarten.
+
+Nur Runden 1 und 2 sind für neue Daten zulässig. Runde 1 ist stets `INITIAL_PASS` mit den zwölf `NEW`-Kandidaten des ersten Batches und allen offenen Plätzen. Runde 2 ist entweder `TECHNICAL_RETRY` desselben vollständigen ersten Batches nach technischem Fehler oder `QUALITY_FOLLOW_UP` nach einer vollständig ausgewerteten Runde 1 mit zu wenigen `GOOD`: Sie enthält den vollständigen neuen Batch 2, alle bisherigen `GOOD` als Locked Context und höchstens so viele bewertete `ACCEPTABLE`-/`BAD`-Carry-overs wie Plätze offen sind. Diese Form prüft PostgreSQL, ohne die spätere 10B-Auswahlentscheidung über konkrete Fallbacks zu treffen. Deferrable Constraints erzwingen außerdem für `COMPLETED` alle und nur nicht gelockten Bewertungen sowie eine lückenlose Rangfolge.
 
 Kuratorbewertungen speichern je bewerteter Kandidatenreferenz mindestens qualitative Klasse `GOOD`, `ACCEPTABLE` oder `BAD`, Rang und Reason-Codes. Ein `LOCKED_CONTEXT`-Kandidat bleibt bereits gesetzt und muss nicht so behandelt werden, als würde der zweite Kurator ihn erneut zur Disposition stellen.
 
@@ -246,7 +254,7 @@ Generatorseitige Scores bleiben unveränderlich. Kuratorurteile und Ränge werde
 
 ### Curated Offer Set
 
-Nach Abschluss der Kurationsorchestrierung kann ein `generation_attempt` höchstens ein erfolgreiches `curated_offer_set` besitzen.
+Nach Abschluss einer expliziten Kurationsentscheidung kann ein `generation_attempt` höchstens ein erfolgreiches `curated_offer_set` besitzen.
 
 Das Set speichert mindestens:
 
@@ -261,7 +269,7 @@ Jeder `curated_offer` verweist auf einen `challenge_candidate` desselben Attempt
 
 Ein Set, das die angeforderte Zahl nicht vollständig enthält oder überhaupt keinen `GOOD`-Kandidaten besitzt, darf nicht als erfolgreich angeboten werden. Bei vollständiger Kurationserschöpfung entsteht kein scheinbar erfolgreiches Offer Set.
 
-Wird ein **präsentiertes** Offer Set vollständig rerollt, müssen alle dabei tatsächlich gezeigten Katalogkonzepte historisch stabil genug gespeichert beziehungsweise über Candidate-Snapshots referenzierbar bleiben, um genau ein Cooldown-only-Expositionsereignis zu materialisieren. Es wird nicht aus später veränderten Katalogbeziehungen rekonstruiert.
+Phase 10A erzeugt ausschließlich `CURATED_UNPRESENTED`. Das Schema kennt daneben bereits `PRESENTED_PENDING_DECISION`, `CONFIRMED` und `REROLLED`, setzt diese aber noch nicht produktiv. Die Vollständigkeit von Positionen `1..N` und mindestens einem `GOOD` gilt unabhängig von diesem späteren Status und kann daher nicht durch einen Statuswechsel aufgehoben werden. Wird ein **später präsentiertes** Offer Set vollständig rerollt, genügen die stabilen Candidate-/Requirement-Snapshots und Offerreferenzen für genau ein Cooldown-only-Expositionsereignis; seine operative Materialisierung bleibt Phase 11 und wird nicht aus später veränderten Katalogbeziehungen rekonstruiert.
 
 ### Sichtbare Challenge und rerollte Offer-Exposition
 
@@ -286,7 +294,7 @@ Die Fremdschlüssel auf die aktuellen Katalogeinträge bleiben für Auswertungen
 
 Phase 9 erweitert die Snapshots um sämtliche replay- und diagnosewirksamen Werte. Auf Attempt-/Context-Ebene gehören dazu insbesondere Konfiguration, Katalogprojektion, sichtbare Historie, Attempt-Seed, RNG, Versionen und Ausschlussentscheidung. Auf Batch-Ebene liegen Batchnummer, abgeleiteter Batch-Seed, Rejection-Zähler, Fallbackstufe und Set-Fingerprint. Kandidaten und Requirements speichern damalige Rollen, Neuigkeit, Beschaffbarkeit, verwendete Gewichtsfaktoren, relevante bekannte Eigenschaften, Scores und Reason-Codes.
 
-Phase 10 ergänzt Kuratorrequest/-response, qualitative Bewertungen, Ränge, Kandidatenteilnahme je Kurationsrunde, Carry-over-/Locked-Kontext und das finale Offer Set. Phase 10/11 müssen außerdem die tatsächliche Präsentation und einen freiwilligen vollständigen Offer-Set-Reroll so persistieren, dass dessen Cooldown-only-Exposition ohne Rückgriff auf aktuelle Katalogwerte reproduzierbar ist.
+Phase 10A ergänzt Kuratorrequest/-response, qualitative Bewertungen, Ränge, Kandidatenteilnahme je Kurationsrunde, Carry-over-/Locked-Kontext und das finale Offer Set. Phase 11 muss außerdem die tatsächliche Präsentation und einen freiwilligen vollständigen Offer-Set-Reroll so persistieren, dass dessen Cooldown-only-Exposition ohne Rückgriff auf aktuelle Katalogwerte reproduzierbar ist.
 
 Diese Daten dürfen nicht mit bestätigter Challenge-Historie gleichgesetzt werden: Bestätigte Challenges wirken auf den vollständigen Historienvertrag; ein rerolltes unbestätigtes Offer Set wirkt nur auf den exakten Zutaten-Cooldown; intern verworfene oder normal nicht gewählte Angebote wirken gar nicht.
 
