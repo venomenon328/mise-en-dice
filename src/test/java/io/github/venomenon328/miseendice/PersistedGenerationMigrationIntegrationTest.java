@@ -138,7 +138,7 @@ class PersistedGenerationMigrationIntegrationTest {
                             + legacySuccessWithoutBatch)).isEqualTo("FAILED:CONTEXT_SNAPSHOT_INVALID");
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(25);
+            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(26);
             assertThat(countWhere(connection, "generation_batch", "generation_attempt_id = " + attempt)).isEqualTo(1);
         }
     }
@@ -180,7 +180,7 @@ class PersistedGenerationMigrationIntegrationTest {
             assertThat(value(connection, "select curation_status from generation_attempt where id = " + attempt))
                     .isEqualTo("LEGACY");
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(25);
+            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(26);
         }
     }
 

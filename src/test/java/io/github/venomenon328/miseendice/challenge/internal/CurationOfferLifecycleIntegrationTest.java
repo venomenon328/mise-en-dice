@@ -30,6 +30,8 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.junit.jupiter.Container;
@@ -59,6 +61,7 @@ class CurationOfferLifecycleIntegrationTest {
     @Autowired CurationCommands curationCommands;
     @Autowired CurationQueries curationQueries;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired PlatformTransactionManager transactionManager;
 
     @AfterEach
     void cleanData() {
@@ -76,6 +79,8 @@ class CurationOfferLifecycleIntegrationTest {
 
         PlannedRound planned = (PlannedRound) curationCommands.planRound(command);
         assertThat(planned.request().requestedOfferCount()).isEqualTo(2);
+        assertThat(planned.request().promptVersion()).isEqualTo("prompt-v1");
+        assertThat(planned.request().attemptExclusion().exclusionRuleId()).isNull();
         assertThat(planned.request().candidates()).hasSize(12);
         assertThat(planned.request().candidates()).allSatisfy(candidate -> {
             assertThat(candidate.participation()).isEqualTo(CurationModel.Participation.NEW);
@@ -174,17 +179,11 @@ class CurationOfferLifecycleIntegrationTest {
         PlannedRound first = (PlannedRound) curationCommands.planRound(initialPlan(generated, 2));
         curationCommands.completeRound(new CurationCommands.CompleteRound(first.roundId(), response(first, 1)));
         CurationQueries.RoundView firstCompleted = curationQueries.findRoundById(first.roundId()).orElseThrow();
+        GenerationQueries.BatchView secondBatch = duplicateGeneratedBatch(generated.attemptId(), first.request().primaryBatchId());
 
         CurationCommands.PlanRound followUp = new CurationCommands.PlanRound(generated.attemptId(), 2,
-                first.request().primaryBatchId(), CurationModel.RequestPurpose.QUALITY_FOLLOW_UP,
-                "future-curator", "prompt-v1", 1, List.of(
-                        new CandidateParticipation(firstCompleted.candidates().get(0).candidateId(),
-                                CurationModel.Participation.LOCKED_CONTEXT,
-                                firstCompleted.candidates().get(0).roundCandidateId()),
-                        new CandidateParticipation(firstCompleted.candidates().get(1).candidateId(),
-                                CurationModel.Participation.CARRY_OVER,
-                                firstCompleted.candidates().get(1).roundCandidateId())
-                ));
+                secondBatch.batchId(), CurationModel.RequestPurpose.QUALITY_FOLLOW_UP,
+                "future-curator", "prompt-v1", 1, followUpCandidates(secondBatch, firstCompleted));
         PlannedRound second = (PlannedRound) curationCommands.planRound(followUp);
         curationCommands.completeRound(new CurationCommands.CompleteRound(second.roundId(), response(second, 1)));
 
@@ -221,6 +220,66 @@ class CurationOfferLifecycleIntegrationTest {
         }
         return new CurationResponse(CurationModel.CONTRACT_VERSION, planned.attemptId(), planned.roundId(),
                 planned.request().primaryBatchId(), evaluations);
+    }
+
+    private List<CandidateParticipation> followUpCandidates(GenerationQueries.BatchView secondBatch,
+                                                              CurationQueries.RoundView firstCompleted) {
+        java.util.ArrayList<CandidateParticipation> candidates = new java.util.ArrayList<>();
+        candidates.add(new CandidateParticipation(firstCompleted.candidates().get(0).candidateId(),
+                CurationModel.Participation.LOCKED_CONTEXT, firstCompleted.candidates().get(0).roundCandidateId()));
+        candidates.add(new CandidateParticipation(firstCompleted.candidates().get(1).candidateId(),
+                CurationModel.Participation.CARRY_OVER, firstCompleted.candidates().get(1).roundCandidateId()));
+        secondBatch.candidates().forEach(candidate -> candidates.add(new CandidateParticipation(candidate.candidateId(),
+                CurationModel.Participation.NEW, null)));
+        return List.copyOf(candidates);
+    }
+
+    private GenerationQueries.BatchView duplicateGeneratedBatch(long attemptId, long firstBatchId) {
+        return new TransactionTemplate(transactionManager).execute(status -> {
+            long secondBatchId = jdbcTemplate.queryForObject("""
+                    insert into generation_batch (
+                        generation_attempt_id, batch_number, batch_seed, status, fallback_level,
+                        reservoir_metrics, fallback_attempts, set_evaluation, diagnostics,
+                        result_snapshot, set_fingerprint
+                    )
+                    select generation_attempt_id, 2, batch_seed, status, fallback_level,
+                           reservoir_metrics, fallback_attempts, set_evaluation, diagnostics,
+                           result_snapshot, set_fingerprint
+                    from generation_batch where id = ?
+                    returning id
+                    """, Long.class, firstBatchId);
+            jdbcTemplate.update("""
+                    insert into challenge_candidate (
+                        generation_batch_id, candidate_number, proposal_ordinal, profile, target_specificity,
+                        target_novelty_band, actual_novelty_band, known_novelty_load, total_score,
+                        data_confidence, component_scores, profile_slot_assignments,
+                        generator_reason_codes, generator_diagnostics, canonical_signature
+                    )
+                    select ?, candidate_number, proposal_ordinal, profile, target_specificity,
+                           target_novelty_band, actual_novelty_band, known_novelty_load, total_score,
+                           data_confidence, component_scores, profile_slot_assignments,
+                           generator_reason_codes, generator_diagnostics, canonical_signature
+                    from challenge_candidate where generation_batch_id = ?
+                    """, secondBatchId, firstBatchId);
+            jdbcTemplate.update("""
+                    insert into candidate_requirement (
+                        candidate_id, position, source, ingredient_concept_id, manual_requirement_id,
+                        challenge_specificity_snapshot, display_text_snapshot, concept_code_snapshot,
+                        novelty_level_snapshot, concept_snapshot, weight_evaluation_snapshot, generator_reason_codes
+                    )
+                    select copied.id, requirement.position, requirement.source, requirement.ingredient_concept_id,
+                           requirement.manual_requirement_id, requirement.challenge_specificity_snapshot,
+                           requirement.display_text_snapshot, requirement.concept_code_snapshot,
+                           requirement.novelty_level_snapshot, requirement.concept_snapshot,
+                           requirement.weight_evaluation_snapshot, requirement.generator_reason_codes
+                    from candidate_requirement requirement
+                    join challenge_candidate original on original.id = requirement.candidate_id
+                    join challenge_candidate copied on copied.generation_batch_id = ?
+                        and copied.candidate_number = original.candidate_number
+                    where original.generation_batch_id = ?
+                    """, secondBatchId, firstBatchId);
+            return generationQueries.findBatch(attemptId, 2).orElseThrow();
+        });
     }
 
     @TestConfiguration(proxyBeanMethods = false)

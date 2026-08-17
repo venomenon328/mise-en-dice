@@ -450,6 +450,7 @@ Dieses Paket schafft die fachliche und persistente Grenze noch ohne Discord-Adap
 - `curated_offer_set` und `curated_offer` erzwingen atomar exakt die gewünschte Anzahl, Positionen und mindestens ein `GOOD`,
 - echte PostgreSQL-Tests decken Migration, Legacyerhalt, strukturierte Fehler, Integrität und konkurrierende Round-/Offer-Starts ab,
 - produktiv entsteht ausschließlich `CURATED_UNPRESENTED`; kein Adapter, keine Orchestrierung und keine Offer-Exposition wurden vorgezogen.
+- Nacharbeit PR #72 härtet die terminale Attempt-State-Machine, die verbindliche Round-1-/Round-2-Form, Raw-`INVALID_RESPONSE`-Auditdaten und statusunabhängige Offer-Vollständigkeit ab; sie bleibt weiterhin reine Phase 10A.
 
 ### Phase 10B: OpenAI-Adapter und strikt gedeckelte Kurationsorchestrierung
 

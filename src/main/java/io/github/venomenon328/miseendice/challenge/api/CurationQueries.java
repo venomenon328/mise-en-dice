@@ -46,6 +46,7 @@ public interface CurationQueries {
             CurationRequest request,
             String requestPayloadJson,
             String responsePayloadJson,
+            String invalidResponseOriginalPayload,
             String terminalReasonCode,
             String terminalDetail,
             Instant createdAt,

@@ -31,11 +31,11 @@ public record CurationResponse(
             Map<String, String> diagnostics
     ) {
         public CandidateEvaluation {
-            if (candidateId <= 0 || evaluation == null || rank < 1 || reasonCodes == null || diagnostics == null) {
+            if (candidateId <= 0 || evaluation == null || rank < 1 || reasonCodes == null) {
                 throw new IllegalArgumentException("Invalid curation candidate evaluation");
             }
             reasonCodes = List.copyOf(reasonCodes);
-            diagnostics = Map.copyOf(diagnostics);
+            diagnostics = diagnostics == null ? Map.of() : Map.copyOf(diagnostics);
         }
     }
 }

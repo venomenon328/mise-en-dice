@@ -336,6 +336,8 @@ Phase 10A ergänzt im Challenge-Modul die öffentlichen, transportneutralen APIs
 
 Das finale Offer Set entsteht ausschließlich aus einer explizit geordneten Liste persistierter Kuratorbewertungen in einer weiteren kurzen Transaktion. PostgreSQL sichert Attemptzugehörigkeit, vollständige Ränge sowie per deferrable Constraint die positionsgebundene Vollständigkeit und mindestens ein `GOOD`; der Application Service liefert die Idempotenz- und Konfliktsemantik. Die Phase enthält keinen Auswahlalgorithmus, keine zweite Generation oder Kuratororchestrierung und markiert keine tatsächliche Präsentation.
 
+Die Phase-10A-Zustandsmaschine wird unter der Attempt-Zeilensperre geführt und zusätzlich durch PostgreSQL-Trigger geschützt: `OFFER_READY`, `EXHAUSTED` und Legacy-Historie sind nicht wieder eröffnungsfähig; eine Pending-Runde kann nicht gleichzeitig erschöpft und später doch abgeschlossen werden. Abschlussretries sind nur bei identischem bereits terminalem Payload idempotent, abweichende Daten bleiben Konflikte. Ein späterer Transportadapter kann nicht lesbaren Output über den öffentlichen Raw-Invalid-Response-Command speichern; das ist eine fachliche `INVALID_RESPONSE` mit Originalpayload, kein maskierter technischer Fehler. Ausgehende Netzwerklogik oder die Entscheidung für Batch 2 verbleiben weiterhin außerhalb dieses Moduls und in Phase 10B.
+
 Das Generator-Labor aus Issue #37 und die nachgelagerten, getrennten Simulationspakete #53/#54 rufen denselben
 reinen `GeneratorRunExecution`-Kern über bereits materialisierten Katalog- und Historien-Snapshots auf wie spätere
 Adapter. Ein #53-Simulationslauf friert alle benötigten Monatskataloge und gegebenenfalls die produktive sichtbare

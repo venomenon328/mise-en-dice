@@ -7,23 +7,40 @@ import java.util.Objects;
 /** Immutable persisted request handed to a future external curator adapter. */
 public record CurationRequest(
         String contractVersion,
+        String promptVersion,
         long attemptId,
         long roundId,
         long primaryBatchId,
         int requestedOfferCount,
         int openOfferSlots,
+        AttemptExclusion attemptExclusion,
         List<Candidate> candidates
 ) {
     public CurationRequest {
-        if (!CurationModel.CONTRACT_VERSION.equals(contractVersion) || attemptId <= 0 || roundId <= 0
+        if (!CurationModel.CONTRACT_VERSION.equals(contractVersion) || promptVersion == null || promptVersion.isBlank()
+                || attemptId <= 0 || roundId <= 0
                 || primaryBatchId <= 0 || requestedOfferCount < 1 || requestedOfferCount > 3
-                || openOfferSlots < 1 || openOfferSlots > requestedOfferCount || candidates == null
+                || openOfferSlots < 1 || openOfferSlots > requestedOfferCount || attemptExclusion == null || candidates == null
                 || candidates.isEmpty()) {
             throw new IllegalArgumentException("Invalid curation request contract");
         }
+        promptVersion = promptVersion.strip();
         candidates = List.copyOf(candidates);
         if (candidates.stream().anyMatch(Objects::isNull)) {
             throw new IllegalArgumentException("Curation request candidates must not contain null values");
+        }
+    }
+
+    /** Immutable attempt-wide exclusion decision relevant to every candidate in this curation request. */
+    public record AttemptExclusion(Long exclusionRuleId, String exclusionTextSnapshot) {
+        public AttemptExclusion {
+            if ((exclusionRuleId == null) != (exclusionTextSnapshot == null)
+                    || (exclusionRuleId != null && (exclusionRuleId <= 0 || exclusionTextSnapshot.isBlank()))) {
+                throw new IllegalArgumentException("Invalid attempt exclusion snapshot");
+            }
+            if (exclusionTextSnapshot != null) {
+                exclusionTextSnapshot = exclusionTextSnapshot.strip();
+            }
         }
     }
 

@@ -46,10 +46,6 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
         validateParticipations(command.candidates());
         return writeTransaction.execute(status -> {
             JdbcCurationRepository.Attempt attempt = repository.lockAttempt(command.attemptId());
-            requireGenerated(attempt);
-            if (command.openOfferSlots() > attempt.requestedOfferCount()) {
-                throw new IllegalArgumentException("Open offer slots exceed the requested offer count");
-            }
             Optional<JdbcCurationRepository.Round> existing = repository.findRoundForUpdate(
                     command.attemptId(), command.roundNumber());
             if (existing.isPresent()) {
@@ -60,12 +56,18 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
                 return new PlannedRound(view.roundId(), view.attemptId(), view.request());
             }
 
+            requirePlanAllowed(attempt);
+            validatePlan(attempt, command, repository.findRoundsForUpdate(command.attemptId()));
+
             long roundId = repository.nextRoundId();
             List<CurationRequest.Candidate> candidates = candidates(command.candidates());
-            CurationRequest request = new CurationRequest(CurationModel.CONTRACT_VERSION, command.attemptId(), roundId,
-                    command.primaryBatchId(), attempt.requestedOfferCount(), command.openOfferSlots(), candidates);
+            CurationRequest request = new CurationRequest(CurationModel.CONTRACT_VERSION, command.promptVersion().strip(),
+                    command.attemptId(), roundId, command.primaryBatchId(), attempt.requestedOfferCount(),
+                    command.openOfferSlots(), new CurationRequest.AttemptExclusion(attempt.exclusionRuleId(),
+                    attempt.exclusionTextSnapshot()), candidates);
             repository.insertRound(roundId, command.attemptId(), command.roundNumber(), command.primaryBatchId(),
-                    command.purpose(), command.curatorModel().strip(), command.promptVersion().strip(), repository.json(request));
+                    command.purpose(), command.curatorModel().strip(), command.promptVersion().strip(),
+                    command.openOfferSlots(), repository.json(request));
             int position = 1;
             for (CandidateParticipation candidate : command.candidates()) {
                 repository.insertRoundCandidate(roundId, candidate.candidateId(), position++, candidate.participation(),
@@ -82,11 +84,12 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
         JdbcCurationRepository.Round observed = repository.findRoundById(command.roundId()).orElseThrow(
                 () -> new IllegalArgumentException("Curation round does not exist"));
         return writeTransaction.execute(status -> {
-            repository.lockAttempt(observed.attemptId());
+            JdbcCurationRepository.Attempt attempt = repository.lockAttempt(observed.attemptId());
             JdbcCurationRepository.Round round = repository.findRoundForUpdate(command.roundId());
             if (round.status() != CurationModel.RoundStatus.PENDING) {
                 return terminalCompletion(round, responsePayload, command.response());
             }
+            requirePendingRoundCanFinish(attempt);
             Validation validation = validateResponse(round, command.response());
             if (validation.errorCode() != null) {
                 repository.invalidateRound(round, responsePayload, validation.errorCode(), validation.detail());
@@ -98,11 +101,27 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
     }
 
     @Override
+    public CurationCommands.CompletionOutcome recordInvalidResponse(CurationCommands.InvalidResponsePayload command) {
+        JdbcCurationRepository.Round observed = repository.findRoundById(command.roundId()).orElseThrow(
+                () -> new IllegalArgumentException("Curation round does not exist"));
+        return writeTransaction.execute(status -> {
+            JdbcCurationRepository.Attempt attempt = repository.lockAttempt(observed.attemptId());
+            JdbcCurationRepository.Round round = repository.findRoundForUpdate(command.roundId());
+            if (round.status() != CurationModel.RoundStatus.PENDING) {
+                return terminalInvalidPayload(round, command);
+            }
+            requirePendingRoundCanFinish(attempt);
+            repository.recordInvalidResponse(round, command.originalPayload(), command.reasonCode(), command.detail());
+            return new InvalidResponse(round.id(), round.attemptId(), command.reasonCode(), command.detail());
+        });
+    }
+
+    @Override
     public RoundOutcome recordTechnicalFailure(TechnicalFailure command) {
         JdbcCurationRepository.Round observed = repository.findRoundById(command.roundId()).orElseThrow(
                 () -> new IllegalArgumentException("Curation round does not exist"));
         return writeTransaction.execute(status -> {
-            repository.lockAttempt(observed.attemptId());
+            JdbcCurationRepository.Attempt attempt = repository.lockAttempt(observed.attemptId());
             JdbcCurationRepository.Round round = repository.findRoundForUpdate(command.roundId());
             if (round.status() == CurationModel.RoundStatus.TECHNICAL_ERROR
                     && command.reasonCode().equals(round.terminalReasonCode())
@@ -113,6 +132,7 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
             if (round.status() != CurationModel.RoundStatus.PENDING) {
                 throw new CurationConflictException("A terminal curation round cannot be overwritten");
             }
+            requirePendingRoundCanFinish(attempt);
             repository.recordTechnicalFailure(round, command.reasonCode(), command.detail());
             return new FailedRound(round.id(), round.attemptId(), CurationModel.RoundStatus.TECHNICAL_ERROR,
                     command.reasonCode(), command.detail());
@@ -124,11 +144,22 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
         return writeTransaction.execute(status -> {
             JdbcCurationRepository.Attempt attempt = repository.lockAttempt(command.attemptId());
             requireGenerated(attempt);
-            if (repository.hasGoodEvaluation(command.attemptId())) {
-                throw new CurationConflictException("An attempt with a GOOD evaluation cannot be marked exhausted");
+            if ("EXHAUSTED".equals(attempt.curationStatus())) {
+                if (command.reasonCode().equals(attempt.terminalReasonCode())
+                        && equal(command.detail(), attempt.terminalDetail())) {
+                    return new ExhaustedAttempt(command.attemptId(), command.reasonCode(), command.detail());
+                }
+                throw new CurationConflictException("A terminal curation exhaustion cannot be overwritten");
             }
             if ("OFFER_READY".equals(attempt.curationStatus())) {
                 throw new CurationConflictException("An attempt with an offer set cannot be marked exhausted");
+            }
+            if (repository.findRoundsForUpdate(command.attemptId()).stream()
+                    .anyMatch(round -> round.status() == CurationModel.RoundStatus.PENDING)) {
+                throw new CurationConflictException("An attempt with a pending curation round cannot be marked exhausted");
+            }
+            if (repository.hasGoodEvaluation(command.attemptId())) {
+                throw new CurationConflictException("An attempt with a GOOD evaluation cannot be marked exhausted");
             }
             repository.markAttemptExhausted(command.attemptId(), command.reasonCode(), command.detail());
             return new ExhaustedAttempt(command.attemptId(), command.reasonCode(), command.detail());
@@ -140,10 +171,6 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
         validateOfferSelections(command);
         return writeTransaction.execute(status -> {
             JdbcCurationRepository.Attempt attempt = repository.lockAttempt(command.attemptId());
-            requireGenerated(attempt);
-            if (command.offers().size() != attempt.requestedOfferCount()) {
-                throw new IllegalArgumentException("Offer selections must exactly match the session requested offer count");
-            }
             String selectionPath = repository.json(Map.of("reasonCodes", command.selectionReasonCodes()));
             Optional<CurationQueries.OfferSetView> existing = repository.findOfferSet(command.attemptId());
             if (existing.isPresent()) {
@@ -152,6 +179,10 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
                 }
                 return new CuratedOfferSet(existing.get().offerSetId(), command.attemptId(),
                         existing.get().requestedOfferCount(), existing.get().status());
+            }
+            requireOfferCreationAllowed(attempt);
+            if (command.offers().size() != attempt.requestedOfferCount()) {
+                throw new IllegalArgumentException("Offer selections must exactly match the session requested offer count");
             }
             long offerSetId = repository.insertOfferSet(command.attemptId(), attempt.requestedOfferCount(), selectionPath);
             int position = 1;
@@ -196,6 +227,100 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
                     value.sourceRoundCandidateId(), repository.candidateSnapshot(value.candidateId())));
         }
         return List.copyOf(candidates);
+    }
+
+    private void validatePlan(JdbcCurationRepository.Attempt attempt, PlanRound command,
+                              List<JdbcCurationRepository.Round> existingRounds) {
+        JdbcCurationRepository.Batch batch = repository.primaryBatch(command.primaryBatchId());
+        if (batch.attemptId() != attempt.id() || batch.legacyMigrated() || !"GENERATED".equals(batch.status())) {
+            throw new CurationConflictException("Curation requires a generated non-legacy batch of the same attempt");
+        }
+        if (command.roundNumber() == 1) {
+            if (!existingRounds.isEmpty() || command.purpose() != CurationModel.RequestPurpose.INITIAL_PASS
+                    || batch.batchNumber() != 1 || command.openOfferSlots() != attempt.requestedOfferCount()
+                    || command.candidates().size() != 12
+                    || command.candidates().stream().anyMatch(value -> value.participation() != CurationModel.Participation.NEW)) {
+                throw new CurationConflictException("Round one must be the complete initial twelve-candidate pass");
+            }
+            return;
+        }
+
+        JdbcCurationRepository.Round first = existingRounds.stream()
+                .filter(round -> round.roundNumber() == 1).findFirst().orElseThrow(
+                        () -> new CurationConflictException("Round two requires a persisted first round"));
+        if (existingRounds.size() != 1) {
+            throw new CurationConflictException("A generation attempt permits at most two curation rounds");
+        }
+        List<JdbcCurationRepository.RoundCandidate> firstCandidates = repository.roundCandidates(first.id());
+        if (command.purpose() == CurationModel.RequestPurpose.TECHNICAL_RETRY) {
+            if (first.status() != CurationModel.RoundStatus.TECHNICAL_ERROR || batch.id() != first.primaryBatchId()
+                    || command.openOfferSlots() != attempt.requestedOfferCount() || command.candidates().size() != 12
+                    || command.candidates().stream().anyMatch(value -> value.participation() != CurationModel.Participation.NEW)) {
+                throw new CurationConflictException("A technical retry repeats the complete failed first-pass request");
+            }
+            return;
+        }
+        if (command.purpose() != CurationModel.RequestPurpose.QUALITY_FOLLOW_UP
+                || first.status() != CurationModel.RoundStatus.COMPLETED || batch.batchNumber() != 2) {
+            throw new CurationConflictException("A quality follow-up requires a completed first round and batch two");
+        }
+        List<JdbcCurationRepository.RoundCandidate> good = firstCandidates.stream()
+                .filter(value -> value.evaluation() == CurationModel.Evaluation.GOOD).toList();
+        if (good.size() >= attempt.requestedOfferCount()
+                || command.openOfferSlots() != attempt.requestedOfferCount() - good.size()) {
+            throw new CurationConflictException("A quality follow-up may only fill the open slots after first-round GOOD results");
+        }
+        List<CandidateParticipation> locked = command.candidates().stream()
+                .filter(value -> value.participation() == CurationModel.Participation.LOCKED_CONTEXT).toList();
+        Set<Long> expectedLockedSources = good.stream().map(JdbcCurationRepository.RoundCandidate::id)
+                .collect(Collectors.toSet());
+        Set<Long> actualLockedSources = locked.stream().map(CandidateParticipation::sourceRoundCandidateId)
+                .collect(Collectors.toSet());
+        if (locked.size() != good.size() || !actualLockedSources.equals(expectedLockedSources)) {
+            throw new CurationConflictException("A quality follow-up must retain every first-round GOOD as locked context");
+        }
+        List<CandidateParticipation> carryOver = command.candidates().stream()
+                .filter(value -> value.participation() == CurationModel.Participation.CARRY_OVER).toList();
+        if (carryOver.size() > command.openOfferSlots()
+                || carryOver.stream().anyMatch(value -> !isEvaluatedFallback(firstCandidates, value))) {
+            throw new CurationConflictException("Carry-over candidates must be evaluated non-GOOD first-round fallbacks");
+        }
+        long newCount = command.candidates().stream()
+                .filter(value -> value.participation() == CurationModel.Participation.NEW).count();
+        if (newCount != 12 || command.candidates().size() != 12 + locked.size() + carryOver.size()) {
+            throw new CurationConflictException("A quality follow-up requires all twelve new batch-two candidates");
+        }
+    }
+
+    private static boolean isEvaluatedFallback(List<JdbcCurationRepository.RoundCandidate> firstCandidates,
+                                               CandidateParticipation participation) {
+        return firstCandidates.stream().anyMatch(candidate -> candidate.id() == participation.sourceRoundCandidateId()
+                && candidate.candidateId() == participation.candidateId()
+                && candidate.evaluation() != null && candidate.evaluation() != CurationModel.Evaluation.GOOD);
+    }
+
+    private static void requirePlanAllowed(JdbcCurationRepository.Attempt attempt) {
+        requireGenerated(attempt);
+        if ("OFFER_READY".equals(attempt.curationStatus()) || "EXHAUSTED".equals(attempt.curationStatus())) {
+            throw new CurationConflictException("A terminal curation attempt cannot open another request");
+        }
+    }
+
+    private static void requirePendingRoundCanFinish(JdbcCurationRepository.Attempt attempt) {
+        if ("OFFER_READY".equals(attempt.curationStatus()) || "EXHAUSTED".equals(attempt.curationStatus())) {
+            throw new CurationConflictException("A terminal curation attempt cannot complete a pending request");
+        }
+        requireGenerated(attempt);
+    }
+
+    private static void requireOfferCreationAllowed(JdbcCurationRepository.Attempt attempt) {
+        requireGenerated(attempt);
+        if ("EXHAUSTED".equals(attempt.curationStatus())) {
+            throw new CurationConflictException("An exhausted curation attempt cannot create an offer set");
+        }
+        if ("OFFER_READY".equals(attempt.curationStatus())) {
+            throw new IllegalStateException("An offer-ready attempt has no persisted offer set");
+        }
     }
 
     private Validation validateResponse(JdbcCurationRepository.Round round, CurationResponse response) {
@@ -255,6 +380,17 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
                     round.terminalDetail());
         }
         throw new CurationConflictException("A terminal curation round cannot receive a different response");
+    }
+
+    private CurationCommands.CompletionOutcome terminalInvalidPayload(JdbcCurationRepository.Round round,
+                                                                        CurationCommands.InvalidResponsePayload command) {
+        if (round.status() == CurationModel.RoundStatus.INVALID_RESPONSE
+                && java.util.Objects.equals(round.invalidResponseOriginalPayload(), command.originalPayload())
+                && java.util.Objects.equals(round.terminalReasonCode(), command.reasonCode())
+                && java.util.Objects.equals(round.terminalDetail(), command.detail())) {
+            return new InvalidResponse(round.id(), round.attemptId(), round.terminalReasonCode(), round.terminalDetail());
+        }
+        throw new CurationConflictException("A terminal curation round cannot receive a different response payload");
     }
 
     private static void requireGenerated(JdbcCurationRepository.Attempt attempt) {

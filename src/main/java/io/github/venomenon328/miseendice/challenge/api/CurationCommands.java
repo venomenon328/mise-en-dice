@@ -9,6 +9,8 @@ public interface CurationCommands {
 
     CompletionOutcome completeRound(CompleteRound command);
 
+    CompletionOutcome recordInvalidResponse(InvalidResponsePayload command);
+
     RoundOutcome recordTechnicalFailure(TechnicalFailure command);
 
     ExhaustedAttempt recordExhaustion(Exhaustion command);
@@ -54,6 +56,20 @@ public interface CurationCommands {
         public CompleteRound {
             if (roundId <= 0 || response == null) {
                 throw new IllegalArgumentException("A round and response are required");
+            }
+        }
+    }
+
+    /** Persists the unchanged raw payload when a future transport adapter cannot deserialize it into CurationResponse. */
+    record InvalidResponsePayload(long roundId, String originalPayload, String reasonCode, String detail) {
+        public InvalidResponsePayload {
+            if (roundId <= 0 || originalPayload == null || originalPayload.length() > 1_000_000
+                    || reasonCode == null || !reasonCode.matches("[A-Z][A-Z0-9_]{0,63}")) {
+                throw new IllegalArgumentException("Invalid curation response payload requires a stable reason code");
+            }
+            detail = detail == null ? null : detail.strip();
+            if (detail != null && detail.length() > 1_000) {
+                throw new IllegalArgumentException("Invalid response details are limited");
             }
         }
     }

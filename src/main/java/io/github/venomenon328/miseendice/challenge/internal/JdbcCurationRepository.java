@@ -33,7 +33,7 @@ class JdbcCurationRepository {
         return jdbcTemplate.query("""
                 select attempt.id, attempt.challenge_session_id, session.requested_offer_count,
                        attempt.status, attempt.curation_status, attempt.curation_terminal_reason_code,
-                       attempt.curation_terminal_detail
+                       attempt.curation_terminal_detail, attempt.exclusion_rule_id, attempt.exclusion_text_snapshot
                 from generation_attempt attempt
                 join challenge_session session on session.id = attempt.challenge_session_id
                 where attempt.id = ? for update
@@ -45,6 +45,12 @@ class JdbcCurationRepository {
         return jdbcTemplate.query(roundSelect() + " where round_row.generation_attempt_id = ? and round_row.round_number = ?"
                         + " and not round_row.legacy_migrated for update",
                 this::mapRound, attemptId, roundNumber).stream().findFirst();
+    }
+
+    List<Round> findRoundsForUpdate(long attemptId) {
+        return jdbcTemplate.query(roundSelect() + " where round_row.generation_attempt_id = ?"
+                        + " and not round_row.legacy_migrated order by round_row.round_number for update",
+                this::mapRound, attemptId);
     }
 
     Round findRoundForUpdate(long roundId) {
@@ -68,16 +74,26 @@ class JdbcCurationRepository {
                 "select nextval(pg_get_serial_sequence('curation_round', 'id'))", Long.class);
     }
 
+    Batch primaryBatch(long batchId) {
+        return jdbcTemplate.query("""
+                select id, generation_attempt_id, batch_number, status, legacy_migrated
+                from generation_batch where id = ?
+                """, (result, row) -> new Batch(result.getLong("id"), result.getLong("generation_attempt_id"),
+                result.getInt("batch_number"), result.getString("status"), result.getBoolean("legacy_migrated")), batchId)
+                .stream().findFirst().orElseThrow(() -> new IllegalArgumentException("Generation batch does not exist"));
+    }
+
     void insertRound(long roundId, long attemptId, int roundNumber, long primaryBatchId,
                      CurationModel.RequestPurpose purpose, String curatorModel, String promptVersion,
-                     String requestPayload) {
+                     int openOfferSlots, String requestPayload) {
         jdbcTemplate.update("""
                 insert into curation_round (
                     id, generation_attempt_id, round_number, curator_model, prompt_version, status,
-                    request_payload, legacy_migrated, primary_generation_batch_id, request_purpose, contract_version
-                ) values (?, ?, ?, ?, ?, 'PENDING', cast(? as jsonb), false, ?, ?, 'CURATION_CONTRACT_V1')
+                    request_payload, legacy_migrated, primary_generation_batch_id, request_purpose, contract_version,
+                    open_offer_slots
+                ) values (?, ?, ?, ?, ?, 'PENDING', cast(? as jsonb), false, ?, ?, 'CURATION_CONTRACT_V1', ?)
                 """, roundId, attemptId, roundNumber, curatorModel, promptVersion, requestPayload,
-                primaryBatchId, purpose.name());
+                primaryBatchId, purpose.name(), openOfferSlots);
     }
 
     long insertRoundCandidate(long roundId, long candidateId, int requestPosition,
@@ -118,10 +134,20 @@ class JdbcCurationRepository {
     void invalidateRound(Round round, String responsePayload, String reasonCode, String detail) {
         jdbcTemplate.update("""
                 update curation_round
-                set status = 'INVALID_RESPONSE', response_payload = cast(? as jsonb),
+                set status = 'INVALID_RESPONSE', response_payload = cast(? as jsonb), invalid_response_original_payload = null,
                     terminal_reason_code = ?, terminal_detail = ?, completed_at = now()
                 where id = ? and status = 'PENDING'
                 """, responsePayload, reasonCode, detail, round.id());
+        markAttemptCurationStatus(round.attemptId(), "FAILED");
+    }
+
+    void recordInvalidResponse(Round round, String originalPayload, String reasonCode, String detail) {
+        jdbcTemplate.update("""
+                update curation_round
+                set status = 'INVALID_RESPONSE', response_payload = null, invalid_response_original_payload = ?,
+                    terminal_reason_code = ?, terminal_detail = ?, completed_at = now()
+                where id = ? and status = 'PENDING'
+                """, originalPayload, reasonCode, detail, round.id());
         markAttemptCurationStatus(round.attemptId(), "FAILED");
     }
 
@@ -207,7 +233,7 @@ class JdbcCurationRepository {
         Attempt attempt = jdbcTemplate.query("""
                 select attempt.id, attempt.challenge_session_id, session.requested_offer_count,
                        attempt.status, attempt.curation_status, attempt.curation_terminal_reason_code,
-                       attempt.curation_terminal_detail
+                       attempt.curation_terminal_detail, attempt.exclusion_rule_id, attempt.exclusion_text_snapshot
                 from generation_attempt attempt join challenge_session session on session.id = attempt.challenge_session_id
                 where attempt.id = ?
                 """, this::mapAttempt, attemptId).stream().findFirst().orElseThrow();
@@ -232,7 +258,8 @@ class JdbcCurationRepository {
                         candidate.reasonCodes(), candidate.diagnosticsJson(), candidate.snapshot())).toList();
         return new CurationQueries.RoundView(round.id(), round.attemptId(), round.roundNumber(), round.primaryBatchId(),
                 round.curatorModel(), round.promptVersion(), round.purpose(), round.status(), request,
-                round.requestPayload(), round.responsePayload(), round.terminalReasonCode(), round.terminalDetail(),
+                round.requestPayload(), round.responsePayload(), round.invalidResponseOriginalPayload(),
+                round.terminalReasonCode(), round.terminalDetail(),
                 round.createdAt(), round.completedAt(), candidates);
     }
 
@@ -312,17 +339,19 @@ class JdbcCurationRepository {
 
     private Round mapRound(ResultSet result, int row) throws SQLException {
         return new Round(result.getLong("id"), result.getLong("generation_attempt_id"), result.getInt("round_number"),
-                result.getLong("primary_generation_batch_id"), result.getString("curator_model"),
+                result.getLong("primary_generation_batch_id"), result.getInt("open_offer_slots"), result.getString("curator_model"),
                 result.getString("prompt_version"), CurationModel.RequestPurpose.valueOf(result.getString("request_purpose")),
                 CurationModel.RoundStatus.valueOf(result.getString("status")), result.getString("request_payload"),
-                result.getString("response_payload"), result.getString("terminal_reason_code"),
+                result.getString("response_payload"), result.getString("invalid_response_original_payload"),
+                result.getString("terminal_reason_code"),
                 result.getString("terminal_detail"), instant(result, "created_at"), instant(result, "completed_at"));
     }
 
     private Attempt mapAttempt(ResultSet result, int row) throws SQLException {
         return new Attempt(result.getLong("id"), result.getLong("challenge_session_id"),
                 result.getInt("requested_offer_count"), result.getString("status"), result.getString("curation_status"),
-                result.getString("curation_terminal_reason_code"), result.getString("curation_terminal_detail"));
+                result.getString("curation_terminal_reason_code"), result.getString("curation_terminal_detail"),
+                (Long) result.getObject("exclusion_rule_id"), result.getString("exclusion_text_snapshot"));
     }
 
     private static CurationModel.Evaluation nullableEvaluation(ResultSet result, String column) throws SQLException {
@@ -340,19 +369,24 @@ class JdbcCurationRepository {
                 select round_row.id, round_row.generation_attempt_id, round_row.round_number,
                        round_row.primary_generation_batch_id, round_row.curator_model, round_row.prompt_version,
                        round_row.request_purpose, round_row.status, round_row.request_payload::text,
-                       round_row.response_payload::text, round_row.terminal_reason_code, round_row.terminal_detail,
+                       round_row.response_payload::text, round_row.invalid_response_original_payload,
+                       round_row.terminal_reason_code, round_row.terminal_detail, round_row.open_offer_slots,
                        round_row.created_at, round_row.completed_at
                 from curation_round round_row
                 """;
     }
 
     record Attempt(long id, long sessionId, int requestedOfferCount, String generationStatus, String curationStatus,
-                   String terminalReasonCode, String terminalDetail) {
+                   String terminalReasonCode, String terminalDetail, Long exclusionRuleId, String exclusionTextSnapshot) {
     }
 
-    record Round(long id, long attemptId, int roundNumber, long primaryBatchId, String curatorModel,
+    record Batch(long id, long attemptId, int batchNumber, String status, boolean legacyMigrated) {
+    }
+
+    record Round(long id, long attemptId, int roundNumber, long primaryBatchId, int openOfferSlots, String curatorModel,
                  String promptVersion, CurationModel.RequestPurpose purpose, CurationModel.RoundStatus status,
-                 String requestPayload, String responsePayload, String terminalReasonCode, String terminalDetail,
+                 String requestPayload, String responsePayload, String invalidResponseOriginalPayload,
+                 String terminalReasonCode, String terminalDetail,
                  Instant createdAt, Instant completedAt) {
     }
 
