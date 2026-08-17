@@ -1184,7 +1184,7 @@ Phase 10 darf den Lifecycle um erfolgreiche Kuratierung beziehungsweise sichtbar
 - Der vollständige Batch, seine Kandidaten, Requirements, Scores, Diagnosen und die Attempt-Statusänderung werden in einer kurzen Transaktion atomar gespeichert.
 - Unbekannte PostgreSQL- und Laufzeitfehler bleiben `TECHNICAL_GENERATION_FAILURE` und werden weder als Konkurrenz noch als Erschöpfung maskiert.
 
-Phase 9D implementiert ausschließlich Batch 1. Das Schema und der Seedvertrag erlauben Phase 10 genau einen Batch 2 unter demselben Context Snapshot; Batch 3 und unbeschränkte interne Regeneration werden verhindert. Diese Kuratororchestrierung wird nicht vorgezogen.
+Phase 9D implementiert ausschließlich Batch 1. Phase 10B erzeugt bei Bedarf genau einen Batch 2 unter demselben unveränderlichen, persistierten Context Snapshot und dem bestehenden Seedvertrag; sie lädt weder Katalog noch Historie neu. Batch 3 und unbeschränkte interne Regeneration werden verhindert. Diese Orchestrierung verändert keine Phase-9-Generatorregel und erzeugt keine sichtbare Historienexposition.
 
 ## 20. Replay
 

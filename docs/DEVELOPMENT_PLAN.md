@@ -481,6 +481,17 @@ Dieses Paket implementiert den tatsächlichen externen Kurator und die höchsten
 - nach erfolgreicher Kuratierung existiert exakt die gewünschte Zahl von Angeboten,
 - noch nicht präsentierte oder normal nicht gewählte Angebote erzeugen keinerlei Generatorhistorie.
 
+#### Erfüllter Stand mit Issue #73
+
+- `CurationOrchestrationCommands` führt den transportneutralen, restartfähigen Use Case bis zu `CURATED_UNPRESENTED`, typisierter Kurations-/Generatorerschöpfung oder einem sichtbaren technischen Kuratorfehler.
+- Eine persistierte Dispatch-Claim pro Runde erteilt genau einmal die Berechtigung zu einem externen Request. `CLAIMED`, `RESULT_RECORDED` und `UNKNOWN_EXTERNAL_OUTCOME` sind irreversible PostgreSQL-Zustände; damit bleiben auch Konkurrenz, Prozessabbruch und Restart innerhalb des Attempt-Budgets von zwei Requests.
+- Der OpenAI-Adapter verwendet die Responses API direkt, ohne SDK-, HTTP- oder versteckte Client-Retries, mit `store=false`, deaktiviertem Streaming/Background-Modus, strengem JSON-Schema, `CURATOR_PROMPT_V1`, Standardmodell `gpt-5.6-terra` und Reasoning `medium`. Gemäß ADR 0008 erfordert er zusätzlich zur expliziten Aktivierung das Spring-Profil `production`; widersprüchliche Konfiguration scheitert beim Start.
+- Providerrequest, Raw-Response beziehungsweise Transportfehler, Response-ID, Tokenverbrauch und Diagnose werden auf der tatsächlich verbrauchten Runde auditiert. Der Netzwerkzugriff liegt zwischen zwei kurzen Datenbanktransaktionen.
+- Batch 2 wird ausschließlich aus dem verifizierten, gespeicherten Context Snapshot desselben Attempts berechnet. Runde-1-`GOOD`s bleiben Locked Context; nur die besten benötigten `ACCEPTABLE`/`BAD` werden Carry-over; alle zwölf Kandidaten aus Batch 2 sind `NEW`.
+- Ein technischer Fehler in Runde 1 kann den zweiten Request als `TECHNICAL_RETRY` verbrauchen und schließt damit eine Qualitätsrunde aus. Ungültiger strukturierter Output wird nie erneut gesendet. Bei technischem Fehler der Qualitätsrunde oder erschöpftem Batch 2 gilt der dokumentierte Runde-1-Fallback nur, wenn dort mindestens ein `GOOD` vorliegt.
+- Lokale HTTP-Adaptertests und echte PostgreSQL-Tests decken Statusklassen, Timeouts, Prompt/Schema, Konkurrenz, gespeicherte Result-Replays, unklare Crash-Ausgänge, Migration und die Ein-/Zwei-Request-Pfade ab. Der normale Build ruft OpenAI nicht auf.
+- Discord-Präsentation, Bestätigung, sichtbare Challenge, freiwilliger Reroll und dessen Historienexposition verbleiben vollständig in Phase 11.
+
 ## Phase 11: Discord-Bot für Ziehung, Auswahl, Bestätigung und Reroll
 
 Der eigenständige Discord-Adapter verwendet ausschließlich die öffentlichen Challenge-Application-APIs aus Phase 10. Er besitzt keine eigene Generator-, Kurator-, Fallback- oder Persistenzlogik.

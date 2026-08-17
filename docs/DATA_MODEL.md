@@ -1,6 +1,6 @@
 # Datenmodell
 
-Stand: 16. August 2026
+Stand: 17. August 2026
 
 Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt als explizit geordnete Liquibase-Changesets vor:
 
@@ -10,6 +10,7 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 - [`004-persisted-candidate-generation.sql`](../src/main/resources/db/changelog/schema/004-persisted-candidate-generation.sql) für Generation Context, Batches, Candidate-Snapshots und den Phase-9D-Lifecycle
 - [`005-curation-offer-lifecycle.sql`](../src/main/resources/db/changelog/schema/005-curation-offer-lifecycle.sql) für den Phase-10A-Kuratorvertrag, Bewertungsreferenzen und persistente Offer Sets
 - [`006-curation-state-machine-hardening.sql`](../src/main/resources/db/changelog/schema/006-curation-state-machine-hardening.sql) für terminale Kurationsübergänge, Request-Shapes und dauerhafte Offer-Integrität
+- [`007-bounded-curator-dispatch.sql`](../src/main/resources/db/changelog/schema/007-bounded-curator-dispatch.sql) für das harte externe Requestbudget sowie Provider-Audit- und Restartzustände aus Phase 10B
 
 Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
 
@@ -210,7 +211,7 @@ Phase 9D implementiert noch keine Kuratororchestrierung und kein Offer Set. Sein
 
 Die append-only Migration `schema/004-persisted-candidate-generation.sql` setzt diesen Phase-9D-Ausschnitt um. Bestehende Kurationsrunden werden dabei als ausdrücklich markierte Legacy-Batches gespiegelt; vorhandene Candidate-, Requirement- und Challenge-IDs sowie ihre historischen Kurationsbezüge bleiben erhalten. Neue Generatorbatches benötigen weder eine Kurationsrunde noch Modell-, Prompt- oder Auswahlplatzhalter.
 
-`schema/005-curation-offer-lifecycle.sql` markiert die vor diesem Changeset vorhandenen `curation_round`-Zeilen zusätzlich als Legacy-Historie. Ihre alten Status, `challenge_candidate.curation_round_id`, `is_selected` und `curator_evaluation` bleiben lesbar, sind aber keine Autorität für neue Offers. Es rekonstruiert insbesondere keine alten Offer Sets. `schema/006-curation-state-machine-hardening.sql` ergänzt ausschließlich neue Felder, Constraints und Trigger; es migriert vorhandene 005-Request-Payloads mit ihrer gespeicherten Prompt- und Attempt-Ausschlussinformation. Nur neue, nicht historische Runden verwenden den unten beschriebenen Vertrag.
+`schema/005-curation-offer-lifecycle.sql` markiert die vor diesem Changeset vorhandenen `curation_round`-Zeilen zusätzlich als Legacy-Historie. Ihre alten Status, `challenge_candidate.curation_round_id`, `is_selected` und `curator_evaluation` bleiben lesbar, sind aber keine Autorität für neue Offers. Es rekonstruiert insbesondere keine alten Offer Sets. `schema/006-curation-state-machine-hardening.sql` ergänzt ausschließlich neue Felder, Constraints und Trigger; es migriert vorhandene 005-Request-Payloads mit ihrer gespeicherten Prompt- und Attempt-Ausschlussinformation. `schema/007-bounded-curator-dispatch.sql` ergänzt append-only den produktiven Dispatch- und Providerauditvertrag. Nur neue, nicht historische Runden verwenden den unten beschriebenen Vertrag.
 
 ### Challenge Session
 
@@ -228,7 +229,7 @@ Im Zielmodell besitzt der Attempt den unveränderlichen Request- und Context-Rah
 
 Ein `generation_batch` ist eine vollständig berechnete Generatorrunde unter einem Attempt. Er besitzt eine eindeutige Batchnummer, den daraus abgeleiteten Batch-Seed, Status, Reservoir- und Satzdiagnosen, Fallbackstufe sowie Set-Fingerprint. Alle Batches desselben Attempts verwenden den unveränderten Context Snapshot und die attempt-weite Ausschlussentscheidung.
 
-Ein erfolgreicher Batch enthält genau zwölf eindeutige Kandidaten. Phase 9D implementiert zunächst den ersten Batch eines Attempts. Die spätere produktive Kurationsorchestrierung darf bei zu wenigen `GOOD`-Kandidaten genau einen zweiten Batch unter demselben Attempt erzeugen; eine unbegrenzte Batchfolge ist nicht vorgesehen.
+Ein erfolgreicher Batch enthält genau zwölf eindeutige Kandidaten. Phase 9D implementiert zunächst den ersten Batch eines Attempts. Die Phase-10B-Orchestrierung erzeugt bei zu wenigen `GOOD`-Kandidaten höchstens einen zweiten Batch unter demselben Attempt. Sie dekodiert dafür ausschließlich den unveränderlich gespeicherten und verifizierten Generation Context Snapshot; Katalog, Historie, Eingaben und Ausschluss werden weder neu geladen noch neu entschieden. Eine unbegrenzte Batchfolge ist nicht vorgesehen.
 
 ### Curation Round
 
@@ -242,7 +243,9 @@ Nur Runden 1 und 2 sind für neue Daten zulässig. Runde 1 ist stets `INITIAL_PA
 
 Kuratorbewertungen speichern je bewerteter Kandidatenreferenz mindestens qualitative Klasse `GOOD`, `ACCEPTABLE` oder `BAD`, Rang und Reason-Codes. Ein `LOCKED_CONTEXT`-Kandidat bleibt bereits gesetzt und muss nicht so behandelt werden, als würde der zweite Kurator ihn erneut zur Disposition stellen.
 
-Pro `generation_attempt` sind höchstens zwei tatsächliche externe Kuratorrequests zulässig. Ein technischer Retry zählt als eigene Kurationsrunde und verbraucht dasselbe Budget.
+Pro `generation_attempt` sind höchstens zwei tatsächliche externe Kuratorrequests zulässig. Ein technischer Retry zählt als eigene Kurationsrunde und verbraucht dasselbe Budget. Phase 10B bildet die Requestberechtigung als irreversible Dispatch-Zustandsmaschine direkt auf `curation_round` ab: `UNCLAIMED` kann genau einmal zu `CLAIMED` werden; danach sind nur `RESULT_RECORDED` oder nach Ablauf des Recovery-Fensters `UNKNOWN_EXTERNAL_OUTCOME` erlaubt. Ein unklarer Ausgang wird niemals erneut auf derselben Runde gesendet, zählt aber weiter als verbrauchter Request. Damit kann auch ein Crash nach dem Senden und vor dem Response-Audit keinen dritten tatsächlichen Request ermöglichen.
+
+Der Provider-Audit speichert Provider, Claim- und Recoveryzeitpunkt, den exakten ausgehenden JSON-Text, Raw-Response oder technischen Fehler, HTTP-Status, Provider-Response-ID, Tokenverbrauch, Fehlercode, Diagnose und Retryklassifikation. Flexible Nutzungsdaten bleiben `jsonb`; exakte Transportpayloads bleiben Text. Der Claim und das Ergebnis werden jeweils in kurzen Transaktionen persistiert, der externe Netzwerkzugriff liegt dazwischen ohne offene Datenbanktransaktion.
 
 ### Challenge Candidate
 

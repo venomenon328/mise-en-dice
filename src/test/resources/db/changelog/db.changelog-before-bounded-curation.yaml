@@ -51,5 +51,3 @@ databaseChangeLog:
       file: db/changelog/schema/005-curation-offer-lifecycle.sql
   - include:
       file: db/changelog/schema/006-curation-state-machine-hardening.sql
-  - include:
-      file: db/changelog/schema/007-bounded-curator-dispatch.sql

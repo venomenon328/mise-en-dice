@@ -51,11 +51,29 @@ public interface CurationQueries {
             String terminalDetail,
             Instant createdAt,
             Instant completedAt,
-            List<RoundCandidateView> candidates
+            List<RoundCandidateView> candidates,
+            ProviderAuditView providerAudit
     ) {
         public RoundView {
             candidates = List.copyOf(candidates);
         }
+    }
+
+    record ProviderAuditView(
+            String provider,
+            String dispatchStatus,
+            Instant dispatchClaimedAt,
+            Instant recoveryDeadlineAt,
+            String requestPayload,
+            String responsePayload,
+            String responseId,
+            String usageSnapshotJson,
+            Integer httpStatus,
+            String providerErrorCode,
+            String diagnostic,
+            Boolean retryable,
+            Instant resultRecordedAt
+    ) {
     }
 
     record RoundCandidateView(

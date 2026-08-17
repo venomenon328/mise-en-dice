@@ -20,6 +20,7 @@ import io.github.venomenon328.miseendice.challenge.api.CurationModel;
 import io.github.venomenon328.miseendice.challenge.api.CurationQueries;
 import io.github.venomenon328.miseendice.challenge.api.CurationRequest;
 import io.github.venomenon328.miseendice.challenge.api.CurationResponse;
+import io.github.venomenon328.miseendice.challenge.api.CuratorReasonCode;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -339,12 +340,13 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
         Set<Integer> ranks = new HashSet<>();
         for (CurationResponse.CandidateEvaluation evaluation : response.evaluations()) {
             if (evaluation.reasonCodes().isEmpty() || evaluation.reasonCodes().size() > 12
-                    || evaluation.reasonCodes().stream().anyMatch(code -> code == null
-                            || !code.matches("[A-Z][A-Z0-9_]{0,63}"))
-                    || evaluation.diagnostics().size() > 8
+                    || evaluation.reasonCodes().stream().anyMatch(code -> !CuratorReasonCode.supports(code))
+                    || (!evaluation.diagnostics().isEmpty()
+                        && !evaluation.diagnostics().keySet().equals(Set.of(
+                            "interactionRisk", "opennessRisk", "diversityContribution")))
                     || evaluation.diagnostics().entrySet().stream().anyMatch(entry -> entry.getKey() == null
-                            || entry.getKey().isBlank() || entry.getKey().length() > 64
-                            || entry.getValue() == null || entry.getValue().length() > 256)) {
+                            || entry.getValue() == null
+                            || !Set.of("LOW", "MEDIUM", "HIGH").contains(entry.getValue()))) {
                 return Validation.error("EVALUATION_DETAILS_INVALID",
                         "Response reason codes or structured diagnostics are invalid");
             }
