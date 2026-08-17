@@ -162,7 +162,7 @@ Für den Phase-9-Bestand zählen bestätigte sichtbare Challenges mit den Status
 
 Intern erzeugte Kandidaten, abgelehnte Generation Batches und spätere Kuratorablehnungen sind keine Exposition. Persönliche Konkretisierungen und Zusatz-Zutaten erzeugen ebenfalls keinen Generator-Cooldown.
 
-Mit Phase 10/11 kommt genau eine zweite Expositionsart hinzu: ein vollständig präsentiertes Offer Set, das vor Auswahl einer einzelnen Option freiwillig rerollt wurde. Dessen exakte Katalogkonzepte zählen gemeinsam als **eine** Cooldown-Position, aber nicht für Neuigkeitskadenz oder bestätigte Challenge-Historie. Ein normales Offer Set, aus dem eine Option bestätigt wird, erzeugt über seine übrigen Optionen keine Exposition.
+Phase 11A ergänzt genau eine zweite Expositionsart: ein vollständig präsentiertes Offer Set, das vor Auswahl einer einzelnen Option freiwillig rerollt wurde. Dessen persistierte exakte Requirement-Codes zählen gemeinsam als **eine** Cooldown-Position, aber nicht für Neuigkeitskadenz oder bestätigte Challenge-Historie. Ein normales Offer Set, aus dem eine Option bestätigt wird, erzeugt über seine übrigen Optionen keine Exposition.
 
 Die Historienprojektion einer bestätigten Challenge enthält mindestens:
 
@@ -249,7 +249,7 @@ Das Alter wird in sichtbaren Expositionspositionen gemessen, nicht in Kalenderta
 
 Vorfahren, Nachfahren, Konkretisierungen und Geschwister erzeugen keinen harten Cooldown. Semantische Nähe fließt nur in History-Freshness und Satzähnlichkeit ein. So blockiert eine offene Vorgabe nicht ihren gesamten Bereich für Monate.
 
-Ab Generator 1.1 besitzt `AttemptType.REROLL` **keinen zusätzlichen Cooldown oder Hardblock**. Ein REROLL sieht genau den normalen Visible-History-Context. Wird in Phase 10/11 ein vollständig sichtbares Offer Set rerollt, muss dessen Cooldown-only-Exposition vor dem REROLL-Attempt als eine gemeinsame Historienposition materialisiert werden; alle darin exakt vorkommenden Konzeptcodes erhalten dadurch den normalen Faktor 0, ohne ihre Descendants zu sperren.
+Ab Generator 1.1 besitzt `AttemptType.REROLL` **keinen zusätzlichen Cooldown oder Hardblock**. Ein REROLL sieht genau den normalen Visible-History-Context. Phase 11A materialisiert vor dem REROLL-Attempt die Cooldown-only-Exposition eines vollständig sichtbaren Offer Sets als eine gemeinsame Snapshot-Historienposition; alle darin exakt vorkommenden Konzeptcodes erhalten dadurch den normalen Faktor 0, ohne ihre Descendants zu sperren.
 
 ### 5.5 Neuigkeits-Zielfaktor
 
@@ -1156,7 +1156,7 @@ Kandidaten speichern generatorseitig Profil, Band, Gesamt- und Komponentenscores
 
 Kuratorscores, Kurator-Reason-Codes und Auswahlstatus gehören nicht auf den generatorseitigen Kandidaten. Sie werden später je `curation_round` und Kandidat in der flexiblen Teilnahmerelation gespeichert. Phase 9D erzeugt weder diese Bewertung noch ein Offer oder eine sichtbare Challenge.
 
-Die spätere Persistenz muss zusätzlich ein rerolltes sichtbares Offer Set als genau ein Cooldown-only-Expositionsereignis rekonstruierbar machen. Dieses Modell gehört zu Phase 10/11 und ist ausdrücklich keine neue Phase-9-Tabelle.
+Phase 11A persistiert zusätzlich ein rerolltes sichtbares Offer Set als genau ein Cooldown-only-Expositionsereignis mit den damaligen exakten Requirement-Codes. Dieses Modell ist keine neue Phase-9-Tabelle.
 
 ### 19.4 Attempt- und Batchzustände
 
@@ -1507,4 +1507,4 @@ Für Generator 1.1 gilt als Nachweis:
 - Labor und Simulation besitzen keinen operativen REROLL-Blockparameter mehr,
 - gezielte REROLL-/Cooldown-/Replaytests sowie `./mvnw clean verify` sind grün.
 
-Die spätere Phase 10/11 implementiert erst die persistente Cooldown-only-Exposition eines vollständig rerollten Offer Sets mit 1–3 sichtbaren Optionen. Diese noch ausstehende Adapter-/Persistenzarbeit ist keine offene Generator-Hardrule.
+Phase 11A implementiert die persistente Cooldown-only-Exposition eines vollständig rerollten Offer Sets mit 1–3 sichtbaren Optionen. Die noch ausstehende Discord-Adapterarbeit verändert diese Generator-Hardrule nicht.

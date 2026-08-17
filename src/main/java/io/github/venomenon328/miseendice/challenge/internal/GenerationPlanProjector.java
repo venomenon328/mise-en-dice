@@ -142,8 +142,8 @@ final class GenerationPlanProjector {
     }
 
     private int exactHistoryDistance(String code, GenerationContext context) {
-        for (int index = 0; index < context.visibleHistory().challengesNewestFirst().size(); index++) {
-            if (context.visibleHistory().challengesNewestFirst().get(index).requirements().stream()
+        for (int index = 0; index < context.visibleHistory().cooldownExposuresNewestFirst().size(); index++) {
+            if (context.visibleHistory().cooldownExposuresNewestFirst().get(index).requirements().stream()
                     .anyMatch(requirement -> code.equals(requirement.conceptCode()))) {
                 return index + 1;
             }

@@ -253,19 +253,6 @@ class PersistedGenerationIntegrationTest {
                     currentNovelty, currentConceptId);
         }
 
-        Generated reroll = generated(commands.startReroll(new StartExistingSession(
-                legacy.sessionId(), DATE.plusDays(1), List.of(), 47_000_012L)));
-        List<String> legacyBlocked = jdbcTemplate.queryForList("""
-                select jsonb_array_elements_text(request_snapshot -> 'rerollBlockedConceptCodes')
-                from generation_context_snapshot where generation_attempt_id = ?
-                """, String.class, reroll.attemptId());
-        assertThat(legacyBlocked).isEmpty();
-        assertThat(queries.findBatch(reroll.attemptId(), 1).orElseThrow().candidates()).allSatisfy(candidate ->
-                assertThat(candidate.requirements().stream()
-                        .filter(requirement -> "RANDOM".equals(requirement.source()))
-                        .map(requirement -> requirement.conceptCodeSnapshot())
-                        .toList())
-                        .doesNotContainAnyElementsOf(legacy.codes()));
     }
 
     @Test
@@ -361,28 +348,6 @@ class PersistedGenerationIntegrationTest {
                 join generation_attempt attempt on attempt.id = batch.generation_attempt_id
                 where attempt.challenge_session_id = ?
                 """, Integer.class, sessionId)).isEqualTo(1);
-    }
-
-    @Test
-    void concurrentRerollCommandsCreateOnlyOneAttemptAndOneBatch() throws Exception {
-        LegacyConfirmedChallenge legacy = createConfirmedLegacyChallenge();
-        var command = new StartExistingSession(legacy.sessionId(), DATE.plusDays(1), List.of(), 47_000_042L);
-        try (var executor = Executors.newFixedThreadPool(2)) {
-            var first = executor.submit(() -> commands.startReroll(command));
-            var second = executor.submit(() -> commands.startReroll(command));
-            List<GenerationOutcome> results = List.of(first.get(), second.get());
-            assertThat(results).anyMatch(result -> result instanceof Generated);
-            assertThat(results).allMatch(result -> result instanceof Generated || result instanceof InProgress);
-        }
-        assertThat(jdbcTemplate.queryForObject("""
-                select count(*) from generation_attempt
-                where challenge_session_id = ? and attempt_type = 'REROLL'
-                """, Integer.class, legacy.sessionId())).isEqualTo(1);
-        assertThat(jdbcTemplate.queryForObject("""
-                select count(*) from generation_batch batch
-                join generation_attempt attempt on attempt.id = batch.generation_attempt_id
-                where attempt.challenge_session_id = ? and attempt.attempt_type = 'REROLL'
-                """, Integer.class, legacy.sessionId())).isEqualTo(1);
     }
 
     @Test

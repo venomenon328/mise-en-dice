@@ -16,6 +16,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.InProg
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.ManualRequirementInput;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartExistingSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
+import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartRerollSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext.ManualRequirement;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.AttemptView;
@@ -110,7 +111,51 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
 
     @Override
     public GenerationOutcome startReroll(StartExistingSession command) {
-        return startExisting(command, AttemptType.REROLL);
+        return startReroll(new StartRerollSession(command.sessionId(), command.explicitSeed()));
+    }
+
+    @Override
+    public GenerationOutcome startReroll(StartRerollSession command) {
+        UUID operationToken = UUID.randomUUID();
+        ClaimDecision decision = writeTransaction.execute(status -> {
+            if (!repository.lockSession(command.sessionId())) {
+                throw new GeneratorValidationException(GeneratorReasonCode.INVALID_GENERATION_REQUEST,
+                        "Challenge session does not exist");
+            }
+            Optional<JdbcGenerationRepository.AttemptState> existing =
+                    repository.findAttemptForUpdate(command.sessionId(), AttemptType.REROLL);
+            if (existing.isPresent()) {
+                JdbcGenerationRepository.AttemptState attempt = existing.get();
+                if (isTerminal(attempt.status()) || attempt.leaseActive(Instant.now())) {
+                    return new ClaimDecision(attempt, null, false);
+                }
+                return new ClaimDecision(repository.reclaim(attempt, operationToken,
+                        configuration().processingLease()), operationToken, true);
+            }
+            if (!repository.hasRerollOfferExposure(command.sessionId())) {
+                throw new GeneratorValidationException(GeneratorReasonCode.INVALID_GENERATION_REQUEST,
+                        "REROLL requires a committed visible offer exposure");
+            }
+            JdbcGenerationRepository.AttemptState initial = repository.findAttemptForUpdate(
+                    command.sessionId(), AttemptType.INITIAL).orElseThrow(() ->
+                    new GeneratorValidationException(GeneratorReasonCode.INVALID_GENERATION_REQUEST,
+                            "REROLL requires an initial generation attempt"));
+            long seed = command.explicitSeed() == null ? seedSource.nextSeed() : command.explicitSeed();
+            JdbcGenerationRepository.AttemptState created = repository.createAttempt(
+                    command.sessionId(), AttemptType.REROLL, initial.effectiveDate(), seed,
+                    configuration().generatorVersion(), configuration().configurationVersion(),
+                    configuration().rngAlgorithm().name(), configuration().canonicalPayloadVersion(),
+                    repository.loadManualRequirements(initial.attemptId()).stream()
+                            .map(manual -> new ManualRequirementInput(manual.position(), manual.displayText(),
+                                    manual.matchedConceptId()))
+                            .toList(),
+                    operationToken, configuration().processingLease());
+            return new ClaimDecision(created, operationToken, true);
+        });
+        if (!decision.claimed()) {
+            return outcomeFor(decision.attempt());
+        }
+        return executeClaimed(decision.attempt(), decision.operationToken());
     }
 
     private GenerationOutcome startExisting(StartExistingSession command, AttemptType type) {
@@ -135,12 +180,6 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
                         configuration().processingLease()), operationToken, true);
             }
 
-            if (type == AttemptType.REROLL) {
-                if (repository.confirmedInitialRequirementCount(command.sessionId()) != 4) {
-                    throw new GeneratorValidationException(GeneratorReasonCode.INVALID_GENERATION_REQUEST,
-                            "REROLL requires one confirmed original challenge with four snapshotted requirements");
-                }
-            }
             long seed = command.explicitSeed() == null ? seedSource.nextSeed() : command.explicitSeed();
             JdbcGenerationRepository.AttemptState created = repository.createAttempt(
                     command.sessionId(), type, command.effectiveDate(), seed,
@@ -163,9 +202,7 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
             PreparedGenerationAttempt prepared;
             if (attempt.status().equals("PENDING")) {
                 MaterializedInputs inputs = repeatableReadTransaction.execute(status -> new MaterializedInputs(
-                        catalogProjection.snapshotForMonth(attempt.seasonMonth()), repository.visibleHistory(),
-                        attempt.attemptType() == AttemptType.REROLL
-                                ? repository.confirmedInitialRequirementCodes(attempt.sessionId()) : Set.of()));
+                        catalogProjection.snapshotForMonth(attempt.seasonMonth()), repository.visibleHistory(), Set.of()));
                 GenerationAttemptRequest request = request(attempt, inputs);
                 prepared = reservoirEngine.prepare(request);
                 GenerationSnapshotCodec.EncodedContext snapshot = repository.snapshotCodec().encode(request, prepared);

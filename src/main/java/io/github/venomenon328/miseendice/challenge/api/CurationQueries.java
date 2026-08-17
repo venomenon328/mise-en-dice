@@ -109,7 +109,7 @@ public interface CurationQueries {
         }
     }
 
-    record OfferView(int position, long candidateId, long curationRoundCandidateId,
+    record OfferView(long offerId, int position, long candidateId, long curationRoundCandidateId,
                      CurationModel.Evaluation evaluation, Integer rank,
                      CurationRequest.CandidateSnapshot candidate) {
     }

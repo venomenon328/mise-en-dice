@@ -346,7 +346,7 @@ class CurationStateMachineIntegrationTest {
     }
 
     @Test
-    void preservesRequestedOfferCountForRerollAttemptsAndCarriesPromptAndExclusionInRequest() {
+    void preservesRequestedOfferCountAndCarriesPromptAndExclusionInRequest() {
         assertThatThrownBy(() -> new StartNewSession(DATE, List.of(), 1L, 0)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new StartNewSession(DATE, List.of(), 1L, 4)).isInstanceOf(IllegalArgumentException.class);
         Generated generated = generated(3, 71_100_050L);
@@ -360,11 +360,7 @@ class CurationStateMachineIntegrationTest {
         assertThat(planned.request().attemptExclusion().exclusionRuleId()).isEqualTo(exclusionRuleId);
         assertThat(planned.request().attemptExclusion().exclusionTextSnapshot()).isEqualTo("No test exclusion");
 
-        long rerollSessionId = confirmedLegacySession(3);
-        Generated reroll = (Generated) generationCommands.startReroll(new StartExistingSession(
-                rerollSessionId, DATE.plusDays(1), List.of(), 71_100_051L));
-        assertThat(reroll.sessionId()).isEqualTo(rerollSessionId);
-        assertThat(curationQueries.findAttempt(reroll.attemptId()).orElseThrow().requestedOfferCount()).isEqualTo(3);
+        assertThat(curationQueries.findAttempt(generated.attemptId()).orElseThrow().requestedOfferCount()).isEqualTo(3);
     }
 
     @Test

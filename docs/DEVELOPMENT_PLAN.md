@@ -407,7 +407,7 @@ Issue #63 korrigiert nach dem historischen Phase-9-Abschluss eine unnötig enge 
 - Der normale Cooldown bleibt exakt codebasiert; Parent-, Child-, Refinement- oder Sibling-Expansion findet nicht statt.
 - Labor und Simulation besitzen ab v1.1 keine operativen REROLL-Blockfelder mehr.
 - Historische v1.0-Snapshotfelder und Reason-Codes bleiben lesbar; Replay wird über die Generatorversion sauber getrennt.
-- Die zukünftige persistente Exposition eines vollständig rerollten sichtbaren Offer Sets mit 1–3 Optionen wird **nicht** in Issue #63 vorgezogen, sondern gehört in Phase 10/11.
+- Die persistente Exposition eines vollständig rerollten sichtbaren Offer Sets mit 1–3 Optionen war bewusst nicht Teil von Issue #63 und wird in Phase 11A durch Issue #76 umgesetzt.
 
 Der historische Kalibrierungsbericht bleibt für Generator 1.0 unverändert wahr. Für #63 gelten gezielte REROLL-/Cooldown-/Replayregressionen und der normale `./mvnw clean verify`; der bewusst nicht wiederholte 9.216er-Lauf wird nicht nachträglich erfunden.
 
@@ -492,9 +492,19 @@ Dieses Paket implementiert den tatsächlichen externen Kurator und die höchsten
 - Lokale HTTP-Adaptertests und echte PostgreSQL-Tests decken Statusklassen einschließlich Responses-`failed`, Header und Timeouts, Prompt/Schema, Konkurrenz, gespeicherte Result-Replays bei deaktiviertem Adapter, unklare Crash-Ausgänge, Migration und die Ein-/Zwei-Request-Pfade ab. Der normale Build ruft OpenAI nicht auf.
 - Discord-Präsentation, Bestätigung, sichtbare Challenge, freiwilliger Reroll und dessen Historienexposition verbleiben vollständig in Phase 11.
 
-## Phase 11: Discord-Bot für Ziehung, Auswahl, Bestätigung und Reroll
+## Phase 11: Entscheidung über kuratierte Angebote
 
-Der eigenständige Discord-Adapter verwendet ausschließlich die öffentlichen Challenge-Application-APIs aus Phase 10. Er besitzt keine eigene Generator-, Kurator-, Fallback- oder Persistenzlogik.
+### Phase 11A: Persistenter, transportneutraler Offer-Decision-Lifecycle (Issue #76)
+
+Phase 11A stellt ausschließlich die öffentlichen Challenge-Application-APIs für Präsentation, Bestätigung, Reroll und Resume bereit. Sie materialisiert die Präsentation genau einmal, bestätigt genau einen `curated_offer` als operative `challenge` und verwendet dabei die Offer-Referenz statt des Legacy-Felds `is_selected` als Fachautorität.
+
+Ein Reroll markiert das vollständige präsentierte Set atomar als `REROLLED` und persistiert genau eine Exposition mit den exakten damaligen Requirement-Codes. Diese Snapshot-Exposition erweitert nur den Zutaten-Cooldown um genau eine Historienposition: ohne Refinement-Expansion und ohne Neuigkeitskadenz. Anschließend setzt sie den bestehenden Generation-/Kurationspfad mit einem `REROLL`-Attempt fort; nach jedem Commit- oder Crashfenster ist derselbe Workflow idempotent fortsetzbar. PostgreSQL schützt die Zustandsübergänge, die Referenzen, die Vollständigkeit und Confirm-vs.-Reroll-Konkurrenz.
+
+Phase 11A enthält ausdrücklich keinen Discord-SDK-, Gateway-, Command-, Button-, Message- oder User-ID-Code.
+
+### Phase 11B: Discord-Adapter (ausstehend)
+
+Der eigenständige Discord-Adapter verwendet ausschließlich die öffentlichen Challenge-Application-APIs aus Phase 11A. Er besitzt keine eigene Generator-, Kurator-, Fallback- oder Persistenzlogik.
 
 ### Scope
 
