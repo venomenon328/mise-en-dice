@@ -83,11 +83,14 @@ jobs:
           test -s "$backup_file"
           test -s "$backup_file.sha256"
 
-          ./deploy/mise-en-dice.sh preview deploy "$GITHUB_SHA" restore-target
-          ./deploy/mise-en-dice.sh preview restore restore-target "$backup_file" --yes
-          restored_count=$(./deploy/mise-en-dice.sh preview sql restore-target \
+          ./deploy/mise-en-dice.sh preview restore ci-source "$backup_file" --yes
+          restored_count=$(./deploy/mise-en-dice.sh preview sql ci-source \
             'SELECT count(*) FROM ingredient_concept;' | tr -d '[:space:]')
           test "$restored_count" -ge 600
+          restored_marker_count=$(./deploy/mise-en-dice.sh preview sql ci-source \
+            "SELECT count(*) FROM ingredient_concept WHERE curator_note = 'deployment-restart-marker';" \
+            | tr -d '[:space:]')
+          test "$restored_marker_count" = "0"
 
           production_env="$MISE_EN_DICE_DEPLOY_ROOT/instances/production/compose.env"
           database_container=$(docker compose \
@@ -110,7 +113,6 @@ jobs:
           test "$runtime_user" != 0:0
 
           ./deploy/mise-en-dice.sh preview remove ci-source --yes
-          ./deploy/mise-en-dice.sh preview remove restore-target --yes
 
   legacy-preview:
     if: ${{ github.event_name == 'pull_request' }}
