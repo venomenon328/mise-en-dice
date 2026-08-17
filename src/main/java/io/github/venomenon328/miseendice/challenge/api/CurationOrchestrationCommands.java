@@ -6,7 +6,7 @@ public interface CurationOrchestrationCommands {
     CurationOutcome curate(long attemptId);
 
     sealed interface CurationOutcome permits OfferReady, CurationExhausted, InProgress,
-            CuratorFailed, GeneratorExhausted, GeneratorFailed {
+            CuratorUnavailable, CuratorFailed, GeneratorExhausted, GeneratorFailed {
         long attemptId();
     }
 
@@ -17,6 +17,10 @@ public interface CurationOrchestrationCommands {
     }
 
     record InProgress(long attemptId, long roundId, String reasonCode) implements CurationOutcome {
+    }
+
+    /** Non-terminal result: no request was sent because no productive curator adapter is currently available. */
+    record CuratorUnavailable(long attemptId, String reasonCode, String detail) implements CurationOutcome {
     }
 
     /** Terminal provider or structured-output failure. No further request is permitted for this result. */

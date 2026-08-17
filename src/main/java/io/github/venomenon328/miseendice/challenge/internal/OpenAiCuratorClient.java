@@ -86,7 +86,8 @@ final class OpenAiCuratorClient implements CuratorClient {
                         String raw = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
                         Map<String, Object> root = parseMapOrEmpty(raw);
                         return new ProviderExchange(status, raw, text(root.get("id")), usage(root.get("usage")),
-                                providerErrorCode(root), httpDiagnostic(status, root), retryable(status));
+                                providerErrorCode(root), httpDiagnostic(status, root),
+                                retryable(status) || retryableFailedResponse(root));
                     });
         } catch (ResourceAccessException exception) {
             return ProviderExchange.transportFailure("OPENAI_TIMEOUT_OR_CONNECTION", limited(exception.getMessage()));
@@ -109,6 +110,10 @@ final class OpenAiCuratorClient implements CuratorClient {
             root = objectMapper.readValue(exchange.rawPayload(), MAP);
         } catch (JacksonException exception) {
             return new Invalid("PROVIDER_RESPONSE_MALFORMED", "OpenAI response body is not valid JSON");
+        }
+        if ("failed".equals(text(root.get("status")))) {
+            return new Technical("OPENAI_RESPONSE_FAILED", httpDiagnostic(exchange.httpStatus(), root),
+                    exchange.retryable());
         }
         if (!"completed".equals(text(root.get("status")))) {
             return new Invalid("PROVIDER_RESPONSE_INCOMPLETE", "OpenAI response did not complete");
@@ -210,6 +215,18 @@ final class OpenAiCuratorClient implements CuratorClient {
 
     private static boolean retryable(int status) {
         return status == 408 || status == 429 || status >= 500;
+    }
+
+    private static boolean retryableFailedResponse(Map<String, Object> response) {
+        if (!"failed".equals(text(response.get("status")))) {
+            return false;
+        }
+        String errorCode = providerErrorCode(response);
+        return errorCode != null && switch (errorCode) {
+            case "api_connection_error", "internal_error", "rate_limit_exceeded", "request_timeout",
+                 "server_error", "temporarily_unavailable", "timeout" -> true;
+            default -> false;
+        };
     }
 
     @SuppressWarnings("unchecked")

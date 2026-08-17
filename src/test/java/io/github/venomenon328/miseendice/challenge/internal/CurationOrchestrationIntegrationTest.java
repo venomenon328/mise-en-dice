@@ -11,6 +11,8 @@ import io.github.venomenon328.miseendice.challenge.api.CurationModel;
 import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands;
 import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands.CurationExhausted;
 import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands.CuratorFailed;
+import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands.CuratorUnavailable;
+import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands.GeneratorExhausted;
 import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands.InProgress;
 import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands.OfferReady;
 import io.github.venomenon328.miseendice.challenge.api.CurationQueries;
@@ -81,6 +83,7 @@ class CurationOrchestrationIntegrationTest {
     @Autowired CurationOrchestrationCommands orchestration;
     @Autowired CurationQueries curationQueries;
     @Autowired ScriptedCuratorClient curator;
+    @Autowired SecondBatchGenerationService secondBatchGeneration;
     @Autowired CurationDispatchService dispatchService;
     @Autowired JdbcCurationRepository curationRepository;
     @Autowired PlatformTransactionManager transactionManager;
@@ -178,6 +181,41 @@ class CurationOrchestrationIntegrationTest {
     }
 
     @Test
+    void disabledAdapterDoesNotMaskPersistedOfferOrInvalidResponse() {
+        curator.script(Script.success(1));
+        Generated successful = generated(1, 73_004_101L);
+        assertThat(orchestration.curate(successful.attemptId())).isInstanceOf(OfferReady.class);
+        curator.disable();
+
+        assertThat(orchestration.curate(successful.attemptId())).isInstanceOf(OfferReady.class);
+        assertThat(curator.dispatchCount()).isEqualTo(1);
+
+        cleanData();
+        curator.script(Script.invalid());
+        Generated invalid = generated(1, 73_004_102L);
+        assertThat(orchestration.curate(invalid.attemptId())).isInstanceOf(CuratorFailed.class);
+        curator.disable();
+
+        assertThat(orchestration.curate(invalid.attemptId()))
+                .isEqualTo(new CuratorFailed(invalid.attemptId(),
+                        curationQueries.findRound(invalid.attemptId(), 1).orElseThrow().roundId(),
+                        "CURATOR_SCHEMA_INVALID", "injected invalid structured output"));
+        assertThat(curator.dispatchCount()).isEqualTo(1);
+    }
+
+    @Test
+    void disabledAdapterIsNonTerminalBeforeTheFirstDispatch() {
+        curator.disable();
+        Generated generated = generated(1, 73_004_103L);
+
+        assertThat(orchestration.curate(generated.attemptId()))
+                .isEqualTo(new CuratorUnavailable(generated.attemptId(), "CURATOR_ADAPTER_DISABLED",
+                        "The productive OpenAI curator adapter is disabled"));
+        assertThat(curationQueries.findRound(generated.attemptId(), 1)).isEmpty();
+        assertThat(curator.dispatchCount()).isZero();
+    }
+
+    @Test
     void qualityRoundTechnicalFailureFallsBackToTheCompletedFirstRound() {
         curator.script(Script.success(1), Script.permanentTechnical());
         Generated generated = generated(2, 73_005_001L);
@@ -205,9 +243,15 @@ class CurationOrchestrationIntegrationTest {
         generator.exhaustBatchTwo();
         curator.script(Script.success(0));
         Generated withoutGood = generated(2, 73_006_002L);
-        assertThat(orchestration.curate(withoutGood.attemptId()))
-                .isInstanceOf(CurationOrchestrationCommands.GeneratorExhausted.class);
+        GeneratorExhausted firstExhausted = (GeneratorExhausted) orchestration.curate(withoutGood.attemptId());
         assertThat(curationQueries.findOfferSet(withoutGood.attemptId())).isEmpty();
+        curator.disable();
+
+        CurationOrchestrationCommands restarted = new CurationOrchestrationService(curationCommands, curationQueries,
+                generationQueries, secondBatchGeneration, dispatchService, curator);
+
+        assertThat(restarted.curate(withoutGood.attemptId())).isEqualTo(firstExhausted);
+        assertThat(generator.batchTwoContexts()).hasSize(1);
     }
 
     @Test
@@ -340,6 +384,7 @@ class CurationOrchestrationIntegrationTest {
     static final class ScriptedCuratorClient implements CuratorClient {
         private final Queue<Script> scripts = new ArrayDeque<>();
         private final AtomicInteger dispatches = new AtomicInteger();
+        private final AtomicBoolean available = new AtomicBoolean(true);
         private final List<CurationRequest> preparedRequests = new ArrayList<>();
         private volatile CountDownLatch entered = new CountDownLatch(0);
         private volatile CountDownLatch release = new CountDownLatch(0);
@@ -357,11 +402,16 @@ class CurationOrchestrationIntegrationTest {
             release.countDown();
             entered = new CountDownLatch(0);
             release = new CountDownLatch(0);
+            available.set(true);
         }
 
         void blockNextDispatch() {
             entered = new CountDownLatch(1);
             release = new CountDownLatch(1);
+        }
+
+        void disable() {
+            available.set(false);
         }
 
         boolean awaitDispatch() throws InterruptedException {
@@ -382,7 +432,7 @@ class CurationOrchestrationIntegrationTest {
 
         @Override
         public boolean available() {
-            return true;
+            return available.get();
         }
 
         @Override

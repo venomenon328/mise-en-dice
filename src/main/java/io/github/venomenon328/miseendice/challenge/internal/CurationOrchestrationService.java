@@ -37,10 +37,6 @@ final class CurationOrchestrationService implements CurationOrchestrationCommand
         if (attemptId <= 0) {
             throw new IllegalArgumentException("A generation attempt is required");
         }
-        if (!curatorClient.available()) {
-            return new CuratorFailed(attemptId, 0, "CURATOR_ADAPTER_DISABLED",
-                    "The productive OpenAI curator adapter is disabled");
-        }
         GenerationQueries.AttemptView generation = generationQueries.findAttempt(attemptId).orElseThrow(
                 () -> new IllegalArgumentException("Generation attempt does not exist"));
         if ("EXHAUSTED".equals(generation.status())) {
@@ -64,11 +60,19 @@ final class CurationOrchestrationService implements CurationOrchestrationCommand
             return new OfferReady(attemptId, set.offerSetId(), set.offers().size());
         }
         if ("EXHAUSTED".equals(attempt.curationStatus())) {
+            if ("SECOND_BATCH_EXHAUSTED".equals(attempt.terminalReasonCode())) {
+                long batchId = generationQueries.findBatch(attemptId, 2)
+                        .map(GenerationQueries.BatchView::batchId).orElse(0L);
+                return new GeneratorExhausted(attemptId, batchId, "SECOND_BATCH_EXHAUSTED");
+            }
             return new CurationExhausted(attemptId, attempt.terminalReasonCode(), attempt.terminalDetail());
         }
 
         CurationQueries.RoundView first = curationQueries.findRound(attemptId, 1).orElse(null);
         if (first == null) {
+            if (!curatorClient.available()) {
+                return curatorUnavailable(attemptId);
+            }
             GenerationQueries.BatchView batch = generatedBatch(attemptId, 1);
             first = plan(attemptId, 1, batch, CurationModel.RequestPurpose.INITIAL_PASS,
                     attempt.requestedOfferCount(), newCandidates(batch));
@@ -85,6 +89,9 @@ final class CurationOrchestrationService implements CurationOrchestrationCommand
             }
             CurationQueries.RoundView retry = curationQueries.findRound(attemptId, 2).orElse(null);
             if (retry == null) {
+                if (!curatorClient.available()) {
+                    return curatorUnavailable(attemptId);
+                }
                 GenerationQueries.BatchView batch = generatedBatch(attemptId, 1);
                 retry = plan(attemptId, 2, batch, CurationModel.RequestPurpose.TECHNICAL_RETRY,
                         attempt.requestedOfferCount(), newCandidates(batch));
@@ -98,6 +105,9 @@ final class CurationOrchestrationService implements CurationOrchestrationCommand
                     "INITIAL_GOOD_SELECTION");
         }
 
+        if (generationQueries.findBatch(attemptId, 2).isEmpty() && !curatorClient.available()) {
+            return curatorUnavailable(attemptId);
+        }
         SecondBatchGenerationService.Outcome batchTwo = secondBatchGeneration.ensure(attemptId);
         if (batchTwo instanceof SecondBatchGenerationService.Failed failed) {
             return new GeneratorFailed(attemptId, failed.reasonCode(), failed.detail());
@@ -113,6 +123,9 @@ final class CurationOrchestrationService implements CurationOrchestrationCommand
 
         CurationQueries.RoundView quality = curationQueries.findRound(attemptId, 2).orElse(null);
         if (quality == null) {
+            if (!curatorClient.available()) {
+                return curatorUnavailable(attemptId);
+            }
             GenerationQueries.BatchView batch = generatedBatch(attemptId, 2);
             int openSlots = attempt.requestedOfferCount() - firstGood.size();
             List<CurationCommands.CandidateParticipation> candidates = new ArrayList<>();
@@ -174,6 +187,9 @@ final class CurationOrchestrationService implements CurationOrchestrationCommand
     }
 
     private CurationOutcome dispatch(CurationQueries.RoundView round) {
+        if (!curatorClient.available()) {
+            return curatorUnavailable(round.attemptId());
+        }
         CurationQueries.ProviderAuditView audit = round.providerAudit();
         CuratorClient.PreparedDispatch prepared = "UNCLAIMED".equals(audit.dispatchStatus())
                 ? curatorClient.prepare(round.curatorModel(), round.request())
@@ -292,5 +308,10 @@ final class CurationOrchestrationService implements CurationOrchestrationCommand
 
     private static CuratorFailed curatorFailure(CurationQueries.RoundView round) {
         return new CuratorFailed(round.attemptId(), round.roundId(), round.terminalReasonCode(), round.terminalDetail());
+    }
+
+    private static CurationOrchestrationCommands.CuratorUnavailable curatorUnavailable(long attemptId) {
+        return new CurationOrchestrationCommands.CuratorUnavailable(attemptId, "CURATOR_ADAPTER_DISABLED",
+                "The productive OpenAI curator adapter is disabled");
     }
 }

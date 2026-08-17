@@ -41,6 +41,9 @@ class OpenAiCuratorClientTest {
     private volatile int responseStatus;
     private volatile String responseBody;
     private volatile Duration responseDelay;
+    private volatile String authorizationHeader;
+    private volatile String acceptHeader;
+    private volatile String contentTypeHeader;
     private CountDownLatch requestStarted;
 
     @BeforeEach
@@ -48,6 +51,9 @@ class OpenAiCuratorClientTest {
         responseStatus = 200;
         responseBody = successEnvelope(request());
         responseDelay = Duration.ZERO;
+        authorizationHeader = null;
+        acceptHeader = null;
+        contentTypeHeader = null;
         requestStarted = new CountDownLatch(1);
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/v1/responses", this::handle);
@@ -86,6 +92,9 @@ class OpenAiCuratorClientTest {
         assertThat(path(payload, "text", "format", "strict")).isEqualTo(true);
         assertThat(path(payload, "text", "format", "schema", "additionalProperties")).isEqualTo(false);
         assertThat(prepared.requestPayload()).doesNotContain("test-secret");
+        assertThat(authorizationHeader).isEqualTo("Bearer test-secret");
+        assertThat(acceptHeader).isEqualTo("application/json");
+        assertThat(contentTypeHeader).startsWith("application/json");
     }
 
     @ParameterizedTest
@@ -120,6 +129,22 @@ class OpenAiCuratorClientTest {
         assertThat(client.interpret(request(), client.dispatch(client.prepare(client.model(), request()))))
                 .isInstanceOf(CuratorClient.Invalid.class);
         assertThat(requests).hasValue(3);
+    }
+
+    @Test
+    void failedResponsesStatusIsTechnicalAndKeepsItsTransientRetryClassification() throws Exception {
+        responseBody = json(Map.of("id", "resp_failed", "status", "failed",
+                "error", Map.of("code", "server_error", "message", "temporary provider failure")));
+        OpenAiCuratorClient client = client(Duration.ofSeconds(2));
+
+        CuratorClient.ProviderExchange exchange = client.dispatch(client.prepare(client.model(), request()));
+        CuratorClient.Technical result = (CuratorClient.Technical) client.interpret(request(), exchange);
+
+        assertThat(requests).hasValue(1);
+        assertThat(exchange.providerErrorCode()).isEqualTo("server_error");
+        assertThat(exchange.retryable()).isTrue();
+        assertThat(result).isEqualTo(new CuratorClient.Technical("OPENAI_RESPONSE_FAILED",
+                "temporary provider failure", true));
     }
 
     @Test
@@ -182,6 +207,9 @@ class OpenAiCuratorClientTest {
     private void handle(HttpExchange exchange) throws java.io.IOException {
         requests.incrementAndGet();
         requestStarted.countDown();
+        authorizationHeader = exchange.getRequestHeaders().getFirst("Authorization");
+        acceptHeader = exchange.getRequestHeaders().getFirst("Accept");
+        contentTypeHeader = exchange.getRequestHeaders().getFirst("Content-Type");
         bodies.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
         if (!responseDelay.isZero()) {
             try {

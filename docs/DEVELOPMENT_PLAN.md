@@ -489,7 +489,7 @@ Dieses Paket implementiert den tatsächlichen externen Kurator und die höchsten
 - Providerrequest, Raw-Response beziehungsweise Transportfehler, Response-ID, Tokenverbrauch und Diagnose werden auf der tatsächlich verbrauchten Runde auditiert. Der Netzwerkzugriff liegt zwischen zwei kurzen Datenbanktransaktionen.
 - Batch 2 wird ausschließlich aus dem verifizierten, gespeicherten Context Snapshot desselben Attempts berechnet. Runde-1-`GOOD`s bleiben Locked Context; nur die besten benötigten `ACCEPTABLE`/`BAD` werden Carry-over; alle zwölf Kandidaten aus Batch 2 sind `NEW`.
 - Ein technischer Fehler in Runde 1 kann den zweiten Request als `TECHNICAL_RETRY` verbrauchen und schließt damit eine Qualitätsrunde aus. Ungültiger strukturierter Output wird nie erneut gesendet. Bei technischem Fehler der Qualitätsrunde oder erschöpftem Batch 2 gilt der dokumentierte Runde-1-Fallback nur, wenn dort mindestens ein `GOOD` vorliegt.
-- Lokale HTTP-Adaptertests und echte PostgreSQL-Tests decken Statusklassen, Timeouts, Prompt/Schema, Konkurrenz, gespeicherte Result-Replays, unklare Crash-Ausgänge, Migration und die Ein-/Zwei-Request-Pfade ab. Der normale Build ruft OpenAI nicht auf.
+- Lokale HTTP-Adaptertests und echte PostgreSQL-Tests decken Statusklassen einschließlich Responses-`failed`, Header und Timeouts, Prompt/Schema, Konkurrenz, gespeicherte Result-Replays bei deaktiviertem Adapter, unklare Crash-Ausgänge, Migration und die Ein-/Zwei-Request-Pfade ab. Der normale Build ruft OpenAI nicht auf.
 - Discord-Präsentation, Bestätigung, sichtbare Challenge, freiwilliger Reroll und dessen Historienexposition verbleiben vollständig in Phase 11.
 
 ## Phase 11: Discord-Bot für Ziehung, Auswahl, Bestätigung und Reroll
