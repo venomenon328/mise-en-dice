@@ -13,6 +13,16 @@ spring:
 mise-en-dice:
   administration:
     enabled: ${MISE_EN_DICE_ADMINISTRATION_ENABLED:false}
+  curation:
+    openai:
+      enabled: ${MISE_EN_DICE_OPENAI_ENABLED:false}
+      api-key: ${OPENAI_API_KEY:}
+      model: ${MISE_EN_DICE_OPENAI_MODEL:gpt-5.6-terra}
+      reasoning-effort: ${MISE_EN_DICE_OPENAI_REASONING_EFFORT:medium}
+      base-url: ${MISE_EN_DICE_OPENAI_BASE_URL:https://api.openai.com}
+      connect-timeout: ${MISE_EN_DICE_OPENAI_CONNECT_TIMEOUT:PT5S}
+      request-timeout: ${MISE_EN_DICE_OPENAI_REQUEST_TIMEOUT:PT1M}
+      recovery-window: ${MISE_EN_DICE_OPENAI_RECOVERY_WINDOW:PT2M}
   generator:
     configuration:
       generator-version: 1.1.0

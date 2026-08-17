@@ -40,4 +40,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Phase 10A einschließlich der Nacharbeit aus PR #72 ist abgeschlossen. Issue #73 setzt Phase 10B um: produktiver OpenAI-Adapter und strikt gedeckelte Kurationsorchestrierung. Dabei gilt ADR 0008 verbindlich: echte OpenAI-Aufrufe sind ausschließlich im explizit aktivierten Produktivbetrieb zulässig; Entwicklung und automatisierte Tests verwenden Fakes, Fixtures beziehungsweise lokale HTTP-Stubs. Discord-Präsentation, Bestätigung und Reroll-Exposition bleiben Phase 11.
+Phase 10 ist mit Issue #73 abgeschlossen: Der persistente, transportneutrale Kuratorvertrag, die auf zwei tatsächliche externe Requests begrenzte OpenAI-Orchestrierung und 1–3 auditierbare, noch nicht präsentierte Offers sind umgesetzt. Nach ADR 0008 sind echte OpenAI-Aufrufe ausschließlich im explizit aktivierten Produktivbetrieb zulässig; Entwicklung und automatisierte Tests verwenden Fakes, Fixtures beziehungsweise lokale HTTP-Stubs. Discord-Präsentation, Bestätigung, Challenge-Materialisierung und Reroll-Exposition bleiben Phase 11.

@@ -138,7 +138,7 @@ class PersistedGenerationMigrationIntegrationTest {
                             + legacySuccessWithoutBatch)).isEqualTo("FAILED:CONTEXT_SNAPSHOT_INVALID");
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(26);
+            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(27);
             assertThat(countWhere(connection, "generation_batch", "generation_attempt_id = " + attempt)).isEqualTo(1);
         }
     }
@@ -180,7 +180,36 @@ class PersistedGenerationMigrationIntegrationTest {
             assertThat(value(connection, "select curation_status from generation_attempt where id = " + attempt))
                     .isEqualTo("LEGACY");
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(26);
+            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(27);
+        }
+    }
+
+    @Test
+    void upgradesImmediatelyPreviousMainWithBoundedDispatchColumnsAndConstraints() throws Exception {
+        String databaseName = "bounded_curation_upgrade_" + UUID.randomUUID().toString().replace("-", "");
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            statement.execute("create database " + databaseName);
+        }
+        String url = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + databaseName);
+        try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+            runLiquibase(connection, "db/changelog/db.changelog-before-bounded-curation.yaml");
+            assertThat(countWhere(connection, "information_schema.columns",
+                    "table_schema = 'public' and table_name = 'curation_round' and column_name = 'dispatch_status'"))
+                    .isZero();
+
+            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+
+            assertThat(countWhere(connection, "information_schema.columns",
+                    "table_schema = 'public' and table_name = 'curation_round' and column_name in "
+                            + "('dispatch_status', 'provider_request_payload', 'provider_response_payload', "
+                            + "'provider_response_id', 'provider_usage_snapshot')"))
+                    .isEqualTo(5);
+            assertThat(value(connection, "select column_default from information_schema.columns "
+                    + "where table_schema = 'public' and table_name = 'curation_round' "
+                    + "and column_name = 'dispatch_status'"))
+                    .contains("UNCLAIMED");
+            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+            assertThat(countWhere(connection, "databasechangelog", "true")).isEqualTo(27);
         }
     }
 

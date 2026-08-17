@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import tools.jackson.core.JacksonException;
@@ -108,6 +109,72 @@ class JdbcCurationRepository {
 
     void markAttemptCurationStatus(long attemptId, String status) {
         jdbcTemplate.update("update generation_attempt set curation_status = ? where id = ?", status, attemptId);
+    }
+
+    DispatchClaim claimDispatch(long roundId, String provider, String requestPayload, Duration recoveryWindow) {
+        Round round = findRoundForUpdate(roundId);
+        if (round.status() != CurationModel.RoundStatus.PENDING) {
+            return new DispatchClaim(round.dispatchAudit(), false);
+        }
+        if ("UNCLAIMED".equals(round.dispatchAudit().dispatchStatus())) {
+            jdbcTemplate.update("""
+                    update curation_round
+                    set provider = ?, dispatch_status = 'CLAIMED', dispatch_claimed_at = now(),
+                        dispatch_recovery_deadline_at = now() + (? * interval '1 millisecond'),
+                        provider_request_payload = ?
+                    where id = ? and dispatch_status = 'UNCLAIMED' and status = 'PENDING'
+                    """, provider, recoveryWindow.toMillis(), requestPayload, roundId);
+            return new DispatchClaim(findRoundForUpdate(roundId).dispatchAudit(), true);
+        }
+        if (!java.util.Objects.equals(provider, round.dispatchAudit().provider())
+                || !java.util.Objects.equals(requestPayload, round.dispatchAudit().requestPayload())) {
+            throw new io.github.venomenon328.miseendice.challenge.api.CurationConflictException(
+                    "A claimed curator dispatch cannot be replaced by another provider payload");
+        }
+        return new DispatchClaim(round.dispatchAudit(), false);
+    }
+
+    DispatchAudit recordProviderExchange(long roundId, CuratorClient.ProviderExchange exchange) {
+        Round round = findRoundForUpdate(roundId);
+        DispatchAudit audit = round.dispatchAudit();
+        if ("RESULT_RECORDED".equals(audit.dispatchStatus()) || "UNKNOWN_EXTERNAL_OUTCOME".equals(audit.dispatchStatus())) {
+            if (!sameExchange(audit, exchange)) {
+                throw new io.github.venomenon328.miseendice.challenge.api.CurationConflictException(
+                        "A provider result is already recorded for this request slot");
+            }
+            return audit;
+        }
+        if (!"CLAIMED".equals(audit.dispatchStatus())) {
+            throw new io.github.venomenon328.miseendice.challenge.api.CurationConflictException(
+                    "A provider result requires a claimed dispatch");
+        }
+        jdbcTemplate.update("""
+                update curation_round
+                set dispatch_status = 'RESULT_RECORDED', provider_response_payload = ?, provider_response_id = ?,
+                    provider_usage_snapshot = cast(? as jsonb), provider_http_status = ?, provider_error_code = ?,
+                    provider_diagnostic = ?, provider_retryable = ?, provider_result_recorded_at = now()
+                where id = ? and dispatch_status = 'CLAIMED'
+                """, exchange.rawPayload(), exchange.responseId(), exchange.usage() == null ? null : json(exchange.usage()),
+                exchange.httpStatus(), exchange.providerErrorCode(), exchange.diagnostic(), exchange.retryable(), roundId);
+        return findRoundForUpdate(roundId).dispatchAudit();
+    }
+
+    DispatchAudit markUnknownExternalOutcome(long roundId) {
+        Round round = findRoundForUpdate(roundId);
+        DispatchAudit audit = round.dispatchAudit();
+        if ("CLAIMED".equals(audit.dispatchStatus())
+                && !audit.recoveryDeadlineAt().isAfter(Instant.now())) {
+            jdbcTemplate.update("""
+                    update curation_round
+                    set dispatch_status = 'UNKNOWN_EXTERNAL_OUTCOME',
+                        provider_error_code = 'UNKNOWN_EXTERNAL_OUTCOME',
+                        provider_diagnostic = 'Claimed external request has no durable result after its recovery window',
+                        provider_retryable = true, provider_result_recorded_at = now()
+                    where id = ? and dispatch_status = 'CLAIMED'
+                    """, roundId);
+            return findRoundForUpdate(roundId).dispatchAudit();
+        }
+        return audit;
     }
 
     void completeRound(Round round, String responsePayload, List<CurationResponse.CandidateEvaluation> evaluations) {
@@ -260,7 +327,7 @@ class JdbcCurationRepository {
                 round.curatorModel(), round.promptVersion(), round.purpose(), round.status(), request,
                 round.requestPayload(), round.responsePayload(), round.invalidResponseOriginalPayload(),
                 round.terminalReasonCode(), round.terminalDetail(),
-                round.createdAt(), round.completedAt(), candidates);
+                round.createdAt(), round.completedAt(), candidates, providerView(round.dispatchAudit()));
     }
 
     private CurationQueries.OfferSetView offerSet(ResultSet result) throws SQLException {
@@ -344,7 +411,14 @@ class JdbcCurationRepository {
                 CurationModel.RoundStatus.valueOf(result.getString("status")), result.getString("request_payload"),
                 result.getString("response_payload"), result.getString("invalid_response_original_payload"),
                 result.getString("terminal_reason_code"),
-                result.getString("terminal_detail"), instant(result, "created_at"), instant(result, "completed_at"));
+                result.getString("terminal_detail"), instant(result, "created_at"), instant(result, "completed_at"),
+                new DispatchAudit(result.getString("provider"), result.getString("dispatch_status"),
+                        instant(result, "dispatch_claimed_at"), instant(result, "dispatch_recovery_deadline_at"),
+                        result.getString("provider_request_payload"), result.getString("provider_response_payload"),
+                        result.getString("provider_response_id"), result.getString("provider_usage_snapshot"),
+                        (Integer) result.getObject("provider_http_status"), result.getString("provider_error_code"),
+                        result.getString("provider_diagnostic"), (Boolean) result.getObject("provider_retryable"),
+                        instant(result, "provider_result_recorded_at")));
     }
 
     private Attempt mapAttempt(ResultSet result, int row) throws SQLException {
@@ -372,6 +446,12 @@ class JdbcCurationRepository {
                        round_row.response_payload::text, round_row.invalid_response_original_payload,
                        round_row.terminal_reason_code, round_row.terminal_detail, round_row.open_offer_slots,
                        round_row.created_at, round_row.completed_at
+                       , round_row.provider, round_row.dispatch_status, round_row.dispatch_claimed_at,
+                       round_row.dispatch_recovery_deadline_at, round_row.provider_request_payload,
+                       round_row.provider_response_payload, round_row.provider_response_id,
+                       round_row.provider_usage_snapshot::text, round_row.provider_http_status,
+                       round_row.provider_error_code, round_row.provider_diagnostic, round_row.provider_retryable,
+                       round_row.provider_result_recorded_at
                 from curation_round round_row
                 """;
     }
@@ -387,7 +467,37 @@ class JdbcCurationRepository {
                  String promptVersion, CurationModel.RequestPurpose purpose, CurationModel.RoundStatus status,
                  String requestPayload, String responsePayload, String invalidResponseOriginalPayload,
                  String terminalReasonCode, String terminalDetail,
-                 Instant createdAt, Instant completedAt) {
+                 Instant createdAt, Instant completedAt, DispatchAudit dispatchAudit) {
+    }
+
+    record DispatchAudit(String provider, String dispatchStatus, Instant claimedAt, Instant recoveryDeadlineAt,
+                         String requestPayload, String responsePayload, String responseId, String usageSnapshotJson,
+                         Integer httpStatus, String providerErrorCode, String diagnostic, Boolean retryable,
+                         Instant resultRecordedAt) {
+    }
+
+    record DispatchClaim(DispatchAudit audit, boolean claimedNow) {
+    }
+
+    private static CurationQueries.ProviderAuditView providerView(DispatchAudit audit) {
+        return new CurationQueries.ProviderAuditView(audit.provider(), audit.dispatchStatus(), audit.claimedAt(),
+                audit.recoveryDeadlineAt(), audit.requestPayload(), audit.responsePayload(), audit.responseId(),
+                audit.usageSnapshotJson(), audit.httpStatus(), audit.providerErrorCode(), audit.diagnostic(),
+                audit.retryable(), audit.resultRecordedAt());
+    }
+
+    private boolean sameExchange(DispatchAudit audit, CuratorClient.ProviderExchange exchange) {
+        return java.util.Objects.equals(audit.responsePayload(), exchange.rawPayload())
+                && java.util.Objects.equals(audit.responseId(), exchange.responseId())
+                && java.util.Objects.equals(audit.httpStatus(), exchange.httpStatus())
+                && java.util.Objects.equals(audit.providerErrorCode(), exchange.providerErrorCode())
+                && java.util.Objects.equals(audit.diagnostic(), exchange.diagnostic())
+                && java.util.Objects.equals(audit.retryable(), exchange.retryable())
+                && sameNullableJson(audit.usageSnapshotJson(), exchange.usage() == null ? null : json(exchange.usage()));
+    }
+
+    private boolean sameNullableJson(String left, String right) {
+        return left == null || right == null ? left == null && right == null : sameJson(left, right);
     }
 
     record RoundCandidate(long id, long candidateId, int requestPosition, CurationModel.Participation participation,
