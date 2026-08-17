@@ -126,16 +126,57 @@ class JdbcSelectionVotingRepository {
         }
     }
 
-    void updateApplyState(long roundId, SelectionVotingQueries.ApplyState state, Long resultingOfferSetId,
-                          String detail) {
-        int updated = jdbcTemplate.update("""
+    boolean markConfirmed(long roundId) {
+        return updateApplyState(roundId, "apply_state = 'PENDING'", SelectionVotingQueries.ApplyState.CONFIRMED,
+                null, null);
+    }
+
+    boolean recordRerollInProgress(long roundId, String detail) {
+        return updateApplyState(roundId, "apply_state = 'PENDING'",
+                SelectionVotingQueries.ApplyState.REROLL_IN_PROGRESS, null, detail);
+    }
+
+    boolean recordRerollOfferReady(long roundId, long resultingOfferSetId) {
+        return updateApplyState(roundId, "apply_state in ('PENDING', 'REROLL_IN_PROGRESS')",
+                SelectionVotingQueries.ApplyState.REROLL_OFFER_READY, resultingOfferSetId, null);
+    }
+
+    boolean recordRerollTerminal(long roundId, SelectionVotingQueries.ApplyState terminalState, String detail) {
+        if (terminalState != SelectionVotingQueries.ApplyState.REROLL_EXHAUSTED
+                && terminalState != SelectionVotingQueries.ApplyState.REROLL_FAILED) {
+            throw new IllegalArgumentException("Only terminal reroll states are supported");
+        }
+        return updateApplyState(roundId, "apply_state in ('PENDING', 'REROLL_IN_PROGRESS')", terminalState,
+                null, detail);
+    }
+
+    boolean markRerollAutoConfirmPending(long roundId, long resultingOfferSetId, String detail) {
+        return jdbcTemplate.update("""
+                update selection_voting_round
+                   set apply_state = 'REROLL_AUTO_CONFIRM_PENDING', resulting_offer_set_id = ?,
+                       apply_detail = ?, applied_at = now()
+                 where id = ? and status = 'COMPLETED'
+                   and apply_state = 'REROLL_OFFER_READY' and resulting_offer_set_id = ?
+                """, resultingOfferSetId, detail, roundId, resultingOfferSetId) == 1;
+    }
+
+    boolean markRerollAutoConfirmed(long roundId, long resultingOfferSetId) {
+        return jdbcTemplate.update("""
+                update selection_voting_round
+                   set apply_state = 'REROLL_AUTO_CONFIRMED', resulting_offer_set_id = ?,
+                       apply_detail = null, applied_at = now()
+                 where id = ? and status = 'COMPLETED'
+                   and apply_state = 'REROLL_AUTO_CONFIRM_PENDING' and resulting_offer_set_id = ?
+                """, resultingOfferSetId, roundId, resultingOfferSetId) == 1;
+    }
+
+    private boolean updateApplyState(long roundId, String expectedState, SelectionVotingQueries.ApplyState state,
+                                     Long resultingOfferSetId, String detail) {
+        return jdbcTemplate.update("""
                 update selection_voting_round
                    set apply_state = ?, resulting_offer_set_id = ?, apply_detail = ?, applied_at = now()
-                 where id = ? and status = 'COMPLETED'
-                """, state.name(), resultingOfferSetId, detail, roundId);
-        if (updated != 1) {
-            throw new IllegalStateException("Completed voting round disappeared while applying its result");
-        }
+                 where id = ? and status = 'COMPLETED' and %s
+                """.formatted(expectedState), state.name(), resultingOfferSetId, detail, roundId) == 1;
     }
 
     SelectionSnapshot selection(long sessionId) {

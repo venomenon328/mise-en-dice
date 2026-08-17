@@ -56,19 +56,21 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
 
     @Override
     public SelectionView presentationSucceeded(PresentationSucceeded command) {
+        OfferDecisionQueries.OfferSetView reportedOfferSet = offerSet(command.offerSetId());
+        if (reportedOfferSet.sessionId() != command.sessionId()) {
+            throw new SelectionVotingConflictException("Offer set does not belong to this challenge session");
+        }
+        if (reportedOfferSet.status() != CurationModel.OfferSetStatus.CURATED_UNPRESENTED
+                && reportedOfferSet.status() != CurationModel.OfferSetStatus.PRESENTED_PENDING_DECISION) {
+            throw new SelectionVotingConflictException("Only an unpresented or already pending offer set can be reported delivered");
+        }
         inWriteTransaction(() -> {
             lockSession(command.sessionId());
             initializeElectorate(command.sessionId(), List.of());
             return null;
         });
-        OfferDecisionQueries.OfferSetView offerSet = offerSet(command.offerSetId());
-        if (offerSet.sessionId() != command.sessionId()) {
-            throw new SelectionVotingConflictException("Offer set does not belong to this challenge session");
-        }
-        if (offerSet.status() == CurationModel.OfferSetStatus.CURATED_UNPRESENTED) {
+        if (reportedOfferSet.status() == CurationModel.OfferSetStatus.CURATED_UNPRESENTED) {
             offerDecisions.present(new OfferDecisionCommands.PresentOfferSet(command.offerSetId()));
-        } else if (offerSet.status() != CurationModel.OfferSetStatus.PRESENTED_PENDING_DECISION) {
-            throw new SelectionVotingConflictException("Only an unpresented or already pending offer set can be reported delivered");
         }
         OfferDecisionQueries.OfferSetView presented = offerSet(command.offerSetId());
         inWriteTransaction(() -> {
@@ -174,24 +176,33 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
     }
 
     private void reconcilePersistedPresentation(long sessionId) {
+        OfferDecisionQueries.OfferSetView pendingOfferSet = offerDecisionQueries.findSession(sessionId)
+                .map(OfferDecisionQueries.SessionDecisionView::pendingOfferSetId)
+                .flatMap(offerDecisionQueries::findOfferSet)
+                .filter(offerSet -> offerSet.status() == CurationModel.OfferSetStatus.PRESENTED_PENDING_DECISION)
+                .orElse(null);
+        if (pendingOfferSet == null) {
+            return;
+        }
         inWriteTransaction(() -> {
-            if (!repository.lockSession(sessionId)) {
-                throw new IllegalArgumentException("Challenge session does not exist");
+            lockSession(sessionId);
+            if (repository.electorate(sessionId).isEmpty()) {
+                return null;
             }
             Optional<JdbcSelectionVotingRepository.Round> first = repository.findRound(sessionId, 1);
-            if (first.isEmpty() || first.get().resultChoice() == null
-                    || first.get().resultChoice().type() != VoteOptionType.REROLL
-                    || first.get().resultingOfferSetId() == null) {
+            if (first.isEmpty()) {
+                // 11A already committed the initial presentation, but the process stopped before 11B inserted round 1.
+                reconcilePresentedOfferSet(sessionId, pendingOfferSet);
                 return null;
             }
-            JdbcSelectionVotingRepository.Round rerollRound = first.get();
-            if (rerollRound.applyState() != ApplyState.REROLL_OFFER_READY
-                    && rerollRound.applyState() != ApplyState.REROLL_AUTO_CONFIRM_PENDING) {
-                return null;
-            }
-            OfferDecisionQueries.OfferSetView offerSet = offerSet(rerollRound.resultingOfferSetId());
-            if (offerSet.status() == CurationModel.OfferSetStatus.PRESENTED_PENDING_DECISION) {
-                reconcilePresentedOfferSet(sessionId, offerSet);
+            JdbcSelectionVotingRepository.Round firstRound = first.get();
+            if (firstRound.resultChoice() != null
+                    && firstRound.resultChoice().type() == VoteOptionType.REROLL
+                    && firstRound.resultingOfferSetId() != null
+                    && firstRound.resultingOfferSetId() == pendingOfferSet.offerSetId()
+                    && (firstRound.applyState() == ApplyState.REROLL_OFFER_READY
+                    || firstRound.applyState() == ApplyState.REROLL_AUTO_CONFIRM_PENDING)) {
+                reconcilePresentedOfferSet(sessionId, pendingOfferSet);
             }
             return null;
         });
@@ -223,7 +234,7 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
             if (second.isPresent()) {
                 throw new IllegalStateException("One rerolled offer must not create a second voting round");
             }
-            repository.updateApplyState(firstRound.roundId(), ApplyState.REROLL_AUTO_CONFIRM_PENDING,
+            repository.markRerollAutoConfirmPending(firstRound.roundId(),
                     presentedOfferSet.offerSetId(), null);
             return;
         }
@@ -264,7 +275,7 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
                     new OfferDecisionCommands.ConfirmOffer(offerSetId, soleOffer(offerSet)));
             inWriteTransaction(() -> {
                 lockSession(continuation.sessionId());
-                repository.updateApplyState(round.roundId(), ApplyState.REROLL_AUTO_CONFIRMED, offerSetId, null);
+                repository.markRerollAutoConfirmed(round.roundId(), offerSetId);
                 return null;
             });
             initializeParticipation(continuation.sessionId(), confirmation.challengeId());
@@ -281,7 +292,7 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
                 new OfferDecisionCommands.ConfirmOffer(round.offerSetId(), offerId));
         inWriteTransaction(() -> {
             lockSession(continuation.sessionId());
-            repository.updateApplyState(round.roundId(), ApplyState.CONFIRMED, null, null);
+            repository.markConfirmed(round.roundId());
             return null;
         });
         initializeParticipation(continuation.sessionId(), confirmation.challengeId());
@@ -294,16 +305,16 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
         inWriteTransaction(() -> {
             lockSession(continuation.sessionId());
             if (outcome instanceof OfferDecisionCommands.RerollOfferReady ready) {
-                repository.updateApplyState(round.roundId(), ApplyState.REROLL_OFFER_READY, ready.offerSetId(), null);
+                repository.recordRerollOfferReady(round.roundId(), ready.offerSetId());
             } else if (outcome instanceof OfferDecisionCommands.RerollInProgress progress) {
-                repository.updateApplyState(round.roundId(), ApplyState.REROLL_IN_PROGRESS, null,
+                repository.recordRerollInProgress(round.roundId(),
                         progress.phase() + ":" + progress.reasonCode());
             } else if (outcome instanceof OfferDecisionCommands.RerollExhausted exhausted) {
-                repository.updateApplyState(round.roundId(), ApplyState.REROLL_EXHAUSTED, null,
+                repository.recordRerollTerminal(round.roundId(), ApplyState.REROLL_EXHAUSTED,
                         detail(exhausted.reasonCode(), exhausted.detail()));
             } else {
                 OfferDecisionCommands.RerollFailed failed = (OfferDecisionCommands.RerollFailed) outcome;
-                repository.updateApplyState(round.roundId(), ApplyState.REROLL_FAILED, null,
+                repository.recordRerollTerminal(round.roundId(), ApplyState.REROLL_FAILED,
                         detail(failed.reasonCode(), failed.detail()));
             }
             return null;
@@ -417,6 +428,15 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
     }
 
     private void initializeElectorate(long sessionId, List<Long> requestedParticipantIds) {
+        List<Long> existing = repository.electorate(sessionId).stream()
+                .map(JdbcSelectionVotingRepository.ElectorateMember::participantId)
+                .sorted().toList();
+        if (!existing.isEmpty()) {
+            if (!requestedParticipantIds.isEmpty() && !existing.equals(requestedParticipantIds.stream().sorted().toList())) {
+                throw new SelectionVotingConflictException("Challenge session electorate is already initialized differently");
+            }
+            return;
+        }
         List<Long> expected = requestedParticipantIds.isEmpty() ? repository.defaultElectorateParticipantIds()
                 : requestedParticipantIds;
         expected = expected.stream().sorted().toList();
@@ -430,13 +450,7 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
                 throw new SelectionVotingConflictException("An inactive participant cannot initialize a new electorate snapshot");
             }
         }
-        List<Long> existing = repository.electorate(sessionId).stream().map(JdbcSelectionVotingRepository.ElectorateMember::participantId)
-                .sorted().toList();
-        if (existing.isEmpty()) {
-            repository.insertElectorate(sessionId, expected);
-        } else if (!existing.equals(expected)) {
-            throw new SelectionVotingConflictException("Challenge session electorate is already initialized differently");
-        }
+        repository.insertElectorate(sessionId, expected);
     }
 
     private OfferDecisionQueries.OfferSetView offerSet(long offerSetId) {
