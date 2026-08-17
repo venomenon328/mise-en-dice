@@ -391,7 +391,7 @@ class PostgresIntegrationTest {
     }
 
     @Test
-    void visibleChallengeRequiresItsSelectedCandidateAndExactlyFourRequirements() {
+    void visibleChallengeRequiresItsConfirmedOfferAndExactlyFourRequirements() {
         long attempt = insertAttempt(
                 insertReturningId("insert into challenge_session default values returning id"),
                 "INITIAL"
@@ -417,17 +417,13 @@ class PostgresIntegrationTest {
                 .hasMessageContaining("new challenges require a confirmed curated offer");
 
         jdbcTemplate.update("update challenge_candidate set is_selected = true where id = ?", candidate);
-        jdbcTemplate.update(
-                "insert into challenge (generation_attempt_id, selected_candidate_id) values (?, ?)",
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "insert into challenge (generation_attempt_id, selected_candidate_id, legacy_pre_offer_decision) values (?, ?, true)",
                 attempt,
                 candidate
-        );
-
-        assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from challenge where generation_attempt_id = ?",
-                Integer.class,
-                attempt
-        )).isEqualTo(1);
+        ))
+                .isInstanceOf(UncategorizedSQLException.class)
+                .hasMessageContaining("legacy challenge marker is reserved for rows present before migration 008");
     }
 
     private void rerunLiquibase() throws Exception {

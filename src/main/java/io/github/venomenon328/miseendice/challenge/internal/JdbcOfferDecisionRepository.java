@@ -31,6 +31,20 @@ class JdbcOfferDecisionRepository {
                 .stream().findFirst();
     }
 
+    boolean lockSession(long sessionId) {
+        return !jdbcTemplate.queryForList(
+                "select id from challenge_session where id = ? for update", Long.class, sessionId).isEmpty();
+    }
+
+    boolean rerollConsumed(long sessionId) {
+        Boolean result = jdbcTemplate.queryForObject("""
+                select exists (
+                    select 1 from reroll_offer_exposure where challenge_session_id = ?
+                )
+                """, Boolean.class, sessionId);
+        return Boolean.TRUE.equals(result);
+    }
+
     Optional<Offer> findOffer(long offerSetId, long offerId) {
         return jdbcTemplate.query("""
                 select offer.id, offer.curated_offer_set_id, offer.position, offer.challenge_candidate_id

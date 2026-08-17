@@ -23,6 +23,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.Requiremen
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleChallenge;
+import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleRerollExposure;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleRequirement;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -237,11 +238,10 @@ class CandidateProposalEngineTest {
                         : concept).toList();
         CatalogGeneratorSnapshot related = new CatalogGeneratorSnapshot(8, base.activeParticipantCodes(),
                 relatedConcepts, base.exclusionRules());
-        VisibleHistorySnapshot history = new VisibleHistorySnapshot(List.of(new VisibleChallenge(
-                Instant.parse("2026-08-11T18:00:00Z"), "rerolled-offer-set", AttemptType.INITIAL, "REROLLED",
+        VisibleHistorySnapshot history = new VisibleHistorySnapshot(List.of(), List.of(new VisibleRerollExposure(
+                Instant.parse("2026-08-11T18:00:00Z"), "reroll-session", "rerolled-offer-set",
                 List.of(visibleRequirement("VEGETABLE_OPEN"), visibleRequirement("OLD_A"),
-                        visibleRequirement("OLD_B"), visibleRequirement("OLD_C")),
-                CandidateProfile.FLEXIBLE_BALANCED, NoveltyBand.BALANCED, null)));
+                        visibleRequirement("OLD_B"), visibleRequirement("OLD_C")))));
         GenerationContext reroll = new GenerationContext(AttemptType.REROLL, LocalDate.of(2026, 8, 12), 8,
                 related, history, List.of(), Set.of(), AttemptExclusionDecision.none(), NoveltyCadence.NEUTRAL,
                 Map.of(NoveltyBand.FAMILIAR, 3, NoveltyBand.BALANCED, 7, NoveltyBand.ADVENTUROUS, 2),

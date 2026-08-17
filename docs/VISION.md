@@ -360,8 +360,9 @@ Als nächste Schritte folgen:
 6. Persistenz, Replay, Konkurrenz und Kalibrierung des Kandidatengenerators gemäß [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md),
 7. strukturierter Kuratorvertrag und persistentes Multi-Offer-Lifecycle gemäß [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md),
 8. OpenAI-Anbindung mit strikt gedeckelter Orchestrierung,
-9. Discord-Flow für Auswahl von `1..3` Angeboten, Bestätigung genau einer Challenge und einen gemeinsamen Offer-Set-Reroll,
-10. später: persönliche Auswahl, Historie und Ergebnisdokumentation.
+9. transportneutraler Offer-Decision-/Reroll-Lifecycle für Auswahl von `1..3` Angeboten und Bestätigung genau einer Challenge,
+10. transportneutraler Teilnehmer-, Electorate- und Voting-Core, danach ein dünner Discord-Adapter,
+11. später: persönliche Auswahl, Historie und Ergebnisdokumentation.
 
 ## 13. Leitprinzip in einem Satz
 

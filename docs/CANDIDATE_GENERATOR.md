@@ -1507,4 +1507,4 @@ Für Generator 1.1 gilt als Nachweis:
 - Labor und Simulation besitzen keinen operativen REROLL-Blockparameter mehr,
 - gezielte REROLL-/Cooldown-/Replaytests sowie `./mvnw clean verify` sind grün.
 
-Phase 11A implementiert die persistente Cooldown-only-Exposition eines vollständig rerollten Offer Sets mit 1–3 sichtbaren Optionen. Die noch ausstehende Discord-Adapterarbeit verändert diese Generator-Hardrule nicht.
+Phase 11A implementiert die persistente Cooldown-only-Exposition eines vollständig rerollten Offer Sets mit 1–3 sichtbaren Optionen. Weder der nachfolgende transportneutrale 11B-Voting-/Participation-Core noch der spätere 11C-Discord-Adapter verändern diese Generator-Hardrule.

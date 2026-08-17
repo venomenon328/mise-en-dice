@@ -121,6 +121,8 @@ class PersistedGenerationMigrationIntegrationTest {
             assertThat(countWhere(connection, "candidate_requirement",
                     "candidate_id = " + candidate + " and concept_code_snapshot is not null")).isEqualTo(4);
             assertThat(countWhere(connection, "challenge", "generation_attempt_id = " + attempt)).isEqualTo(1);
+            assertThat(value(connection, "select legacy_pre_offer_decision from challenge where generation_attempt_id = "
+                    + attempt)).isEqualTo("t");
             assertThat(countWhere(connection, "generation_batch",
                     "generation_attempt_id = " + attempt + " and batch_number = 1 and legacy_migrated"))
                     .isEqualTo(1);
@@ -213,6 +215,9 @@ class PersistedGenerationMigrationIntegrationTest {
                     .contains("UNCLAIMED");
             assertThat(countWhere(connection, "information_schema.columns",
                     "table_schema = 'public' and table_name = 'challenge' and column_name = 'curated_offer_id'"))
+                    .isEqualTo(1);
+            assertThat(countWhere(connection, "information_schema.columns",
+                    "table_schema = 'public' and table_name = 'challenge' and column_name = 'legacy_pre_offer_decision'"))
                     .isEqualTo(1);
             assertThat(countWhere(connection, "information_schema.tables",
                     "table_schema = 'public' and table_name = 'reroll_offer_exposure'"))

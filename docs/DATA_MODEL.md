@@ -199,14 +199,14 @@ challenge_session
             └─ curated_offer (Positionen 1..requested_offer_count)
 
 challenge
-  └─ verweist bei neuen Challenges auf genau ein bestätigtes curated_offer; Legacy-Zeilen bleiben ohne diese Referenz lesbar
+  └─ verweist bei neuen Challenges auf genau ein bestätigtes curated_offer; nur bei Migration 008 eingefrorene Legacy-Zeilen bleiben ohne diese Referenz lesbar
 
 reroll_offer_exposure (Phase 11A)
   └─ referenziert genau ein vollständig rerolltes sichtbares curated_offer_set derselben Session
        └─ besitzt positionsgebundene Snapshot-Requirements mit dessen exakten Konzeptcodes als eine gemeinsame Cooldownposition
 ```
 
-`reroll_offer_exposure` und seine Snapshot-Requirements sind die in Phase 11A eingeführte append-only Tabellenform für diese Cooldown-only-Rolle. Die spätere Discord-Anbindung schreibt sie nicht selbst, sondern verwendet ausschließlich die öffentlichen Offer-Decision-Commands.
+`reroll_offer_exposure` und seine Snapshot-Requirements sind die in Phase 11A eingeführte append-only Tabellenform für diese Cooldown-only-Rolle. Der spätere 11B-Voting-Core und der erst danach folgende 11C-Discord-Adapter schreiben sie nicht selbst, sondern verwenden ausschließlich die öffentlichen Offer-Decision-Commands.
 
 Phase 9D implementiert noch keine Kuratororchestrierung und kein Offer Set. Seine Persistenz muss jedoch verhindern, dass die spätere fachliche Kardinalität durch eine starre Annahme „eine Kurationsrunde = genau ein Generation Batch = genau ein ausgewählter Kandidat“ verbaut wird.
 
@@ -277,7 +277,7 @@ Phase 10A erzeugt weiterhin ausschließlich `CURATED_UNPRESENTED`; Phase 11A üb
 
 ### Sichtbare Challenge und rerollte Offer-Exposition
 
-Eine operative `challenge` entsteht erst, wenn der Nutzer genau einen `curated_offer` ausdrücklich bestätigt. `challenge.curated_offer_id` ist dafür die neue autoritative, eindeutige Fremdreferenz; das Legacy-Feld `is_selected` bleibt nur für bereits vorhandene Challenges lesbar. Datenbank und Application Service stellen sicher, dass Session, Attempt, Offer Set, Offer, Candidate und dessen vier Requirements zusammengehören.
+Eine operative `challenge` entsteht erst, wenn genau ein `curated_offer` ausdrücklich bestätigt wird. `challenge.curated_offer_id` ist dafür die neue autoritative, eindeutige Fremdreferenz. `legacy_pre_offer_decision` wird einmalig durch Migration 008 für damals bereits vorhandene Challenge-Zeilen ohne Offer gesetzt und ist danach unveränderlich; ein späterer Insert kann ihn nicht setzen. Das Legacy-Feld `is_selected` bleibt nur für diese historische Lesbarkeit erhalten. Datenbank und Application Service stellen sicher, dass Session, Attempt, Offer Set, Offer, Candidate und dessen vier Requirements zusammengehören.
 
 Wird eine Option normal bestätigt, bleiben die übrigen Angebote für Audit, Replay und Diagnose erhalten, sind aber **keine Historienexposition**. Sie erzeugen weder Cooldown noch Neuigkeitswirkung.
 

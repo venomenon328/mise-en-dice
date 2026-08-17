@@ -12,9 +12,11 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Genera
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.ManualRequirementInput;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
+import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayStatus;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands.Confirmation;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands.RerollOfferReady;
+import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands.RerollInProgress;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionConflictException;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
 import java.time.LocalDate;
@@ -104,7 +106,7 @@ class OfferDecisionLifecycleIntegrationTest {
     }
 
     @Test
-    void confirmUsesOnlyTheAuthoritativeOfferAndLeavesOtherVisibleOffersHistoricallyInvisible() {
+    void confirmedOfferUsesNormalCooldownAndCadenceHistoryWhileOtherOffersStayInvisible() {
         CurationQueries.OfferSetView ready = offered(2, 76_100_011L);
         decisions.present(new OfferDecisionCommands.PresentOfferSet(ready.offerSetId()));
         long selectedOffer = ready.offers().getFirst().offerId();
@@ -120,10 +122,66 @@ class OfferDecisionLifecycleIntegrationTest {
                 .extracting(requirement -> requirement.conceptCode())
                 .containsExactlyElementsOf(ready.offers().getFirst().candidate().requirements().stream()
                         .map(requirement -> requirement.conceptCodeSnapshot()).toList());
+        assertThat(generationRepository.visibleHistory().challengesNewestFirst().getFirst().profile()).isNotNull();
+        assertThat(generationRepository.visibleHistory().challengesNewestFirst().getFirst().noveltyBand()).isNotNull();
         assertThatThrownBy(() -> decisions.confirm(new OfferDecisionCommands.ConfirmOffer(
                 ready.offerSetId(), ready.offers().get(1).offerId())))
                 .isInstanceOf(OfferDecisionConflictException.class);
         assertThat(jdbcTemplate.queryForObject("select count(*) from challenge", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void concurrentPresentationSetsExactlyOneStableTimestamp() throws Exception {
+        CurationQueries.OfferSetView ready = offered(1, 76_100_015L);
+        CountDownLatch readyLatch = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(raced(readyLatch, start, () -> decisions.present(
+                    new OfferDecisionCommands.PresentOfferSet(ready.offerSetId()))));
+            var second = executor.submit(raced(readyLatch, start, () -> decisions.present(
+                    new OfferDecisionCommands.PresentOfferSet(ready.offerSetId()))));
+            assertThat(readyLatch.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            List<Object> outcomes = List.of(first.get(), second.get());
+            assertThat(outcomes).allMatch(OfferDecisionCommands.Presentation.class::isInstance);
+            assertThat(outcomes.stream().map(OfferDecisionCommands.Presentation.class::cast)
+                    .map(OfferDecisionCommands.Presentation::presentedAt).distinct()).hasSize(1);
+        }
+    }
+
+    @Test
+    void concurrentIdenticalConfirmIsIdempotentWhileDifferentConfirmConflicts() throws Exception {
+        CurationQueries.OfferSetView identical = offered(2, 76_100_016L);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(identical.offerSetId()));
+        CountDownLatch identicalReady = new CountDownLatch(2);
+        CountDownLatch identicalStart = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(raced(identicalReady, identicalStart, () -> decisions.confirm(
+                    new OfferDecisionCommands.ConfirmOffer(identical.offerSetId(), identical.offers().getFirst().offerId()))));
+            var second = executor.submit(raced(identicalReady, identicalStart, () -> decisions.confirm(
+                    new OfferDecisionCommands.ConfirmOffer(identical.offerSetId(), identical.offers().getFirst().offerId()))));
+            assertThat(identicalReady.await(5, TimeUnit.SECONDS)).isTrue();
+            identicalStart.countDown();
+            List<Object> outcomes = List.of(first.get(), second.get());
+            assertThat(outcomes).allMatch(Confirmation.class::isInstance);
+            assertThat(outcomes.stream().map(Confirmation.class::cast).map(Confirmation::challengeId).distinct()).hasSize(1);
+        }
+
+        CurationQueries.OfferSetView different = offered(2, 76_100_017L);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(different.offerSetId()));
+        CountDownLatch differentReady = new CountDownLatch(2);
+        CountDownLatch differentStart = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(raced(differentReady, differentStart, () -> decisions.confirm(
+                    new OfferDecisionCommands.ConfirmOffer(different.offerSetId(), different.offers().getFirst().offerId()))));
+            var second = executor.submit(raced(differentReady, differentStart, () -> decisions.confirm(
+                    new OfferDecisionCommands.ConfirmOffer(different.offerSetId(), different.offers().get(1).offerId()))));
+            assertThat(differentReady.await(5, TimeUnit.SECONDS)).isTrue();
+            differentStart.countDown();
+            List<Object> outcomes = List.of(first.get(), second.get());
+            assertThat(outcomes.stream().filter(Confirmation.class::isInstance)).hasSize(1);
+            assertThat(outcomes.stream().filter(OfferDecisionConflictException.class::isInstance)).hasSize(1);
+        }
     }
 
     @Test
@@ -165,6 +223,8 @@ class OfferDecisionLifecycleIntegrationTest {
         assertThat(generationRepository.visibleHistory().rerollExposuresNewestFirst()).hasSize(1);
         assertThat(generationRepository.visibleHistory().cooldownExposuresNewestFirst()).hasSize(1);
         assertThat(rerollContext.visibleHistorySnapshotJson()).contains("rerollExposuresNewestFirst");
+        assertThat(rerollContext.preparedAttemptSnapshotJson()).contains("\"noveltyCadence\": \"NEUTRAL\"");
+        assertThat(generationQueries.replay(outcome.rerollAttemptId(), 1).status()).isEqualTo(ReplayStatus.MATCH);
         assertThat(curationQueries.findAttempt(outcome.rerollAttemptId()).orElseThrow().requestedOfferCount()).isEqualTo(2);
         assertThat(jdbcTemplate.queryForList("""
                 select position || ':' || display_text || ':' || coalesce(matched_ingredient_concept_id::text, '')
@@ -180,6 +240,57 @@ class OfferDecisionLifecycleIntegrationTest {
         assertThat(jdbcTemplate.queryForObject("select count(*) from reroll_offer_exposure", Integer.class)).isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject("select count(*) from generation_attempt where attempt_type = 'REROLL'",
                 Integer.class)).isEqualTo(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 3})
+    void eachRerolledVisibleOfferSetIsOneCooldownPositionRegardlessOfOfferCount(int count) {
+        CurationQueries.OfferSetView source = offered(count, 76_100_032L + count);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(source.offerSetId()));
+        curator.script(CurationOrchestrationIntegrationTest.Script.success(count));
+
+        decisions.reroll(new OfferDecisionCommands.RerollOfferSet(source.offerSetId(), 76_100_035L + count));
+
+        assertThat(generationRepository.visibleHistory().rerollExposuresNewestFirst()).hasSize(1);
+        assertThat(generationRepository.visibleHistory().cooldownExposuresNewestFirst()).hasSize(1);
+        assertThat(generationRepository.visibleHistory().rerollExposuresNewestFirst().getFirst().requirements())
+                .hasSize(count * 4);
+    }
+
+    @Test
+    void duplicateCodesAcrossVisibleOffersRemainOneCooldownDistancePosition() {
+        CurationQueries.OfferSetView source = offered(2, 76_100_039L);
+        String duplicateCode = source.offers().getFirst().candidate().requirements().getFirst().conceptCodeSnapshot();
+        jdbcTemplate.update("""
+                update candidate_requirement set concept_code_snapshot = ?
+                where candidate_id = ? and position = 1
+                """, duplicateCode, source.offers().get(1).candidateId());
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(source.offerSetId()));
+        curator.script(CurationOrchestrationIntegrationTest.Script.success(2));
+
+        decisions.reroll(new OfferDecisionCommands.RerollOfferSet(source.offerSetId(), 76_100_040L));
+
+        assertThat(generationRepository.visibleHistory().rerollExposuresNewestFirst()).hasSize(1);
+        assertThat(generationRepository.visibleHistory().cooldownExposuresNewestFirst()).hasSize(1);
+        assertThat(generationRepository.visibleHistory().rerollExposuresNewestFirst().getFirst().requirements())
+                .extracting(requirement -> requirement.conceptCode())
+                .contains(duplicateCode, duplicateCode);
+    }
+
+    @Test
+    void secondVoluntaryRerollInTheSameSessionIsAnApiConflictBeforeTheUniqueConstraint() {
+        CurationQueries.OfferSetView source = offered(1, 76_100_041L);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(source.offerSetId()));
+        curator.script(CurationOrchestrationIntegrationTest.Script.success(1));
+        RerollOfferReady rerolled = (RerollOfferReady) decisions.reroll(
+                new OfferDecisionCommands.RerollOfferSet(source.offerSetId(), 76_100_042L));
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(rerolled.offerSetId()));
+
+        assertThatThrownBy(() -> decisions.reroll(new OfferDecisionCommands.RerollOfferSet(rerolled.offerSetId())))
+                .isInstanceOf(OfferDecisionConflictException.class)
+                .hasMessageContaining("already used");
+        assertThat(status(rerolled.offerSetId())).isEqualTo("PRESENTED_PENDING_DECISION");
+        assertThat(jdbcTemplate.queryForObject("select count(*) from reroll_offer_exposure", Integer.class)).isEqualTo(1);
     }
 
     @Test
@@ -230,6 +341,41 @@ class OfferDecisionLifecycleIntegrationTest {
                 new OfferDecisionCommands.RerollOfferSet(ready.offerSetId(), 76_100_048L));
         assertThat(resumed.sourceOfferSetId()).isEqualTo(ready.offerSetId());
         assertThat(jdbcTemplate.queryForObject("select count(*) from reroll_offer_exposure", Integer.class)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from generation_attempt where attempt_type = 'REROLL'",
+                Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void restartAfterExposureCommitCreatesOneRerollAttemptWithoutDuplicatingTheExposure() {
+        CurationQueries.OfferSetView source = offered(1, 76_100_049L);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(source.offerSetId()));
+        persistExposureWithoutRerollAttempt(source);
+        curator.script(CurationOrchestrationIntegrationTest.Script.success(1));
+
+        RerollOfferReady resumed = (RerollOfferReady) decisions.reroll(
+                new OfferDecisionCommands.RerollOfferSet(source.offerSetId(), 76_100_050L));
+
+        assertThat(resumed.sourceOfferSetId()).isEqualTo(source.offerSetId());
+        assertThat(jdbcTemplate.queryForObject("select count(*) from reroll_offer_exposure", Integer.class)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from generation_attempt where attempt_type = 'REROLL'",
+                Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void restartAfterRerollBatchResumesCurationWithoutCreatingAnotherAttempt() {
+        CurationQueries.OfferSetView source = offered(1, 76_100_053L);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(source.offerSetId()));
+        curator.disable();
+
+        RerollInProgress interrupted = (RerollInProgress) decisions.reroll(
+                new OfferDecisionCommands.RerollOfferSet(source.offerSetId(), 76_100_054L));
+        assertThat(generationQueries.findBatch(interrupted.rerollAttemptId(), 1)).isPresent();
+        curator.reset();
+        curator.script(CurationOrchestrationIntegrationTest.Script.success(1));
+
+        RerollOfferReady resumed = (RerollOfferReady) decisions.reroll(
+                new OfferDecisionCommands.RerollOfferSet(source.offerSetId(), 76_100_055L));
+        assertThat(resumed.rerollAttemptId()).isEqualTo(interrupted.rerollAttemptId());
         assertThat(jdbcTemplate.queryForObject("select count(*) from generation_attempt where attempt_type = 'REROLL'",
                 Integer.class)).isEqualTo(1);
     }
@@ -287,6 +433,35 @@ class OfferDecisionLifecycleIntegrationTest {
 
     private String status(long offerSetId) {
         return jdbcTemplate.queryForObject("select status from curated_offer_set where id = ?", String.class, offerSetId);
+    }
+
+    private void persistExposureWithoutRerollAttempt(CurationQueries.OfferSetView source) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            jdbcTemplate.update("""
+                    update curated_offer_set set status = 'REROLLED', decided_at = now()
+                    where id = ? and status = 'PRESENTED_PENDING_DECISION'
+                    """, source.offerSetId());
+            long exposureId = jdbcTemplate.queryForObject("""
+                    insert into reroll_offer_exposure (challenge_session_id, curated_offer_set_id)
+                    select attempt.challenge_session_id, offer_set.id
+                    from curated_offer_set offer_set
+                    join generation_attempt attempt on attempt.id = offer_set.generation_attempt_id
+                    where offer_set.id = ? returning id
+                    """, Long.class, source.offerSetId());
+            jdbcTemplate.update("""
+                    insert into reroll_offer_exposure_requirement (
+                        reroll_offer_exposure_id, curated_offer_id, challenge_candidate_id, requirement_position,
+                        source, ingredient_concept_id, concept_code_snapshot, display_text_snapshot
+                    )
+                    select ?, offer.id, offer.challenge_candidate_id, requirement.position,
+                           requirement.source, requirement.ingredient_concept_id, requirement.concept_code_snapshot,
+                           requirement.display_text_snapshot
+                    from curated_offer offer
+                    join candidate_requirement requirement on requirement.candidate_id = offer.challenge_candidate_id
+                    where offer.curated_offer_set_id = ?
+                    order by offer.position, requirement.position
+                    """, exposureId, source.offerSetId());
+        });
     }
 
     private static <T> Callable<Object> raced(CountDownLatch ready, CountDownLatch start, Callable<T> action) {

@@ -116,6 +116,13 @@ class OfferDecisionApplicationService implements OfferDecisionCommands, OfferDec
     }
 
     private RerollCommit commitReroll(long offerSetId) {
+        // Keep the same lock order as GenerationApplicationService: session before attempt/offer-set.
+        // This also serializes a reroll of a later offer set against the once-per-session exposure.
+        JdbcOfferDecisionRepository.OfferSet knownOfferSet = repository.findOfferSet(offerSetId)
+                .orElseThrow(() -> new IllegalArgumentException("Curated offer set does not exist"));
+        if (!repository.lockSession(knownOfferSet.sessionId())) {
+            throw new IllegalStateException("Offer set references a missing challenge session");
+        }
         JdbcOfferDecisionRepository.OfferSet offerSet = repository.lockOfferSet(offerSetId);
         if (offerSet.status() == CurationModel.OfferSetStatus.CONFIRMED) {
             throw new OfferDecisionConflictException("A confirmed offer set cannot be rerolled");
@@ -124,6 +131,9 @@ class OfferDecisionApplicationService implements OfferDecisionCommands, OfferDec
             throw new OfferDecisionConflictException("Only an actually presented offer set can be rerolled");
         }
         if (offerSet.status() == CurationModel.OfferSetStatus.PRESENTED_PENDING_DECISION) {
+            if (repository.rerollConsumed(offerSet.sessionId())) {
+                throw new OfferDecisionConflictException("The voluntary reroll for this challenge session is already used");
+            }
             repository.markRerolled(offerSet.offerSetId());
             repository.insertExposure(offerSet);
         } else if (repository.exposureForOfferSet(offerSet.offerSetId()).isEmpty()) {

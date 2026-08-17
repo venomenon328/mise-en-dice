@@ -287,4 +287,4 @@ Die Datenbank erzwingt die Übergänge `CURATED_UNPRESENTED` → `PRESENTED_PEND
 
 Beim Reroll entsteht vor dem nächsten Generatorlauf genau ein persistiertes Snapshot-Ereignis. Es kopiert sämtliche Requirement-Codes aller Offers in ihrer sichtbaren Position. Die Historie verarbeitet diesen Satz ausschließlich als eine Cooldownposition mit exakten Codes; es gibt keine Refinement-Expansion und keine Neuigkeitskadenzwirkung. Erst danach nutzt der REROLL-Attempt denselben Generation- und `CurationOrchestrationCommands`-Pfad wie der Erstlauf. Jede Commit-Grenze ist restartfähig; unbekannte Infrastruktur- oder Datenbankfehler werden nicht als Konflikt oder Erschöpfung übersetzt.
 
-Discord-SDK, Gateway, Commands, Buttons, Messages und User-IDs sind nicht Teil von Phase 11A und bleiben Phase 11B.
+Discord-SDK, Gateway, Commands, Buttons, Messages und User-IDs sind nicht Teil von Phase 11A. Phase 11B ergänzt davor ausschließlich den transportneutralen Voting-/Participation-Core; der Discord-Adapter folgt erst in Phase 11C.
