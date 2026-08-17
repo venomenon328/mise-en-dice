@@ -1,5 +1,9 @@
 # Mise en Dice
 
+## Discord-Adapter
+
+Der Challenge-Bot ist standardmäßig deaktiviert (`mise-en-dice.discord.enabled=false`). Für den produktiven Betrieb werden außerhalb des Git-Checkouts ein Bot-Token, genau eine Guild-ID und stabile Discord-User-IDs für `GEORGIA` und `TOBIAS` konfiguriert. Lokale Starts und Branch-Previews bleiben ohne Token und Gateway; Details stehen in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 **Mise en Dice** ist ein privates Tool für kuratierte Koch-Challenges zwischen zwei Personen.
 
 Die Grundidee: Beide erhalten dieselben vier kulinarischen Vorgaben, entwickeln daraus unabhängig voneinander ein Gericht und dürfen dabei nur begrenzt zusätzliche Zutaten ergänzen. Die Vorgaben werden zufällig aus einer gepflegten Datenbasis erzeugt und anschließend von einem Sprachmodell lediglich auf grundsätzliche kulinarische Plausibilität kuratiert. Das System garantiert also nur, dass mindestens ein sinnvoller Weg existiert — nicht, dass jede Entscheidung gut endet.

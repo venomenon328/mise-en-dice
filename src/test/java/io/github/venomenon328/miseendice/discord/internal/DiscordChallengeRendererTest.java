@@ -1,0 +1,100 @@
+package io.github.venomenon328.miseendice.discord.internal;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.github.venomenon328.miseendice.challenge.api.CurationModel;
+import io.github.venomenon328.miseendice.challenge.api.CurationRequest;
+import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
+import io.github.venomenon328.miseendice.challenge.api.SelectionVotingCommands;
+import io.github.venomenon328.miseendice.challenge.api.SelectionVotingQueries;
+import java.time.Instant;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+class DiscordChallengeRendererTest {
+
+    @Test
+    void rendersOneTwoAndThreeOffersFromStoredRequirementSnapshots() {
+        var renderer = new DiscordChallengeRenderer();
+        for (int count = 1; count <= 3; count++) {
+            var rendered = renderer.unpresentedOffers(offerSet(count));
+            assertThat(rendered.content()).contains("Vorschlag " + count, "1. Snapshot " + count + ".1");
+            assertThat(rendered.components()).hasSize(1);
+        }
+    }
+
+    @Test
+    void keepsVotesSecretWhileTheRoundIsOpen() {
+        var renderer = new DiscordChallengeRenderer();
+        var offerSet = offerSet(1);
+        var selection = new SelectionVotingQueries.SelectionView(1, electorate(), offerSet,
+                new SelectionVotingQueries.VotingRoundView(7, 1, offerSet.offerSetId(),
+                        SelectionVotingQueries.VotingRoundStatus.OPEN,
+                        List.of(new SelectionVotingQueries.AllowedOptionView(SelectionVotingCommands.VoteOptionType.ACCEPT, null),
+                                new SelectionVotingQueries.AllowedOptionView(SelectionVotingCommands.VoteOptionType.REROLL, null)),
+                        List.of(new SelectionVotingQueries.VoteStatusView(8, "GEORGIA", "Georgia", true,
+                                        SelectionVotingCommands.VoteChoice.accept()),
+                                new SelectionVotingQueries.VoteStatusView(9, "TOBIAS", "Tobias", false, null)), null),
+                List.of(), null, null);
+
+        var rendered = renderer.selection(selection);
+
+        assertThat(rendered.content()).contains("Georgia: abgestimmt", "Tobias: noch offen")
+                .doesNotContain("Georgia: Annehmen", "Georgia: Neu würfeln");
+        assertThat(rendered.components()).extracting(DiscordChallengeRenderer.Component::label)
+                .containsExactly("Annehmen", "Neu würfeln");
+    }
+
+    @Test
+    void rendersCompletedResultTieBreakAndConfirmedSnapshotChallenge() {
+        var renderer = new DiscordChallengeRenderer();
+        var offerSet = offerSet(2);
+        var result = new SelectionVotingQueries.RoundResultView(SelectionVotingCommands.VoteChoice.offer(offerSet.offers().get(1).offerId()),
+                true, Instant.now(), SelectionVotingQueries.ApplyState.CONFIRMED, null, null);
+        var completed = new SelectionVotingQueries.VotingRoundView(7, 1, offerSet.offerSetId(),
+                SelectionVotingQueries.VotingRoundStatus.COMPLETED, List.of(),
+                List.of(new SelectionVotingQueries.VoteStatusView(8, "GEORGIA", "Georgia", true,
+                                SelectionVotingCommands.VoteChoice.offer(offerSet.offers().get(1).offerId())),
+                        new SelectionVotingQueries.VoteStatusView(9, "TOBIAS", "Tobias", true,
+                                SelectionVotingCommands.VoteChoice.offer(offerSet.offers().get(0).offerId()))), result);
+        var challenge = new SelectionVotingQueries.ChallengeParticipationView(12, List.of());
+
+        var rendered = renderer.selection(new SelectionVotingQueries.SelectionView(1, electorate(), offerSet, null,
+                List.of(completed), null, challenge));
+
+        assertThat(rendered.content()).contains("Gewinner: Vorschlag gewählt", "Losentscheid", "Georgia: Vorschlag gewählt",
+                "Challenge bestätigt", "Snapshot 1.1");
+    }
+
+    @Test
+    void rendersTerminalRerollStatesWithoutInventingAFallback() {
+        var renderer = new DiscordChallengeRenderer();
+        var offerSet = offerSet(2);
+        var result = new SelectionVotingQueries.RoundResultView(SelectionVotingCommands.VoteChoice.reroll(), false,
+                Instant.now(), SelectionVotingQueries.ApplyState.REROLL_EXHAUSTED, null, null);
+        var completed = new SelectionVotingQueries.VotingRoundView(7, 1, offerSet.offerSetId(),
+                SelectionVotingQueries.VotingRoundStatus.COMPLETED, List.of(), List.of(), result);
+
+        var rendered = renderer.selection(new SelectionVotingQueries.SelectionView(1, electorate(), offerSet, null,
+                List.of(completed), null, null));
+
+        assertThat(rendered.content()).contains("Gewinner: Neu würfeln", "keine neuen Angebote");
+        assertThat(rendered.components()).isEmpty();
+    }
+
+    private static List<SelectionVotingQueries.ElectorateMemberView> electorate() {
+        return List.of(new SelectionVotingQueries.ElectorateMemberView(8, "GEORGIA", "Georgia", true),
+                new SelectionVotingQueries.ElectorateMemberView(9, "TOBIAS", "Tobias", true));
+    }
+
+    private static OfferDecisionQueries.OfferSetView offerSet(int count) {
+        List<OfferDecisionQueries.OfferView> offers = java.util.stream.IntStream.rangeClosed(1, count)
+                .mapToObj(offer -> new OfferDecisionQueries.OfferView(offer, offer, offer + 20,
+                        java.util.stream.IntStream.rangeClosed(1, 4).mapToObj(position ->
+                                new CurationRequest.RequirementSnapshot(position, "RANDOM", 1L, null, "CODE",
+                                        "Snapshot " + offer + "." + position, "SPECIFIC", 1, "{}", "{}", "[]"))
+                                .toList())).toList();
+        return new OfferDecisionQueries.OfferSetView(1, 2, 3, count, CurationModel.OfferSetStatus.CURATED_UNPRESENTED,
+                Instant.now(), null, null, null, offers);
+    }
+}

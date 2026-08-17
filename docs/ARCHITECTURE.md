@@ -155,6 +155,8 @@ Das Discord-Modul übersetzt Discord-Interaktionen in Application-Commands und s
 
 Der bestehende Gridwords-Bot wird nicht wiederverwendet. Mise en Dice erhält einen eigenständigen Discord-Bot-Adapter.
 
+Der Adapter ist standardmäßig deaktiviert. Bei Aktivierung kapselt er JDA, Gateway-Lifecycle, Guild-Command-Registrierung, Interaktions-Acknowledgements und Renderer vollständig im `discord`-Modul; es verwendet ausschließlich `challenge :: api`. Vor der sichtbaren Vote-Aktivierung meldet er die erfolgreiche Auslieferung an den Phase-11B-Presentation-Handshake zurück. Discord-IDs bleiben opake externe Subjects, nicht Teil des Challenge-Modells.
+
 ### 4.5 `bootstrap`
 
 Das Bootstrap-Paket enthält den Anwendungseinstieg und technische Konfiguration. Es darf Module zusammenbauen, aber keine Fachlogik aufnehmen.

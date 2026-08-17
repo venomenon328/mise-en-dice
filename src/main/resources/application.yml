@@ -13,6 +13,11 @@ spring:
 mise-en-dice:
   administration:
     enabled: ${MISE_EN_DICE_ADMINISTRATION_ENABLED:false}
+  discord:
+    enabled: ${MISE_EN_DICE_DISCORD_ENABLED:false}
+    token: ${MISE_EN_DICE_DISCORD_TOKEN:}
+    guild-id: ${MISE_EN_DICE_DISCORD_GUILD_ID:0}
+    effective-date-zone: ${MISE_EN_DICE_DISCORD_EFFECTIVE_DATE_ZONE:Europe/Berlin}
   curation:
     openai:
       enabled: ${MISE_EN_DICE_OPENAI_ENABLED:false}

@@ -311,6 +311,12 @@ Erst danach folgt der eigentliche Discord-Transport:
 
 Der Adapter speichert keine eigene Voting- oder Challenge-Fachlogik.
 
+Issue #83 verwendet für den normalen INITIAL-Pfad zusätzlich eine kleine transportneutrale
+`ChallengeOfferPreparationCommands`-Fassade. Sichtbar ausgelieferte Offers werden erst danach über
+`presentationSucceeded` an den unveränderten 11B-Handshake gemeldet. Component-IDs sind versioniert und stateless;
+der Adapter liest vor jedem Vote erneut die autoritative `SelectionView` und zeigt während einer offenen Runde nur
+den Abstimmungsstatus, niemals fremde Stimmen.
+
 ## 12. Noch offene, aber nicht blockierende Produktentscheidungen
 
 Folgende Fragen müssen für die aktuelle Modellierung nicht beantwortet werden und bleiben späteren Paketen vorbehalten:

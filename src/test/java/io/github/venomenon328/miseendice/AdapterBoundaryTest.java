@@ -73,4 +73,16 @@ class AdapterBoundaryTest {
                 .because("explicit SQL is confined to the challenge persistence adapters")
                 .check(classes);
     }
+
+    @Test
+    void jdaStaysInsideTheDiscordAdapter() {
+        var classes = new ClassFileImporter()
+                .withImportOption(new ImportOption.DoNotIncludeTests())
+                .importPackages("io.github.venomenon328.miseendice");
+
+        noClasses()
+                .that().resideInAnyPackage("..catalog..", "..challenge..", "..administration..", "..bootstrap..")
+                .should().dependOnClassesThat().resideInAPackage("net.dv8tion.jda..")
+                .check(classes);
+    }
 }
