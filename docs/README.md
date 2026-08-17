@@ -25,6 +25,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md): aktuelle Reihenfolge der Entwicklungspakete und ihre Gates
 - [`adr`](adr): einzelne grundlegende Architekturentscheidungen mit Kontext und Konsequenzen
 - [`ADR 0007`](adr/0007-seeded-two-stage-candidate-generator.md): seedbarer zweistufiger Kandidatengenerator und Trennung von Generation und Kuratierung
+- [`ADR 0008`](adr/0008-production-only-openai-access.md): echte OpenAI-Aufrufe ausschließlich im explizit aktivierten Produktivbetrieb; Entwicklung und automatisierte Tests bleiben vollständig providerfrei
 
 ## Reihenfolge der Verbindlichkeit bei Entwicklungsarbeit
 
@@ -39,4 +40,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Phase 9 einschließlich Kalibrierung und REROLL-Nachschärfung ist abgeschlossen. Issue #71 setzt Phase 10A um: Der persistente, transportneutrale Kuratorvertrag kann explizite Runden, Bewertungen und 1–3 vollständige Offers auditierbar speichern. OpenAI-Adapter und Kuratororchestrierung (Phase 10B) sowie Discord-Präsentation, Bestätigung und Reroll-Exposition (Phase 11) bleiben nachgelagert.
+Phase 10A einschließlich der Nacharbeit aus PR #72 ist abgeschlossen. Issue #73 setzt Phase 10B um: produktiver OpenAI-Adapter und strikt gedeckelte Kurationsorchestrierung. Dabei gilt ADR 0008 verbindlich: echte OpenAI-Aufrufe sind ausschließlich im explizit aktivierten Produktivbetrieb zulässig; Entwicklung und automatisierte Tests verwenden Fakes, Fixtures beziehungsweise lokale HTTP-Stubs. Discord-Präsentation, Bestätigung und Reroll-Exposition bleiben Phase 11.
