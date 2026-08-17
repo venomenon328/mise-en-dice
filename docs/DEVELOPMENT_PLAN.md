@@ -502,9 +502,9 @@ Ein Reroll markiert das vollständige präsentierte Set atomar als `REROLLED` un
 
 Phase 11A enthält ausdrücklich keinen Discord-SDK-, Gateway-, Command-, Button-, Message- oder User-ID-Code.
 
-### Phase 11B: Transportneutraler Voting-/Participation-Core (ausstehend)
+### Phase 11B: Transportneutraler Voting-/Participation-Core (erfüllt mit Issue #81)
 
-Phase 11B folgt der verbindlichen Spezifikation [`CHALLENGE_VOTING_AND_PARTICIPATION.md`](CHALLENGE_VOTING_AND_PARTICIPATION.md): persistente Teilnehmer- und Electorate-Snapshots, geheime Votes, einmaliger Tie-Break, Reroll-Voting sowie initiale und nachträglich veränderbare Challenge-Teilnahme. Sie orchestriert ausschließlich über die öffentlichen Phase-11A-APIs und enthält weder Discord- noch andere Transporttypen.
+Phase 11B folgt der verbindlichen Spezifikation [`CHALLENGE_VOTING_AND_PARTICIPATION.md`](CHALLENGE_VOTING_AND_PARTICIPATION.md): `SelectionVotingCommands`/`SelectionVotingQueries` materialisieren generische externe Teilnehmeridentitäten, den stabilen Default-Electorate-Snapshot aus den Codes `GEORGIA` und `TOBIAS`, geheime bis zum Abschluss veränderbare Votes, Mehrheitsauswertung und genau einen persistenten Tie-Break. Das Ergebnis wird vor der anschließenden 11A-Wirkung gespeichert; `resume` setzt Confirm, Reroll, Reroll-Fortschritt sowie Participation-Initialisierung nach Restart idempotent fort. Der Presentation-Handshake behandelt ein Offer Set erst nach gemeldeter tatsächlicher Auslieferung als präsentiert. Challenge-Teilnahme bleibt eine getrennte, später erweiterbare Relation. 11B orchestriert ausschließlich über die öffentlichen Phase-11A-APIs und enthält weder Discord- noch andere Transporttypen.
 
 ### Scope
 

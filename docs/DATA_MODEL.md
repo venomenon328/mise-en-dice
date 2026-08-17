@@ -12,6 +12,8 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 - [`006-curation-state-machine-hardening.sql`](../src/main/resources/db/changelog/schema/006-curation-state-machine-hardening.sql) für terminale Kurationsübergänge, Request-Shapes und dauerhafte Offer-Integrität
 - [`007-bounded-curator-dispatch.sql`](../src/main/resources/db/changelog/schema/007-bounded-curator-dispatch.sql) für das harte externe Requestbudget sowie Provider-Audit- und Restartzustände aus Phase 10B
 - [`008-offer-decision-lifecycle.sql`](../src/main/resources/db/changelog/schema/008-offer-decision-lifecycle.sql) für Phase 11A: autoritative Offer-Bestätigung, exakt persistierte Reroll-Exposition und REROLL-Integrität
+- [`009-challenge-voting-participation.sql`](../src/main/resources/db/changelog/schema/009-challenge-voting-participation.sql) für Phase 11B: generische Teilnehmeridentitäten, Electorate-Snapshots, Voting-Ergebnisse und Challenge-Teilnahme
+- [`010-selection-voting-review-hardening.sql`](../src/main/resources/db/changelog/schema/010-selection-voting-review-hardening.sql) für die monotone Apply-Zustandsmaschine und die Übernahme eines bereits eingefrorenen Electorates nach späterer Deaktivierung
 
 Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
 
@@ -186,6 +188,9 @@ Phase 9D migriert append-only zunächst auf die in [`CANDIDATE_GENERATOR.md`](CA
 
 ```text
 challenge_session
+  ├─ selection_electorate (unveränderlicher Snapshot)
+  ├─ selection_voting_round (1..2)
+  │    └─ selection_vote (genau eine aktuelle Wahl je Electorate-Mitglied)
   └─ generation_attempt
        ├─ generation_manual_requirement (0-2)
        ├─ generation_context_snapshot (genau 1 ab CONTEXT_READY)
@@ -199,14 +204,18 @@ challenge_session
             └─ curated_offer (Positionen 1..requested_offer_count)
 
 challenge
-  └─ verweist bei neuen Challenges auf genau ein bestätigtes curated_offer; nur bei Migration 008 eingefrorene Legacy-Zeilen bleiben ohne diese Referenz lesbar
+  ├─ verweist bei neuen Challenges auf genau ein bestätigtes curated_offer; nur bei Migration 008 eingefrorene Legacy-Zeilen bleiben ohne diese Referenz lesbar
+  └─ challenge_participation (veränderbare Teilnehmermenge)
+
+participant
+  └─ participant_external_identity (generischer Provider und stabiler externer Subject)
 
 reroll_offer_exposure (Phase 11A)
   └─ referenziert genau ein vollständig rerolltes sichtbares curated_offer_set derselben Session
        └─ besitzt positionsgebundene Snapshot-Requirements mit dessen exakten Konzeptcodes als eine gemeinsame Cooldownposition
 ```
 
-`reroll_offer_exposure` und seine Snapshot-Requirements sind die in Phase 11A eingeführte append-only Tabellenform für diese Cooldown-only-Rolle. Der spätere 11B-Voting-Core und der erst danach folgende 11C-Discord-Adapter schreiben sie nicht selbst, sondern verwenden ausschließlich die öffentlichen Offer-Decision-Commands.
+`reroll_offer_exposure` und seine Snapshot-Requirements sind die in Phase 11A eingeführte append-only Tabellenform für diese Cooldown-only-Rolle. Der Phase-11B-Voting-Core und der erst danach folgende 11C-Discord-Adapter schreiben sie nicht selbst, sondern verwenden ausschließlich die öffentlichen Offer-Decision-Commands.
 
 Phase 9D implementiert noch keine Kuratororchestrierung und kein Offer Set. Seine Persistenz muss jedoch verhindern, dass die spätere fachliche Kardinalität durch eine starre Annahme „eine Kurationsrunde = genau ein Generation Batch = genau ein ausgewählter Kandidat“ verbaut wird.
 
@@ -219,6 +228,18 @@ Die append-only Migration `schema/004-persisted-candidate-generation.sql` setzt 
 `challenge_session` fasst Erstziehung und optionalen freiwilligen Reroll zusammen.
 
 Phase 10A speichert für die Session die gewünschte Zahl präsentierter Angebote `requested_offer_count` im Bereich `1..3`, Default `1`; bestehende Sessions wurden auf `1` migriert. Sie ist kein Generatorinput: weder Context- noch Set-Fingerprint, Generator- oder Konfigurationsversion enthalten sie. Ein Reroll verwendet dieselbe gespeicherte Zahl, sofern die Produktspezifikation später nicht ausdrücklich eine erneute Wahl erlaubt.
+
+Phase 11B ergänzt pro Session einen festen `selection_electorate`-Snapshot. Er enthält ausschließlich stabile `participant`-Referenzen und wird beim ersten Start des Auswahlprozesses atomar materialisiert. Die transportneutrale Default-Policy wählt die aktiven stabilen Codes `GEORGIA` und `TOBIAS`; spätere Registrierungen oder Deaktivierungen ändern keinen bereits vorhandenen Snapshot. Eine abweichende erneute Initialisierung derselben Session ist ein fachlicher Konflikt.
+
+### Teilnehmeridentität, Voting und Teilnahme
+
+`participant_external_identity` ordnet einen opaken `provider` und `external_subject` höchstens einem `participant` zu. Anzeigenamen sind damit keine Identität; das Schema enthält weder Discord-Typen noch Discord-Test- oder Seed-IDs. Eine Zuordnung ersetzt und verändert keine `ingredient_availability`.
+
+Eine `selection_voting_round` referenziert genau ein tatsächlich durch 11A präsentiertes Offer Set derselben Session. Runde 1 bietet bei einem Offer `ACCEPT` und `REROLL`, bei zwei oder drei Offers genau diese Offers und `REROLL`. Runde 2 darf nur nach einem persistierten gewonnenen 11A-Reroll entstehen und enthält ausschließlich ihre neuen Offers. Ein Offer nach Reroll bei `requested_offer_count = 1` erhält bewusst keine Runde 2; es wird erst nach der tatsächlichen Präsentation automatisch bestätigt.
+
+`selection_vote` hält pro Runde und Electorate-Mitglied höchstens eine veränderbare aktuelle Wahl. PostgreSQL prüft Electorate-, Session-, Offer- und Reroll-Zugehörigkeit. Beim Übergang nach `COMPLETED` verlangt die Datenbank alle Stimmen und genau ein Ergebnis. Das Ergebnis, der Tie-Break-Marker und die Ergebniswahl sind anschließend unveränderlich. Der Anwendungscode materialisiert den Tie-Break nur in diesem Abschluss und persistiert ihn vor der Folgeaktion; `apply_state` dokumentiert die restartfähige Anwendung über 11A (`PENDING`, Reroll-Fortschritt/-Terminalzustand oder Bestätigung). Die Zustandsübergänge sind ausschließlich vorwärts erlaubt, damit ein verspätet beobachtetes `REROLL_IN_PROGRESS` weder einen bereitstehenden Reroll noch dessen Offer-Set-ID zurückschreiben kann.
+
+`challenge_participation` bleibt davon getrennt. Nach einer 11A-Bestätigung übernimmt 11B idempotent alle Electorate-Mitglieder, auch wenn eines seit dem Snapshot deaktiviert wurde; ein weiterer freiwilliger Join verlangt weiterhin einen aktuell aktiven registrierten Teilnehmer. Weder Snapshot noch Votes, Generatorhistorie oder Beschaffbarkeitsmatrix ändern sich dadurch.
 
 ### Generation Attempt
 
@@ -300,7 +321,7 @@ Die Fremdschlüssel auf die aktuellen Katalogeinträge bleiben für Auswertungen
 
 Phase 9 erweitert die Snapshots um sämtliche replay- und diagnosewirksamen Werte. Auf Attempt-/Context-Ebene gehören dazu insbesondere Konfiguration, Katalogprojektion, sichtbare Historie, Attempt-Seed, RNG, Versionen und Ausschlussentscheidung. Auf Batch-Ebene liegen Batchnummer, abgeleiteter Batch-Seed, Rejection-Zähler, Fallbackstufe und Set-Fingerprint. Kandidaten und Requirements speichern damalige Rollen, Neuigkeit, Beschaffbarkeit, verwendete Gewichtsfaktoren, relevante bekannte Eigenschaften, Scores und Reason-Codes.
 
-Phase 10A ergänzt Kuratorrequest/-response, qualitative Bewertungen, Ränge, Kandidatenteilnahme je Kurationsrunde, Carry-over-/Locked-Kontext und das finale Offer Set. Phase 11A ergänzt die tatsächliche Präsentation, die autoritative Offer-Bestätigung und den freiwilligen vollständigen Offer-Set-Reroll mit dessen reproduzierbarer Snapshot-Exposition ohne Rückgriff auf aktuelle Katalogwerte.
+Phase 10A ergänzt Kuratorrequest/-response, qualitative Bewertungen, Ränge, Kandidatenteilnahme je Kurationsrunde, Carry-over-/Locked-Kontext und das finale Offer Set. Phase 11A ergänzt die tatsächliche Präsentation, die autoritative Offer-Bestätigung und den freiwilligen vollständigen Offer-Set-Reroll mit dessen reproduzierbarer Snapshot-Exposition ohne Rückgriff auf aktuelle Katalogwerte. Phase 11B speichert davon getrennt Electorate, bis zum Abschluss geheime aktuelle Votes, das einmalige Ergebnis samt Tie-Break sowie die spätere Challenge-Teilnahme; sie erzeugt weder einen zweiten Challenge-Snapshot noch eigene Historienexposition.
 
 Diese Daten dürfen nicht mit bestätigter Challenge-Historie gleichgesetzt werden: Bestätigte Challenges wirken auf den vollständigen Historienvertrag; ein rerolltes unbestätigtes Offer Set wirkt nur auf den exakten Zutaten-Cooldown; intern verworfene oder normal nicht gewählte Angebote wirken gar nicht.
 
@@ -336,7 +357,7 @@ Unter anderem bleiben im Anwendungscode:
 - fachliche Entscheidung, welche Verfügbarkeitsstufen für Zufallsziehungen ausreichend sind,
 - exakte Cooldown-Semantik und die Trennung zwischen bestätigter Challenge-Historie und Cooldown-only-Offer-Exposition.
 
-Die Datenbank sichert in Phase 9D insbesondere Batchnummern `1..2`, lokal eindeutige Kandidatennummern `1..12`, genau zwölf vollständige Kandidaten mit je vier Requirements pro neuem `GENERATED`-Batch, keine Kandidaten bei `EXHAUSTED` und die Candidate→Batch→Attempt-Zugehörigkeit ab. Phase 10 ergänzt Bereich `1..3` für die gewünschte Angebotszahl, Kurationsreferenzen und die bestätigte Offer-Zugehörigkeit sichtbarer Challenges. Phase 10/11 ergänzen die persistente Präsentations-/Reroll-Exposition; Issue #63 zieht dafür bewusst keine Schemaänderung vor.
+Die Datenbank sichert in Phase 9D insbesondere Batchnummern `1..2`, lokal eindeutige Kandidatennummern `1..12`, genau zwölf vollständige Kandidaten mit je vier Requirements pro neuem `GENERATED`-Batch, keine Kandidaten bei `EXHAUSTED` und die Candidate→Batch→Attempt-Zugehörigkeit ab. Phase 10 ergänzt Bereich `1..3` für die gewünschte Angebotszahl, Kurationsreferenzen und die bestätigte Offer-Zugehörigkeit sichtbarer Challenges. Phase 10/11 ergänzen die persistente Präsentations-/Reroll-Exposition. Phase 11B ergänzt externe Identitäts-Eindeutigkeit, unveränderliche Electorate-Snapshots, eine gültige aktuelle Vote je Round/Participant, die autorisierte genau einmalige Rundenauswertung und eindeutige Challenge-Teilnahme. Issue #63 zieht dafür bewusst keine Schemaänderung vor.
 
 Diese Regeln sind absichtlich nicht als konfigurierbare SQL-Regelmaschine modelliert.
 
@@ -344,7 +365,6 @@ Diese Regeln sind absichtlich nicht als konfigurierbare SQL-Regelmaschine modell
 
 Die Struktur soll folgende Erweiterungen ermöglichen, bildet sie aber noch nicht ab:
 
-- persistente Präsentations- und Cooldown-only-Exposition rerollter Offer Sets,
 - persönliche Konkretisierungen offener Vorgaben,
 - drei zusätzliche Zutaten pro Person,
 - optionaler Grundplan,

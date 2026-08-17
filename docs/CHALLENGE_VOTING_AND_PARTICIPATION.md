@@ -1,7 +1,7 @@
 # Challenge-Voting und Teilnahme
 
 Stand: 17. August 2026  
-Status: verbindliche Fachspezifikation für Mehrnutzer-Auswahl, Voting und Challenge-Teilnahme ab Phase 11
+Status: verbindliche Fachspezifikation; Phase-11B-Core mit Issue #81 umgesetzt
 
 Dieses Dokument ergänzt [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) um die Mehrnutzer-Semantik zwischen einem präsentierten Offer Set und der tatsächlich gestarteten Challenge. Es baut auf dem transportneutralen Offer-/Decision-Lifecycle aus Phase 11A auf, verändert aber dessen Generator-, Kurator- oder Historienregeln nicht.
 
@@ -33,9 +33,9 @@ Das bereits vorhandene fachliche `participant`-Konzept kann auch für registrier
 Für die fachliche Identität gelten folgende Regeln:
 
 - Ein `participant` besitzt eine stabile interne ID und einen stabilen Code.
-- Eine Discord-Identität wird über die unveränderliche Discord-User-ID eindeutig einem Teilnehmer zugeordnet. Anzeigenamen oder Nicknames sind keine Identität.
+- Eine externe Identität wird über den opaken Schlüssel `(provider, external_subject)` eindeutig einem Teilnehmer zugeordnet. Anzeigenamen oder Nicknames sind keine Identität. Eine spätere Discord-User-ID ist nur ein möglicher Provider-Subject-Wert und bleibt außerhalb des 11B-Cores.
 - Ein Teilnehmer kann aktiv oder inaktiv sein. Eine Deaktivierung verändert keine bereits laufenden Electorate-Snapshots und keine historische Challenge-Teilnahme.
-- Eine sichtbare öffentliche Selbstregistrierung ist für den ersten Mehrnutzerstand nicht erforderlich. Georgia und Tobias dürfen zunächst migrations- oder konfigurationsgeführt mit ihren Discord-IDs verknüpft werden.
+- Eine sichtbare öffentliche Selbstregistrierung ist für den ersten Mehrnutzerstand nicht erforderlich. Georgia und Tobias bilden transportneutral über ihre stabilen Participant-Codes das Default-Electorate; reale externe IDs werden weder geseedet noch als Testfixture eingecheckt.
 - Das Modell darf spätere Registrierung, Einladung oder Freischaltung weiterer Nutzer nicht verbauen.
 
 ### 2.1 Beschaffbarkeit bleibt eine getrennte Eigenschaft
@@ -281,9 +281,9 @@ Der bereits laufende Scope von Issue #76 bleibt fachlich unverändert:
 
 ### Phase 11B: Teilnehmer-, Electorate- und Voting-Core
 
-Ein nachgelagertes transportneutrales Paket soll implementieren:
+Issue #81 implementiert den transportneutralen Core über `SelectionVotingCommands` und `SelectionVotingQueries`:
 
-- stabile Discord-Zuordnung zu `participant`, zunächst für Georgia und Tobias,
+- generische externe Zuordnung zu `participant`, zunächst mit dem über stabile Codes bestimmten Default-Electorate Georgia und Tobias,
 - Electorate-Snapshot pro Challenge-Session,
 - geheime Votes und Vote-Änderungen bis zum Abschluss,
 - `ACCEPT`/`REROLL` bei genau einem Offer,
@@ -293,9 +293,9 @@ Ein nachgelagertes transportneutrales Paket soll implementieren:
 - zweite Voting-Runde nach Reroll,
 - Initialisierung der Challenge-Teilnahme aus dem Electorate,
 - spätere Beitritte registrierter Teilnehmer,
-- Orchestrierung ausschließlich über die öffentlichen APIs aus 11A.
+- Presentation-Handshake erst nach gemeldeter tatsächlicher Auslieferung sowie Orchestrierung ausschließlich über die öffentlichen APIs aus 11A.
 
-Eine öffentliche Selbstregistrierung ist hierfür nicht erforderlich; Erweiterbarkeit genügt.
+Der Abschluss einer Runde persistiert Gewinner und gegebenenfalls Tie-Break atomar vor dem separaten 11A-Apply-Schritt. Dessen Zustand bleibt sichtbar und `resume` setzt Confirm, Reroll, Reroll-Fortschritt oder die idempotente Participation-Initialisierung nach einem Restart fort. Eine öffentliche Selbstregistrierung ist hierfür nicht erforderlich; Erweiterbarkeit genügt.
 
 ### Phase 11C: dünner Discord-Adapter
 
