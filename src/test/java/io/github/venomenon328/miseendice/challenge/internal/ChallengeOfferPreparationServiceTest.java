@@ -10,6 +10,7 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeOfferPreparation
 import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -17,7 +18,7 @@ import org.mockito.ArgumentCaptor;
 class ChallengeOfferPreparationServiceTest {
 
     @Test
-    void startsTheExistingInitialGenerationAndCurationPathWithoutTransportConcerns() {
+    void startsTheExistingInitialGenerationAndCurationPathWithTheRequestedRestrictionMode() {
         var generations = mock(GenerationCommands.class);
         var curation = mock(CurationOrchestrationCommands.class);
         when(generations.startNewSession(any())).thenReturn(new GenerationCommands.Generated(10, 11, 12, "fingerprint"));
@@ -25,7 +26,7 @@ class ChallengeOfferPreparationServiceTest {
         var service = new ChallengeOfferPreparationService(generations, mock(GenerationQueries.class), curation);
 
         var outcome = service.prepareInitial(new ChallengeOfferPreparationCommands.PrepareInitialOfferSet(
-                LocalDate.of(2026, 8, 18), 3));
+                LocalDate.of(2026, 8, 18), 3, RestrictionMode.REQUIRED));
 
         assertThat(outcome).isEqualTo(new ChallengeOfferPreparationCommands.OfferReady(10, 11, 13, 3));
         var command = ArgumentCaptor.forClass(GenerationCommands.StartNewSession.class);
@@ -33,6 +34,7 @@ class ChallengeOfferPreparationServiceTest {
         assertThat(command.getValue().manualRequirements()).isEmpty();
         assertThat(command.getValue().explicitSeed()).isNull();
         assertThat(command.getValue().requestedOfferCount()).isEqualTo(3);
+        assertThat(command.getValue().restrictionMode()).isEqualTo(RestrictionMode.REQUIRED);
         verify(curation).curate(11);
     }
 
@@ -46,7 +48,7 @@ class ChallengeOfferPreparationServiceTest {
         var service = new ChallengeOfferPreparationService(generations, mock(GenerationQueries.class), curation);
 
         var outcome = service.prepareInitial(new ChallengeOfferPreparationCommands.PrepareInitialOfferSet(
-                LocalDate.of(2026, 8, 18), 1));
+                LocalDate.of(2026, 8, 18), 1, RestrictionMode.AUTO));
 
         assertThat(outcome).isEqualTo(new ChallengeOfferPreparationCommands.InProgress(
                 10, 11, "CURATION", "CURATOR_ADAPTER_DISABLED"));

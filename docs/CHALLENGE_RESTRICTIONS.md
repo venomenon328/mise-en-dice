@@ -5,7 +5,7 @@ Status: verbindliche Spezifikation für Phase 12B.5A/B
 
 Dieses Dokument präzisiert die Restriktionssemantik von Mise en Dice vor der vollständigen Live-Abnahme in Phase 12C. Es ist gemeinsam mit `VISION.md`, `CANDIDATE_GENERATOR.md`, `CURATION_AND_CHALLENGE_SELECTION.md`, `DATA_MODEL.md`, `CHALLENGE_VOTING_AND_PARTICIPATION.md` und den zugehörigen Issues verbindlich.
 
-Für neue Generatorläufe ersetzt diese Spezifikation die bisherige Annahme, dass eine einmal gezogene Ausschlussregel für den gesamten `generation_attempt` gilt. Historische Generatorversionen behalten ihre alte Semantik ausschließlich für Replay und Audit.
+Für Generator 1.2 gilt ausschließlich die hier beschriebene kandidatenspezifische Restriktionssemantik. Frühere Generatorversionen und attempt-weite Ausschlussentscheidungen werden weder ausgeführt noch replaybar gehalten.
 
 ## 1. Produktziel
 
@@ -95,7 +95,7 @@ Damit werden unsichtbare Optionen weiterhin wie nicht gesehen behandelt, währen
 
 ## 9. Discord-Bedienung
 
-`/challenge` erhält zusätzlich zu `angebote` die Choice-Option `einschraenkung`:
+`/challenge` besitzt zusätzlich zu `angebote` die Choice-Option `einschraenkung`:
 
 - `automatisch` → `AUTO`, Default,
 - `keine` → `NONE`,
@@ -115,7 +115,7 @@ oder
 Einschränkung: Keine
 ```
 
-Die bestätigte Challenge zeigt denselben Snapshot erneut. Mehrere Offers dürfen unterschiedliche Restriktionen besitzen.
+Die bestätigte Challenge zeigt denselben Snapshot erneut. Mehrere Offers dürfen unterschiedliche Restriktionen besitzen. Fortsetzung, REROLL und erneute Präsentation lesen dafür ausschließlich die persistierten Offer-/Challenge-Snapshots; der Discord-Adapter zieht oder rekonstruiert keine Restriktion.
 
 ## 10. Paketierung vor Phase 12C
 
