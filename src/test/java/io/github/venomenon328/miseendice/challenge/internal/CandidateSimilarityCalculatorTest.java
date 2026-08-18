@@ -10,6 +10,8 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Specificity;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.Comparability;
+import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.AcceptedProposal;
+import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.CandidateRestriction;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.CandidateProfile;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyBand;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.SimilarityComponent;
@@ -50,7 +52,14 @@ class CandidateSimilarityCalculatorTest {
         var result = calculator.assess(1, first, 2, second, catalog(concepts),
                 TestGeneratorConfiguration.defaults(), bd("0.10"));
 
-        assertThat(result.components()).containsOnlyKeys(SimilarityComponent.values());
+        assertThat(result.components()).containsOnlyKeys(
+                SimilarityComponent.EXACT_RANDOM_CONCEPTS,
+                SimilarityComponent.INFORMATIVE_ANCESTORS,
+                SimilarityComponent.ROLES_AND_PROFILE,
+                SimilarityComponent.SPECIFICITY_MIX,
+                SimilarityComponent.NOVELTY,
+                SimilarityComponent.AVAILABILITY_LOAD,
+                SimilarityComponent.COMPARABLE_PROPERTIES);
         assertThat(result.components().values()).allSatisfy(component -> {
             if (component.value() != null) {
                 assertThat(component.value().scale()).isEqualTo(12);
@@ -160,5 +169,40 @@ class CandidateSimilarityCalculatorTest {
         assertThat(result.components().get(SimilarityComponent.AVAILABILITY_LOAD).value())
                 .isEqualByComparingTo("1.000000000000");
         assertThat(result.diagnostics()).doesNotContain(GeneratorReasonCode.PAIR_EXACT_OVERLAP);
+    }
+
+    @Test
+    void generator12MakesCandidateRestrictionsAnExplicitDiversityComponent() {
+        List<GeneratorConcept> concepts = List.of(
+                concept(1, "A", Specificity.SPECIFIC, 1, Set.of("VEGETABLE"), Set.of(), Map.of(), Set.of(), Set.of(), Availability.EASY),
+                concept(2, "B", Specificity.SPECIFIC, 1, Set.of("ACID"), Set.of(), Map.of(), Set.of(), Set.of(), Availability.EASY),
+                concept(3, "C", Specificity.SPECIFIC, 1, Set.of("STARCH"), Set.of(), Map.of(), Set.of(), Set.of(), Availability.EASY),
+                concept(4, "D", Specificity.SPECIFIC, 1, Set.of("FAT"), Set.of(), Map.of(), Set.of(), Set.of(), Availability.EASY));
+        AcceptedProposal base = candidate("same", CandidateProfile.FLEXIBLE_BALANCED, 4, NoveltyBand.BALANCED,
+                4, bd("60"), concepts);
+        AcceptedProposal first = withRestriction(base, new CandidateRestriction(1L, "NO_A", "No A"));
+        AcceptedProposal sameRestriction = withRestriction(base, new CandidateRestriction(1L, "NO_A", "No A"));
+        AcceptedProposal otherRestriction = withRestriction(base, new CandidateRestriction(2L, "NO_B", "No B"));
+        AcceptedProposal unrestricted = withRestriction(base, CandidateRestriction.none());
+
+        var same = calculator.assess(1, first, 2, sameRestriction, catalog(concepts),
+                TestGeneratorConfiguration.candidateRestrictionDefaults(), null);
+        var other = calculator.assess(1, first, 2, otherRestriction, catalog(concepts),
+                TestGeneratorConfiguration.candidateRestrictionDefaults(), null);
+        var neitherRestricted = calculator.assess(1, unrestricted, 2, unrestricted, catalog(concepts),
+                TestGeneratorConfiguration.candidateRestrictionDefaults(), null);
+
+        assertThat(same.components()).containsKey(SimilarityComponent.RESTRICTION);
+        assertThat(same.components().get(SimilarityComponent.RESTRICTION).value()).isEqualByComparingTo("1.000000000000");
+        assertThat(other.components().get(SimilarityComponent.RESTRICTION).value()).isEqualByComparingTo("0.000000000000");
+        assertThat(neitherRestricted.components().get(SimilarityComponent.RESTRICTION).value())
+                .isEqualByComparingTo("0.000000000000");
+        assertThat(other.totalSimilarity()).isLessThan(same.totalSimilarity());
+    }
+
+    private static AcceptedProposal withRestriction(AcceptedProposal source, CandidateRestriction restriction) {
+        return new AcceptedProposal(source.proposalOrdinal(), source.profile(), source.targetSpecificity(),
+                source.targetNoveltyBand(), source.requirements(), source.evaluation(), source.canonicalSignature(),
+                source.diagnostics(), restriction);
     }
 }

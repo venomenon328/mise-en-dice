@@ -12,6 +12,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.Similarity
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -66,6 +67,9 @@ public record GeneratorConfiguration(
             throw new IllegalArgumentException("Invalid reservoir, set-size, attempt, or quantization configuration");
         }
         requireProbability(exclusionProbability, "exclusionProbability");
+        if (generatorVersion.equals("1.2.0") && exclusionProbability.compareTo(new BigDecimal("0.20")) != 0) {
+            throw new IllegalArgumentException("Generator 1.2.0 requires a candidate restriction probability of 0.20");
+        }
         availabilityFactors = immutableEnumMap(Availability.class, availabilityFactors);
         profiles = immutableEnumMap(CandidateProfile.class, profiles);
         profileWeights = immutableEnumMap(CandidateProfile.class, profileWeights);
@@ -85,7 +89,12 @@ public record GeneratorConfiguration(
         requireComplete(CandidateProfile.class, profileWeights, "profileWeights");
         requireComplete(CandidateProfile.class, profileSetTargets, "profileSetTargets");
         requireComplete(ScoreComponent.class, scoreWeights, "scoreWeights");
-        requireComplete(SimilarityComponent.class, similarityWeights, "similarityWeights");
+        Set<SimilarityComponent> expectedSimilarityComponents = generatorVersion.equals("1.2.0")
+                ? EnumSet.allOf(SimilarityComponent.class)
+                : EnumSet.complementOf(EnumSet.of(SimilarityComponent.RESTRICTION));
+        if (!similarityWeights.keySet().equals(expectedSimilarityComponents)) {
+            throw new IllegalArgumentException("similarityWeights must match the generator version");
+        }
         requireComplete(FallbackLevel.class, fallbacks, "fallbacks");
         validateAvailabilityFactors(availabilityFactors);
         if (anchorRoles.isEmpty() || supportRoles.isEmpty() || flavorRoles.isEmpty()) {

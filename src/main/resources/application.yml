@@ -30,7 +30,7 @@ mise-en-dice:
       recovery-window: ${MISE_EN_DICE_OPENAI_RECOVERY_WINDOW:PT2M}
   generator:
     configuration:
-      generator-version: 1.1.0
+      generator-version: 1.2.0
       configuration-version: 2026-08-15.1
       rng-algorithm: SPLITMIX64_V1
       canonical-payload-version: 1
@@ -40,7 +40,7 @@ mise-en-dice:
       reservoir-relaxed-one-minimum: 36
       maximum-proposal-attempts: 5000
       weight-quantization: 1000000000
-      exclusion-probability: 0.30
+      exclusion-probability: 0.20
       availability-factors:
         EASY: 1.00
         PLANNED: 0.65
@@ -110,13 +110,14 @@ mise-en-dice:
         DATA_CONFIDENCE: 0.05
         KNOWN_CULINARY_LOAD_BALANCE: 0.04
       similarity-weights:
-        EXACT_RANDOM_CONCEPTS: 0.35
-        INFORMATIVE_ANCESTORS: 0.20
-        ROLES_AND_PROFILE: 0.15
+        EXACT_RANDOM_CONCEPTS: 0.30
+        INFORMATIVE_ANCESTORS: 0.17
+        ROLES_AND_PROFILE: 0.13
         SPECIFICITY_MIX: 0.05
         NOVELTY: 0.10
         AVAILABILITY_LOAD: 0.05
         COMPARABLE_PROPERTIES: 0.10
+        RESTRICTION: 0.10
       similarity:
         informative-ancestor-maximum-drawable-share: 0.25
         role-weight: 0.90

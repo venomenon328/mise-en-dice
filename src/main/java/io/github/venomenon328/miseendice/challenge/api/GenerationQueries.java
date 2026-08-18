@@ -106,10 +106,23 @@ public interface GenerationQueries {
             String profileSlotAssignmentsJson,
             String reasonCodesJson,
             String diagnosticsJson,
-            List<RequirementView> requirements
+            List<RequirementView> requirements,
+            CandidateProposalEngine.CandidateRestriction restriction
     ) {
         public CandidateView {
             requirements = List.copyOf(requirements);
+            restriction = restriction == null ? CandidateProposalEngine.CandidateRestriction.none() : restriction;
+        }
+
+        public CandidateView(long candidateId, int candidateNumber, Long proposalOrdinal, String profile,
+                             Integer targetSpecificity, String targetNoveltyBand, String actualNoveltyBand,
+                             Integer knownNoveltyLoad, BigDecimal totalScore, BigDecimal dataConfidence,
+                             String canonicalSignature, String componentScoresJson, String profileSlotAssignmentsJson,
+                             String reasonCodesJson, String diagnosticsJson, List<RequirementView> requirements) {
+            this(candidateId, candidateNumber, proposalOrdinal, profile, targetSpecificity, targetNoveltyBand,
+                    actualNoveltyBand, knownNoveltyLoad, totalScore, dataConfidence, canonicalSignature,
+                    componentScoresJson, profileSlotAssignmentsJson, reasonCodesJson, diagnosticsJson,
+                    requirements, CandidateProposalEngine.CandidateRestriction.none());
         }
     }
 

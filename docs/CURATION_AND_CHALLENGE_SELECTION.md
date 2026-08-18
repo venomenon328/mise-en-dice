@@ -94,6 +94,19 @@ Attempt-weite Entscheidungen bleiben unverändert, insbesondere:
 
 Die zweite Runde ist kein freiwilliger Reroll und erzeugt keine sichtbare Historienexposition.
 
+### 5.2A Kandidatenspezifischer Kuratorvertrag ab Generator 1.2
+
+Für Generator `1.2.0` ist der persistierte Curation Contract `CURATION_CONTRACT_V2` mit
+`CURATOR_PROMPT_V2` verbindlich. Er trägt keinen attempt-weiten `attemptExclusion` mehr; jeder `NEW`,
+`CARRY_OVER` und `LOCKED_CONTEXT` Candidate enthält stattdessen seinen unveränderlichen Restriktionssnapshot
+(Rule-ID, Rule-Code, Text). Carry-over und Locked Context kopieren ihn unverändert. V1 und Prompt V1 bleiben
+für historische `1.0.x`-/`1.1.x`-Rounds lesbar und werden nicht umgedeutet.
+
+Ein `curated_offer` kopiert die Restriktion seines Candidates, eine bestätigte `challenge` kopiert sie aus dem
+Offer. Bei einem vollständigen Reroll speichert jede sichtbare Offerposition zusätzlich genau einen
+Restriktionssnapshot; alle dort sichtbaren Codes zählen gemeinsam als eine Historyposition für
+Restriktionswiederholung. Das ist Core- und Persistenzsemantik, keine Discord-Darstellung oder Bedienung.
+
 ### 5.3 Carry-over aus Runde 1
 
 Aus den nicht gelockten Kandidaten von Runde 1 werden höchstens so viele beste Fallbacks mitgenommen, wie noch Plätze offen sind. `ACCEPTABLE` hat dabei Vorrang vor `BAD`; innerhalb derselben Klasse gilt die Kuratorrangfolge aus Runde 1.

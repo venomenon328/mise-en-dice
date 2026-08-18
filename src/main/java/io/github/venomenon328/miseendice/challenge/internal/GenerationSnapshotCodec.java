@@ -11,6 +11,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationAttemptRequest;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext.ManualRequirement;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
 import java.math.BigDecimal;
@@ -44,7 +45,7 @@ final class GenerationSnapshotCodec {
     EncodedContext encode(GenerationAttemptRequest request, PreparedGenerationAttempt prepared) {
         String configuration = new CanonicalConfigurationSnapshot(objectMapper).serialize(request.configuration());
         String catalog = canonicalJson(catalog(request.catalog()));
-        String history = canonicalJson(history(request.visibleHistory()));
+        String history = canonicalJson(history(request.visibleHistory(), request.configuration().generatorVersion().equals("1.2.0")));
         String requestJson = canonicalJson(request(request));
         String preparedJson = canonicalJson(prepared(prepared));
 
@@ -69,12 +70,10 @@ final class GenerationSnapshotCodec {
         verify("request", stored.requestSnapshot(), stored.requestFingerprint());
         verify("history", stored.visibleHistorySnapshot(), stored.historyFingerprint());
 
-        String supportedSnapshot = new CanonicalConfigurationSnapshot(objectMapper)
-                .serialize(supportedConfiguration);
-        if (!fingerprintJson(supportedSnapshot).equals(stored.configurationFingerprint())) {
-            throw new InvalidContextSnapshotException("Stored configuration version is not supported");
+        GeneratorConfiguration configuration = read(stored.configurationSnapshot(), GeneratorConfiguration.class);
+        if (!configuration.generatorVersion().matches("1\\.(0|1|2)\\.0")) {
+            throw new InvalidContextSnapshotException("Stored generator version is not supported");
         }
-        GeneratorConfiguration configuration = supportedConfiguration;
         CatalogGeneratorSnapshot catalog = read(stored.catalogSnapshot(), CatalogGeneratorSnapshot.class);
         VisibleHistorySnapshot history = read(stored.visibleHistorySnapshot(), VisibleHistorySnapshot.class);
         RequestSnapshot requestSnapshot = read(stored.requestSnapshot(), RequestSnapshot.class);
@@ -89,7 +88,8 @@ final class GenerationSnapshotCodec {
         GenerationAttemptRequest request = new GenerationAttemptRequest(
                 requestSnapshot.attemptType(), requestSnapshot.effectiveDate(), requestSnapshot.seasonMonth(),
                 catalog, history, manuals, requestSnapshot.rerollBlockedConceptCodes(), configuration,
-                requestSnapshot.attemptSeed());
+                requestSnapshot.attemptSeed(), requestSnapshot.restrictionMode() == null
+                        ? RestrictionMode.AUTO : requestSnapshot.restrictionMode());
         PreparedGenerationAttempt prepared = reservoirEngine.prepare(request);
         String replayedPrepared = canonicalJson(prepared(prepared));
         if (!fingerprintJson(replayedPrepared).equals(fingerprintJson(stored.preparedAttemptSnapshot()))) {
@@ -153,6 +153,9 @@ final class GenerationSnapshotCodec {
                     return item;
                 }).toList());
         value.put("rerollBlockedConceptCodes", request.rerollBlockedConceptCodes().stream().sorted().toList());
+        if (request.configuration().generatorVersion().equals("1.2.0")) {
+            value.put("restrictionMode", request.restrictionMode().name());
+        }
         value.put("seasonMonth", request.seasonMonth());
         return value;
     }
@@ -161,7 +164,11 @@ final class GenerationSnapshotCodec {
         Map<String, Object> value = sortedMap();
         value.put("baselineNoveltyTargets", enumMap(prepared.baselineNoveltyTargets()));
         value.put("diagnostics", prepared.diagnostics().stream().map(Enum::name).sorted().toList());
-        value.put("exclusionDecision", exclusion(prepared.exclusionDecision()));
+        if (prepared.request().configuration().generatorVersion().equals("1.2.0")) {
+            value.put("restrictionMode", prepared.request().restrictionMode().name());
+        } else {
+            value.put("exclusionDecision", exclusion(prepared.exclusionDecision()));
+        }
         value.put("exclusionRuleEvaluations", prepared.exclusionRuleEvaluations().stream().map(evaluation -> {
             Map<String, Object> item = sortedMap();
             item.put("diagnostics", evaluation.diagnostics().stream().map(Enum::name).sorted().toList());
@@ -224,7 +231,7 @@ final class GenerationSnapshotCodec {
         return value;
     }
 
-    private Map<String, Object> history(VisibleHistorySnapshot snapshot) {
+    private Map<String, Object> history(VisibleHistorySnapshot snapshot, boolean candidateSpecificRestrictions) {
         Map<String, Object> value = sortedMap();
         value.put("challengesNewestFirst", snapshot.challengesNewestFirst().stream().map(challenge -> {
             Map<String, Object> item = sortedMap();
@@ -249,6 +256,9 @@ final class GenerationSnapshotCodec {
         value.put("rerollExposuresNewestFirst", snapshot.rerollExposuresNewestFirst().stream().map(exposure -> {
             Map<String, Object> item = sortedMap();
             item.put("offerSetKey", exposure.offerSetKey());
+            if (candidateSpecificRestrictions) {
+                item.put("restrictionRuleCodes", exposure.restrictionRuleCodes().stream().sorted().toList());
+            }
             item.put("requirements", exposure.requirements().stream().map(requirement -> {
                 Map<String, Object> requirementValue = sortedMap();
                 requirementValue.put("ancestorCodes", requirement.ancestorCodes().stream().sorted().toList());
@@ -386,7 +396,8 @@ final class GenerationSnapshotCodec {
             int seasonMonth,
             List<ManualSnapshot> manualRequirements,
             Set<String> rerollBlockedConceptCodes,
-            long attemptSeed
+            long attemptSeed,
+            RestrictionMode restrictionMode
     ) {
     }
 

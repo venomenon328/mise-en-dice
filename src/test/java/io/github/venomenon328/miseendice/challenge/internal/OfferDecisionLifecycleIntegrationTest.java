@@ -461,6 +461,18 @@ class OfferDecisionLifecycleIntegrationTest {
                     where offer.curated_offer_set_id = ?
                     order by offer.position, requirement.position
                     """, exposureId, source.offerSetId());
+            jdbcTemplate.update("""
+                    insert into reroll_offer_exposure_restriction (
+                        reroll_offer_exposure_id, curated_offer_id, challenge_candidate_id,
+                        restriction_rule_id, restriction_rule_code_snapshot, restriction_text_snapshot
+                    )
+                    select ?, offer.id, offer.challenge_candidate_id,
+                           offer.restriction_rule_id, offer.restriction_rule_code_snapshot,
+                           offer.restriction_text_snapshot
+                    from curated_offer offer
+                    where offer.curated_offer_set_id = ?
+                    order by offer.position
+                    """, exposureId, source.offerSetId());
         });
     }
 

@@ -8,6 +8,9 @@ public final class GeneratorModel {
 
     public enum AttemptType { INITIAL, REROLL }
 
+    /** Persisted session input for generator 1.2 candidate-specific restrictions. */
+    public enum RestrictionMode { AUTO, NONE, REQUIRED }
+
     public enum RngAlgorithm { SPLITMIX64_V1 }
 
     public enum CandidateProfile {
@@ -52,7 +55,9 @@ public final class GeneratorModel {
         SPECIFICITY_MIX,
         NOVELTY,
         AVAILABILITY_LOAD,
-        COMPARABLE_PROPERTIES
+        COMPARABLE_PROPERTIES,
+        /** Generator 1.2 only; omitted from preserved 1.0/1.1 similarity snapshots. */
+        RESTRICTION
     }
 
     public enum RequirementSource { MANUAL, RANDOM }

@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.challenge.api;
 
 import java.time.LocalDate;
 import java.util.List;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 
 /** Public phase-9D commands for the first persisted generation batch of an attempt. */
 public interface GenerationCommands {
@@ -32,13 +33,14 @@ public interface GenerationCommands {
             LocalDate effectiveDate,
             List<ManualRequirementInput> manualRequirements,
             Long explicitSeed,
-            int requestedOfferCount
+            int requestedOfferCount,
+            RestrictionMode restrictionMode
     ) {
         public StartNewSession {
             if (effectiveDate == null || manualRequirements == null || manualRequirements.size() > 2) {
                 throw new IllegalArgumentException("An effective date and at most two manual requirements are required");
             }
-            if (requestedOfferCount < 1 || requestedOfferCount > 3) {
+            if (requestedOfferCount < 1 || requestedOfferCount > 3 || restrictionMode == null) {
                 throw new IllegalArgumentException("Requested offer count must be between 1 and 3");
             }
             manualRequirements = List.copyOf(manualRequirements);
@@ -47,7 +49,13 @@ public interface GenerationCommands {
         /** Compatibility constructor retaining the pre-10A single-offer default. */
         public StartNewSession(LocalDate effectiveDate, List<ManualRequirementInput> manualRequirements,
                                Long explicitSeed) {
-            this(effectiveDate, manualRequirements, explicitSeed, 1);
+            this(effectiveDate, manualRequirements, explicitSeed, 1, RestrictionMode.AUTO);
+        }
+
+        /** Compatibility constructor retaining the Phase-10A requested-offer input. */
+        public StartNewSession(LocalDate effectiveDate, List<ManualRequirementInput> manualRequirements,
+                               Long explicitSeed, int requestedOfferCount) {
+            this(effectiveDate, manualRequirements, explicitSeed, requestedOfferCount, RestrictionMode.AUTO);
         }
     }
 

@@ -12,6 +12,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationPlan;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyBand;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyCadence;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorValidationException;
 import io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt;
@@ -42,7 +43,8 @@ final class DefaultCandidateReservoirEngine implements CandidateReservoirEngine 
         NoveltyCadence cadence = cadence(request);
         List<GeneratorReasonCode> diagnostics = new ArrayList<>();
         diagnostics.add(cadenceReason(cadence));
-        ExclusionPreparation exclusion = prepareExclusion(request);
+        ExclusionPreparation exclusion = request.configuration().generatorVersion().equals("1.2.0")
+                ? prepareCandidateRestrictions(request) : prepareExclusion(request);
         diagnostics.addAll(exclusion.diagnostics());
         return new PreparedGenerationAttempt(request, cadence,
                 request.configuration().cadenceSetTargets().get(cadence), exclusion.decision(),
@@ -56,7 +58,8 @@ final class DefaultCandidateReservoirEngine implements CandidateReservoirEngine 
                 request.catalog(), request.visibleHistory(), request.manualRequirements(),
                 request.rerollBlockedConceptCodes(), preparedAttempt.exclusionDecision(),
                 preparedAttempt.noveltyCadence(), preparedAttempt.baselineNoveltyTargets(),
-                request.configuration(), request.attemptSeed(), batchNumber);
+                request.configuration(), request.attemptSeed(), batchNumber, request.restrictionMode(),
+                preparedAttempt.exclusionRuleEvaluations());
     }
 
     @Override
@@ -183,6 +186,21 @@ final class DefaultCandidateReservoirEngine implements CandidateReservoirEngine 
                 List.of(GeneratorReasonCode.EXCLUSION_RULE_SELECTED));
     }
 
+    /** Generator 1.2 retains evaluated rule weights, but deliberately does not choose an attempt-wide rule. */
+    private ExclusionPreparation prepareCandidateRestrictions(GenerationAttemptRequest request) {
+        List<ExclusionRuleEvaluation> evaluations = request.catalog().exclusionRules().stream()
+                .sorted(GeneratorExclusionRule.CANONICAL_ORDER)
+                .map(rule -> evaluateExclusionRule(rule, request))
+                .toList();
+        List<GeneratorReasonCode> diagnostics = new ArrayList<>();
+        if (request.restrictionMode() == RestrictionMode.NONE) {
+            diagnostics.add(GeneratorReasonCode.CANDIDATE_RESTRICTION_NOT_SELECTED);
+        } else if (evaluations.stream().noneMatch(ExclusionRuleEvaluation::eligible)) {
+            diagnostics.add(GeneratorReasonCode.CANDIDATE_RESTRICTION_NO_ELIGIBLE_RULE);
+        }
+        return new ExclusionPreparation(AttemptExclusionDecision.none(), evaluations, diagnostics);
+    }
+
     private ExclusionRuleEvaluation evaluateExclusionRule(
             GeneratorExclusionRule rule,
             GenerationAttemptRequest request
@@ -224,9 +242,10 @@ final class DefaultCandidateReservoirEngine implements CandidateReservoirEngine 
 
     private BigDecimal exclusionRepetitionFactor(String ruleCode, GenerationAttemptRequest request) {
         int distance = Integer.MAX_VALUE;
-        List<VisibleChallenge> history = request.visibleHistory().challengesNewestFirst();
+        List<io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleCooldownExposure> history =
+                request.visibleHistory().cooldownExposuresNewestFirst();
         for (int index = 0; index < history.size(); index++) {
-            if (Objects.equals(ruleCode, history.get(index).exclusionRuleCode())) {
+            if (history.get(index).restrictionRuleCodes().contains(ruleCode)) {
                 distance = index + 1;
                 break;
             }

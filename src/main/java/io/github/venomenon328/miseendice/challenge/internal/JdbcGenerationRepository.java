@@ -13,6 +13,8 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.NextAct
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.RequirementView;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RequirementSource;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
+import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.CandidateRestriction;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleChallenge;
@@ -60,10 +62,10 @@ class JdbcGenerationRepository {
                 objectMapper, reservoirEngine, generatorProperties.configuration());
     }
 
-    long createSession(int requestedOfferCount) {
+    long createSession(int requestedOfferCount, RestrictionMode restrictionMode) {
         return jdbcTemplate.queryForObject(
-                "insert into challenge_session (requested_offer_count) values (?) returning id", Long.class,
-                requestedOfferCount);
+                "insert into challenge_session (requested_offer_count, restriction_mode) values (?, ?) returning id", Long.class,
+                requestedOfferCount, restrictionMode.name());
     }
 
     boolean lockSession(long sessionId) {
@@ -73,19 +75,26 @@ class JdbcGenerationRepository {
 
     Optional<AttemptState> findAttemptForUpdate(long sessionId, AttemptType type) {
         return jdbcTemplate.query("""
-                select id, challenge_session_id, attempt_type, status, effective_date, season_month,
-                       attempt_seed, operation_token, lease_expires_at, failure_reason_code, failure_detail
-                from generation_attempt
-                where challenge_session_id = ? and attempt_type = ?
+                select attempt.id, attempt.challenge_session_id, attempt.attempt_type, attempt.status,
+                       attempt.effective_date, attempt.season_month, attempt.attempt_seed, attempt.operation_token,
+                       attempt.lease_expires_at, attempt.failure_reason_code, attempt.failure_detail,
+                       session.restriction_mode
+                from generation_attempt attempt
+                join challenge_session session on session.id = attempt.challenge_session_id
+                where attempt.challenge_session_id = ? and attempt.attempt_type = ?
                 for update
                 """, this::mapAttemptState, sessionId, type.name()).stream().findFirst();
     }
 
     Optional<AttemptState> findAttemptState(long attemptId) {
         return jdbcTemplate.query("""
-                select id, challenge_session_id, attempt_type, status, effective_date, season_month,
-                       attempt_seed, operation_token, lease_expires_at, failure_reason_code, failure_detail
-                from generation_attempt where id = ?
+                select attempt.id, attempt.challenge_session_id, attempt.attempt_type, attempt.status,
+                       attempt.effective_date, attempt.season_month, attempt.attempt_seed, attempt.operation_token,
+                       attempt.lease_expires_at, attempt.failure_reason_code, attempt.failure_detail,
+                       session.restriction_mode
+                from generation_attempt attempt
+                join challenge_session session on session.id = attempt.challenge_session_id
+                where attempt.id = ?
                 """, this::mapAttemptState, attemptId).stream().findFirst();
     }
 
@@ -202,9 +211,13 @@ class JdbcGenerationRepository {
 
     PersistedBatch saveBatch(long attemptId, UUID operationToken, CandidateSetResult result) {
         AttemptState state = jdbcTemplate.query("""
-                select id, challenge_session_id, attempt_type, status, effective_date, season_month,
-                       attempt_seed, operation_token, lease_expires_at, failure_reason_code, failure_detail
-                from generation_attempt where id = ? for update
+                select attempt.id, attempt.challenge_session_id, attempt.attempt_type, attempt.status,
+                       attempt.effective_date, attempt.season_month, attempt.attempt_seed, attempt.operation_token,
+                       attempt.lease_expires_at, attempt.failure_reason_code, attempt.failure_detail,
+                       session.restriction_mode
+                from generation_attempt attempt
+                join challenge_session session on session.id = attempt.challenge_session_id
+                where attempt.id = ? for update
                 """, this::mapAttemptState, attemptId).stream().findFirst().orElseThrow();
         Optional<PersistedBatch> existing = findPersistedBatch(attemptId, result.batchNumber());
         if (existing.isPresent()) {
@@ -227,9 +240,13 @@ class JdbcGenerationRepository {
     /** Internal persistence boundary reserved for Phase 10; phase-9D public commands never call it. */
     PersistedBatch saveAdditionalBatch(long attemptId, CandidateSetResult result) {
         AttemptState state = jdbcTemplate.query("""
-                select id, challenge_session_id, attempt_type, status, effective_date, season_month,
-                       attempt_seed, operation_token, lease_expires_at, failure_reason_code, failure_detail
-                from generation_attempt where id = ? for update
+                select attempt.id, attempt.challenge_session_id, attempt.attempt_type, attempt.status,
+                       attempt.effective_date, attempt.season_month, attempt.attempt_seed, attempt.operation_token,
+                       attempt.lease_expires_at, attempt.failure_reason_code, attempt.failure_detail,
+                       session.restriction_mode
+                from generation_attempt attempt
+                join challenge_session session on session.id = attempt.challenge_session_id
+                where attempt.id = ? for update
                 """, this::mapAttemptState, attemptId).stream().findFirst().orElseThrow();
         if (!"GENERATED".equals(state.status())) {
             throw new IllegalStateException("An additional batch requires an already generated attempt");
@@ -286,9 +303,10 @@ class JdbcGenerationRepository {
                     generation_batch_id, candidate_number, proposal_ordinal, profile, target_specificity,
                     target_novelty_band, actual_novelty_band, known_novelty_load, total_score,
                     data_confidence, component_scores, profile_slot_assignments,
-                    generator_reason_codes, generator_diagnostics, canonical_signature
+                    generator_reason_codes, generator_diagnostics, canonical_signature,
+                    restriction_rule_id, restriction_rule_code_snapshot, restriction_text_snapshot
                 ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, cast(? as jsonb), cast(? as jsonb),
-                          cast(? as jsonb), cast(? as jsonb), ?)
+                          cast(? as jsonb), cast(? as jsonb), ?, ?, ?, ?)
                 returning id
                 """, Long.class, batchId, number, candidate.proposalOrdinal(), candidate.profile().name(),
                 candidate.targetSpecificity(), candidate.targetNoveltyBand().name(),
@@ -297,7 +315,8 @@ class JdbcGenerationRepository {
                 snapshotCodec.json(candidate.evaluation().components()),
                 snapshotCodec.json(candidate.evaluation().profileSlotAssignments()),
                 reasonJson(candidate.evaluation().reasonCodes()), reasonJson(candidate.diagnostics()),
-                candidate.canonicalSignature());
+                candidate.canonicalSignature(), candidate.restriction().ruleId(), candidate.restriction().ruleCode(),
+                candidate.restriction().textSnapshot());
     }
 
     private void insertRequirement(long candidateId, RequirementSnapshot requirement, Map<Integer, Long> manualIds) {
@@ -354,6 +373,7 @@ class JdbcGenerationRepository {
                        session.id as session_id, attempt.attempt_type,
                        candidate.profile, candidate.actual_novelty_band,
                        coalesce(
+                           candidate.restriction_rule_code_snapshot,
                            context.prepared_attempt_snapshot #>> '{exclusionDecision,ruleCode}',
                            legacy_exclusion.code
                        ) as exclusion_rule_code,
@@ -365,7 +385,7 @@ class JdbcGenerationRepository {
                 join challenge_candidate candidate on candidate.id = challenge.selected_candidate_id
                 join candidate_requirement requirement on requirement.candidate_id = candidate.id
                 left join generation_context_snapshot context on context.generation_attempt_id = attempt.id
-                left join exclusion_rule legacy_exclusion on legacy_exclusion.id = candidate.exclusion_rule_id
+                left join exclusion_rule legacy_exclusion on legacy_exclusion.id = attempt.exclusion_rule_id
                 order by challenge.shown_at desc, challenge.id desc, requirement.position
                 """, this::mapHistoryRow);
         Map<Long, HistoryBuilder> grouped = new LinkedHashMap<>();
@@ -389,6 +409,17 @@ class JdbcGenerationRepository {
             rerolls.computeIfAbsent(row.exposureId(), ignored -> new RerollHistoryBuilder(row)).requirements.add(
                     new VisibleRequirement(row.conceptCode(), null, Set.of(), Set.of(), Set.of()));
         }
+        jdbcTemplate.query("""
+                select exposure.restriction_rule_code_snapshot, exposure.reroll_offer_exposure_id
+                from reroll_offer_exposure_restriction exposure
+                where exposure.restriction_rule_code_snapshot is not null
+                order by exposure.reroll_offer_exposure_id, exposure.curated_offer_id
+                """, (org.springframework.jdbc.core.RowCallbackHandler) row -> {
+            RerollHistoryBuilder builder = rerolls.get(row.getLong("reroll_offer_exposure_id"));
+            if (builder != null) {
+                builder.restrictionCodes.add(row.getString("restriction_rule_code_snapshot"));
+            }
+        });
         return new VisibleHistorySnapshot(grouped.values().stream().map(HistoryBuilder::build).toList(),
                 rerolls.values().stream().map(RerollHistoryBuilder::build).toList());
     }
@@ -459,7 +490,8 @@ class JdbcGenerationRepository {
                        target_novelty_band, actual_novelty_band, known_novelty_load, total_score,
                        data_confidence, canonical_signature, component_scores::text,
                        profile_slot_assignments::text,
-                       generator_reason_codes::text, generator_diagnostics::text
+                       generator_reason_codes::text, generator_diagnostics::text,
+                       restriction_rule_id, restriction_rule_code_snapshot, restriction_text_snapshot
                 from challenge_candidate where generation_batch_id = ? order by candidate_number
                 """, (result, row) -> new CandidateView(
                 result.getLong("id"), result.getInt("candidate_number"),
@@ -470,7 +502,10 @@ class JdbcGenerationRepository {
                 result.getBigDecimal("data_confidence"), result.getString("canonical_signature"),
                 result.getString("component_scores"), result.getString("profile_slot_assignments"),
                 result.getString("generator_reason_codes"),
-                result.getString("generator_diagnostics"), requirements(result.getLong("id"))), batchId);
+                result.getString("generator_diagnostics"), requirements(result.getLong("id")),
+                new CandidateRestriction((Long) result.getObject("restriction_rule_id"),
+                        result.getString("restriction_rule_code_snapshot"),
+                        result.getString("restriction_text_snapshot"))), batchId);
     }
 
     private List<RequirementView> requirements(long candidateId) {
@@ -543,7 +578,7 @@ class JdbcGenerationRepository {
                 result.getObject("effective_date", LocalDate.class), (Integer) result.getObject("season_month"),
                 (Long) result.getObject("attempt_seed"), result.getObject("operation_token", UUID.class),
                 instant(result, "lease_expires_at"), result.getString("failure_reason_code"),
-                result.getString("failure_detail"));
+                result.getString("failure_detail"), RestrictionMode.valueOf(result.getString("restriction_mode")));
     }
 
     private static Instant instant(ResultSet result, String column) throws SQLException {
@@ -577,7 +612,8 @@ class JdbcGenerationRepository {
             UUID operationToken,
             Instant leaseExpiresAt,
             String failureReason,
-            String failureDetail
+            String failureDetail,
+            RestrictionMode restrictionMode
     ) {
         boolean leaseActive(Instant now) {
             return leaseExpiresAt != null && leaseExpiresAt().isAfter(now);
@@ -624,6 +660,7 @@ class JdbcGenerationRepository {
     private static final class RerollHistoryBuilder {
         private final RerollHistoryRow first;
         private final List<VisibleRequirement> requirements = new ArrayList<>();
+        private final Set<String> restrictionCodes = new LinkedHashSet<>();
 
         private RerollHistoryBuilder(RerollHistoryRow first) {
             this.first = first;
@@ -631,7 +668,7 @@ class JdbcGenerationRepository {
 
         private VisibleRerollExposure build() {
             return new VisibleRerollExposure(first.exposedAt(), Long.toString(first.sessionId()),
-                    Long.toString(first.offerSetId()), requirements);
+                    Long.toString(first.offerSetId()), requirements, restrictionCodes);
         }
     }
 

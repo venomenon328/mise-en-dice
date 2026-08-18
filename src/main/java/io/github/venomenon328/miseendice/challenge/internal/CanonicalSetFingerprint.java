@@ -48,10 +48,16 @@ final class CanonicalSetFingerprint {
             List<GeneratorReasonCode> diagnostics
     ) {
         Map<String, Object> payload = sortedMap();
-        payload.put("attemptExclusionDecision", exclusion(reservoir.context().exclusionDecision()));
+        boolean candidateSpecificRestrictions = reservoir.context().configuration().generatorVersion().equals("1.2.0");
+        if (candidateSpecificRestrictions) {
+            payload.put("restrictionMode", reservoir.context().restrictionMode().name());
+        } else {
+            payload.put("attemptExclusionDecision", exclusion(reservoir.context().exclusionDecision()));
+        }
         payload.put("batchNumber", batchNumber);
         payload.put("batchSeed", batchSeed);
-        payload.put("candidates", candidates.stream().map(CanonicalSetFingerprint::candidate).toList());
+        payload.put("candidates", candidates.stream()
+                .map(candidate -> candidate(candidate, candidateSpecificRestrictions)).toList());
         payload.put("canonicalPayloadVersion", reservoir.context().configuration().canonicalPayloadVersion());
         payload.put("configurationVersion", nfc(reservoir.context().configuration().configurationVersion()));
         payload.put("diagnostics", reasonCodes(diagnostics));
@@ -196,7 +202,7 @@ final class CanonicalSetFingerprint {
         return value;
     }
 
-    private static Map<String, Object> candidate(AcceptedProposal candidate) {
+    private static Map<String, Object> candidate(AcceptedProposal candidate, boolean candidateSpecificRestrictions) {
         Map<String, Object> value = sortedMap();
         value.put("canonicalSignature", nfc(candidate.canonicalSignature()));
         value.put("diagnostics", reasonCodes(candidate.diagnostics()));
@@ -212,6 +218,12 @@ final class CanonicalSetFingerprint {
         value.put("evaluation", evaluation);
         value.put("profile", candidate.profile().name());
         value.put("proposalOrdinal", candidate.proposalOrdinal());
+        if (candidateSpecificRestrictions) {
+            value.put("restriction", candidate.restriction().ruleCode() == null ? null : Map.of(
+                    "ruleCode", nfc(candidate.restriction().ruleCode()),
+                    "ruleId", candidate.restriction().ruleId(),
+                    "textSnapshot", nfc(candidate.restriction().textSnapshot())));
+        }
         value.put("requirements", candidate.requirements().stream()
                 .sorted(Comparator.comparingInt(RequirementSnapshot::position))
                 .map(CanonicalSetFingerprint::requirement).toList());

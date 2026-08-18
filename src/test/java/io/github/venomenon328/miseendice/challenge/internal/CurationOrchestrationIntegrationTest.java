@@ -498,7 +498,7 @@ class CurationOrchestrationIntegrationTest {
                                         "diversityContribution", "HIGH")));
                     }
                 }
-                return new Success(new CurationResponse(CurationModel.CONTRACT_VERSION, request.attemptId(),
+                return new Success(new CurationResponse(request.contractVersion(), request.attemptId(),
                         request.roundId(), request.primaryBatchId(), evaluations));
             }
             if ("INVALID".equals(exchange.rawPayload())) {

@@ -2,9 +2,11 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Availability;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorExclusionRule;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Specificity;
 import io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine;
+import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.CandidateRestriction;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext;
 import io.github.venomenon328.miseendice.challenge.api.GenerationPlan;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration;
@@ -14,10 +16,12 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyCad
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.ProfileSlot;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RequirementSource;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RequirementSpecificity;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.ScoreComponent;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleChallenge;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleRequirement;
+import io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt.ExclusionRuleEvaluation;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -73,6 +77,14 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
                     plan.diagnostics());
         }
 
+        CandidateRestrictionSelection restriction = candidateRestriction(context, proposalOrdinal);
+        if (restriction.requiredButUnavailable()) {
+            Set<GeneratorReasonCode> diagnostics = diagnosticSet(plan.diagnostics());
+            diagnostics.addAll(restriction.diagnostics());
+            return new RejectedProposal(proposalOrdinal, null, null, null,
+                    List.of(GeneratorReasonCode.REQUIRED_RESTRICTION_UNAVAILABLE), List.of(), diagnostics);
+        }
+
         CandidateProfile profile = draw(plan.profiles().normalizedWeights(), context, proposalOrdinal,
                 SeedDerivation.Purpose.PROPOSAL_PROFILE);
         int targetSpecificity = draw(plan.specificity().normalizedWeights(), context, proposalOrdinal,
@@ -97,7 +109,7 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
             List<WeightEvaluation> evaluated = context.catalog().concepts().stream()
                     .sorted(GeneratorConcept.CANONICAL_ORDER)
                     .map(concept -> evaluateWeight(concept, neededSpecificity, requiredSlot, requirements,
-                            targetNovelty, context)).toList();
+                            targetNovelty, context, restriction.rule())).toList();
             allEvaluations.addAll(evaluated);
             List<WeightEvaluation> selectable = evaluated.stream().filter(weight -> weight.quantizedWeight() > 0).toList();
             if (manualNoveltyForced(requirements, context.configuration()) && !selectable.isEmpty()) {
@@ -129,8 +141,9 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
 
         requirements.sort(Comparator.comparingInt(WorkRequirement::position));
         Set<GeneratorReasonCode> diagnostics = diagnosticSet(plan.diagnostics());
+        diagnostics.addAll(restriction.diagnostics());
         addManualDiagnostics(requirements, diagnostics, context);
-        List<GeneratorReasonCode> hardReasons = hardReasons(requirements, profile, context);
+        List<GeneratorReasonCode> hardReasons = hardReasons(requirements, profile, context, restriction.rule());
         if (!hardReasons.isEmpty()) {
             diagnostics.addAll(hardReasons);
             return new RejectedProposal(proposalOrdinal, profile, targetSpecificity, targetNovelty,
@@ -140,7 +153,7 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
         CandidateEvaluation evaluation = evaluateCandidate(requirements, profile, targetNovelty, context, diagnostics);
         List<RequirementSnapshot> snapshots = requirements.stream().map(WorkRequirement::snapshot).toList();
         return new AcceptedProposal(proposalOrdinal, profile, targetSpecificity, targetNovelty, snapshots,
-                evaluation, signature(requirements, context), diagnostics);
+                evaluation, signature(requirements, context, restriction.snapshot()), diagnostics, restriction.snapshot());
     }
 
     private void validateConfigurationIdentity(GenerationContext context) {
@@ -166,7 +179,8 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
 
     private WeightEvaluation evaluateWeight(GeneratorConcept concept, Specificity neededSpecificity,
                                               ProfileSlot requiredSlot, List<WorkRequirement> selected,
-                                              NoveltyBand targetBand, GenerationContext context) {
+                                              NoveltyBand targetBand, GenerationContext context,
+                                              GeneratorExclusionRule candidateRestriction) {
         Set<GeneratorReasonCode> reasons = EnumSet.noneOf(GeneratorReasonCode.class);
         if (!concept.active()) reasons.add(GeneratorReasonCode.CONCEPT_INACTIVE);
         if (!concept.randomDrawEnabled()) reasons.add(GeneratorReasonCode.RANDOM_DRAW_DISABLED);
@@ -188,8 +202,7 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
         int distance = exactHistoryDistance(concept.code(), context);
         BigDecimal cooldownFactor = cooldownFactor(distance, configuration);
         if (cooldownFactor.signum() == 0) reasons.add(GeneratorReasonCode.EXACT_COOLDOWN_BLOCKED);
-        if (context.exclusionDecision() instanceof AttemptExclusionDecision.Selected selectedExclusion
-                && selectedExclusion.rule().expandedTargetCodes().contains(concept.code())) {
+        if (candidateRestriction != null && candidateRestriction.expandedTargetCodes().contains(concept.code())) {
             reasons.add(GeneratorReasonCode.EXCLUSION_TARGET_BLOCKED);
         }
         for (WorkRequirement existing : selected) {
@@ -267,7 +280,8 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
     }
 
     private List<GeneratorReasonCode> hardReasons(List<WorkRequirement> requirements, CandidateProfile profile,
-                                                   GenerationContext context) {
+                                                   GenerationContext context,
+                                                   GeneratorExclusionRule candidateRestriction) {
         Set<GeneratorReasonCode> reasons = EnumSet.noneOf(GeneratorReasonCode.class);
         if (requirements.size() != 4) reasons.add(GeneratorReasonCode.REQUIREMENT_COUNT_INVALID);
         if (requirements.stream().filter(r -> r.specificity() == RequirementSpecificity.SPECIFIC).count() < 2) {
@@ -313,9 +327,8 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
                 .anyMatch(r -> r.concept().noveltyLevel() >= 4)) {
             reasons.add(GeneratorReasonCode.NOVELTY_HIGH_MAX_EXCEEDED);
         }
-        if (context.exclusionDecision() instanceof AttemptExclusionDecision.Selected selected
-                && requirements.stream().filter(r -> r.concept() != null)
-                .anyMatch(r -> selected.rule().expandedTargetCodes().contains(r.concept().code()))) {
+        if (candidateRestriction != null && requirements.stream().filter(r -> r.concept() != null)
+                .anyMatch(r -> candidateRestriction.expandedTargetCodes().contains(r.concept().code()))) {
             reasons.add(GeneratorReasonCode.CANDIDATE_EXCLUSION_CONFLICT);
         }
         return reasons.stream().sorted().toList();
@@ -614,7 +627,8 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
         return Math.max(0, Math.min(100, value));
     }
 
-    private String signature(List<WorkRequirement> requirements, GenerationContext context) {
+    private String signature(List<WorkRequirement> requirements, GenerationContext context,
+                             CandidateRestriction restriction) {
         List<String> identities = requirements.stream().map(requirement -> {
             if (requirement.source() == RequirementSource.RANDOM) {
                 return String.join("\0", "R", requirement.concept().code(), requirement.specificity().name());
@@ -625,8 +639,7 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
                     ? "UNMATCHED" : "MATCH:" + requirement.concept().code();
             return String.join("\0", "M", normalizedText, matchIdentity, requirement.specificity().name());
         }).sorted().toList();
-        String exclusion = context.exclusionDecision() instanceof AttemptExclusionDecision.Selected selected
-                ? selected.rule().code() : "NONE";
+        String exclusion = restriction.ruleCode() == null ? "NONE" : restriction.ruleCode();
         String payload = String.join("\0\0", identities) + "\0\0EXCLUSION\0" + exclusion;
         try {
             return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
@@ -644,6 +657,69 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
     }
 
     private record NoveltyStats(int load, int fives, int highs) { }
+
+    /** Candidate-local decision, made before any profile, novelty, or requirement substream is consumed. */
+    private CandidateRestrictionSelection candidateRestriction(GenerationContext context, long proposalOrdinal) {
+        if (!context.configuration().generatorVersion().equals("1.2.0")) {
+            if (context.exclusionDecision() instanceof AttemptExclusionDecision.Selected selected) {
+                return CandidateRestrictionSelection.selected(selected.rule(), Set.of());
+            }
+            return CandidateRestrictionSelection.none(Set.of());
+        }
+        if (context.restrictionMode() == RestrictionMode.NONE) {
+            return CandidateRestrictionSelection.none(Set.of(GeneratorReasonCode.CANDIDATE_RESTRICTION_NOT_SELECTED));
+        }
+        boolean requested = context.restrictionMode() == RestrictionMode.REQUIRED;
+        if (!requested) {
+            long units = context.configuration().exclusionProbability().multiply(BigDecimal.valueOf(1_000_000_000L))
+                    .setScale(0, ROUNDING).longValueExact();
+            long seed = SeedDerivation.derive(context.configuration().generatorVersion(), context.attemptSeed(),
+                    SeedDerivation.batchScope(context.batchNumber()),
+                    SeedDerivation.Purpose.CANDIDATE_RESTRICTION_MODE, proposalOrdinal);
+            requested = new SplitMix64(seed).nextLong(1_000_000_000L) < units;
+        }
+        if (!requested) {
+            return CandidateRestrictionSelection.none(Set.of(GeneratorReasonCode.CANDIDATE_RESTRICTION_NOT_SELECTED));
+        }
+        List<ExclusionRuleEvaluation> eligible = context.exclusionRuleEvaluations().stream()
+                .filter(ExclusionRuleEvaluation::eligible).toList();
+        if (eligible.isEmpty()) {
+            return context.restrictionMode() == RestrictionMode.REQUIRED
+                    ? CandidateRestrictionSelection.requiredUnavailable()
+                    : CandidateRestrictionSelection.none(Set.of(GeneratorReasonCode.CANDIDATE_RESTRICTION_NO_ELIGIBLE_RULE));
+        }
+        long total = eligible.stream().mapToLong(ExclusionRuleEvaluation::quantizedWeight)
+                .reduce(0L, Math::addExact);
+        long seed = SeedDerivation.derive(context.configuration().generatorVersion(), context.attemptSeed(),
+                SeedDerivation.batchScope(context.batchNumber()), SeedDerivation.Purpose.CANDIDATE_RESTRICTION_RULE,
+                proposalOrdinal);
+        long ticket = new SplitMix64(seed).nextLong(total);
+        for (ExclusionRuleEvaluation evaluation : eligible) {
+            if (ticket < evaluation.quantizedWeight()) {
+                return CandidateRestrictionSelection.selected(evaluation.rule(),
+                        Set.of(GeneratorReasonCode.CANDIDATE_RESTRICTION_SELECTED));
+            }
+            ticket -= evaluation.quantizedWeight();
+        }
+        throw new IllegalStateException("Weighted candidate restriction selection did not resolve a rule");
+    }
+
+    private record CandidateRestrictionSelection(CandidateRestriction snapshot, GeneratorExclusionRule rule,
+                                                 Set<GeneratorReasonCode> diagnostics,
+                                                 boolean requiredButUnavailable) {
+        static CandidateRestrictionSelection none(Set<GeneratorReasonCode> diagnostics) {
+            return new CandidateRestrictionSelection(CandidateRestriction.none(), null, Set.copyOf(diagnostics), false);
+        }
+
+        static CandidateRestrictionSelection selected(GeneratorExclusionRule rule, Set<GeneratorReasonCode> diagnostics) {
+            return new CandidateRestrictionSelection(CandidateRestriction.selected(rule), rule, Set.copyOf(diagnostics), false);
+        }
+
+        static CandidateRestrictionSelection requiredUnavailable() {
+            return new CandidateRestrictionSelection(CandidateRestriction.none(), null,
+                    Set.of(GeneratorReasonCode.REQUIRED_RESTRICTION_UNAVAILABLE), true);
+        }
+    }
 
     private record WorkRequirement(int position, RequirementSource source, String displayText,
                                    RequirementSpecificity specificity, GeneratorConcept concept,

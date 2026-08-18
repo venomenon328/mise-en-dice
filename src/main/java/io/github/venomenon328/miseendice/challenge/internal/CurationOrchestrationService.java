@@ -241,7 +241,8 @@ final class CurationOrchestrationService implements CurationOrchestrationCommand
                                            CurationModel.RequestPurpose purpose, int openSlots,
                                            List<CurationCommands.CandidateParticipation> candidates) {
         CurationCommands.RoundOutcome outcome = curationCommands.planRound(new CurationCommands.PlanRound(
-                attemptId, number, batch.batchId(), purpose, curatorClient.model(), OpenAiCuratorPrompt.VERSION,
+                attemptId, number, batch.batchId(), purpose, curatorClient.model(),
+                OpenAiCuratorPrompt.forGenerator(generationQueries.findAttempt(attemptId).orElseThrow().generatorVersion()),
                 openSlots, candidates));
         return curationQueries.findRoundById(outcome.roundId()).orElseThrow();
     }

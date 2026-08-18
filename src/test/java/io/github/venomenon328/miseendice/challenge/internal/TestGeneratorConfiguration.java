@@ -96,5 +96,27 @@ final class TestGeneratorConfiguration {
                 defaults.processingLease());
     }
 
+    static GeneratorConfiguration candidateRestrictionDefaults() {
+        GeneratorConfiguration defaults = defaults();
+        return new GeneratorConfiguration(
+                "1.2.0", "2026-08-18.1", defaults.rngAlgorithm(), defaults.canonicalPayloadVersion(),
+                defaults.candidateSetSize(), defaults.reservoirTarget(), defaults.reservoirStrictMinimum(),
+                defaults.reservoirRelaxedOneMinimum(), defaults.maximumProposalAttempts(), defaults.weightQuantization(),
+                bd("0.20"), defaults.availabilityFactors(), defaults.cooldown(), defaults.exclusion(),
+                defaults.novelty(), defaults.anchorRoles(), defaults.supportRoles(), defaults.flavorRoles(),
+                defaults.profiles(), defaults.profileWeights(), defaults.profileSetTargets(),
+                defaults.specificityWeights(), defaults.specificitySetTargets(), defaults.cadenceSetTargets(),
+                defaults.scoreWeights(), Map.of(
+                        SimilarityComponent.EXACT_RANDOM_CONCEPTS, bd("0.30"),
+                        SimilarityComponent.INFORMATIVE_ANCESTORS, bd("0.17"),
+                        SimilarityComponent.ROLES_AND_PROFILE, bd("0.13"),
+                        SimilarityComponent.SPECIFICITY_MIX, bd("0.05"),
+                        SimilarityComponent.NOVELTY, bd("0.10"),
+                        SimilarityComponent.AVAILABILITY_LOAD, bd("0.05"),
+                        SimilarityComponent.COMPARABLE_PROPERTIES, bd("0.10"),
+                        SimilarityComponent.RESTRICTION, bd("0.10")),
+                defaults.similarity(), defaults.selection(), defaults.fallbacks(), defaults.processingLease());
+    }
+
     private static BigDecimal bd(String value) { return new BigDecimal(value); }
 }

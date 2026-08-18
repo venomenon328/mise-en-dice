@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.challenge.api;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.CatalogGeneratorSnapshot;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext.ManualRequirement;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
@@ -19,11 +20,13 @@ public record GenerationAttemptRequest(
         List<ManualRequirement> manualRequirements,
         Set<String> rerollBlockedConceptCodes,
         GeneratorConfiguration configuration,
-        long attemptSeed
+        long attemptSeed,
+        RestrictionMode restrictionMode
 ) {
     public GenerationAttemptRequest {
         if (attemptType == null || effectiveDate == null || catalog == null || visibleHistory == null
-                || manualRequirements == null || rerollBlockedConceptCodes == null || configuration == null) {
+                || manualRequirements == null || rerollBlockedConceptCodes == null || configuration == null
+                || restrictionMode == null) {
             throw invalid("Generation attempt request fields must not be null");
         }
         if (seasonMonth < 1 || seasonMonth > 12 || seasonMonth != catalog.seasonMonth()) {
@@ -43,10 +46,26 @@ public record GenerationAttemptRequest(
             }
         }
 
-        // Generator v1.1 no longer interprets a REROLL as rejection of individual ingredients.
-        // Keep the record component so historic v1.0 request snapshots remain structurally readable,
-        // but normalize all newly constructed requests to the new no-dedicated-block semantics.
-        rerollBlockedConceptCodes = Set.of();
+        // Generator v1.0 keeps its historical REROLL behaviour. Later versions obtain all
+        // repeat effects exclusively from persisted visible-history snapshots.
+        rerollBlockedConceptCodes = configuration.generatorVersion().startsWith("1.0.")
+                ? Set.copyOf(rerollBlockedConceptCodes) : Set.of();
+    }
+
+    /** Compatibility input for the historic attempt-wide restriction contract. */
+    public GenerationAttemptRequest(
+            AttemptType attemptType,
+            LocalDate effectiveDate,
+            int seasonMonth,
+            CatalogGeneratorSnapshot catalog,
+            VisibleHistorySnapshot visibleHistory,
+            List<ManualRequirement> manualRequirements,
+            Set<String> rerollBlockedConceptCodes,
+            GeneratorConfiguration configuration,
+            long attemptSeed
+    ) {
+        this(attemptType, effectiveDate, seasonMonth, catalog, visibleHistory, manualRequirements,
+                rerollBlockedConceptCodes, configuration, attemptSeed, RestrictionMode.AUTO);
     }
 
     private static GeneratorValidationException invalid(String detail) {

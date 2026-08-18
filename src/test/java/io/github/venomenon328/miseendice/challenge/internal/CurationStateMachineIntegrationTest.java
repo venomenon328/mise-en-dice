@@ -346,19 +346,16 @@ class CurationStateMachineIntegrationTest {
     }
 
     @Test
-    void preservesRequestedOfferCountAndCarriesPromptAndExclusionInRequest() {
+    void preservesRequestedOfferCountAndUsesTheCandidateRestrictionContract() {
         assertThatThrownBy(() -> new StartNewSession(DATE, List.of(), 1L, 0)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new StartNewSession(DATE, List.of(), 1L, 4)).isInstanceOf(IllegalArgumentException.class);
         Generated generated = generated(3, 71_100_050L);
-        long exclusionRuleId = jdbcTemplate.queryForObject("select id from exclusion_rule where active order by id limit 1", Long.class);
-        jdbcTemplate.update("""
-                update generation_attempt set exclusion_rule_id = ?, exclusion_text_snapshot = 'No test exclusion'
-                where id = ?
-                """, exclusionRuleId, generated.attemptId());
         PlannedRound planned = planInitial(generated);
         assertThat(planned.request().promptVersion()).isEqualTo("prompt-v1");
-        assertThat(planned.request().attemptExclusion().exclusionRuleId()).isEqualTo(exclusionRuleId);
-        assertThat(planned.request().attemptExclusion().exclusionTextSnapshot()).isEqualTo("No test exclusion");
+        assertThat(planned.request().contractVersion()).isEqualTo(CurationModel.CONTRACT_VERSION_V2);
+        assertThat(planned.request().attemptExclusion()).isNull();
+        assertThat(planned.request().candidates()).allSatisfy(candidate ->
+                assertThat(candidate.snapshot().restriction()).isNotNull());
 
         assertThat(curationQueries.findAttempt(generated.attemptId()).orElseThrow().requestedOfferCount()).isEqualTo(3);
     }
@@ -409,7 +406,7 @@ class CurationStateMachineIntegrationTest {
                         rank, List.of("CULINARY_COHERENCE"), java.util.Map.of()));
             }
         }
-        return new CurationResponse(CurationModel.CONTRACT_VERSION, planned.attemptId(), planned.roundId(),
+        return new CurationResponse(planned.request().contractVersion(), planned.attemptId(), planned.roundId(),
                 planned.request().primaryBatchId(), evaluations);
     }
 
@@ -422,7 +419,7 @@ class CurationStateMachineIntegrationTest {
             evaluations.add(new CurationResponse.CandidateEvaluation(candidate.candidateId(), classification, rank,
                     List.of("CULINARY_COHERENCE"), java.util.Map.of()));
         }
-        return new CurationResponse(CurationModel.CONTRACT_VERSION, planned.attemptId(), planned.roundId(),
+        return new CurationResponse(planned.request().contractVersion(), planned.attemptId(), planned.roundId(),
                 planned.request().primaryBatchId(), evaluations);
     }
 
@@ -431,7 +428,7 @@ class CurationStateMachineIntegrationTest {
         PlannedRound planned = planInitial(generated);
         java.util.ArrayList<CurationResponse.CandidateEvaluation> evaluations = new java.util.ArrayList<>(response(planned, 1).evaluations());
         mutation.accept(evaluations);
-        CurationResponse invalid = new CurationResponse(CurationModel.CONTRACT_VERSION, planned.attemptId(), planned.roundId(),
+        CurationResponse invalid = new CurationResponse(planned.request().contractVersion(), planned.attemptId(), planned.roundId(),
                 planned.request().primaryBatchId(), evaluations);
         assertThat(curationCommands.completeRound(new CurationCommands.CompleteRound(planned.roundId(), invalid)))
                 .isInstanceOf(CurationCommands.InvalidResponse.class);

@@ -62,13 +62,15 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
 
             long roundId = repository.nextRoundId();
             List<CurationRequest.Candidate> candidates = candidates(command.candidates());
-            CurationRequest request = new CurationRequest(CurationModel.CONTRACT_VERSION, command.promptVersion().strip(),
+            String contractVersion = CurationModel.contractForGenerator(attempt.generatorVersion());
+            CurationRequest request = new CurationRequest(contractVersion, command.promptVersion().strip(),
                     command.attemptId(), roundId, command.primaryBatchId(), attempt.requestedOfferCount(),
-                    command.openOfferSlots(), new CurationRequest.AttemptExclusion(attempt.exclusionRuleId(),
-                    attempt.exclusionTextSnapshot()), candidates);
+                    command.openOfferSlots(), CurationModel.CONTRACT_VERSION_V1.equals(contractVersion)
+                            ? new CurationRequest.AttemptExclusion(attempt.exclusionRuleId(),
+                            attempt.exclusionTextSnapshot()) : null, candidates);
             repository.insertRound(roundId, command.attemptId(), command.roundNumber(), command.primaryBatchId(),
                     command.purpose(), command.curatorModel().strip(), command.promptVersion().strip(),
-                    command.openOfferSlots(), repository.json(request));
+                    contractVersion, command.openOfferSlots(), repository.json(request));
             int position = 1;
             for (CandidateParticipation candidate : command.candidates()) {
                 repository.insertRoundCandidate(roundId, candidate.candidateId(), position++, candidate.participation(),
@@ -325,7 +327,7 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
     }
 
     private Validation validateResponse(JdbcCurationRepository.Round round, CurationResponse response) {
-        if (!CurationModel.CONTRACT_VERSION.equals(response.contractVersion())) {
+        if (!repository.readRequest(round.requestPayload()).contractVersion().equals(response.contractVersion())) {
             return Validation.error("UNSUPPORTED_CONTRACT_VERSION", "Curation response contract version is not supported");
         }
         if (response.attemptId() != round.attemptId() || response.roundId() != round.id()

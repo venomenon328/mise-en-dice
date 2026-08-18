@@ -80,7 +80,8 @@ class CurationOfferLifecycleIntegrationTest {
         PlannedRound planned = (PlannedRound) curationCommands.planRound(command);
         assertThat(planned.request().requestedOfferCount()).isEqualTo(2);
         assertThat(planned.request().promptVersion()).isEqualTo("prompt-v1");
-        assertThat(planned.request().attemptExclusion().exclusionRuleId()).isNull();
+        assertThat(planned.request().contractVersion()).isEqualTo(CurationModel.CONTRACT_VERSION_V2);
+        assertThat(planned.request().attemptExclusion()).isNull();
         assertThat(planned.request().candidates()).hasSize(12);
         assertThat(planned.request().candidates()).allSatisfy(candidate -> {
             assertThat(candidate.participation()).isEqualTo(CurationModel.Participation.NEW);
@@ -123,7 +124,7 @@ class CurationOfferLifecycleIntegrationTest {
     void structurallyInvalidResponseIsTerminalWithoutPartialEvaluations() {
         Generated generated = generated(1, 71_000_002L);
         PlannedRound planned = (PlannedRound) curationCommands.planRound(initialPlan(generated, 1));
-        CurationResponse invalid = new CurationResponse(CurationModel.CONTRACT_VERSION, generated.attemptId(),
+        CurationResponse invalid = new CurationResponse(planned.request().contractVersion(), generated.attemptId(),
                 planned.roundId(), planned.request().primaryBatchId(), response(planned, 1).evaluations().subList(1, 12));
 
         assertThat(curationCommands.completeRound(new CurationCommands.CompleteRound(planned.roundId(), invalid)))
@@ -218,7 +219,7 @@ class CurationOfferLifecycleIntegrationTest {
                         rank, List.of("CULINARY_COHERENCE"), java.util.Map.of()));
             }
         }
-        return new CurationResponse(CurationModel.CONTRACT_VERSION, planned.attemptId(), planned.roundId(),
+        return new CurationResponse(planned.request().contractVersion(), planned.attemptId(), planned.roundId(),
                 planned.request().primaryBatchId(), evaluations);
     }
 

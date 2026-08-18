@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import io.github.venomenon328.miseendice.challenge.api.CurationModel;
 import io.github.venomenon328.miseendice.challenge.api.CurationRequest;
+import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.CandidateRestriction;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -47,7 +48,8 @@ class JdbcOfferDecisionRepository {
 
     Optional<Offer> findOffer(long offerSetId, long offerId) {
         return jdbcTemplate.query("""
-                select offer.id, offer.curated_offer_set_id, offer.position, offer.challenge_candidate_id
+                select offer.id, offer.curated_offer_set_id, offer.position, offer.challenge_candidate_id,
+                       offer.restriction_rule_id, offer.restriction_rule_code_snapshot, offer.restriction_text_snapshot
                 from curated_offer offer where offer.id = ? and offer.curated_offer_set_id = ?
                 """, this::mapOffer, offerId, offerSetId).stream().findFirst();
     }
@@ -85,8 +87,11 @@ class JdbcOfferDecisionRepository {
 
     long insertChallenge(OfferSet offerSet, Offer offer) {
         return jdbcTemplate.queryForObject("""
-                insert into challenge (generation_attempt_id, selected_candidate_id, curated_offer_id)
-                values (?, ?, ?) returning id
+                insert into challenge (generation_attempt_id, selected_candidate_id, curated_offer_id,
+                                       restriction_rule_id, restriction_rule_code_snapshot, restriction_text_snapshot)
+                select ?, ?, offer.id, offer.restriction_rule_id, offer.restriction_rule_code_snapshot,
+                       offer.restriction_text_snapshot
+                from curated_offer offer where offer.id = ? returning id
                 """, Long.class, offerSet.attemptId(), offer.candidateId(), offer.offerId());
     }
 
@@ -127,6 +132,20 @@ class JdbcOfferDecisionRepository {
                 """, exposureId, offerSet.offerSetId());
         if (copied != offerSet.requestedOfferCount() * 4) {
             throw new IllegalStateException("Presented offer set does not have complete requirement snapshots");
+        }
+        int copiedRestrictions = jdbcTemplate.update("""
+                insert into reroll_offer_exposure_restriction (
+                    reroll_offer_exposure_id, curated_offer_id, challenge_candidate_id,
+                    restriction_rule_id, restriction_rule_code_snapshot, restriction_text_snapshot
+                )
+                select ?, offer.id, offer.challenge_candidate_id,
+                       offer.restriction_rule_id, offer.restriction_rule_code_snapshot, offer.restriction_text_snapshot
+                from curated_offer offer
+                where offer.curated_offer_set_id = ?
+                order by offer.position
+                """, exposureId, offerSet.offerSetId());
+        if (copiedRestrictions != offerSet.requestedOfferCount()) {
+            throw new IllegalStateException("Presented offer set does not have complete restriction snapshots");
         }
         return exposureId;
     }
@@ -178,7 +197,20 @@ class JdbcOfferDecisionRepository {
                         result.getLong("curated_offer_id"), result.getLong("challenge_candidate_id"),
                         result.getInt("requirement_position"), result.getString("source"),
                         (Long) result.getObject("ingredient_concept_id"), result.getString("concept_code_snapshot"),
-                        result.getString("display_text_snapshot")), exposure.exposureId())));
+                        result.getString("display_text_snapshot")), exposure.exposureId()),
+                jdbcTemplate.query("""
+                        select restriction.curated_offer_id, restriction.challenge_candidate_id,
+                               restriction.restriction_rule_id, restriction.restriction_rule_code_snapshot,
+                               restriction.restriction_text_snapshot
+                        from reroll_offer_exposure_restriction restriction
+                        join curated_offer offer on offer.id = restriction.curated_offer_id
+                        where restriction.reroll_offer_exposure_id = ?
+                        order by offer.position
+                        """, (result, row) -> new OfferDecisionQueries.ExposedRestrictionView(
+                        result.getLong("curated_offer_id"), result.getLong("challenge_candidate_id"),
+                        new CandidateRestriction((Long) result.getObject("restriction_rule_id"),
+                                result.getString("restriction_rule_code_snapshot"),
+                                result.getString("restriction_text_snapshot"))), exposure.exposureId())));
     }
 
     private OfferDecisionQueries.OfferSetView view(OfferSet offerSet) {
@@ -189,12 +221,16 @@ class JdbcOfferDecisionRepository {
         return new OfferDecisionQueries.OfferSetView(offerSet.sessionId(), offerSet.attemptId(), offerSet.offerSetId(),
                 offerSet.requestedOfferCount(), offerSet.status(), offerSet.curatedAt(), offerSet.presentedAt(),
                 offerSet.decidedAt(), challengeView, jdbcTemplate.query("""
-                        select id, curated_offer_set_id, position, challenge_candidate_id
-                        from curated_offer where curated_offer_set_id = ? order by position
+                        select offer.id, offer.curated_offer_set_id, offer.position, offer.challenge_candidate_id,
+                               offer.restriction_rule_id, offer.restriction_rule_code_snapshot,
+                               offer.restriction_text_snapshot
+                        from curated_offer offer
+                        where offer.curated_offer_set_id = ? order by offer.position
                         """, (result, row) -> {
                     Offer offer = mapOffer(result, row);
                     return new OfferDecisionQueries.OfferView(offer.offerId(), offer.position(), offer.candidateId(),
-                            requirements(offer.candidateId()));
+                            requirements(offer.candidateId()), new CandidateRestriction(offer.restrictionRuleId(),
+                            offer.restrictionRuleCodeSnapshot(), offer.restrictionTextSnapshot()));
                 }, offerSet.offerSetId()));
     }
 
@@ -221,7 +257,9 @@ class JdbcOfferDecisionRepository {
 
     private Offer mapOffer(ResultSet result, int row) throws SQLException {
         return new Offer(result.getLong("id"), result.getLong("curated_offer_set_id"), result.getInt("position"),
-                result.getLong("challenge_candidate_id"));
+                result.getLong("challenge_candidate_id"), (Long) result.getObject("restriction_rule_id"),
+                result.getString("restriction_rule_code_snapshot"),
+                result.getString("restriction_text_snapshot"));
     }
 
     private Challenge mapChallenge(ResultSet result, int row) throws SQLException {
@@ -253,7 +291,8 @@ class JdbcOfferDecisionRepository {
                     CurationModel.OfferSetStatus status, Instant curatedAt, Instant presentedAt, Instant decidedAt) {
     }
 
-    record Offer(long offerId, long offerSetId, int position, long candidateId) {
+    record Offer(long offerId, long offerSetId, int position, long candidateId, Long restrictionRuleId,
+                 String restrictionRuleCodeSnapshot, String restrictionTextSnapshot) {
     }
 
     record Challenge(long challengeId, long offerId, long candidateId, Instant shownAt, String status) {

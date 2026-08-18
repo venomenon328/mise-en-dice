@@ -14,6 +14,7 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 - [`008-offer-decision-lifecycle.sql`](../src/main/resources/db/changelog/schema/008-offer-decision-lifecycle.sql) für Phase 11A: autoritative Offer-Bestätigung, exakt persistierte Reroll-Exposition und REROLL-Integrität
 - [`009-challenge-voting-participation.sql`](../src/main/resources/db/changelog/schema/009-challenge-voting-participation.sql) für Phase 11B: generische Teilnehmeridentitäten, Electorate-Snapshots, Voting-Ergebnisse und Challenge-Teilnahme
 - [`010-selection-voting-review-hardening.sql`](../src/main/resources/db/changelog/schema/010-selection-voting-review-hardening.sql) für die monotone Apply-Zustandsmaschine und die Übernahme eines bereits eingefrorenen Electorates nach späterer Deaktivierung
+- [`011-candidate-specific-restrictions.sql`](../src/main/resources/db/changelog/schema/011-candidate-specific-restrictions.sql) für Generator 1.2, Curation Contract V2 und unveränderliche Restriktions-History
 
 Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
 
@@ -229,6 +230,10 @@ Die append-only Migration `schema/004-persisted-candidate-generation.sql` setzt 
 
 Phase 10A speichert für die Session die gewünschte Zahl präsentierter Angebote `requested_offer_count` im Bereich `1..3`, Default `1`; bestehende Sessions wurden auf `1` migriert. Sie ist kein Generatorinput: weder Context- noch Set-Fingerprint, Generator- oder Konfigurationsversion enthalten sie. Ein Reroll verwendet dieselbe gespeicherte Zahl, sofern die Produktspezifikation später nicht ausdrücklich eine erneute Wahl erlaubt.
 
+`restriction_mode` ist ebenfalls ein unveränderlicher Sessionwert mit `AUTO` als Default sowie `NONE` und
+`REQUIRED`. Er gehört für Generator `1.2.0` in den gespeicherten Context und Set-Fingerprint; die historische
+attempt-weite Ausschlussentscheidung auf `generation_attempt` bleibt ausschließlich für `1.0.x`/`1.1.x` erhalten.
+
 Phase 11B ergänzt pro Session einen festen `selection_electorate`-Snapshot. Er enthält ausschließlich stabile `participant`-Referenzen und wird beim ersten Start des Auswahlprozesses atomar materialisiert. Die transportneutrale Default-Policy wählt die aktiven stabilen Codes `GEORGIA` und `TOBIAS`; spätere Registrierungen oder Deaktivierungen ändern keinen bereits vorhandenen Snapshot. Eine abweichende erneute Initialisierung derselben Session ist ein fachlicher Konflikt.
 
 ### Teilnehmeridentität, Voting und Teilnahme
@@ -245,11 +250,11 @@ Eine `selection_voting_round` referenziert genau ein tatsächlich durch 11A prä
 
 `generation_attempt` repräsentiert den Versuch, ein Offer Set und daraus gegebenenfalls eine Challenge zu erzeugen. Pro Session erlaubt die Datenbank höchstens einen `INITIAL`- und einen `REROLL`-Attempt. Interne Neuversuche wegen zu weniger guter Kuratorergebnisse erzeugen keinen weiteren Reroll-Attempt.
 
-Im Zielmodell besitzt der Attempt den unveränderlichen Request- und Context-Rahmen: Attempt-Seed, RNG, Generator- und Konfigurationsversion, wirksamen Monat, manuelle Vorgaben, Ausschlussentscheidung sowie Konfigurations-, Katalog-, Eingabe- und Historiensnapshot. Zustände `PENDING`, `CONTEXT_READY`, `GENERATED`, `EXHAUSTED` und `FAILED` unterscheiden fehlenden Snapshot, laufende Berechnung, vollständigen Generatorerfolg, fachliche Erschöpfung und technischen Fehler. Die spätere Kurationsphase ergänzt klar getrennte Kurations-/Offer-Zustände statt Generatorzustände umzudeuten.
+Im Zielmodell besitzt der Attempt den unveränderlichen Request- und Context-Rahmen: Attempt-Seed, RNG, Generator- und Konfigurationsversion, wirksamen Monat, manuelle Vorgaben sowie Konfigurations-, Katalog-, Eingabe- und Historiensnapshot. Für `1.0.x`/`1.1.x` gehört die Ausschlussentscheidung dazu; für `1.2.0` werden Restriction Mode und die regelbezogenen Evaluationssnapshots gespeichert. Zustände `PENDING`, `CONTEXT_READY`, `GENERATED`, `EXHAUSTED` und `FAILED` unterscheiden fehlenden Snapshot, laufende Berechnung, vollständigen Generatorerfolg, fachliche Erschöpfung und technischen Fehler. Die spätere Kurationsphase ergänzt klar getrennte Kurations-/Offer-Zustände statt Generatorzustände umzudeuten.
 
 ### Generation Batch
 
-Ein `generation_batch` ist eine vollständig berechnete Generatorrunde unter einem Attempt. Er besitzt eine eindeutige Batchnummer, den daraus abgeleiteten Batch-Seed, Status, Reservoir- und Satzdiagnosen, Fallbackstufe sowie Set-Fingerprint. Alle Batches desselben Attempts verwenden den unveränderten Context Snapshot und die attempt-weite Ausschlussentscheidung.
+Ein `generation_batch` ist eine vollständig berechnete Generatorrunde unter einem Attempt. Er besitzt eine eindeutige Batchnummer, den daraus abgeleiteten Batch-Seed, Status, Reservoir- und Satzdiagnosen, Fallbackstufe sowie Set-Fingerprint. Alle Batches desselben Attempts verwenden den unveränderten Context Snapshot; die alte attempt-weite Ausschlussentscheidung gilt nur für historische Generatorversionen.
 
 Ein erfolgreicher Batch enthält genau zwölf eindeutige Kandidaten. Phase 9D implementiert zunächst den ersten Batch eines Attempts. Die Phase-10B-Orchestrierung erzeugt bei zu wenigen `GOOD`-Kandidaten höchstens einen zweiten Batch unter demselben Attempt. Sie dekodiert dafür ausschließlich den unveränderlich gespeicherten und verifizierten Generation Context Snapshot; Katalog, Historie, Eingaben und Ausschluss werden weder neu geladen noch neu entschieden. Eine unbegrenzte Batchfolge ist nicht vorgesehen.
 
@@ -259,7 +264,7 @@ Eine `curation_round` ist ausschließlich genau ein tatsächlicher externer Kura
 
 Phase 10A implementiert die flexible Zuordnung einer Kurationsrunde über `curation_round_candidate` zu Kandidaten desselben Attempts. Eine neue Runde referenziert einen primären erfolgreichen Batch, darf jedoch Kandidaten aus Batch 1 und Batch 2 gemeinsam enthalten. `NEW` stammt aus diesem primären Batch; `CARRY_OVER` und `LOCKED_CONTEXT` referenzieren dieselbe Candidate-ID in einer früheren Runde desselben Attempts. Ein Locked Context muss aus einer früheren `GOOD`-Bewertung stammen und wird weder bewertet noch gerankt. PostgreSQL-Trigger sichern Attempt-, Batch- und Herkunftszugehörigkeit auch bei manipulierten IDs ab.
 
-Neue Runden tragen `INITIAL_PASS`, `TECHNICAL_RETRY` oder `QUALITY_FOLLOW_UP`, die stabile Vertragsversion, Modell-/Promptversion, exakten Request und später exakte Response. Der Request enthält außerdem die Promptversion, `requested_offer_count`, offene Plätze und den unveränderlichen Attempt-Ausschluss-Snapshot. Kann ein späterer Adapter Output nicht in den strukturierten Responsevertrag deserialisieren, liegt dessen unverändertes Original als Text auf der Runde; der Status bleibt ausdrücklich `INVALID_RESPONSE`, nie ein technischer Generatorfehler. `PENDING`, `COMPLETED`, `TECHNICAL_ERROR` und `INVALID_RESPONSE` unterscheiden Request, vollständig validiertes Ergebnis und die beiden Fehlerarten.
+Neue Runden tragen `INITIAL_PASS`, `TECHNICAL_RETRY` oder `QUALITY_FOLLOW_UP`, die stabile Vertragsversion, Modell-/Promptversion, exakten Request und später exakte Response. V1 enthält den unveränderlichen Attempt-Ausschluss-Snapshot; `CURATION_CONTRACT_V2` enthält stattdessen einen Restriktionssnapshot auf jedem Candidate. Kann ein späterer Adapter Output nicht in den strukturierten Responsevertrag deserialisieren, liegt dessen unverändertes Original als Text auf der Runde; der Status bleibt ausdrücklich `INVALID_RESPONSE`, nie ein technischer Generatorfehler. `PENDING`, `COMPLETED`, `TECHNICAL_ERROR` und `INVALID_RESPONSE` unterscheiden Request, vollständig validiertes Ergebnis und die beiden Fehlerarten.
 
 Nur Runden 1 und 2 sind für neue Daten zulässig. Runde 1 ist stets `INITIAL_PASS` mit den zwölf `NEW`-Kandidaten des ersten Batches und allen offenen Plätzen. Runde 2 ist entweder `TECHNICAL_RETRY` desselben vollständigen ersten Batches nach technischem Fehler oder `QUALITY_FOLLOW_UP` nach einer vollständig ausgewerteten Runde 1 mit zu wenigen `GOOD`: Sie enthält den vollständigen neuen Batch 2, alle bisherigen `GOOD` als Locked Context und höchstens so viele bewertete `ACCEPTABLE`-/`BAD`-Carry-overs wie Plätze offen sind. Diese Form prüft PostgreSQL, ohne die spätere 10B-Auswahlentscheidung über konkrete Fallbacks zu treffen. Deferrable Constraints erzwingen außerdem für `COMPLETED` alle und nur nicht gelockten Bewertungen sowie eine lückenlose Rangfolge.
 
@@ -276,6 +281,11 @@ Jeder `challenge_candidate` gehört im Zielmodell zu genau einem Generation Batc
 Manuelle Vorgaben werden in jedem Kandidaten als Snapshot wiederholt. Zufällige Vorgaben speichern zusätzlich ihre zum Ziehungszeitpunkt geltende Challenge-Spezifität als Snapshot. Dadurch bleibt nachvollziehbar, welche vollständige Viererkombination dem Kurator vorlag und wie sie bei der Generierung klassifiziert war, selbst wenn der Katalog später geändert wird.
 
 Generatorseitige Scores bleiben unveränderlich. Kuratorurteile und Ränge werden je `curation_round` separat persistiert und nicht auf `challenge_candidate` überschrieben.
+
+Ab `1.2.0` enthält jeder Candidate zusätzlich `restriction_rule_id`, `restriction_rule_code_snapshot` und
+`restriction_text_snapshot` als vollständiges Null-oder-alles-Snapshottrio. `curated_offer` und bestätigte
+`challenge` kopieren dieses Trio über PostgreSQL-Trigger exakt; eine aktuelle `exclusion_rule` wird für History
+oder Anzeige nicht erneut gelesen.
 
 ### Curated Offer Set
 
@@ -311,7 +321,7 @@ Davon getrennt ist der freiwillige Reroll **vor** Bestätigung einer Option. Das
 
 Der REROLL-`generation_attempt` verwendet diese Exposition über die normale Historienprojektion. Es existiert kein separater ingredient-level REROLL-Hardblock mehr.
 
-Die Exposition liegt als genau eine `reroll_offer_exposure` pro Session und rerolltem Offer Set mit positionsgebundenen `reroll_offer_exposure_requirement`-Zeilen vor. Jede Zeile kopiert Quelle, Concept-ID, exakten Code und Anzeigetext aus dem damaligen Candidate-Requirement; die Historienprojektion wertet davon ausschließlich die Codes aus und konsultiert weder den aktuellen Katalog noch Refinement-Relationen. Sie führt keine Challenge-/Profil-/Neuigkeitseigenschaften und kann deshalb keine Neuigkeitskadenz beeinflussen.
+Die Exposition liegt als genau eine `reroll_offer_exposure` pro Session und rerolltem Offer Set mit positionsgebundenen `reroll_offer_exposure_requirement`-Zeilen und einer `reroll_offer_exposure_restriction` je Offer vor. Jede Zeile kopiert Quelle, Concept-ID, exakten Code und Anzeigetext aus dem damaligen Candidate-Requirement beziehungsweise den vollständigen Restriktionssnapshot; die Historienprojektion wertet davon ausschließlich die Codes aus und konsultiert weder den aktuellen Katalog noch Refinement-Relationen. Sie führt keine Challenge-/Profil-/Neuigkeitseigenschaften und kann deshalb keine Neuigkeitskadenz beeinflussen.
 
 ## 12. Historische Snapshots
 

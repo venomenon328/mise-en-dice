@@ -65,6 +65,20 @@ Verbindlich gilt:
 
 Historische Generatorversion `1.0.0` besaß einen separaten Vierer-REROLL-Block. Dessen Snapshotfelder und Reason-Code `REROLL_EXACT_BLOCKED` dürfen für Altbestände lesbar bleiben, werden von neuen v1.1-Läufen aber nicht mehr fachlich verwendet. Die Semantikänderung ist replayrelevant und begründet den Minor-Versionssprung von `1.0.0` auf `1.1.0`.
 
+### 1.5 Kandidatenspezifische Restriktionen ab Generator 1.2
+
+Generator `1.2.0` ersetzt die attempt-weite Ziehung für neue Läufe durch eine deterministische Entscheidung je
+Candidate-Proposal, bevor Profil, Zielwerte und Requirements gezogen werden. `challenge_session.restriction_mode`
+ist ein unveränderlicher Sessioninput: `AUTO` ist Default und nutzt exakt 20 %, `NONE` erzeugt keine Restriktion,
+`REQUIRED` verlangt eine eligible Regel. Auswahlgewicht, Konflikt mit manuellen Vorgaben und Wiederholung folgen
+weiterhin den aktiven `exclusion_rule`-Snapshots; `REQUIRED` ohne eligible Regel ist eine typisierte Erschöpfung,
+während `AUTO` dann ohne Restriktion fortfährt.
+
+Die Kandidatenrestriktion umfasst Rule-ID, Rule-Code und Textsnapshot. Sie ist Teil der Candidate-Signatur und der
+Ähnlichkeitskomponente `RESTRICTION`; dadurch bleiben gleiche Restriktionen sichtbar, Wiederholungen aber möglich.
+Historische `1.0.x`-/`1.1.x`-Snapshots behalten unverändert die attempt-weite Entscheidung und werden durch den
+versionsgebundenen Dispatcher mit ihren eigenen Payloadformen reproduziert.
+
 ## 2. Begriffe und Datenfluss
 
 ### 2.1 Zentrale Begriffe
@@ -89,9 +103,11 @@ Historische Generatorversion `1.0.0` besaß einen separaten Vierer-REROLL-Block.
 3. manuelle Vorgaben normalisieren und optional mit Katalogkonzepten verknüpfen.
 4. Generator- und Konfigurationsversion sowie Master-Seed festlegen.
 5. Neuigkeitskadenz aus sichtbarer Historie ableiten.
-6. einmalig für den gesamten Attempt Ausschlussmodus und gegebenenfalls Ausschlussregel ziehen.
+6. für `1.0.x`/`1.1.x` einmalig die attempt-weite Ausschlussentscheidung ziehen, für `1.2.0` nur die
+   regelbezogene Eligibility vorbereiten.
 7. viele unabhängige Proposal-Substreams ableiten.
-8. pro Proposal Zielprofil, Spezifitätsmix und Neuigkeitsband ziehen.
+8. pro Proposal bei `1.2.0` zuerst Restriktionsmodus und gegebenenfalls Regel ziehen, dann Zielprofil,
+   Spezifitätsmix und Neuigkeitsband ziehen.
 9. fehlende Slots gewichtet ohne Zurücklegen füllen.
 10. harte Regeln prüfen; Ablehnungen nach Reason-Code zählen.
 11. harte gültige Kandidaten weich bewerten und kanonisch deduplizieren.
@@ -127,7 +143,8 @@ Der unveränderliche `GenerationContext` enthält mindestens:
 - null bis zwei manuelle Vorgaben in Eingabereihenfolge,
 - vollständigen Catalog Snapshot,
 - Visible History Snapshot,
-- Attempt Exclusion Decision beziehungsweise die Eingaben für deren Ermittlung,
+- für `1.0.x`/`1.1.x` die Attempt Exclusion Decision, für `1.2.0` Restriction Mode und die
+  vorbereiteten Rule-Evaluations,
 - Generatorversion,
 - Konfigurationsversion und kanonischen Konfigurationssnapshot,
 - Master-Seed und RNG-Algorithmus.
@@ -340,6 +357,8 @@ Verbindliche Zwecke sind mindestens:
 
 - `attempt-exclusion-mode`,
 - `attempt-exclusion-rule`,
+- `candidate-restriction-mode`,
+- `candidate-restriction-rule`,
 - `proposal-profile`,
 - `proposal-specificity`,
 - `proposal-novelty`,
@@ -359,7 +378,10 @@ Gleicher Generatorstand, gleicher Konfigurationssnapshot, gleicher Generation Co
 - dieselben Evaluationen und Reason-Codes,
 - denselben Fingerprint.
 
-Ein Wechsel von Generator `1.0.0` auf `1.1.0` ist absichtlich **kein** gleiches Generatorumfeld: Die Generatorversion fließt in die Seed-Substreams ein. Historische v1.0-REROLL-Fingerprints werden daher durch v1.1 nicht still reproduziert oder als v1.1-Match ausgegeben.
+Ein Wechsel zwischen Generator-Minorversionen ist absichtlich **kein** gleiches Generatorumfeld: Die
+Generatorversion fließt in die Seed-Substreams ein. `1.2.0` ergänzt isolierte Candidate-Restriction-Substreams,
+ohne die alten `1.0.x`-/`1.1.x`-Substreams umzudeuten. Historische Snapshots werden über ihre gespeicherte Version
+an die passende Implementierung dispatcht und niemals als `1.2.0`-Match ausgegeben.
 
 ## 7. Manuelle Vorgaben
 
@@ -981,6 +1003,11 @@ Mindestens enthalten:
 - MMR-Gewichte und Topband,
 - alle Fallbackstufen.
 
+Der produktive Default für neue Sessions ist `generatorVersion = 1.2.0`,
+`configurationVersion = 2026-08-15.1`, `exclusionProbability = 0.20` und eine vollständige
+`RESTRICTION`-Ähnlichkeitsgewichtung. Die vorstehenden `1.1.0`-Werte bleiben der historische
+Konfigurationsvertrag für gespeicherte Replays und werden nicht nachträglich überschrieben.
+
 Fail-fast-Validierung mindestens für:
 
 - positive und endliche Faktoren,
@@ -1225,7 +1252,8 @@ Replayrelevante Payloads verwenden `canonicalPayloadVersion = 1` und folgenden B
 
 Der Fingerprint ist SHA-256 über die kanonischen Bytes und wird als kleingeschriebene hexadezimale
 Zeichenfolge gespeichert. Der Set-Fingerprint umfasst Generator- und Konfigurationsversion, Payloadversion,
-Batchnummer und abgeleiteten Batch-Seed, Attempt-Ausschlussentscheidung, verwendete Fallbackstufe,
+Batchnummer und abgeleiteten Batch-Seed, bei `1.0.x`/`1.1.x` die Attempt-Ausschlussentscheidung und bei
+`1.2.0` den Restriction Mode sowie die Restriktion jedes Kandidaten, verwendete Fallbackstufe,
 Setdiagnose einschließlich Reservoirmetriken und Fallbackversuchen sowie die geordnete vollständige
 Kandidatenliste in Auswahlreihenfolge. Nicht ausgewählte Reservoirkandidaten gehören nicht zur Set-Payload.
 Separate Snapshotfingerprints erlauben, eine Abweichung vor dem eigentlichen Generatorlauf zu lokalisieren.
