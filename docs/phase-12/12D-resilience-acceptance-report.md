@@ -21,6 +21,15 @@ Phase 12C ist abgeschlossen. Der Branch basiert auf dem finalen 12C-`main` nach 
 - OpenAI-Acceptance-Ausgangsstand: 8 Requests / 0,59 USD kumulativ aus 12B+12C
 - CI: Der finale `main`-Commit enthält gegenüber dem zuvor abgenommenen Code-Stand nur den 12C-Dokumentationsmerge aus PR #104. `Verify` und `Deployment Verify` waren auf dem unmittelbar vorherigen Produktcode-Stand aus PR #103 grün.
 
+### Deployment des 12D-Ausgangsstands
+
+- `acceptance preflight`: gültig; Discord/OpenAI aktiviert, Modell `gpt-5.6-terra`, Reasoning `medium`
+- Image `325996dc0704` erfolgreich gebaut und gegen eine frische PostgreSQL-Smoke-Datenbank geprüft
+- automatisches zusätzliches Pre-Deploy-Backup validiert: `/opt/mise-en-dice/runtime/backups/mise-en-dice-acceptance-20260818T232126Z-8e7565ef791d.dump`
+- Acceptance auf `325996dc0704bdc8139c63fcb04d4ff5322fc7d0` aktualisiert; Port `18090`, Discord/OpenAI weiter aktiviert
+- unmittelbarer Status nach Deploy: App lief bereits, Docker-Health noch `starting`; der Acceptance-Bot kam anschließend erfolgreich wieder online
+- Production blieb während des Deployments unverändert `running/healthy` auf `3ffc239fc357a8b8579aeb77b1de637e6f6562db`, Discord/OpenAI deaktiviert
+
 ## Optimierte Szenarioreihenfolge
 
 Die Pflichtfälle aus #89 sollen mit höchstens drei erfolgreichen kostenpflichtigen Generation Sessions auskommen. Fehler-Sessions mit absichtlich ungültigem Key oder lokalem Transportziel erzeugen keine normalen kostenpflichtigen Providerläufe.
