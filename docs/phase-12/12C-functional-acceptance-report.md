@@ -5,7 +5,7 @@ Stand: 18. August 2026
 Issue: #88  
 Umbrella: #85  
 Evidenzbranch: `test/88-live-functional-acceptance`  
-Getesteter Commit: **aus finaler Acceptance-Status-/DB-Evidenz noch zu übernehmen**
+Getesteter Commit: `8e7565ef791d4a85cbb7a8aedbbba095d3582164`
 
 ## Ergebnis
 
@@ -21,10 +21,12 @@ OpenAI-Dashboard-Snapshot werden nicht zu nicht belegten DB-IDs oder Per-Session
 
 ## Preflight und Baseline
 
-Der Live-Lauf erfolgte auf der für 12C vorbereiteten Acceptance-Instanz. Folgende technische Baselinepunkte werden
-vor Abschluss des Reports noch mit der Operator-/DB-Evidenz abgeglichen:
+Die Acceptance lief laut `acceptance status` auf `main`, Commit
+`8e7565ef791d4a85cbb7a8aedbbba095d3582164`, Port `18090`, Status `running/healthy`, Discord und OpenAI aktiviert,
+Modell `gpt-5.6-terra`, Reasoning `medium`.
 
-- [ ] getesteten Acceptance-Commit aus `acceptance status` übernehmen
+Noch vor Abschluss des Reports ergänzen:
+
 - [ ] Post-Migration-/Pre-Request-Baseline dokumentieren
 - [ ] Production/Previews unverändert bestätigen
 - [ ] finalen secretfreien Logcheck dokumentieren
@@ -38,6 +40,14 @@ vor Abschluss des Reports noch mit der Operator-/DB-Evidenz abgeglichen:
 | 12C-04 | 3 Offers / AUTO | 3 Offers; Stimmen auf Vorschlag 1 und 3; Losentscheid gewann Vorschlag 3; ungewählter Vorschlag 2 gewann nicht | PASS |
 | 12C-05 | Multi-Offer / REQUIRED | gemeinsamer REROLL; neue Offers mit echten Restriktionen; Runde 2 bot nur die neuen Vorschläge und keinen zweiten REROLL | PASS |
 | 12C-06 | 1 Offer nach REROLL | neues einzelnes Offer wurde ohne künstliche zweite Abstimmung automatisch bestätigt | PASS |
+
+Die persistierte Session-/Attempt-Matrix bestätigt bisher:
+
+- Session 1: AUTO, 1 Offer, INITIAL Attempt 1, Generator 1.2.0, `OFFER_READY`
+- Session 2: NONE, 2 Offers, INITIAL Attempt 2, Generator 1.2.0, `OFFER_READY`
+- Session 3: AUTO, 3 Offers, INITIAL Attempt 3, Generator 1.2.0, `OFFER_READY`
+- Session 4: REQUIRED, 2 Offers, INITIAL Attempt 4 und REROLL Attempt 5, beide Generator 1.2.0, `OFFER_READY`
+- Session 5: AUTO, 1 Offer, INITIAL Attempt 6 und REROLL Attempt 7, beide Generator 1.2.0, `OFFER_READY`
 
 Die sichtbaren Beispiele bestätigen außerdem, dass uneingeschränkte Kandidaten explizit als `Einschränkung: Keine`
 gerendert werden und dass in REQUIRED-/REROLL-Flows echte kandidatenspezifische Restriktionen erscheinen können,
@@ -54,6 +64,39 @@ u. a. `keine Kokosmilch` und `kein Fisch und keine Meeresfrüchte`.
 - [x] Runde 2 nach Multi-Offer-REROLL besitzt keinen zweiten REROLL
 - [x] ein einzelnes REROLL-Offer wird ohne zweite Abstimmung bestätigt
 - [x] keine Providerdiagnostik oder SQL-Details wurden in den gezeigten Discord-Nachrichten sichtbar
+
+## Detail-Evidenz Session A / Session 1
+
+Session A ist persistiert als Session `1`, INITIAL Attempt `1`, AUTO, ein angefordertes Offer, Generator `1.2.0`.
+Der einzige Curation-Request war Runde `1` / `INITIAL_PASS` gegen `gpt-5.6-terra`, `CURATOR_PROMPT_V2`,
+`CURATION_CONTRACT_V2`. Der Request wurde mit HTTP 200 abgeschlossen; Providerlaufzeit zwischen Claim und
+persistiertem Ergebnis: **19,269 s**. Usage: **22.307 Input**, **1.492 Output**, **707 Reasoning**, **23.799 Gesamt-Tokens**.
+Es gab genau einen Providerrequest für diesen Attempt.
+
+Kuratorergebnis der zwölf Kandidaten:
+
+| Kandidat | Generator-Score | Kurator | Rang | Kernaussage | Ergebnis |
+| ---: | ---: | --- | ---: | --- | --- |
+| 1 | 96,82 | GOOD | 2 | starke Kohärenz und kreative Offenheit, geringe Interaktionsgefahr | nicht gewählt |
+| 2 | 90,35 | GOOD | 3 | starke Kohärenz und Offenheit, geringe Interaktionsgefahr | nicht gewählt |
+| 3 | 94,52 | ACCEPTABLE | 4 | kreative Offenheit, aber schwächere Kohärenz und Lock-in-Risiko | nicht gewählt |
+| 4 | 92,35 | GOOD | **1** | starke Kohärenz und kreative Offenheit, geringe Interaktionsgefahr, hoher Diversitätsbeitrag | **Offer 1 / Challenge 1** |
+| 5 | 86,14 | ACCEPTABLE | 9 | schwächere Kohärenz, hohe Interaktions- und Offenheitsrisiken | nicht gewählt |
+| 6 | 92,58 | ACCEPTABLE | 7 | kohärent, aber begrenzte Offenheit und Standardgericht-Risiko | nicht gewählt |
+| 7 | 86,20 | BAD | 11 | schwache Kohärenz und hohe Interaktionsgefahr | nicht gewählt |
+| 8 | 88,52 | ACCEPTABLE | 6 | schwächere Kohärenz und begrenzte kreative Offenheit | nicht gewählt |
+| 9 | 84,84 | ACCEPTABLE | 10 | schwächere Kohärenz, hohe Interaktionsgefahr und Lock-in-Risiko | nicht gewählt |
+| 10 | 88,68 | BAD | 12 | schwache Kohärenz sowie hohe Interaktions- und Offenheitsrisiken | nicht gewählt |
+| 11 | 91,48 | ACCEPTABLE | 5 | starke Kohärenz und Offenheit, aber hohes Offenheitsrisiko durch breite Vorgaben | nicht gewählt |
+| 12 | 85,34 | ACCEPTABLE | 8 | schwächere Kohärenz, hohe Interaktionsgefahr und Lock-in-Risiko | nicht gewählt |
+
+Der Offer-Selection-Pfad ist `INITIAL_GOOD_SELECTION`. Kandidat 4 wurde als einziges sichtbares Offer materialisiert
+und anschließend als Challenge 1 bestätigt. Seine persistierten Requirements waren `Schweineleber`,
+`koreanische Reiskuchen`, `Sauerkirsche`, `Lauch- und Zwiebelgemüse`; Restriktion: `Keine`.
+
+Bemerkenswert: Kandidat 1 hatte mit 96,82 den höchsten Generator-Score, der semantische Kurator setzte jedoch
+Kandidat 4 auf Rang 1. Damit zeigt der Live-Lauf die beabsichtigte Arbeitsteilung: der Generator bewertet harte
+Struktur-/Datenmerkmale, während der Kurator die kulinarische Semantik und kreative Nutzbarkeit separat ordnet.
 
 ## UX-Befunde – P2 / Folgeissue #100
 
@@ -99,20 +142,25 @@ den dargestellten Zeitraum kumulativ:
 - **159.082 Tokens**
 - **0,52 USD Spend**
 
-Diese Werte werden vor dem Abschluss von 12C noch gegen die persistierten `curation_round`-/Usage-Snapshots
-abgeglichen. Aus dem Dashboard allein wird keine Per-Session-Verteilung behauptet.
+Die persistierten Usage-Snapshots der sieben Attempts summieren sich ebenfalls zu sieben Requestslots; die genaue
+Per-Attempt-Tokenevidenz wird sukzessive in diesem Report ergänzt. Session A ist bereits vollständig zugeordnet.
+
+Die zwei REROLL-Expositionen besitzen die erwartete Kardinalität:
+
+- Session 4: 2 exponierte Offers → 8 Requirement-Snapshots und 2 Restriction-Snapshots
+- Session 5: 1 exponiertes Offer → 4 Requirement-Snapshots und 1 Restriction-Snapshot
 
 ## Noch ausstehende Persistenz-/History-Evidenz
 
 Ohne neue kostenpflichtige Session per read-only Operatorqueries nachweisen und in diesen Report übernehmen:
 
-- [ ] Session-/Attempt-/Offer-Set-/Voting-/Challenge-IDs der fünf Live-Flows
-- [ ] je Attempt 1 oder höchstens 2 tatsächliche Providerrequests; keine dritte Anfrage
-- [ ] persistierte Tokenusage plausibel zum Dashboard-Snapshot
+- [x] Session-/Attempt-Zuordnung der fünf Live-Flows
+- [x] Session A: genau ein Providerrequest und persistierte Tokenusage
+- [x] REROLL-Expositions-Kardinalität einschließlich Restriction-Snapshots
+- [ ] Sessions B–E: Kandidaten-/Curator-/Usage-Detailzuordnung
 - [ ] genau eine Challenge pro bestätigter Session
 - [ ] bestätigtes Offer stimmt mit Challenge-Requirement- und Restriction-Snapshots überein
 - [ ] nicht gewählte normale Offers beeinflussen normale Requirement-/Restriction-History nicht
-- [ ] Multi-Offer-REROLL erzeugt genau eine Cooldown-only-Exposition einschließlich Restriction-Snapshots
 - [ ] REROLL-Session behält den INITIAL-Restriction-Mode
 - [ ] Tie-Break genau einmal persistiert
 - [ ] Runde 2 besitzt keine REROLL-Option
