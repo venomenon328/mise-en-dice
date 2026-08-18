@@ -45,6 +45,10 @@ final class DiscordChallengeRenderer {
     }
 
     RenderedMessage selection(SelectionVotingQueries.SelectionView selection) {
+        return selection(selection, DisplayNames.storedFallback());
+    }
+
+    RenderedMessage selection(SelectionVotingQueries.SelectionView selection, DisplayNames displayNames) {
         if (selection.waitingForPresentation() != null) {
             return new RenderedMessage("**Neue Angebote sind bereit**\nDie Präsentation wird vorbereitet.", List.of());
         }
@@ -57,7 +61,7 @@ final class DiscordChallengeRenderer {
         if (round != null) {
             text.append("**Abstimmung – Runde ").append(round.roundNumber()).append("**\n");
             for (SelectionVotingQueries.VoteStatusView vote : round.votes()) {
-                text.append(vote.displayName()).append(": ")
+                text.append(displayNames.resolve(vote.participantId(), vote.displayName())).append(": ")
                         .append(vote.hasVoted() ? "abgestimmt" : "noch offen").append("\n");
             }
             for (SelectionVotingQueries.AllowedOptionView option : round.allowedOptions()) {
@@ -68,20 +72,24 @@ final class DiscordChallengeRenderer {
             SelectionVotingQueries.VotingRoundView completed = selection.completedRounds().getLast();
             text.append("**Abstimmung abgeschlossen**\n");
             if (completed.result() != null) {
-                text.append("Gewinner: ").append(choice(completed.result().winningChoice(), selection.currentOfferSet())).append("\n");
+                text.append("**Gewinner: ").append(choice(completed.result().winningChoice(), selection.currentOfferSet()))
+                        .append("**");
+                if (completed.result().tieBreakUsed()) {
+                    text.append(" *(Gleichstand \u2013 per Los entschieden)*");
+                }
+                text.append("\n");
             }
-            if (completed.result() != null && completed.result().tieBreakUsed()) {
-                text.append("Gleichstand: Der einmalige Losentscheid wurde verwendet.\n");
-            }
+            text.append("\n**Einzelstimmen**\n");
             for (SelectionVotingQueries.VoteStatusView vote : completed.votes()) {
-                text.append(vote.displayName()).append(": ").append(choice(vote.vote(), selection.currentOfferSet())).append("\n");
+                text.append("- ").append(displayNames.resolve(vote.participantId(), vote.displayName())).append(": ")
+                        .append(choice(vote.vote(), selection.currentOfferSet())).append("\n");
             }
             SelectionVotingQueries.ApplyState applyState = completed.result() == null ? null : completed.result().applyState();
             if (applyState == SelectionVotingQueries.ApplyState.PENDING
                     || applyState == SelectionVotingQueries.ApplyState.REROLL_IN_PROGRESS) {
                 buttons.add(new Component("Fortsetzen", DiscordComponentId.resume(selection.sessionId())));
             }
-            appendApplyStatus(text, applyState);
+            appendApplyStatus(text, completed.result());
         }
         if (selection.confirmedChallenge() != null && selection.currentOfferSet() != null) {
             appendConfirmedChallenge(text, selection.currentOfferSet(), selection.confirmedChallenge());
@@ -99,9 +107,15 @@ final class DiscordChallengeRenderer {
         };
     }
 
-    private static void appendApplyStatus(StringBuilder text, SelectionVotingQueries.ApplyState applyState) {
-        if (applyState == SelectionVotingQueries.ApplyState.REROLL_IN_PROGRESS) {
-            text.append("Neue Angebote werden vorbereitet.\n");
+    private static void appendApplyStatus(StringBuilder text, SelectionVotingQueries.RoundResultView result) {
+        if (result == null) {
+            return;
+        }
+        SelectionVotingQueries.ApplyState applyState = result.applyState();
+        if ((applyState == SelectionVotingQueries.ApplyState.PENDING
+                && result.winningChoice().type() == SelectionVotingCommands.VoteOptionType.REROLL)
+                || applyState == SelectionVotingQueries.ApplyState.REROLL_IN_PROGRESS) {
+            text.append("\uD83C\uDFB2 Neue Angebote werden vorbereitet \u2026\n");
         } else if (applyState == SelectionVotingQueries.ApplyState.REROLL_EXHAUSTED) {
             text.append("Es konnten keine neuen Angebote vorbereitet werden.\n");
         } else if (applyState == SelectionVotingQueries.ApplyState.REROLL_FAILED) {
@@ -162,5 +176,14 @@ final class DiscordChallengeRenderer {
     }
 
     record Component(String label, String customId) {
+    }
+
+    @FunctionalInterface
+    interface DisplayNames {
+        String resolve(long participantId, String storedFallback);
+
+        static DisplayNames storedFallback() {
+            return (participantId, storedFallback) -> storedFallback;
+        }
     }
 }

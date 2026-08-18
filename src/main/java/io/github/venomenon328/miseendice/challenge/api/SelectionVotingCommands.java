@@ -14,6 +14,12 @@ public interface SelectionVotingCommands {
 
     SelectionVotingQueries.SelectionView castVote(CastVote command);
 
+    /**
+     * Persists a vote and, if it is decisive, the immutable round result without applying that result yet.
+     * Callers can render the durable state before explicitly continuing it through {@link #resume(ResumeSelection)}.
+     */
+    SelectionVotingQueries.SelectionView castVoteDeferred(CastVote command);
+
     SelectionVotingQueries.SelectionView resume(ResumeSelection command);
 
     SelectionVotingQueries.ChallengeParticipantView joinChallenge(JoinChallenge command);

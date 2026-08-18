@@ -354,6 +354,30 @@ class SelectionVotingIntegrationTest {
     }
 
     @Test
+    void deferredDecisiveRerollPersistsItsCompletedStateBeforeStartingAnyRerollWork() {
+        OfferDecisionQueries.OfferSetView ready = offered(2, 81_000_013L);
+        Map<String, Long> participants = participants();
+        voting.presentationSucceeded(new SelectionVotingCommands.PresentationSucceeded(ready.sessionId(), ready.offerSetId()));
+        voting.castVote(new SelectionVotingCommands.CastVote(ready.sessionId(), participants.get("GEORGIA"),
+                SelectionVotingCommands.VoteChoice.reroll()));
+
+        SelectionVotingQueries.SelectionView completed = voting.castVoteDeferred(new SelectionVotingCommands.CastVote(
+                ready.sessionId(), participants.get("TOBIAS"), SelectionVotingCommands.VoteChoice.reroll()));
+
+        assertThat(completed.currentRound()).isNull();
+        assertThat(completed.completedRounds()).singleElement().satisfies(round -> {
+            assertThat(round.result().winningChoice()).isEqualTo(SelectionVotingCommands.VoteChoice.reroll());
+            assertThat(round.result().applyState()).isEqualTo(SelectionVotingQueries.ApplyState.PENDING);
+            assertThat(round.votes()).allSatisfy(vote -> assertThat(vote.hasVoted()).isTrue());
+        });
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from generation_attempt
+                where challenge_session_id = ? and attempt_type = 'REROLL'
+                """, Integer.class, ready.sessionId())).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from reroll_offer_exposure", Integer.class)).isZero();
+    }
+
+    @Test
     void rerollInProgressResumesWithoutAnotherAttemptAndAStaleOutcomeCannotRegressReadyState() throws Exception {
         OfferDecisionQueries.OfferSetView ready = offered(2, 81_000_013L);
         Map<String, Long> participants = participants();

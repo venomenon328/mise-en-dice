@@ -7,6 +7,8 @@ import io.github.venomenon328.miseendice.challenge.api.SelectionVotingCommands;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingConflictException;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingQueries;
 import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -39,27 +41,37 @@ final class DiscordChallengeWorkflow {
     }
 
     void start(int offerCount, RestrictionMode restrictionMode, Delivery delivery, Feedback feedback) {
+        start(offerCount, restrictionMode, DiscordMemberNameResolver.storedFallback(), delivery, feedback);
+    }
+
+    void start(int offerCount, RestrictionMode restrictionMode, DiscordMemberNameResolver memberNames,
+               Delivery delivery, Feedback feedback) {
         try {
             ChallengeOfferPreparationCommands.PreparationOutcome outcome = preparation.prepareInitial(
                     new ChallengeOfferPreparationCommands.PrepareInitialOfferSet(
                             LocalDate.now(properties.effectiveDateZone()), offerCount, restrictionMode));
-            presentPreparation(outcome, delivery, feedback);
+            presentPreparation(outcome, memberNames, delivery, feedback);
         } catch (RuntimeException exception) {
             feedback.technicalFailure(exception);
         }
     }
 
     void component(String customId, String externalSubject, Delivery delivery, Feedback feedback) {
+        component(customId, externalSubject, DiscordMemberNameResolver.storedFallback(), delivery, feedback);
+    }
+
+    void component(String customId, String externalSubject, DiscordMemberNameResolver memberNames,
+                   Delivery delivery, Feedback feedback) {
         try {
             DiscordComponentId.Parsed parsed = DiscordComponentId.parse(customId);
             if (parsed instanceof DiscordComponentId.Initial initial) {
                 presentPreparation(preparation.continueInitial(
                         new ChallengeOfferPreparationCommands.ContinueInitialOfferSet(initial.sessionId(), initial.attemptId())),
-                        delivery, feedback);
+                        memberNames, delivery, feedback);
                 return;
             }
             if (parsed instanceof DiscordComponentId.Presentation presentation) {
-                presentationSucceeded(presentation.sessionId(), presentation.offerSetId(), delivery, feedback);
+                presentationSucceeded(presentation.sessionId(), presentation.offerSetId(), memberNames, delivery, feedback);
                 return;
             }
             SelectionVotingQueries.ParticipantIdentityView participant = votingQueries
@@ -67,7 +79,7 @@ final class DiscordChallengeWorkflow {
                     .orElseThrow(() -> new SelectionVotingConflictException("Discord identity is not linked to the frozen electorate"));
             if (parsed instanceof DiscordComponentId.Resume resume) {
                 renderSelection(votingCommands.resume(new SelectionVotingCommands.ResumeSelection(resume.sessionId())),
-                        delivery, feedback);
+                        memberNames, delivery, feedback);
                 feedback.success("Der gespeicherte Vorgang wurde fortgesetzt.");
                 return;
             }
@@ -75,9 +87,15 @@ final class DiscordChallengeWorkflow {
             SelectionVotingQueries.SelectionView current = votingQueries.findSelection(vote.sessionId())
                     .orElseThrow(() -> new SelectionVotingConflictException("Challenge-Auswahl wurde nicht gefunden"));
             validateCurrentVote(current, vote);
-            SelectionVotingQueries.SelectionView next = votingCommands.castVote(new SelectionVotingCommands.CastVote(
+            SelectionVotingQueries.SelectionView persisted = votingCommands.castVoteDeferred(new SelectionVotingCommands.CastVote(
                     vote.sessionId(), participant.participantId(), new SelectionVotingCommands.VoteChoice(vote.type(), vote.offerId())));
-            renderSelection(next, delivery, feedback);
+            if (hasPendingReroll(persisted)) {
+                renderSelection(persisted, memberNames, delivery, feedback,
+                        () -> continueAfterVisibleReroll(vote.sessionId(), memberNames, delivery, feedback));
+            } else {
+                renderSelection(votingCommands.resume(new SelectionVotingCommands.ResumeSelection(vote.sessionId())),
+                        memberNames, delivery, feedback);
+            }
             feedback.success("Deine Stimme wurde gespeichert.");
         } catch (SelectionVotingConflictException | IllegalArgumentException exception) {
             feedback.staleOrRejected("Diese Interaktion ist nicht mehr aktuell oder nicht erlaubt.");
@@ -87,36 +105,45 @@ final class DiscordChallengeWorkflow {
     }
 
     private void presentPreparation(ChallengeOfferPreparationCommands.PreparationOutcome outcome,
-                                     Delivery delivery, Feedback feedback) {
+                                     DiscordMemberNameResolver memberNames, Delivery delivery, Feedback feedback) {
         if (outcome instanceof ChallengeOfferPreparationCommands.OfferReady ready) {
             OfferDecisionQueries.OfferSetView set = offerQueries.findOfferSet(ready.offerSetId()).orElseThrow(
                     () -> new IllegalStateException("Prepared offer set was not found"));
             // This success callback is deliberately the only path to the 11B presentation handshake.
-            delivery.replace(renderer.unpresentedOffers(set), () -> presentationSucceeded(ready.sessionId(), ready.offerSetId(), delivery, feedback),
+            delivery.replace(renderer.unpresentedOffers(set),
+                    () -> presentationSucceeded(ready.sessionId(), ready.offerSetId(), memberNames, delivery, feedback),
                     feedback::technicalFailure);
             return;
         }
         delivery.replace(renderer.preparation(outcome), () -> { }, feedback::technicalFailure);
     }
 
-    private void renderSelection(SelectionVotingQueries.SelectionView selection, Delivery delivery, Feedback feedback) {
+    private void renderSelection(SelectionVotingQueries.SelectionView selection, DiscordMemberNameResolver memberNames,
+                                 Delivery delivery, Feedback feedback) {
+        renderSelection(selection, memberNames, delivery, feedback, () -> { });
+    }
+
+    private void renderSelection(SelectionVotingQueries.SelectionView selection, DiscordMemberNameResolver memberNames,
+                                 Delivery delivery, Feedback feedback, Runnable afterDelivered) {
         if (selection.waitingForPresentation() != null) {
             long offerSetId = selection.waitingForPresentation().offerSetId();
             OfferDecisionQueries.OfferSetView set = offerQueries.findOfferSet(offerSetId).orElseThrow(
                     () -> new IllegalStateException("Reroll offer set was not found"));
-            delivery.replace(renderer.unpresentedOffers(set), () -> presentationSucceeded(selection.sessionId(), offerSetId, delivery, feedback),
+            delivery.replace(renderer.unpresentedOffers(set),
+                    () -> presentationSucceeded(selection.sessionId(), offerSetId, memberNames, delivery, feedback),
                     feedback::technicalFailure);
             return;
         }
-        delivery.replace(renderer.selection(selection), () -> { }, feedback::technicalFailure);
+        delivery.replace(renderer.selection(selection, displayNames(selection, memberNames)), afterDelivered, feedback::technicalFailure);
     }
 
-    private void presentationSucceeded(long sessionId, long offerSetId, Delivery delivery, Feedback feedback) {
+    private void presentationSucceeded(long sessionId, long offerSetId, DiscordMemberNameResolver memberNames,
+                                       Delivery delivery, Feedback feedback) {
         try {
             SelectionVotingQueries.SelectionView selection = votingCommands.presentationSucceeded(
                     new SelectionVotingCommands.PresentationSucceeded(sessionId, offerSetId));
             linkConfiguredElectorate(selection);
-            renderSelection(selection, delivery, feedback);
+            renderSelection(selection, memberNames, delivery, feedback);
         } catch (SelectionVotingConflictException | IllegalArgumentException exception) {
             feedback.staleOrRejected("Diese Interaktion ist nicht mehr aktuell oder nicht erlaubt.");
         } catch (RuntimeException exception) {
@@ -133,6 +160,43 @@ final class DiscordChallengeWorkflow {
             votingCommands.linkExternalIdentity(new SelectionVotingCommands.LinkExternalIdentity(
                     member.participantId(), DiscordProperties.PROVIDER, userId));
         }
+    }
+
+    private void continueAfterVisibleReroll(long sessionId, DiscordMemberNameResolver memberNames,
+                                            Delivery delivery, Feedback feedback) {
+        try {
+            renderSelection(votingCommands.resume(new SelectionVotingCommands.ResumeSelection(sessionId)),
+                    memberNames, delivery, feedback);
+        } catch (RuntimeException exception) {
+            feedback.technicalFailure(exception);
+        }
+    }
+
+    private boolean hasPendingReroll(SelectionVotingQueries.SelectionView selection) {
+        if (selection.completedRounds().isEmpty()) {
+            return false;
+        }
+        SelectionVotingQueries.RoundResultView result = selection.completedRounds().getLast().result();
+        return result != null && result.winningChoice().type() == SelectionVotingCommands.VoteOptionType.REROLL
+                && result.applyState() == SelectionVotingQueries.ApplyState.PENDING;
+    }
+
+    private DiscordChallengeRenderer.DisplayNames displayNames(SelectionVotingQueries.SelectionView selection,
+                                                                DiscordMemberNameResolver memberNames) {
+        Map<Long, String> names = new HashMap<>();
+        for (SelectionVotingQueries.ElectorateMemberView member : selection.electorate()) {
+            String userId = properties.participantUserIds().get(member.participantCode());
+            if (userId == null) {
+                continue;
+            }
+            try {
+                String current = memberNames.resolve(userId, member.displayName());
+                names.put(member.participantId(), current == null || current.isBlank() ? member.displayName() : current);
+            } catch (RuntimeException ignored) {
+                names.put(member.participantId(), member.displayName());
+            }
+        }
+        return (participantId, storedFallback) -> names.getOrDefault(participantId, storedFallback);
     }
 
     private static void validateCurrentVote(SelectionVotingQueries.SelectionView selection, DiscordComponentId.Vote vote) {
