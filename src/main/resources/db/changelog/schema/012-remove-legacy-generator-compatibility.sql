@@ -2,13 +2,9 @@
 --changeset venomenon328:012-remove-legacy-generator-compatibility splitStatements:false
 
 -- Phase 12B.5A.1: only Generator 1.2 and its candidate-local restriction contract remain executable.
--- Previously published schemas stay intact in Liquibase history. Existing V1 rounds are retained as
--- non-executable technical history, while the obsolete attempt-wide columns are removed forward-only.
-
-UPDATE curation_round
-SET legacy_migrated = true
-WHERE NOT legacy_migrated
-  AND contract_version = 'CURATION_CONTRACT_V1';
+-- Published schema changesets stay intact in Liquibase history. Challenge/generator runtime data from
+-- pre-1.2 versions is deliberately not migrated or archived; environments must reset that disposable
+-- pre-pilot data before applying this structural cleanup.
 
 SET CONSTRAINTS ALL IMMEDIATE;
 
