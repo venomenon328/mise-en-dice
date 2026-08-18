@@ -68,13 +68,16 @@ final class GenerationSnapshotCodec {
         verify("request", stored.requestSnapshot(), stored.requestFingerprint());
         verify("history", stored.visibleHistorySnapshot(), stored.historyFingerprint());
 
-        GeneratorConfiguration configuration = read(stored.configurationSnapshot(), GeneratorConfiguration.class);
-        if (!configuration.generatorVersion().equals("1.2.0")) {
+        GeneratorConfiguration decodedConfiguration = read(stored.configurationSnapshot(), GeneratorConfiguration.class);
+        if (!decodedConfiguration.generatorVersion().equals("1.2.0")) {
             throw new InvalidContextSnapshotException("Stored generator version is not supported");
         }
-        if (!configuration.equals(supportedConfiguration)) {
+        String supportedConfigurationSnapshot =
+                new CanonicalConfigurationSnapshot(objectMapper).serialize(supportedConfiguration);
+        if (!stored.configurationFingerprint().equals(fingerprintJson(supportedConfigurationSnapshot))) {
             throw new InvalidContextSnapshotException("Stored generator configuration is not the currently supported configuration");
         }
+        GeneratorConfiguration configuration = supportedConfiguration;
         CatalogGeneratorSnapshot catalog = read(stored.catalogSnapshot(), CatalogGeneratorSnapshot.class);
         VisibleHistorySnapshot history = read(stored.visibleHistorySnapshot(), VisibleHistorySnapshot.class);
         RequestSnapshot requestSnapshot = read(stored.requestSnapshot(), RequestSnapshot.class);
