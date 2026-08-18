@@ -18,6 +18,17 @@ Produktion:
   mise-en-dice.sh production start
   mise-en-dice.sh production backup
 
+Feste Live-Acceptance:
+  mise-en-dice.sh acceptance preflight
+  mise-en-dice.sh acceptance deploy [git-ref]
+  mise-en-dice.sh acceptance status
+  mise-en-dice.sh acceptance logs [--follow]
+  mise-en-dice.sh acceptance stop
+  mise-en-dice.sh acceptance start
+  mise-en-dice.sh acceptance sql <sql>
+  mise-en-dice.sh acceptance backup
+  mise-en-dice.sh acceptance reset [--yes]
+
 Branch-/Commit-Previews:
   mise-en-dice.sh preview deploy <git-ref> [preview-name]
   mise-en-dice.sh preview list
@@ -66,11 +77,19 @@ ensure_runtime_initialized() {
     source "$OPERATOR_CONFIG"
 
     med_valid_port "$PRODUCTION_PORT" || med_die 'Ungültiger PRODUCTION_PORT in operator.conf.'
+    # Existing installations predate the fixed Acceptance port. Keep their operator.conf valid
+    # without requiring init --force, while using the documented, reserved default from now on.
+    ACCEPTANCE_PORT=${ACCEPTANCE_PORT:-18090}
+    med_valid_port "$ACCEPTANCE_PORT" || med_die 'Ungültiger ACCEPTANCE_PORT in operator.conf.'
     med_valid_port "$PREVIEW_PORT_START" || med_die 'Ungültiger PREVIEW_PORT_START in operator.conf.'
     med_valid_port "$PREVIEW_PORT_END" || med_die 'Ungültiger PREVIEW_PORT_END in operator.conf.'
     (( PREVIEW_PORT_START <= PREVIEW_PORT_END )) || med_die 'Der Preview-Portbereich ist vertauscht.'
     (( PRODUCTION_PORT < PREVIEW_PORT_START || PRODUCTION_PORT > PREVIEW_PORT_END )) \
         || med_die 'Der Produktionsport darf nicht im Preview-Portbereich liegen.'
+    (( ACCEPTANCE_PORT != PRODUCTION_PORT )) \
+        || med_die 'Acceptance- und Produktionsport müssen verschieden sein.'
+    (( ACCEPTANCE_PORT < PREVIEW_PORT_START || ACCEPTANCE_PORT > PREVIEW_PORT_END )) \
+        || med_die 'Der Acceptance-Port darf nicht im Preview-Portbereich liegen.'
     [[ $BACKUP_RETENTION_DAYS =~ ^[0-9]+$ ]] || med_die 'BACKUP_RETENTION_DAYS muss eine Zahl sein.'
     [[ $HEALTH_TIMEOUT_SECONDS =~ ^[1-9][0-9]*$ ]] || med_die 'HEALTH_TIMEOUT_SECONDS muss eine positive Zahl sein.'
     med_valid_memory_limit "$APP_MEMORY_LIMIT" || med_die 'APP_MEMORY_LIMIT muss zum Beispiel 768m oder 1g sein.'
@@ -98,6 +117,7 @@ write_operator_config() {
     med_write_shell_assignment "$temporary_file" SSH_USER "$MISE_EN_DICE_SSH_USER_VALUE"
     med_write_shell_assignment "$temporary_file" SSH_HOST "$MISE_EN_DICE_SSH_HOST_VALUE"
     med_write_shell_assignment "$temporary_file" PRODUCTION_PORT "$MISE_EN_DICE_PRODUCTION_PORT_VALUE"
+    med_write_shell_assignment "$temporary_file" ACCEPTANCE_PORT "$MISE_EN_DICE_ACCEPTANCE_PORT_VALUE"
     med_write_shell_assignment "$temporary_file" PREVIEW_PORT_START "$MISE_EN_DICE_PREVIEW_PORT_START_VALUE"
     med_write_shell_assignment "$temporary_file" PREVIEW_PORT_END "$MISE_EN_DICE_PREVIEW_PORT_END_VALUE"
     med_write_shell_assignment "$temporary_file" BACKUP_RETENTION_DAYS "$MISE_EN_DICE_BACKUP_RETENTION_DAYS_VALUE"
@@ -147,8 +167,8 @@ command_init() {
         med_die 'Die Laufzeitwurzel ist bereits initialisiert. --force würde die Operator- und Admin-Konfiguration ersetzen.'
     fi
 
-    mkdir -p "$PREVIEWS_DIR" "$PRODUCTION_DIR" "$WORKTREES_DIR" "$BACKUPS_DIR" "$TEMP_DIR"
-    chmod 0750 "$DEPLOY_ROOT" "$INSTANCES_DIR" "$PREVIEWS_DIR" "$PRODUCTION_DIR" "$WORKTREES_DIR" "$BACKUPS_DIR" "$TEMP_DIR" "$LOCKS_DIR"
+    mkdir -p "$PREVIEWS_DIR" "$PRODUCTION_DIR" "$ACCEPTANCE_DIR" "$WORKTREES_DIR" "$BACKUPS_DIR" "$TEMP_DIR"
+    chmod 0750 "$DEPLOY_ROOT" "$INSTANCES_DIR" "$PREVIEWS_DIR" "$PRODUCTION_DIR" "$ACCEPTANCE_DIR" "$WORKTREES_DIR" "$BACKUPS_DIR" "$TEMP_DIR" "$LOCKS_DIR"
 
     local actor_key display_name password_hash password password_repeat
     if [[ $non_interactive == true ]]; then
@@ -184,6 +204,7 @@ command_init() {
     MISE_EN_DICE_SSH_USER_VALUE=${MISE_EN_DICE_SSH_USER:-$(id -un)}
     MISE_EN_DICE_SSH_HOST_VALUE=${MISE_EN_DICE_SSH_HOST:-SERVER_IP}
     MISE_EN_DICE_PRODUCTION_PORT_VALUE=${MISE_EN_DICE_PRODUCTION_PORT:-18080}
+    MISE_EN_DICE_ACCEPTANCE_PORT_VALUE=${MISE_EN_DICE_ACCEPTANCE_PORT:-18090}
     MISE_EN_DICE_PREVIEW_PORT_START_VALUE=${MISE_EN_DICE_PREVIEW_PORT_START:-18100}
     MISE_EN_DICE_PREVIEW_PORT_END_VALUE=${MISE_EN_DICE_PREVIEW_PORT_END:-18199}
     MISE_EN_DICE_BACKUP_RETENTION_DAYS_VALUE=${MISE_EN_DICE_BACKUP_RETENTION_DAYS:-14}
@@ -192,6 +213,7 @@ command_init() {
     MISE_EN_DICE_POSTGRES_MEMORY_LIMIT_VALUE=${MISE_EN_DICE_POSTGRES_MEMORY_LIMIT:-512m}
 
     med_valid_port "$MISE_EN_DICE_PRODUCTION_PORT_VALUE" || med_die 'Ungültiger Produktionsport.'
+    med_valid_port "$MISE_EN_DICE_ACCEPTANCE_PORT_VALUE" || med_die 'Ungültiger Acceptance-Port.'
     med_valid_port "$MISE_EN_DICE_PREVIEW_PORT_START_VALUE" || med_die 'Ungültiger Start des Preview-Portbereichs.'
     med_valid_port "$MISE_EN_DICE_PREVIEW_PORT_END_VALUE" || med_die 'Ungültiges Ende des Preview-Portbereichs.'
     (( MISE_EN_DICE_PREVIEW_PORT_START_VALUE <= MISE_EN_DICE_PREVIEW_PORT_END_VALUE )) \
@@ -199,6 +221,11 @@ command_init() {
     (( MISE_EN_DICE_PRODUCTION_PORT_VALUE < MISE_EN_DICE_PREVIEW_PORT_START_VALUE \
         || MISE_EN_DICE_PRODUCTION_PORT_VALUE > MISE_EN_DICE_PREVIEW_PORT_END_VALUE )) \
         || med_die 'Der Produktionsport darf nicht im Preview-Portbereich liegen.'
+    (( MISE_EN_DICE_ACCEPTANCE_PORT_VALUE != MISE_EN_DICE_PRODUCTION_PORT_VALUE )) \
+        || med_die 'Acceptance- und Produktionsport müssen verschieden sein.'
+    (( MISE_EN_DICE_ACCEPTANCE_PORT_VALUE < MISE_EN_DICE_PREVIEW_PORT_START_VALUE \
+        || MISE_EN_DICE_ACCEPTANCE_PORT_VALUE > MISE_EN_DICE_PREVIEW_PORT_END_VALUE )) \
+        || med_die 'Der Acceptance-Port darf nicht im Preview-Portbereich liegen.'
     [[ $MISE_EN_DICE_BACKUP_RETENTION_DAYS_VALUE =~ ^[0-9]+$ ]] \
         || med_die 'Die Backup-Aufbewahrung muss eine Zahl von Tagen sein.'
     [[ $MISE_EN_DICE_HEALTH_TIMEOUT_SECONDS_VALUE =~ ^[1-9][0-9]*$ ]] \
@@ -221,7 +248,7 @@ command_init() {
 
     med_note "Laufzeitwurzel initialisiert: $DEPLOY_ROOT"
     med_note "Produktionsport: $MISE_EN_DICE_PRODUCTION_PORT_VALUE"
+    med_note "Acceptance-Port: $MISE_EN_DICE_ACCEPTANCE_PORT_VALUE"
     med_note "Preview-Ports: $MISE_EN_DICE_PREVIEW_PORT_START_VALUE-$MISE_EN_DICE_PREVIEW_PORT_END_VALUE"
     med_note "Nächster Schritt: $0 doctor"
 }
-

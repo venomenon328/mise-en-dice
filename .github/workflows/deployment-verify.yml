@@ -29,8 +29,9 @@ jobs:
 
       - name: Check shell scripts
         run: |
-          shellcheck -x -S warning deploy/lib.sh deploy/mise-en-dice.sh deploy/tests/lib-test.sh
+          shellcheck -x -S warning deploy/lib.sh deploy/mise-en-dice.sh deploy/tests/*.sh
           bash deploy/tests/lib-test.sh
+          bash deploy/tests/runtime-test.sh
 
       - name: Configure isolated CI runtime
         shell: bash
@@ -44,6 +45,7 @@ jobs:
             echo "MISE_EN_DICE_SSH_USER=ci"
             echo "MISE_EN_DICE_SSH_HOST=ci.invalid"
             echo "MISE_EN_DICE_PRODUCTION_PORT=18080"
+            echo "MISE_EN_DICE_ACCEPTANCE_PORT=18090"
             echo "MISE_EN_DICE_PREVIEW_PORT_START=18100"
             echo "MISE_EN_DICE_PREVIEW_PORT_END=18120"
             echo "MISE_EN_DICE_BACKUP_RETENTION_DAYS=2"
@@ -59,6 +61,12 @@ jobs:
           set -Eeuo pipefail
           ./deploy/mise-en-dice.sh init --non-interactive
           ./deploy/mise-en-dice.sh doctor
+          cat > "$MISE_EN_DICE_DEPLOY_ROOT/acceptance.properties" <<'EOF_ACCEPTANCE'
+          mise-en-dice.discord.enabled=false
+          mise-en-dice.curation.openai.enabled=false
+          EOF_ACCEPTANCE
+          chmod 0600 "$MISE_EN_DICE_DEPLOY_ROOT/acceptance.properties"
+          ./deploy/mise-en-dice.sh acceptance preflight
 
       - name: Exercise current preview, production, backup and restore
         shell: bash
@@ -112,6 +120,48 @@ jobs:
           test "$runtime_user" != root
           test "$runtime_user" != 0:0
 
+          ./deploy/mise-en-dice.sh acceptance deploy "$GITHUB_SHA"
+          acceptance_status=$(./deploy/mise-en-dice.sh acceptance status)
+          printf '%s\n' "$acceptance_status" | grep -qx 'INSTANCE=acceptance'
+          printf '%s\n' "$acceptance_status" | grep -qx 'APP_PORT=18090'
+          printf '%s\n' "$acceptance_status" | grep -qx 'DISCORD_ENABLED=false'
+          printf '%s\n' "$acceptance_status" | grep -qx 'OPENAI_ENABLED=false'
+
+          acceptance_env="$MISE_EN_DICE_DEPLOY_ROOT/instances/acceptance/compose.env"
+          acceptance_container=$(docker compose \
+            --project-name med-acceptance \
+            --env-file "$acceptance_env" \
+            -f deploy/compose.yaml ps -q app)
+          test -n "$acceptance_container"
+          test -z "$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$acceptance_container" \
+            | grep -E '^(OPENAI_API_KEY|MISE_EN_DICE_(DISCORD|OPENAI)_)=' || true)"
+
+          acceptance_count=$(./deploy/mise-en-dice.sh acceptance sql \
+            'SELECT count(*) FROM ingredient_concept' | tr -d '[:space:]')
+          test "$acceptance_count" -ge 600
+          if ./deploy/mise-en-dice.sh acceptance sql \
+            "UPDATE ingredient_concept SET curator_note = 'forbidden-acceptance-write'"; then
+            echo 'acceptance sql accepted a write query unexpectedly' >&2
+            exit 1
+          fi
+
+          acceptance_backup_output=$(./deploy/mise-en-dice.sh acceptance backup)
+          acceptance_backup=$(printf '%s\n' "$acceptance_backup_output" | sed -n 's/^BACKUP_FILE=//p')
+          test -n "$acceptance_backup"
+          test -s "$acceptance_backup"
+          test -s "$acceptance_backup.sha256"
+          ./deploy/mise-en-dice.sh preview restore ci-source "$acceptance_backup" --yes
+
+          if ./deploy/mise-en-dice.sh acceptance reset; then
+            echo 'acceptance reset accepted an unconfirmed non-interactive call unexpectedly' >&2
+            exit 1
+          fi
+          test -f "$MISE_EN_DICE_DEPLOY_ROOT/instances/acceptance/metadata"
+          ./deploy/mise-en-dice.sh acceptance reset --yes
+          test ! -e "$MISE_EN_DICE_DEPLOY_ROOT/instances/acceptance"
+          test -f "$MISE_EN_DICE_DEPLOY_ROOT/instances/production/metadata"
+          test -f "$MISE_EN_DICE_DEPLOY_ROOT/instances/previews/ci-source/metadata"
+
           ./deploy/mise-en-dice.sh preview remove ci-source --yes
 
   legacy-preview:
@@ -140,6 +190,7 @@ jobs:
             echo "MISE_EN_DICE_SSH_USER=ci"
             echo "MISE_EN_DICE_SSH_HOST=ci.invalid"
             echo "MISE_EN_DICE_PRODUCTION_PORT=18080"
+            echo "MISE_EN_DICE_ACCEPTANCE_PORT=18090"
             echo "MISE_EN_DICE_PREVIEW_PORT_START=18100"
             echo "MISE_EN_DICE_PREVIEW_PORT_END=18120"
             echo "MISE_EN_DICE_BACKUP_RETENTION_DAYS=2"
@@ -154,6 +205,9 @@ jobs:
         run: |
           set -Eeuo pipefail
           ./deploy/mise-en-dice.sh init --non-interactive
+          # Simulate an already initialized runtime from before the fixed Acceptance port existed.
+          # No init --force is allowed or needed for its continued Preview operation.
+          sed -i '/^ACCEPTANCE_PORT=/d' "$MISE_EN_DICE_DEPLOY_ROOT/operator.conf"
           ./deploy/mise-en-dice.sh doctor
 
       - name: Deploy pull request base with current operator recipe
