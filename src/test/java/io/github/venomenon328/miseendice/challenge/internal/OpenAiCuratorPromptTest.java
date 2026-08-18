@@ -23,7 +23,7 @@ class OpenAiCuratorPromptTest {
 
     @Test
     void v3MakesOpenChoiceRiskDiagnosticRatherThanAnAutomaticQualityPenalty() {
-        String prompt = OpenAiCuratorPrompt.textFor(OpenAiCuratorPrompt.VERSION_V3);
+        String prompt = normalizeWhitespace(OpenAiCuratorPrompt.textFor(OpenAiCuratorPrompt.VERSION_V3));
 
         assertThat(prompt)
                 .contains("OPEN requirements are intentional user choices, not quality defects")
@@ -55,5 +55,9 @@ class OpenAiCuratorPromptTest {
         assertThatThrownBy(() -> OpenAiCuratorPrompt.textFor("CURATOR_PROMPT_UNKNOWN"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unsupported curator prompt version");
+    }
+
+    private static String normalizeWhitespace(String value) {
+        return value.replaceAll("\\s+", " ").trim();
     }
 }
