@@ -183,15 +183,20 @@ class CandidateSimilarityCalculatorTest {
         AcceptedProposal first = withRestriction(base, new CandidateRestriction(1L, "NO_A", "No A"));
         AcceptedProposal sameRestriction = withRestriction(base, new CandidateRestriction(1L, "NO_A", "No A"));
         AcceptedProposal otherRestriction = withRestriction(base, new CandidateRestriction(2L, "NO_B", "No B"));
+        AcceptedProposal unrestricted = withRestriction(base, CandidateRestriction.none());
 
         var same = calculator.assess(1, first, 2, sameRestriction, catalog(concepts),
                 TestGeneratorConfiguration.candidateRestrictionDefaults(), null);
         var other = calculator.assess(1, first, 2, otherRestriction, catalog(concepts),
                 TestGeneratorConfiguration.candidateRestrictionDefaults(), null);
+        var neitherRestricted = calculator.assess(1, unrestricted, 2, unrestricted, catalog(concepts),
+                TestGeneratorConfiguration.candidateRestrictionDefaults(), null);
 
         assertThat(same.components()).containsKey(SimilarityComponent.RESTRICTION);
         assertThat(same.components().get(SimilarityComponent.RESTRICTION).value()).isEqualByComparingTo("1.000000000000");
         assertThat(other.components().get(SimilarityComponent.RESTRICTION).value()).isEqualByComparingTo("0.000000000000");
+        assertThat(neitherRestricted.components().get(SimilarityComponent.RESTRICTION).value())
+                .isEqualByComparingTo("0.000000000000");
         assertThat(other.totalSimilarity()).isLessThan(same.totalSimilarity());
     }
 
