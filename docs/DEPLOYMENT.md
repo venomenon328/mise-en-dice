@@ -356,7 +356,7 @@ kann mit genau einer read-only Query ohne Semikolon inspiziert werden; schreiben
 
 ```bash
 ./deploy/mise-en-dice.sh acceptance sql \
-  'SELECT status, count(*) FROM curation_round GROUP BY status;'
+  'SELECT status, count(*) FROM curation_round GROUP BY status'
 ```
 
 Backup und vollständiger Reset betreffen nur Acceptance. Vor einem Reset bei Bedarf zuerst sichern; der Reset behält
