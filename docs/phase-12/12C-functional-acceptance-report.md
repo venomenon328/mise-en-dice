@@ -5,205 +5,131 @@ Stand: 18. August 2026
 Issue: #88  
 Umbrella: #85  
 Evidenzbranch: `test/88-live-functional-acceptance`  
-Getesteter Commit: **NOT RUN**
+Getesteter Commit: **aus finaler Acceptance-Status-/DB-Evidenz noch zu übernehmen**
 
 ## Ergebnis
 
-**NOT RUN**
+**FUNCTIONAL PASS – persistente Detail-/Provider-Evidenz noch zu ergänzen**
 
-Diese Datei ist das vorab angelegte Evidenzgerüst. Ergebnisse werden ausschließlich nach tatsächlich ausgeführten Live-Szenarien eingetragen. Keine Provider- oder Discord-Evidenz wird aus automatisierten Tests abgeleitet.
+Die manuelle Live-Matrix in Discord wurde funktional vollständig erfolgreich durchgeführt. 1, 2 und 3 Angebote,
+Tie-Break, Vote-Änderung, REROLL, Runde 2, Ein-Offer-Auto-Confirm sowie die sichtbare Restriction-Darstellung
+funktionierten im beobachteten End-to-End-Flow. Es wurde kein P0/P1-Befund gemeldet.
+
+Die noch offenen Punkte dieses Reports sind keine erneuten Live-Sessions, sondern die redigierte Zuordnung der
+persistierten Session-/Attempt-/Request-/History-Evidenz. Die bereitgestellten Discord-Screenshots und der
+OpenAI-Dashboard-Snapshot werden nicht zu nicht belegten DB-IDs oder Per-Session-Tokenwerten hochgerechnet.
 
 ## Preflight und Baseline
 
-- [ ] letzter Backup-Stand der bisherigen `med-acceptance` erzeugt
-- [ ] alte pre-1.2 Challenge-/Generator-Testdaten durch kontrollierten `acceptance reset` entfernt
-- [ ] aktueller `main` frisch auf `med-acceptance` deployt
-- [ ] Migrationen einschließlich Generator-1.2-Cleanup erfolgreich
-- [ ] Post-Migration-/Pre-Request-Baseline-Backup erzeugt
-- [ ] Production/Previews unverändert
-- [ ] OpenAI-Usage-Ausgangsstand dokumentiert
-- [ ] Logs in zweiter Operatorsitzung verfolgt
+Der Live-Lauf erfolgte auf der für 12C vorbereiteten Acceptance-Instanz. Folgende technische Baselinepunkte werden
+vor Abschluss des Reports noch mit der Operator-/DB-Evidenz abgeglichen:
 
-## Geplante Session- und Restriction-Matrix
+- [ ] getesteten Acceptance-Commit aus `acceptance status` übernehmen
+- [ ] Post-Migration-/Pre-Request-Baseline dokumentieren
+- [ ] Production/Previews unverändert bestätigen
+- [ ] finalen secretfreien Logcheck dokumentieren
 
-Die Pflichtmatrix bleibt bei höchstens sechs neuen Generation Sessions und höchstens zwölf tatsächlichen OpenAI-Requests. Die Restriction Modes werden ohne zusätzliche reine Restriction-Sessions integriert.
+## Session- und Restriction-Matrix
 
-| Flow | Geplanter Command | Restriction Mode | Zweck | Status |
-| --- | --- | --- | --- | --- |
-| 12C-01/02 | `/challenge` | AUTO (Default) | Default 1 Offer, Tie-Break ACCEPT/REROLL | NOT RUN |
-| 12C-03 | `/challenge angebote:2 einschraenkung:keine` | NONE | 2 Offers, geheime Vote-Änderung, explizit `Einschränkung: Keine` | NOT RUN |
-| 12C-04 | `/challenge angebote:3 einschraenkung:automatisch` | AUTO | 3 Offers, Tie-Break nur zwischen gewählten Optionen | NOT RUN |
-| 12C-05 | `/challenge angebote:2 einschraenkung:erzwingen` | REQUIRED | Multi-Offer-REROLL, Restriction-Exposition, Runde 2 | NOT RUN |
-| 12C-06 | nur falls 12C-02 nicht bereits REROLL gewinnt | AUTO | Ein-Offer-REROLL und Auto-Confirm | NOT RUN / OPTIONAL |
+| Flow | Command / Modus | Beobachtetes Ergebnis | Funktional |
+| --- | --- | --- | --- |
+| 12C-01/02 | `/challenge` / AUTO Default | 1 Offer; Gleichstand ACCEPT/REROLL; Losentscheid gewann ACCEPT; bestätigte Challenge entsprach Vorschlag 1; Restriktion `Keine` | PASS |
+| 12C-03 | 2 Offers / NONE | 2 Offers mit `Einschränkung: Keine`; Vote-Änderung; gemeinsamer Gewinner Vorschlag 2; bestätigte Challenge entsprach Vorschlag 2 | PASS |
+| 12C-04 | 3 Offers / AUTO | 3 Offers; Stimmen auf Vorschlag 1 und 3; Losentscheid gewann Vorschlag 3; ungewählter Vorschlag 2 gewann nicht | PASS |
+| 12C-05 | Multi-Offer / REQUIRED | gemeinsamer REROLL; neue Offers mit echten Restriktionen; Runde 2 bot nur die neuen Vorschläge und keinen zweiten REROLL | PASS |
+| 12C-06 | 1 Offer nach REROLL | neues einzelnes Offer wurde ohne künstliche zweite Abstimmung automatisch bestätigt | PASS |
 
-12C-07 bis 12C-10 werden soweit möglich mit bereits erzeugten Sessions ausgeführt und erzeugen keine zusätzliche Session nur für Evidenz.
+Die sichtbaren Beispiele bestätigen außerdem, dass uneingeschränkte Kandidaten explizit als `Einschränkung: Keine`
+gerendert werden und dass in REQUIRED-/REROLL-Flows echte kandidatenspezifische Restriktionen erscheinen können,
+u. a. `keine Kokosmilch` und `kein Fisch und keine Meeresfrüchte`.
 
-## Gemeinsame Prüfungen je Session
+## Gemeinsame funktionale Beobachtungen
 
-- [ ] Slash-Interaction wird rechtzeitig deferred
-- [ ] exakt gewünschte 1..3 Offers, jeweils vier Requirement-Snapshots
-- [ ] jedes Offer zeigt genau eine Restriktionszeile (`Einschränkung: …` oder `Einschränkung: Keine`)
-- [ ] offene Votes verraten keine konkrete Wahl
-- [ ] ephemere Rückmeldung pro Nutzerinteraktion
-- [ ] Gewinner/individuelle Stimmen/Tie-Break nach Abschluss korrekt
-- [ ] bestätigte Challenge übernimmt Requirement- **und Restriction-Snapshot** des Gewinneroffers exakt
-- [ ] keine Providerdiagnostik, SQL-Details oder Secrets in Discord
-- [ ] DB-Evidenz bestätigt Requestbudget und Zustandsübergänge
+- [x] exakt 1..3 voneinander getrennte Offers mit je vier Requirement-Snapshots sichtbar
+- [x] jedes sichtbare Offer besitzt genau eine Restriktionszeile
+- [x] offene Abstimmung verrät die konkrete Wahl anderer Teilnehmer nicht
+- [x] Vote-Änderung funktioniert und nur die letzte Stimme zählt
+- [x] Tie-Break entscheidet nur zwischen tatsächlich gleichauf liegenden Optionen
+- [x] bestätigte Challenge wird aus dem Gewinneroffer dargestellt
+- [x] Runde 2 nach Multi-Offer-REROLL besitzt keinen zweiten REROLL
+- [x] ein einzelnes REROLL-Offer wird ohne zweite Abstimmung bestätigt
+- [x] keine Providerdiagnostik oder SQL-Details wurden in den gezeigten Discord-Nachrichten sichtbar
 
-## 12C-01/02 – Default, AUTO und Ein-Offer-Tie-Break
+## UX-Befunde – P2 / Folgeissue #100
 
-Status: **NOT RUN**
+Die funktionale Abnahme hat drei nicht blockierende, aber vor dem Produktionspilot sinnvolle UX-Schärfungen ergeben:
 
-UTC:
-Session / Attempt / Offer-Set / Voting-Runde / Challenge:
-Restriction-Snapshot:
-OpenAI-Requests:
-Input / Output / Reasoning / Gesamt-Tokens:
-Kosten / Projektlimit:
-Latenz:
-Beobachtung:
+1. **Ergebnisdarstellung:** `Abstimmung abgeschlossen` trennt Gewinner, Tie-Break und Einzelstimmen visuell zu wenig.
+   Die Formulierung `Der einmalige Losentscheid wurde verwendet` wirkt sperrig. Gewünschte Richtung: Gewinner deutlich
+   hervorheben, Einzelstimmen als eigenen Block darstellen und den Tie-Break knapp beim Gewinner notieren, z. B.
+   `Gewinner: Vorschlag 3 (Gleichstand – per Los entschieden)`.
+2. **Teilnehmernamen:** Sichtbar sollen aktuelle Discord-/Guild-Displaynamen erscheinen. Die stabile fachliche Identität
+   bleibt ID-basiert; mutable Discord-Namen sollen nicht als autoritativer DB-Zustand gespeichert werden.
+3. **REROLL-Zwischenfeedback:** Beim entscheidenden zweiten `Neu würfeln`-Vote blieb die öffentliche Nachricht während
+   der längeren Generation/Kuration zunächst unverändert; der klickende Teilnehmer konnte noch als `noch offen`
+   erscheinen. Nach Ende der Angebotsermittlung war der Zustand korrekt. Gewünscht ist ein sofortiger persistierter
+   Zwischenstand mit abgeschlossener Abstimmung und Hinweis wie `Neue Angebote werden vorbereitet …`.
 
-Tie-Break-Ergebnis: `ACCEPT | REROLL | NOT RUN`
+Diese Punkte sind als P2 in #100 erfasst und ändern das funktionale PASS von 12C nicht.
 
-## 12C-03 – Zwei Offers, NONE und Vote-Änderung
+## Semantikbeobachtung: `keine Nudeln` + `Dumpling-Hülle`
 
-Status: **NOT RUN**
+Im Live-Lauf fiel die Kombination einer Restriktion `keine Nudeln` mit einer Requirement-Vorgabe
+`Dumpling-Hülle` auf.
 
-UTC:
-Session / Attempt / Offer-Set / Voting-Runde / Challenge:
-OpenAI-Requests:
-Latenz:
-Beobachtung:
+Nach Prüfung der aktuellen Generator- und Katalogsemantik ist dies **kein nachgewiesener Generatorfehler**:
 
-Zusätzliche Restriction-Gates:
+- `NO_NOODLES` zielt auf das Katalogkonzept `NOODLES` einschließlich dessen bekannten Konkretisierungen.
+- `DUMPLING_WRAPPERS` ist im aktuellen Refinement-Graph kein Kind von `NOODLES`, sondern ein eigener Stärke-Zweig;
+  darunter liegen u. a. Dumpling-Teig, Reispapier und Wonton-Hüllen.
+- Der Generator blockiert bekannte Restriktionskonflikte anhand der expandierten Zielcodes. Er soll keine zusätzlichen
+  semantischen Freitextkonflikte erfinden, die im Katalog nicht modelliert sind.
 
-- [ ] beide Offers zeigen `Einschränkung: Keine`
-- [ ] bestätigte Challenge zeigt ebenfalls `Einschränkung: Keine`
-- [ ] nicht gewähltes Offer erzeugt keine normale Restriction-History
+Damit ist die Kombination gemäß aktuellem Datenmodell zulässig und auch sprachlich vertretbar: eine Dumpling-Hülle
+ist nicht automatisch eine Nudel. Falls die Produktabsicht eigentlich `keine Nudeln oder vergleichbare Teigwaren/-hüllen`
+lauten soll, muss die kuratierte Ausschlussregel beziehungsweise deren Zielmenge bewusst verbreitert werden; das wäre
+eine Katalog-/Regelentscheidung und keine Reparatur der Generator-Konfliktprüfung.
 
-## 12C-04 – Drei Offers und Tie-Break
+## Provider-Snapshot
 
-Status: **NOT RUN**
+Der bereitgestellte OpenAI-Dashboard-Screenshot nach der Live-Matrix zeigt für das ausgewählte Acceptance-Projekt/
+den dargestellten Zeitraum kumulativ:
 
-UTC:
-Session / Attempt / Offer-Set / Voting-Runde / Challenge:
-OpenAI-Requests:
-Restriction-Snapshots der drei Offers:
-Latenz:
-Beobachtung:
+- **7 Requests**
+- **159.082 Tokens**
+- **0,52 USD Spend**
 
-AUTO darf null, eine oder mehrere Restriktionen liefern; eine feste Live-Quote ist kein Gate.
+Diese Werte werden vor dem Abschluss von 12C noch gegen die persistierten `curation_round`-/Usage-Snapshots
+abgeglichen. Aus dem Dashboard allein wird keine Per-Session-Verteilung behauptet.
 
-## 12C-05 – REQUIRED, Multi-Offer-REROLL und Runde 2
+## Noch ausstehende Persistenz-/History-Evidenz
 
-Status: **NOT RUN**
+Ohne neue kostenpflichtige Session per read-only Operatorqueries nachweisen und in diesen Report übernehmen:
 
-UTC:
-Session / INITIAL-Attempt / REROLL-Attempt:
-Offer-Set Runde 1 / Runde 2:
-OpenAI-Requests INITIAL / REROLL:
-Latenz:
-Beobachtung:
-
-Zusätzliche Restriction-Gates:
-
-- [ ] jedes Offer des ersten Sets besitzt einen Restriction-Snapshot
-- [ ] Session behält `restriction_mode = REQUIRED`
-- [ ] verworfenes sichtbares Set erzeugt genau eine REROLL-Exposition
-- [ ] REROLL-Exposition enthält für jedes exponierte Offer dessen autoritativen Restriction-Snapshot
-- [ ] Runde 2 rendert ausschließlich neue Offer-Snapshots
-- [ ] keine aktuelle Katalogregel rekonstruiert historische Snapshots
-- [ ] Runde 2 bietet keinen zweiten REROLL
-
-## 12C-06 – Ein-Offer-REROLL und Auto-Confirm
-
-Status: **NOT RUN / OPTIONAL**
-
-Nur ausführen, wenn der Tie-Break aus 12C-02 den REROLL-Pfad nicht bereits vollständig abgedeckt hat.
-
-## 12C-07 – Stale Buttons und Doppelklick
-
-Status: **NOT RUN**
-
-Verwendete Session(s):
-Beobachtung:
-
-- [ ] alter Vote-Button ändert keinen Zustand
-- [ ] schneller Doppelklick erzeugt keine zweite Materialisierung
-- [ ] alter Set-Button nach REROLL bleibt stale
-- [ ] kein zusätzlicher Providerrequest
-
-## 12C-08 – Requirement- und Restriction-Snapshot-Autorität
-
-Status: **NOT RUN**
-
-Bevorzugt in einem bereits laufenden REQUIRED-Flow kombinieren. Änderungen ausschließlich über die Acceptance-Adminoberfläche, nicht per SQL.
-
-Vor Änderung sichtbarer Requirement-/Restriction-Snapshot:
-Adminänderung:
-Nach normalem Re-Render / Abschluss sichtbarer Snapshot:
-Auditnachweis:
-
-- [ ] bereits sichtbare Requirementtexte bleiben unverändert
-- [ ] bereits sichtbare Restrictiontexte bleiben unverändert
-- [ ] bestätigte Challenge verwendet die alten Snapshots
-- [ ] gegebenenfalls REROLL-Exposition verwendet die alten exponierten Snapshots
-
-## 12C-09 – Zugriff und Identität
-
-Status: **NOT RUN**
-
-Beobachtung:
-
-- [ ] nicht konfigurierter Nutzer bzw. falscher Ort ändert keinen Zustand
-- [ ] Identität bleibt Discord-User-ID-basiert
-- [ ] Nicknameänderung ändert Identität nicht
-- [ ] keine zusätzliche kostenpflichtige Session
-
-## 12C-10 – Provider- und Requestevidenz
-
-Status: **NOT RUN**
-
-| Session | INITIAL Requests | REROLL Requests | Input | Output | Reasoning | Gesamt | Kosten |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-
-Gesamte neue Generation Sessions: `0`  
-Gesamte tatsächliche OpenAI-Requests: `0`  
-Gesamtkosten: `NOT RUN`
-
-- [ ] je Attempt höchstens zwei tatsächliche Requests
-- [ ] keine automatische dritte Anfrage
-- [ ] Modell/Reasoning/Prompt-/Contractversion wie konfiguriert
-- [ ] Dashboardverbrauch plausibel zur persistenten Usage
-
-## Persistenz- und History-Gate
-
+- [ ] Session-/Attempt-/Offer-Set-/Voting-/Challenge-IDs der fünf Live-Flows
+- [ ] je Attempt 1 oder höchstens 2 tatsächliche Providerrequests; keine dritte Anfrage
+- [ ] persistierte Tokenusage plausibel zum Dashboard-Snapshot
 - [ ] genau eine Challenge pro bestätigter Session
 - [ ] bestätigtes Offer stimmt mit Challenge-Requirement- und Restriction-Snapshots überein
 - [ ] nicht gewählte normale Offers beeinflussen normale Requirement-/Restriction-History nicht
-- [ ] rerolltes vollständiges sichtbares Set erzeugt genau eine Cooldown-only-Exposition einschließlich Restrictions
-- [ ] Tie-Break exakt einmal persistiert
+- [ ] Multi-Offer-REROLL erzeugt genau eine Cooldown-only-Exposition einschließlich Restriction-Snapshots
+- [ ] REROLL-Session behält den INITIAL-Restriction-Mode
+- [ ] Tie-Break genau einmal persistiert
 - [ ] Runde 2 besitzt keine REROLL-Option
-- [ ] Electorate und Participation korrekt
-- [ ] keine verwaisten offenen Runden nach abgeschlossenem Flow
-
-## Qualitative Beobachtung
-
-Je sichtbarem Offer knapp notieren: plausibler Weg, Offenheit, Beschaffbarkeit, Trivialität/Absurdität und bei Mehrfachangeboten hinreichende Verschiedenheit. Einzelne Geschmackspräferenzen erzeugen kein Generator-/Prompt-Folgeissue ohne reproduzierbares Muster.
+- [ ] Electorate/Participation korrekt und keine verwaisten offenen Runden
 
 ## Gesamt-Gate
 
-- [ ] 1, 2 und 3 Angebote live geprüft
-- [ ] AUTO, NONE und REQUIRED in der bestehenden Matrix geprüft
-- [ ] Vote-Geheimhaltung und Vote-Änderung funktionieren
-- [ ] Tie-Break korrekt, einmalig und persistent
-- [ ] REROLL und Runde 2 einschließlich Restriction-History korrekt
-- [ ] Ein-Offer-REROLL ohne Fake-Vote auto-bestätigt oder bereits durch 12C-02 abgedeckt
-- [ ] stale/doppelte Interaktionen ändern keinen abgeschlossenen Zustand
-- [ ] Requirement- und Restriction-Snapshots bleiben autoritativ
-- [ ] Requestbudget und History-Invarianten nachgewiesen
-- [ ] kein P0/P1 offen
+- [x] 1, 2 und 3 Angebote live geprüft
+- [x] AUTO, NONE und REQUIRED funktional in der Matrix geprüft
+- [x] Vote-Geheimhaltung und Vote-Änderung funktionieren
+- [x] Tie-Break funktional korrekt
+- [x] REROLL und Runde 2 funktional korrekt
+- [x] Ein-Offer-REROLL ohne Fake-Vote auto-bestätigt
+- [x] sichtbare Requirement-/Restriction-Snapshotdarstellung funktioniert
+- [ ] persistente Request-/History-/Snapshot-Invarianten abschließend per DB-Evidenz dokumentiert
+- [x] kein gemeldeter P0/P1
 
 ## Folge-Issues
 
-Keine – **NOT RUN**.
+- #100 – P2: Discord-Ergebnisformatierung, aktuelle Discord-Namen und sofortiges REROLL-Zwischenfeedback.
