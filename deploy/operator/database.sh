@@ -165,6 +165,7 @@ command_acceptance_sql() {
         --dbname="$MISE_EN_DICE_DB_NAME" \
         --no-align \
         --tuples-only \
+        --quiet \
         --set ON_ERROR_STOP=1 \
         --command "BEGIN TRANSACTION READ ONLY; $sql; ROLLBACK;"
 }
