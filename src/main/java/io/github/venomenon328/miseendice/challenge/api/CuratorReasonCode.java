@@ -2,9 +2,9 @@ package io.github.venomenon328.miseendice.challenge.api;
 
 import java.util.Set;
 
-/** Closed prompt-v1 vocabulary accepted from the external curator. */
+/** Closed vocabulary accepted from the current external curator contract. */
 public enum CuratorReasonCode {
-    /** Phase-10A compatibility code; prompt V1 emits the more specific variants below. */
+    /** General culinary-coherence classification. */
     CULINARY_COHERENCE,
     CULINARY_COHERENCE_STRONG,
     CULINARY_COHERENCE_WEAK,

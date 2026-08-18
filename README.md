@@ -93,22 +93,8 @@ versionierte PostgreSQL-Szenarioset erzeugt einen kanonischen JSON-Report unter
 ./mvnw clean verify -Dtest=GeneratorSimulationIntegrationTest
 ```
 
-Die große 2.304-Fälle-Baseline bleibt bewusst opt-in und verwendet denselben Kern:
-
-```bash
-./mvnw clean verify -Pgenerator-baseline -Dtest=CandidateSetBaselineIntegrationTest
-```
-
-Die vollständige 9.216-Fälle-Kalibrierung ist ebenfalls ausschließlich manuell und schreibt ihre Rohreports unter
-`target/generator-calibration/`:
-
-```bash
-./mvnw clean verify -Pgenerator-calibration -Dtest=CandidateGeneratorCalibrationIntegrationTest
-```
-
-Keiner der beiden breiten Läufe wird von GitHub Actions, PRs, Pushes oder Zeitplänen gestartet. Bericht,
-manuelles Acht-Satz-Korpus und operative Adminanleitung stehen in
-[`docs/CANDIDATE_GENERATOR_CALIBRATION.md`](docs/CANDIDATE_GENERATOR_CALIBRATION.md).
+Der aktuelle Simulationskern deckt die festen 1.2-Szenarien für `AUTO`, `NONE` und `REQUIRED` ab. Breite
+Kompatibilitäts- oder Kalibrierungsmatrizen früherer Generatorversionen werden nicht fortgeführt.
 
 Zentrale Modellierungsentscheidungen sind insbesondere:
 

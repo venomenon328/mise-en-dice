@@ -1,7 +1,7 @@
 # Kandidatengenerator
 
 Stand: 16. August 2026  
-Status: verbindliche Spezifikation für den Kandidatengenerator ab Version 1.1
+Status: verbindliche Spezifikation für den Kandidatengenerator 1.2.0
 
 Dieses Dokument konkretisiert die Produktvision für die Erzeugung von Challenge-Kandidaten. Es ist gemeinsam mit [`VISION.md`](VISION.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`DATA_MODEL.md`](DATA_MODEL.md) und ADR 0007 verbindlich. Bei Implementierungsdetails ist dieses Dokument die fachliche Hauptquelle; harte Produktregeln aus der Vision bleiben vorrangig.
 
@@ -49,9 +49,9 @@ Ein hoher Kandidatenscore ersetzt keine Satzdiversität. Umgekehrt darf ein form
 
 Harte Regeln besitzen keine Fallbacks. Weiche Mindestwerte, Zielquoten und Ähnlichkeitsgrenzen dürfen ausschließlich über die in Abschnitt 16 beschriebenen geordneten Fallbackstufen gelockert werden. Jede verwendete Stufe wird im Ergebnis gespeichert.
 
-### 1.4 REROLL-Semantik ab Generator 1.1
+### 1.4 REROLL-Semantik
 
-Ein freiwilliger REROLL ist kein negatives Signal über einzelne Zutaten. Er verwirft das vollständig präsentierte Offer Set als Kombination. Deshalb besitzt Generatorversion `1.1.0` **keinen dedizierten ingredient-level REROLL-Hardblock** mehr.
+Ein freiwilliger REROLL ist kein negatives Signal über einzelne Zutaten. Er verwirft das vollständig präsentierte Offer Set als Kombination und besitzt keinen dedizierten ingredient-level REROLL-Hardblock.
 
 Verbindlich gilt:
 
@@ -62,8 +62,6 @@ Verbindlich gilt:
 - Wird später aus einem sichtbaren Offer Set von 1–3 Optionen genau eine Option bestätigt, wirkt nur die bestätigte Challenge als normale Historie.
 - Wird stattdessen das vollständig präsentierte Offer Set rerollt, werden seine tatsächlich sichtbaren exakten Katalogkonzepte als **ein gemeinsames Cooldown-only-Expositionsereignis** erfasst. Dieses Ereignis beeinflusst nicht `RECOVERY` oder `SEEKING_VARIETY`.
 - Die Persistenz und Projektion eines solchen Multi-Offer-Expositionsereignisses ist Aufgabe von Phase 10/11 und wird nicht in den Phase-9-Generator vorgezogen.
-
-Historische Generatorversion `1.0.0` besaß einen separaten Vierer-REROLL-Block. Dessen Snapshotfelder und Reason-Code `REROLL_EXACT_BLOCKED` dürfen für Altbestände lesbar bleiben, werden von neuen v1.1-Läufen aber nicht mehr fachlich verwendet. Die Semantikänderung ist replayrelevant und begründet den Minor-Versionssprung von `1.0.0` auf `1.1.0`.
 
 ### 1.5 Kandidatenspezifische Restriktionen ab Generator 1.2
 
@@ -76,8 +74,7 @@ während `AUTO` dann ohne Restriktion fortfährt.
 
 Die Kandidatenrestriktion umfasst Rule-ID, Rule-Code und Textsnapshot. Sie ist Teil der Candidate-Signatur und der
 Ähnlichkeitskomponente `RESTRICTION`; dadurch bleiben gleiche Restriktionen sichtbar, Wiederholungen aber möglich.
-Historische `1.0.x`-/`1.1.x`-Snapshots behalten unverändert die attempt-weite Entscheidung und werden durch den
-versionsgebundenen Dispatcher mit ihren eigenen Payloadformen reproduziert.
+Andere Generatorversionen und ihre Snapshotformen werden nicht unterstützt.
 
 ## 2. Begriffe und Datenfluss
 
@@ -87,7 +84,7 @@ versionsgebundenen Dispatcher mit ihren eigenen Payloadformen reproduziert.
 - **Generation Context:** unveränderlicher vollständiger Kontext für eine Berechnung.
 - **Catalog Snapshot:** kanonische Generatorprojektion des Katalogs zu einem Zeitpunkt.
 - **Visible History Snapshot:** die für Cooldown und Kadenz relevanten tatsächlich sichtbaren Expositionen.
-- **Attempt Exclusion Decision:** einmalige Entscheidung, ob und welche Ausschlussregel für den Versuch gilt.
+- **Candidate Restriction:** deterministische, kandidatenspezifische Entscheidung über Rule-ID, -Code und Textsnapshot.
 - **Candidate Profile:** generische strukturelle Zielform eines Vierer-Kandidaten.
 - **Proposal:** ein mit Seed erzeugter Entwurf vor oder nach harter Validierung.
 - **Candidate Evaluation:** versionierte weiche Bewertung eines harten gültigen Proposals.
@@ -103,10 +100,9 @@ versionsgebundenen Dispatcher mit ihren eigenen Payloadformen reproduziert.
 3. manuelle Vorgaben normalisieren und optional mit Katalogkonzepten verknüpfen.
 4. Generator- und Konfigurationsversion sowie Master-Seed festlegen.
 5. Neuigkeitskadenz aus sichtbarer Historie ableiten.
-6. für `1.0.x`/`1.1.x` einmalig die attempt-weite Ausschlussentscheidung ziehen, für `1.2.0` nur die
-   regelbezogene Eligibility vorbereiten.
+6. die regelbezogene Eligibility für kandidatenspezifische Restriktionen vorbereiten.
 7. viele unabhängige Proposal-Substreams ableiten.
-8. pro Proposal bei `1.2.0` zuerst Restriktionsmodus und gegebenenfalls Regel ziehen, dann Zielprofil,
+8. pro Proposal zuerst Restriktionsmodus und gegebenenfalls Regel ziehen, dann Zielprofil,
    Spezifitätsmix und Neuigkeitsband ziehen.
 9. fehlende Slots gewichtet ohne Zurücklegen füllen.
 10. harte Regeln prüfen; Ablehnungen nach Reason-Code zählen.
@@ -143,13 +139,10 @@ Der unveränderliche `GenerationContext` enthält mindestens:
 - null bis zwei manuelle Vorgaben in Eingabereihenfolge,
 - vollständigen Catalog Snapshot,
 - Visible History Snapshot,
-- für `1.0.x`/`1.1.x` die Attempt Exclusion Decision, für `1.2.0` Restriction Mode und die
-  vorbereiteten Rule-Evaluations,
+- Restriction Mode und die vorbereiteten Rule-Evaluations,
 - Generatorversion,
 - Konfigurationsversion und kanonischen Konfigurationssnapshot,
 - Master-Seed und RNG-Algorithmus.
-
-Das aus Version 1.0 stammende Feld `rerollBlockedConceptCodes` kann in historischen Snapshots weiterhin vorkommen. Neue v1.1-Requests und -Contexts normalisieren es auf leer; es ist kein fachlicher Input mehr.
 
 ### 3.1 Catalog Snapshot
 
@@ -266,7 +259,7 @@ Das Alter wird in sichtbaren Expositionspositionen gemessen, nicht in Kalenderta
 
 Vorfahren, Nachfahren, Konkretisierungen und Geschwister erzeugen keinen harten Cooldown. Semantische Nähe fließt nur in History-Freshness und Satzähnlichkeit ein. So blockiert eine offene Vorgabe nicht ihren gesamten Bereich für Monate.
 
-Ab Generator 1.1 besitzt `AttemptType.REROLL` **keinen zusätzlichen Cooldown oder Hardblock**. Ein REROLL sieht genau den normalen Visible-History-Context. Phase 11A materialisiert vor dem REROLL-Attempt die Cooldown-only-Exposition eines vollständig sichtbaren Offer Sets als eine gemeinsame Snapshot-Historienposition; alle darin exakt vorkommenden Konzeptcodes erhalten dadurch den normalen Faktor 0, ohne ihre Descendants zu sperren.
+`AttemptType.REROLL` besitzt keinen zusätzlichen Cooldown oder Hardblock. Ein REROLL sieht genau den normalen Visible-History-Context. Phase 11A materialisiert vor dem REROLL-Attempt die Cooldown-only-Exposition eines vollständig sichtbaren Offer Sets als eine gemeinsame Snapshot-Historienposition; alle darin exakt vorkommenden Konzeptcodes erhalten dadurch den normalen Faktor 0, ohne ihre Descendants zu sperren.
 
 ### 5.5 Neuigkeits-Zielfaktor
 
@@ -346,17 +339,12 @@ MED-SEED-V1\0
 
 Die ersten acht Digest-Bytes in Big-Endian-Reihenfolge werden unverändert als vorzeichenbehafteter `long` interpretiert.
 
-Verbindliche Scopes:
-
-- `attempt` für die attempt-weite Ausschlussentscheidung,
-- `batch/<batchNumber>` für alle Kandidaten- und Satzentscheidungen eines Batches.
+Verbindlicher Scope ist `batch/<batchNumber>` für alle Kandidaten- und Satzentscheidungen eines Batches.
 
 Der persistierte Batch-Seed ist die Ableitung mit Purpose `batch-root` und Ordinal `0`. Weitere Substreams werden direkt aus dem Attempt-Seed und ihrem Scope abgeleitet; der Batch-Seed dient als expliziter Replaywert und Kontrollfingerprint.
 
 Verbindliche Zwecke sind mindestens:
 
-- `attempt-exclusion-mode`,
-- `attempt-exclusion-rule`,
 - `candidate-restriction-mode`,
 - `candidate-restriction-rule`,
 - `proposal-profile`,
@@ -378,10 +366,8 @@ Gleicher Generatorstand, gleicher Konfigurationssnapshot, gleicher Generation Co
 - dieselben Evaluationen und Reason-Codes,
 - denselben Fingerprint.
 
-Ein Wechsel zwischen Generator-Minorversionen ist absichtlich **kein** gleiches Generatorumfeld: Die
-Generatorversion fließt in die Seed-Substreams ein. `1.2.0` ergänzt isolierte Candidate-Restriction-Substreams,
-ohne die alten `1.0.x`-/`1.1.x`-Substreams umzudeuten. Historische Snapshots werden über ihre gespeicherte Version
-an die passende Implementierung dispatcht und niemals als `1.2.0`-Match ausgegeben.
+Der Generator verwendet `1.2.0` und leitet seine Candidate-Restriction-Substreams isoliert aus der gespeicherten
+Version ab. Andere Versionen werden nicht unterstützt und niemals als `1.2.0`-Match ausgegeben.
 
 ## 7. Manuelle Vorgaben
 
@@ -953,7 +939,7 @@ Die Implementierung bildet sämtliche Defaults in einem unveränderlichen fachli
 | strikte Reservoir-Mindestgröße | 72 | 12 bis bevorzugte Größe |
 | Mindestgröße für direkten Start in `RELAXED_1` | 36 | 12 bis strikte Mindestgröße |
 | maximale Proposal-Versuche | 5.000 | mindestens bevorzugte Größe, höchstens 1.000.000 |
-| Ausschlusswahrscheinlichkeit | 0,30 | 0 bis 1 |
+| Kandidatenrestriktionswahrscheinlichkeit | 0,20 | exakt 0,20 |
 | Gewichtsquantisierung | `10^9` | `10^3` bis `10^12` |
 | exakter Cooldown | 6 Expositionspositionen | 0 bis 52 |
 | Cooldown-Grenzen | 9 / 12 / 16 | streng aufsteigend, jeweils höchstens 104 |
@@ -987,7 +973,7 @@ Die vollständigen Faktor-, Punkte-, Profil- und Quotentabellen aus den vorangeh
 
 Mindestens enthalten:
 
-- `generatorVersion = 1.1.0`,
+- `generatorVersion = 1.2.0`,
 - `configurationVersion = 2026-08-15.1`,
 - `rngAlgorithm = SPLITMIX64_V1`,
 - `candidateSetSize = 12`,
@@ -997,16 +983,15 @@ Mindestens enthalten:
 - Neuigkeitspunkte, Faktoren, Bänder und Kadenzquoten,
 - Verfügbarkeitsfaktoren,
 - Cooldownfenster und Faktoren,
-- Ausschlusswahrscheinlichkeit und Wiederholungsfaktoren,
+- Kandidatenrestriktionswahrscheinlichkeit und Wiederholungsfaktoren,
 - Scorekomponenten und Gewichte,
 - Ähnlichkeitskomponenten,
 - MMR-Gewichte und Topband,
 - alle Fallbackstufen.
 
 Der produktive Default für neue Sessions ist `generatorVersion = 1.2.0`,
-`configurationVersion = 2026-08-15.1`, `exclusionProbability = 0.20` und eine vollständige
-`RESTRICTION`-Ähnlichkeitsgewichtung. Die vorstehenden `1.1.0`-Werte bleiben der historische
-Konfigurationsvertrag für gespeicherte Replays und werden nicht nachträglich überschrieben.
+`configurationVersion = 2026-08-15.1`, `candidateRestrictionProbability = 0.20` und eine vollständige
+`RESTRICTION`-Ähnlichkeitsgewichtung.
 
 Fail-fast-Validierung mindestens für:
 
@@ -1037,7 +1022,6 @@ Reason-Codes sind stabile maschinenlesbare Großschreibungswerte. Freitext ist e
 - `AVAILABILITY_MISSING`
 - `AVAILABILITY_UNAVAILABLE`
 - `EXACT_COOLDOWN_BLOCKED`
-- `REROLL_EXACT_BLOCKED` — **Legacy v1.0**; bleibt für historische Diagnosen lesbar und wird von v1.1 nicht neu emittiert.
 - `EXCLUSION_TARGET_BLOCKED`
 - `PROFILE_SLOT_INELIGIBLE`
 - `EFFECTIVE_WEIGHT_ROUNDED_TO_ZERO`
@@ -1228,12 +1212,12 @@ Verglichen werden in dieser Reihenfolge:
 
 1. Request- und Snapshotfingerprints,
 2. Attempt-Ausschlussentscheidung,
-3. Rejection-Zähler und Reservoirsignaturen,
+3. Restriction-Rule-Evaluations, Rejection-Zähler und Reservoirsignaturen,
 4. Kandidatensignaturen,
 5. Scores und Reason-Codes,
 6. Setreihenfolge und Set-Fingerprint.
 
-Die erste Abweichungsstelle wird diagnostiziert. Eine nicht mehr unterstützte Version liefert `UNSUPPORTED_GENERATOR_VERSION`, nicht einen scheinbaren Zufallsfehler. Historische v1.0-Snapshots dürfen weiter angezeigt werden; die v1.1-Implementierung gibt für nicht unterstütztes v1.0-Replay ausdrücklich `UNSUPPORTED_GENERATOR_VERSION` aus, statt den entfernten REROLL-Hardblock unter neuer Semantik nachzubauen.
+Die erste Abweichungsstelle wird diagnostiziert. Eine nicht unterstützte Version liefert `UNSUPPORTED_GENERATOR_VERSION`, nicht einen scheinbaren Zufallsfehler.
 
 ### 20.1 Kanonische Serialisierung und Fingerprints
 
@@ -1252,8 +1236,7 @@ Replayrelevante Payloads verwenden `canonicalPayloadVersion = 1` und folgenden B
 
 Der Fingerprint ist SHA-256 über die kanonischen Bytes und wird als kleingeschriebene hexadezimale
 Zeichenfolge gespeichert. Der Set-Fingerprint umfasst Generator- und Konfigurationsversion, Payloadversion,
-Batchnummer und abgeleiteten Batch-Seed, bei `1.0.x`/`1.1.x` die Attempt-Ausschlussentscheidung und bei
-`1.2.0` den Restriction Mode sowie die Restriktion jedes Kandidaten, verwendete Fallbackstufe,
+Batchnummer und abgeleiteten Batch-Seed, den Restriction Mode sowie die Restriktion jedes Kandidaten, verwendete Fallbackstufe,
 Setdiagnose einschließlich Reservoirmetriken und Fallbackversuchen sowie die geordnete vollständige
 Kandidatenliste in Auswahlreihenfolge. Nicht ausgewählte Reservoirkandidaten gehören nicht zur Set-Payload.
 Separate Snapshotfingerprints erlauben, eine Abweichung vor dem eigentlichen Generatorlauf zu lokalisieren.
@@ -1265,7 +1248,7 @@ niemals `GenerationCommands` auf. Eine Preview materialisiert ihren Katalog- und
 `PRODUCTION_VISIBLE` verwendet die sichtbare Historienprojektion, synthetische Szenarien bleiben explizit getrennt.
 Es entstehen weder Session, Attempt, Batch, Candidate noch Historienexposition.
 
-Ab Generator 1.1 besitzt das Labor keine editierbaren REROLL-Hardblock-IDs mehr. Ein diagnostischer REROLL wird ausschließlich durch Attempt-Typ, Katalog, Manuals, Seed und den gewählten Historiensnapshot bestimmt; exakte Cooldowns kommen aus diesem Snapshot.
+Das Labor besitzt keine editierbaren REROLL-Hardblock-IDs. Ein diagnostischer REROLL wird ausschließlich durch Attempt-Typ, Katalog, Manuals, Seed, Restriction Mode und den gewählten Historiensnapshot bestimmt; exakte Cooldowns kommen aus diesem Snapshot.
 
 Persistierte Attempts und Batches werden ausschließlich aus ihren gespeicherten Snapshots angezeigt. Replay ist
 ebenfalls read-only und vergleicht Fingerprint, Kandidatenreihenfolge/-signatur, Gesamt- und Komponentenscores,
@@ -1277,8 +1260,7 @@ eine nicht unterstützte Version bleibt ausdrücklich kein Mismatch.
 `GeneratorSimulation` ist die kleine öffentliche, transportneutrale Application-API für einen begrenzten
 Simulationslauf. Ein Request benennt nur explizite Seeds (`SeedRange` oder feste Liste), einen stabilen
 `HistoryScenario`, `INITIAL` oder `REROLL`, null bis zwei Manuals, die effektiven Daten und
-eine sichtbare Kandidatenposition `1..12`. Eine Datumsfolge ist eine Sequenz; ihre Schritte sind strikt aufsteigend.
-Legacy-v1.0-Felder für einen separaten REROLL-Block werden in v1.1 auf leer normalisiert und beeinflussen die Simulation nicht.
+eine sichtbare Kandidatenposition `1..12` sowie `AUTO`, `NONE` oder `REQUIRED` als Restriction Mode. Eine Datumsfolge ist eine Sequenz; ihre Schritte sind strikt aufsteigend.
 Die API akzeptiert nie `SeedSource`, begrenzt jeden Application-Run fail-fast auf 4.096 Fälle und erlaubt dem
 aufrufenden Adapter nur strengere Grenzen.
 
@@ -1287,12 +1269,12 @@ Monats-`CatalogGeneratorSnapshot`s sowie bei `PRODUCTION_VISIBLE` genau einen `V
 nutzen Preview und Simulation denselben reinen `GeneratorRunExecution`-Kern über diese Eingaben: kein JDBC-Zugriff,
 keine Produktionwrites, keine implizite Parallelisierung. Erfolgreiche Sequenzschritte schreiben ausschließlich eine
 synthetische, nicht persistierte Exposure aus der gewählten Kandidatenposition, deren Requirements, Profil,
-Ist-Neuigkeit und Ausschlussentscheidung fort. Erschöpfung oder ein technischer Fehler erzeugen keine Exposure und
+Ist-Neuigkeit und Kandidatenrestriktion fort. Erschöpfung oder ein technischer Fehler erzeugen keine Exposure und
 lassen die betroffene Sequenz ausdrücklich unvollständig.
 
 Der `SimulationReport` trennt fachliche Erschöpfung, technische Fehler und Replay-/Integritätsabweichungen. Seine
 Invariantenzähler lesen ausschließlich vorhandene Set-, Weight- und Diagnoseartefakte; er enthält keinen zweiten
-Hard-Rule- oder Statistikpfad. Ein historisch vorhandener `rerollViolations`-Zähler bleibt aus Reportkompatibilitätsgründen lesbar und muss für neue v1.1-Läufe null bleiben. Frequenz- und Fingerprintlisten sind nach stabilen Schlüsseln sortiert und jeweils auf
+Hard-Rule- oder Statistikpfad. Restriction-Frequenz und Restriction-Verletzungen werden direkt aus den Candidate-Snapshots berechnet. Frequenz- und Fingerprintlisten sind nach stabilen Schlüsseln sortiert und jeweils auf
 50 Einträge begrenzt. Der JSON-Report unter `target/generator-simulation/ci-scenarios-report.json` enthält eine
 kanonische Nutzlast mit Report-, Generator-, Konfigurations-, RNG- und Szenarioversion, Seedplan,
 `catalogFingerprintsByMonth` und Run-Katalogfingerprint. `elapsedMillis` liegt nur im separaten Laufzeitabschnitt und
@@ -1305,30 +1287,13 @@ Der kleine PostgreSQL-/Testcontainers-Reportweg ist absichtlich explizit und CI-
 ```
 
 Er schreibt den maschinenlesbaren Report, prüft seine kanonische Reproduzierbarkeit sowie die 4.096/4.097-Grenze und
-deckt INITIAL/REROLL, null bis zwei Manuals, echte und synthetische Historie, Sequenzfortschreibung, Timeout und
-technische Fehler ab. Die große Issue-#47-Matrix bleibt bewusst opt-in und delegiert ebenfalls an diesen Kern:
+deckt INITIAL/REROLL, `AUTO`/`NONE`/`REQUIRED`, null bis zwei Manuals, echte und synthetische Historie,
+Sequenzfortschreibung, Timeout und technische Fehler ab.
 
-```bash
-./mvnw clean verify -Pgenerator-baseline -Dtest=CandidateSetBaselineIntegrationTest
-```
+### 20.4 Aktueller Kalibrierungsumfang
 
-### 20.4 Vollständige Kalibrierung (Phase 9F / Issue #40)
-
-Der vollständige 9.216-Attempt-Lauf ist ebenfalls strikt opt-in. Sein versioniertes Manifest partitioniert die
-6.144 Default- und 3.072 Ausschlussfokus-Fälle in vier sequentielle `GeneratorSimulation`-Requests, von denen keiner
-die harte Application-Grenze von 4.096 Fällen überschreitet. Zusätzliche Mehrwochensequenzen bleiben davon getrennt.
-
-```bash
-./mvnw clean verify -Pgenerator-calibration -Dtest=CandidateGeneratorCalibrationIntegrationTest
-```
-
-Der Runner ist standardmäßig durch Surefire ausgeschlossen und wird in keinem GitHub-Actions-, PR-, Push-, Nightly-
-oder Scheduled-Workflow aufgerufen. Er schreibt kanonische Rohreports ausschließlich unter
-`target/generator-calibration/`. Zusammenfassung, Ursachenklassifikation, festes Acht-Satz-Korpus und die Anleitung
-für den read-only operativen Adminlauf stehen in [`CANDIDATE_GENERATOR_CALIBRATION.md`](CANDIDATE_GENERATOR_CALIBRATION.md).
-Der technische Lauf erklärt weder den operativen Kataloglauf noch die Administratorbewertung für bestanden.
-
-Generatorversion 1.1 ändert bewusst die REROLL-Semantik nach Abschluss des historischen Phase-9F-Gates. Sie löst keinen fingierten nachträglichen 9.216-Attempt-Erfolg aus; zielgerichtete REROLL-/Cooldown-/Replay-Regressionsprüfungen plus `clean verify` sind für Issue #63 maßgeblich. Ein erneuter vollständiger Kalibrierungslauf bleibt eine separate bewusste Entscheidung.
+Die begrenzte aktuelle Simulation deckt feste Seeds mit `AUTO`, `NONE` und `REQUIRED` ab; der normale Nachweis
+bleibt `./mvnw clean verify`. Breite, künstliche Null-/Eins-Varianten werden nicht fortgeführt.
 
 ## 21. Test- und Simulationsvertrag
 
@@ -1367,41 +1332,16 @@ Testcontainers prüft mindestens:
 
 H2 ist kein Ersatz.
 
-### 21.3 Versionierte Kontextfixtures
+### 21.3 Aktuelle Kontextfixtures
 
-Die vollständige 2.304-Attempt-Matrix, Paarähnlichkeits- und Satzdiversitätsgates werden in Phase 9C2 /
-Issue #47 umgesetzt. Phase 9C1 prüft stattdessen repräsentative feste Seeds und Monate gegen die reale
-PostgreSQL-`CatalogGeneratorProjection`, einschließlich deterministischem Reservoir-Replay und vollständiger
-Proposal-/Treffermetriken.
-
-Die Baselinesimulation besitzt historisch folgende unveränderlich benannte Fixtures:
-
-1. `EMPTY_INITIAL`: INITIAL ohne sichtbare Historie und ohne manuelle Vorgabe.
-2. `NEUTRAL_HISTORY`: normale gemischte sichtbare Historie.
-3. `RECOVERY_AFTER_ADVENTUROUS`: unmittelbar vorherige abenteuerliche Challenge mit Stufe 5.
-4. `SEEKING_AFTER_THREE_FAMILIAR`: drei unmittelbar vorherige vertraute Challenges.
-5. `LOADED_COOLDOWN_HISTORY`: mehrere exakte und semantisch nahe Expositionen in den relevanten Fenstern.
-6. `REROLL_EXACT_BLOCK`: historischer Fixture-Code aus v1.0. Unter v1.1 bleibt der Name für Berichtskontinuität erhalten, ein separater Blockinput wird jedoch leer normalisiert; REROLL-Wiederholung stammt ausschließlich aus der sichtbaren Historie.
-7. `ONE_MATCHED_MANUAL`: eine gematchte manuelle Vorgabe mit Rollen und Neuigkeit.
-8. `TWO_MIXED_MANUALS`: eine gematchte und eine unklassifizierte manuelle Vorgabe einschließlich Quotenprojektion.
-
-Jedes Fixture läuft für alle zwölf Saisonmonate. Gezielte synthetische Fixtures ergänzen dünne Rollenpools, fehlende optionale Dimensionen, ausschließlich schwierige Beschaffbarkeit und echte Erschöpfung; sie werden getrennt von der regulären Baseline ausgewertet.
+Feste 1.2-Kontexte prüfen die reale PostgreSQL-`CatalogGeneratorProjection`, deterministische Reservoir-/Set-Replays,
+REROLL-Historie sowie die drei Restriction Modes. Gezielte synthetische Fixtures ergänzen dünne Rollenpools,
+fehlende optionale Dimensionen und echte Erschöpfung.
 
 ### 21.4 Reproduzierbare Suitegrößen
 
-**Explizite Issue-#47-Baseline (nicht Teil des normalen `verify`):**
-
-- 12 Monate × 8 Fixtures × 16 aufeinanderfolgende feste Seeds = 1.536 Attempts mit Defaultkonfiguration,
-- zusätzlich 12 Monate × 4 manualfreie Fixtures × 2 Konfigurationsvarianten (`exclusionProbability = 0` und `1`) × 8 feste Seeds = 768 Attempts,
-- insgesamt 2.304 Attempts; jeder erfolgreiche Satz wird einmal replayt.
-
-**Vollständiger Kalibrierungslauf aus Phase 9F:**
-
-- dieselbe Hauptmatrix mit 64 Seeds = 6.144 Attempts,
-- dieselbe fokussierte Ausschlussmatrix mit 32 Seeds = 3.072 Attempts,
-- insgesamt 9.216 Attempts plus die dokumentierten synthetischen Fehler- und Dünnpoolfälle.
-
-Seedbereiche, Fixtureversion und Konfigurationsversion werden im Report gespeichert. Zusätzliche Zufallsstichproben sind erlaubt, ersetzen diese Matrix aber nicht.
+Der normale Build verwendet kleine, feste 1.2-Fixtures statt historischer Großmatrizen. Seedbereiche,
+Fixtureversion und Konfigurationsversion bleiben im Report gespeichert.
 
 ### 21.5 Verbindliche Metriken
 
@@ -1430,7 +1370,7 @@ Für den regulären Repository-Baseline-Katalog gelten vor der manuellen Abnahme
 - exakt 0 Generator-Hard-Rule-Verletzungen,
 - exakt 0 unerklärte Replay- oder Fingerprintabweichungen,
 - exakt 0 Erschöpfungen und 0 unvollständige Erfolgssätze,
-- exakt 0 Cooldown- und Ausschlussverletzungen; der Legacy-Zähler für REROLL-Hardblock-Verletzungen bleibt bei v1.1 ebenfalls 0, weil diese Regel nicht mehr erzeugt wird,
+- exakt 0 Cooldown- und Restriction-Verletzungen,
 - 100 % der erfolgreichen Sätze mit zwölf eindeutigen Kandidaten und je vier Requirements,
 - mindestens 95 % `STRICT`, höchstens 5 % `RELAXED_1` und 0 % `RELAXED_2`,
 - 95. Perzentil der Proposal-Versuche höchstens 4.000 und absolutes Maximum höchstens 5.000,
@@ -1439,14 +1379,10 @@ Für den regulären Repository-Baseline-Katalog gelten vor der manuellen Abnahme
 - mittlere Paarähnlichkeit eines `STRICT`-Satzes höchstens 0,42,
 - in `RECOVERY_AFTER_ADVENTUROUS` ohne manuell erzwungene Ausnahme exakt 0 `ADVENTUROUS`-Kandidaten,
 - in `SEEKING_AFTER_THREE_FAMILIAR` bei `STRICT` exakt die projizierte Zielzahl abenteuerlicher Kandidaten,
-- bei Default-Ausschlusswahrscheinlichkeit im vollständigen Lauf eine tatsächliche Ausschlussquote von 25 % bis 35 %,
-- bei erzwungen ausgeschalteter beziehungsweise eingeschalteter Ausschlussvariante 0 % beziehungsweise 100 % geeignete Attempts mit Ausschluss,
-- im vollständigen Kalibrierungslauf aus Phase 9F pro Monat und Fixture mindestens 95 % unterschiedliche
-  Set-Fingerprints über die dort verbindlichen 64 Seeds; die 16-Seed-Matrix aus Phase 9C2 berichtet diesen
-  Wert nur als Variationsmetrik und interpretiert ihn nicht als Ersatzgate,
-- kein einzelnes zufälliges Konzept über 5 % und die zehn häufigsten zusammen nicht über 30 % aller zufälligen Requirement-Slots der vollständigen Baseline.
+- Restriction-Mode `NONE` erzeugt keine Restriktionen und `REQUIRED` erzeugt nur gültige Restriktionen,
+- kein einzelnes zufälliges Konzept über 5 % und die zehn häufigsten zusammen nicht über 30 % aller zufälligen Requirement-Slots der geprüften Fixtures.
 
-Die Konzentrations- und Ausschlussgrenzen sind bewusst breit. Schlagen sie fehl, wird die Ursache untersucht; die Grenzen werden nicht nachträglich bequem um das erste Ergebnis gemalt. Synthetische Dünnpools dürfen erwartbar erschöpfen oder Fallbacks nutzen, müssen aber ebenfalls null Hard-Rule- und Replayverletzungen besitzen.
+Die Konzentrations- und Restriction-Grenzen sind bewusst breit. Schlagen sie fehl, wird die Ursache untersucht; die Grenzen werden nicht nachträglich bequem um das erste Ergebnis gemalt. Synthetische Dünnpools dürfen erwartbar erschöpfen oder Fallbacks nutzen, müssen aber ebenfalls null Hard-Rule- und Replayverletzungen besitzen.
 
 ## 22. Beispiele
 
@@ -1522,17 +1458,14 @@ Nach 5.000 Proposals existieren nur neun eindeutige harte Kandidaten. Ergebnis i
 
 Ein strukturell guter Kandidat besitzt nur wenige gepflegte Dimensionen. Er bleibt zulässig, erhält aber eine niedrige Eigenschaftskonfidenz. Die Anwendung darf daraus keine präzise Aussage wie „harmoniert sehr gut“ ableiten.
 
-## 23. Phase-9-Gate und spätere Semantikänderungen
+## 23. Aktueller Generator-Gate
 
-Phase 9 wurde auf Generatorversion 1.0 fachlich und technisch abgeschlossen. Issue #63 präzisiert anschließend die Produktsemantik des freiwilligen Rerolls und führt Generatorversion 1.1 ein. Der historische Phase-9-Abnahmebericht bleibt deshalb historisch korrekt; insbesondere werden frühere MC-/Fixture-Ergebnisse nicht rückwirkend umetikettiert.
+Für Generator `1.2.0` gilt als Nachweis:
 
-Für Generator 1.1 gilt als Nachweis:
-
-- dedizierter REROLL-Zutatenblock wird bei neuen Läufen nicht mehr angewendet,
-- normaler exakter Cooldown bleibt unverändert wirksam,
+- der normale exakte Cooldown bleibt unverändert wirksam,
 - Parent-/Child-/Sibling-Expansion findet beim Cooldown nicht statt,
-- Replay und Fingerprints sind versionssauber getrennt,
-- Labor und Simulation besitzen keinen operativen REROLL-Blockparameter mehr,
-- gezielte REROLL-/Cooldown-/Replaytests sowie `./mvnw clean verify` sind grün.
+- Restriction Mode und Candidate-Restriction sind in Signatur, Snapshot und Curation Contract enthalten,
+- Labor und Simulation besitzen nur die drei aktuellen Restriction Modes,
+- gezielte Restriction-/Cooldown-/Replaytests sowie `./mvnw clean verify` sind grün.
 
 Phase 11A implementiert die persistente Cooldown-only-Exposition eines vollständig rerollten Offer Sets mit 1–3 sichtbaren Optionen. Weder der nachfolgende transportneutrale 11B-Voting-/Participation-Core noch der spätere 11C-Discord-Adapter verändern diese Generator-Hardrule.

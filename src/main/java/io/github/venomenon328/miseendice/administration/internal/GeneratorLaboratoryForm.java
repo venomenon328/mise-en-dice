@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.administration.internal;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.HistoryScenario;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.ManualInput;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.PreviewRequest;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -11,22 +12,22 @@ import org.springframework.util.MultiValueMap;
 
 record GeneratorLaboratoryForm(
         String attemptType, String effectiveDate, String seed, String historyScenario,
-        String manual1Text, String manual1ConceptId, String manual2Text, String manual2ConceptId
+        String restrictionMode, String manual1Text, String manual1ConceptId, String manual2Text, String manual2ConceptId
 ) {
     static GeneratorLaboratoryForm defaults() {
         return new GeneratorLaboratoryForm("INITIAL", LocalDate.now().toString(), "", "PRODUCTION_VISIBLE",
-                "", "", "", "");
+                "AUTO", "", "", "", "");
     }
 
     static GeneratorLaboratoryForm from(MultiValueMap<String, String> values) {
         return new GeneratorLaboratoryForm(text(values, "attemptType"), text(values, "effectiveDate"),
-                text(values, "seed"), text(values, "historyScenario"), text(values, "manual1Text"),
+                text(values, "seed"), text(values, "historyScenario"), text(values, "restrictionMode"), text(values, "manual1Text"),
                 text(values, "manual1ConceptId"), text(values, "manual2Text"), text(values, "manual2ConceptId"));
     }
 
     GeneratorLaboratoryForm withResolvedSeed(long value) {
         return new GeneratorLaboratoryForm(attemptType, effectiveDate, Long.toString(value), historyScenario,
-                manual1Text, manual1ConceptId, manual2Text, manual2ConceptId);
+                restrictionMode, manual1Text, manual1ConceptId, manual2Text, manual2ConceptId);
     }
 
     PreviewRequest toRequest() {
@@ -37,7 +38,8 @@ record GeneratorLaboratoryForm(
         List<ManualInput> manuals = new ArrayList<>();
         if (!manual1Text.isBlank()) manuals.add(new ManualInput(1, manual1Text, positive(manual1ConceptId)));
         if (!manual2Text.isBlank()) manuals.add(new ManualInput(2, manual2Text, positive(manual2ConceptId)));
-        return new PreviewRequest(type, date, optionalLong(seed), manuals, scenario, List.of());
+        RestrictionMode mode = RestrictionMode.valueOf(restrictionMode.isBlank() ? "AUTO" : restrictionMode);
+        return new PreviewRequest(type, date, optionalLong(seed), manuals, scenario, mode);
     }
 
     private static String text(MultiValueMap<String, String> values, String key) {

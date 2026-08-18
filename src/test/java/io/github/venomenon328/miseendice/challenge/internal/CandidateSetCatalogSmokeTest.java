@@ -8,6 +8,7 @@ import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.GeneratedCandidateSet;
 import io.github.venomenon328.miseendice.challenge.api.GenerationAttemptRequest;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
 import java.time.LocalDate;
 import java.util.List;
@@ -43,8 +44,8 @@ class CandidateSetCatalogSmokeTest {
     @Test
     void realCatalogProducesAndReplaysOneCompleteSelectedSet() {
         var request = new GenerationAttemptRequest(AttemptType.INITIAL, LocalDate.of(2026, 8, 12), 8,
-                catalogProjection.snapshotForMonth(8), VisibleHistorySnapshot.empty(), List.of(), Set.of(),
-                generatorProperties.configuration(), 47_000_001L);
+                catalogProjection.snapshotForMonth(8), VisibleHistorySnapshot.empty(), List.of(),
+                generatorProperties.configuration(), 47_000_001L, RestrictionMode.AUTO);
         var prepared = reservoirEngine.prepare(request);
         var first = setEngine.generate(prepared, 1);
         var replay = setEngine.generate(reservoirEngine.prepare(request), 1);

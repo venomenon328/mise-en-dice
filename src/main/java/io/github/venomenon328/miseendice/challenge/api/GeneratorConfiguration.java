@@ -89,10 +89,10 @@ public record GeneratorConfiguration(
         requireComplete(CandidateProfile.class, profileWeights, "profileWeights");
         requireComplete(CandidateProfile.class, profileSetTargets, "profileSetTargets");
         requireComplete(ScoreComponent.class, scoreWeights, "scoreWeights");
-        Set<SimilarityComponent> expectedSimilarityComponents = generatorVersion.equals("1.2.0")
-                ? EnumSet.allOf(SimilarityComponent.class)
-                : EnumSet.complementOf(EnumSet.of(SimilarityComponent.RESTRICTION));
-        if (!similarityWeights.keySet().equals(expectedSimilarityComponents)) {
+        if (!generatorVersion.equals("1.2.0")) {
+            throw new IllegalArgumentException("Only generator version 1.2.0 is supported");
+        }
+        if (!similarityWeights.keySet().equals(EnumSet.allOf(SimilarityComponent.class))) {
             throw new IllegalArgumentException("similarityWeights must match the generator version");
         }
         requireComplete(FallbackLevel.class, fallbacks, "fallbacks");
@@ -124,16 +124,6 @@ public record GeneratorConfiguration(
         }
         validateFallbacks(fallbacks);
         validateSelectionWeightBounds(reservoirTarget, weightQuantization, selection);
-    }
-
-    /** Returns the same immutable generator contract with only the diagnostic exclusion mode changed. */
-    public GeneratorConfiguration withExclusionProbability(BigDecimal probability) {
-        return new GeneratorConfiguration(generatorVersion, configurationVersion, rngAlgorithm, canonicalPayloadVersion,
-                candidateSetSize, reservoirTarget, reservoirStrictMinimum, reservoirRelaxedOneMinimum,
-                maximumProposalAttempts, weightQuantization, probability, availabilityFactors, cooldown, exclusion,
-                novelty, anchorRoles, supportRoles, flavorRoles, profiles, profileWeights, profileSetTargets,
-                specificityWeights, specificitySetTargets, cadenceSetTargets, scoreWeights, similarityWeights,
-                similarity, selection, fallbacks, processingLease);
     }
 
     public record SimilarityConfiguration(

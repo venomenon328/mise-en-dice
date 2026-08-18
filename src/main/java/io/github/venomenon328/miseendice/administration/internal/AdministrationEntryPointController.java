@@ -5,6 +5,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.PreviewResult;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation;
 import jakarta.servlet.http.HttpSession;
 import java.time.Duration;
@@ -143,6 +144,7 @@ class AdministrationEntryPointController {
         model.addAttribute("generatorLab", true);
         model.addAttribute("laboratoryScenarios", generatorLaboratory.scenarios());
         model.addAttribute("attemptTypes", List.of(AttemptType.values()));
+        model.addAttribute("restrictionModes", List.of(RestrictionMode.values()));
         if (!model.containsAttribute("previewForm")) {
             model.addAttribute("previewForm", GeneratorLaboratoryForm.defaults());
         }

@@ -4,7 +4,6 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.CatalogGeneratorSnapshot;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorExclusionRule;
-import io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.WeightEvaluation;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
 import io.github.venomenon328.miseendice.challenge.api.GenerationAttemptRequest;
@@ -24,7 +23,6 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -45,7 +43,7 @@ final class GenerationSnapshotCodec {
     EncodedContext encode(GenerationAttemptRequest request, PreparedGenerationAttempt prepared) {
         String configuration = new CanonicalConfigurationSnapshot(objectMapper).serialize(request.configuration());
         String catalog = canonicalJson(catalog(request.catalog()));
-        String history = canonicalJson(history(request.visibleHistory(), request.configuration().generatorVersion().equals("1.2.0")));
+        String history = canonicalJson(history(request.visibleHistory()));
         String requestJson = canonicalJson(request(request));
         String preparedJson = canonicalJson(prepared(prepared));
 
@@ -71,7 +69,7 @@ final class GenerationSnapshotCodec {
         verify("history", stored.visibleHistorySnapshot(), stored.historyFingerprint());
 
         GeneratorConfiguration configuration = read(stored.configurationSnapshot(), GeneratorConfiguration.class);
-        if (!configuration.generatorVersion().matches("1\\.(0|1|2)\\.0")) {
+        if (!configuration.generatorVersion().equals("1.2.0")) {
             throw new InvalidContextSnapshotException("Stored generator version is not supported");
         }
         CatalogGeneratorSnapshot catalog = read(stored.catalogSnapshot(), CatalogGeneratorSnapshot.class);
@@ -87,9 +85,7 @@ final class GenerationSnapshotCodec {
                 .toList();
         GenerationAttemptRequest request = new GenerationAttemptRequest(
                 requestSnapshot.attemptType(), requestSnapshot.effectiveDate(), requestSnapshot.seasonMonth(),
-                catalog, history, manuals, requestSnapshot.rerollBlockedConceptCodes(), configuration,
-                requestSnapshot.attemptSeed(), requestSnapshot.restrictionMode() == null
-                        ? RestrictionMode.AUTO : requestSnapshot.restrictionMode());
+                catalog, history, manuals, configuration, requestSnapshot.attemptSeed(), requestSnapshot.restrictionMode());
         PreparedGenerationAttempt prepared = reservoirEngine.prepare(request);
         String replayedPrepared = canonicalJson(prepared(prepared));
         if (!fingerprintJson(replayedPrepared).equals(fingerprintJson(stored.preparedAttemptSnapshot()))) {
@@ -152,10 +148,7 @@ final class GenerationSnapshotCodec {
                     item.put("position", manual.position());
                     return item;
                 }).toList());
-        value.put("rerollBlockedConceptCodes", request.rerollBlockedConceptCodes().stream().sorted().toList());
-        if (request.configuration().generatorVersion().equals("1.2.0")) {
-            value.put("restrictionMode", request.restrictionMode().name());
-        }
+        value.put("restrictionMode", request.restrictionMode().name());
         value.put("seasonMonth", request.seasonMonth());
         return value;
     }
@@ -164,12 +157,8 @@ final class GenerationSnapshotCodec {
         Map<String, Object> value = sortedMap();
         value.put("baselineNoveltyTargets", enumMap(prepared.baselineNoveltyTargets()));
         value.put("diagnostics", prepared.diagnostics().stream().map(Enum::name).sorted().toList());
-        if (prepared.request().configuration().generatorVersion().equals("1.2.0")) {
-            value.put("restrictionMode", prepared.request().restrictionMode().name());
-        } else {
-            value.put("exclusionDecision", exclusion(prepared.exclusionDecision()));
-        }
-        value.put("exclusionRuleEvaluations", prepared.exclusionRuleEvaluations().stream().map(evaluation -> {
+        value.put("restrictionMode", prepared.request().restrictionMode().name());
+        value.put("restrictionRuleEvaluations", prepared.restrictionRuleEvaluations().stream().map(evaluation -> {
             Map<String, Object> item = sortedMap();
             item.put("diagnostics", evaluation.diagnostics().stream().map(Enum::name).sorted().toList());
             item.put("effectiveWeight", evaluation.effectiveWeight());
@@ -231,7 +220,7 @@ final class GenerationSnapshotCodec {
         return value;
     }
 
-    private Map<String, Object> history(VisibleHistorySnapshot snapshot, boolean candidateSpecificRestrictions) {
+    private Map<String, Object> history(VisibleHistorySnapshot snapshot) {
         Map<String, Object> value = sortedMap();
         value.put("challengesNewestFirst", snapshot.challengesNewestFirst().stream().map(challenge -> {
             Map<String, Object> item = sortedMap();
@@ -256,9 +245,7 @@ final class GenerationSnapshotCodec {
         value.put("rerollExposuresNewestFirst", snapshot.rerollExposuresNewestFirst().stream().map(exposure -> {
             Map<String, Object> item = sortedMap();
             item.put("offerSetKey", exposure.offerSetKey());
-            if (candidateSpecificRestrictions) {
-                item.put("restrictionRuleCodes", exposure.restrictionRuleCodes().stream().sorted().toList());
-            }
+            item.put("restrictionRuleCodes", exposure.restrictionRuleCodes().stream().sorted().toList());
             item.put("requirements", exposure.requirements().stream().map(requirement -> {
                 Map<String, Object> requirementValue = sortedMap();
                 requirementValue.put("ancestorCodes", requirement.ancestorCodes().stream().sorted().toList());
@@ -272,17 +259,6 @@ final class GenerationSnapshotCodec {
             item.put("visibleAt", exposure.visibleAt().toString());
             return item;
         }).toList());
-        return value;
-    }
-
-    private Map<String, Object> exclusion(AttemptExclusionDecision decision) {
-        Map<String, Object> value = sortedMap();
-        if (decision instanceof AttemptExclusionDecision.None) {
-            value.put("type", "NONE");
-        } else {
-            value.put("ruleCode", ((AttemptExclusionDecision.Selected) decision).rule().code());
-            value.put("type", "SELECTED");
-        }
         return value;
     }
 
@@ -395,7 +371,6 @@ final class GenerationSnapshotCodec {
             LocalDate effectiveDate,
             int seasonMonth,
             List<ManualSnapshot> manualRequirements,
-            Set<String> rerollBlockedConceptCodes,
             long attemptSeed,
             RestrictionMode restrictionMode
     ) {

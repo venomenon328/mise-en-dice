@@ -22,6 +22,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Generated;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -115,7 +116,7 @@ class CurationOrchestrationIntegrationTest {
         assertThat(curationQueries.findRound(generated.attemptId(), 1).orElseThrow().providerAudit())
                 .satisfies(audit -> {
                     assertThat(audit.dispatchStatus()).isEqualTo("RESULT_RECORDED");
-                    assertThat(audit.requestPayload()).contains("CURATOR_PROMPT_V1");
+                    assertThat(audit.requestPayload()).contains("CURATOR_PROMPT_V2");
                     assertThat(audit.responseId()).startsWith("fake-response-");
                     assertThat(audit.usageSnapshotJson()).contains("inputTokens");
                 });
@@ -347,14 +348,15 @@ class CurationOrchestrationIntegrationTest {
     }
 
     private Generated generated(int requestedOffers, long seed) {
-        return (Generated) generationCommands.startNewSession(new StartNewSession(DATE, List.of(), seed, requestedOffers));
+        return (Generated) generationCommands.startNewSession(new StartNewSession(
+                DATE, List.of(), seed, requestedOffers, RestrictionMode.AUTO));
     }
 
     private CurationQueries.RoundView planInitialRound(Generated generated) {
         GenerationQueries.BatchView batch = generationQueries.findBatch(generated.attemptId(), 1).orElseThrow();
         CurationCommands.PlannedRound planned = (CurationCommands.PlannedRound) curationCommands.planRound(
                 new CurationCommands.PlanRound(generated.attemptId(), 1, batch.batchId(),
-                        CurationModel.RequestPurpose.INITIAL_PASS, curator.model(), OpenAiCuratorPrompt.VERSION,
+                        CurationModel.RequestPurpose.INITIAL_PASS, curator.model(), OpenAiCuratorPrompt.CURRENT_VERSION,
                         curationQueries.findAttempt(generated.attemptId()).orElseThrow().requestedOfferCount(),
                         batch.candidates().stream().map(candidate -> new CurationCommands.CandidateParticipation(
                                 candidate.candidateId(), CurationModel.Participation.NEW, null)).toList()));
@@ -444,7 +446,7 @@ class CurationOrchestrationIntegrationTest {
         public synchronized PreparedDispatch prepare(String model, CurationRequest request) {
             preparedRequests.add(request);
             return new PreparedDispatch("OPENAI", "{\"model\":\"" + model
-                    + "\",\"prompt\":\"CURATOR_PROMPT_V1\",\"roundId\":" + request.roundId() + "}");
+                    + "\",\"prompt\":\"CURATOR_PROMPT_V2\",\"roundId\":" + request.roundId() + "}");
         }
 
         @Override

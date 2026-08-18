@@ -13,6 +13,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Manual
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayStatus;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands.Confirmation;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands.RerollOfferReady;
@@ -205,7 +206,7 @@ class OfferDecisionLifecycleIntegrationTest {
         curator.script(CurationOrchestrationIntegrationTest.Script.success(2),
                 CurationOrchestrationIntegrationTest.Script.success(2));
         Generated initial = (Generated) generationCommands.startNewSession(new StartNewSession(
-                DATE, List.of(new ManualRequirementInput(1, "manual text", null)), 76_100_031L, 2));
+                DATE, List.of(new ManualRequirementInput(1, "manual text", null)), 76_100_031L, 2, RestrictionMode.AUTO));
         CurationQueries.OfferSetView source = offerReady(initial);
         decisions.present(new OfferDecisionCommands.PresentOfferSet(source.offerSetId()));
 
@@ -422,7 +423,8 @@ class OfferDecisionLifecycleIntegrationTest {
 
     private CurationQueries.OfferSetView offered(int count, long seed) {
         curator.script(CurationOrchestrationIntegrationTest.Script.success(count));
-        Generated generated = (Generated) generationCommands.startNewSession(new StartNewSession(DATE, List.of(), seed, count));
+        Generated generated = (Generated) generationCommands.startNewSession(new StartNewSession(
+                DATE, List.of(), seed, count, RestrictionMode.AUTO));
         return offerReady(generated);
     }
 

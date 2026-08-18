@@ -59,7 +59,8 @@ class CandidateSimilarityCalculatorTest {
                 SimilarityComponent.SPECIFICITY_MIX,
                 SimilarityComponent.NOVELTY,
                 SimilarityComponent.AVAILABILITY_LOAD,
-                SimilarityComponent.COMPARABLE_PROPERTIES);
+                SimilarityComponent.COMPARABLE_PROPERTIES,
+                SimilarityComponent.RESTRICTION);
         assertThat(result.components().values()).allSatisfy(component -> {
             if (component.value() != null) {
                 assertThat(component.value().scale()).isEqualTo(12);
@@ -79,7 +80,9 @@ class CandidateSimilarityCalculatorTest {
                 .isEqualByComparingTo("0.650000000000");
         assertThat(result.components().get(SimilarityComponent.COMPARABLE_PROPERTIES).value())
                 .isEqualByComparingTo("0.500000000000");
-        assertThat(result.totalSimilarity()).isEqualByComparingTo("0.138149350650");
+        assertThat(result.components().get(SimilarityComponent.RESTRICTION).value())
+                .isEqualByComparingTo("0.000000000000");
+        assertThat(result.totalSimilarity()).isEqualByComparingTo("0.130123376623");
         assertThat(result.diagnostics()).contains(GeneratorReasonCode.PAIR_ANCESTOR_OVERLAP,
                 GeneratorReasonCode.PAIR_SIMILARITY_LIMIT);
     }
@@ -128,7 +131,7 @@ class CandidateSimilarityCalculatorTest {
         assertThat(result.renormalizedWeights()).doesNotContainKeys(
                 SimilarityComponent.INFORMATIVE_ANCESTORS, SimilarityComponent.COMPARABLE_PROPERTIES);
         assertThat(result.renormalizedWeights().get(SimilarityComponent.EXACT_RANDOM_CONCEPTS))
-                .isEqualByComparingTo("0.500000000000");
+                .isEqualByComparingTo("0.410958904110");
         assertThat(result.renormalizedWeights().values().stream().reduce(bd("0"), java.math.BigDecimal::add))
                 .isEqualByComparingTo("1.000000000000");
     }

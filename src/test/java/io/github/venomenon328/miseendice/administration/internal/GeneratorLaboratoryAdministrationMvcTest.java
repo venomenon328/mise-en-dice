@@ -28,6 +28,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.Metri
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.NumericSummary;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SimulationRequest;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SimulationReport;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -258,7 +259,7 @@ class GeneratorLaboratoryAdministrationMvcTest {
     @WithMockUser(username = "generator-lab-admin")
     void persistedBatchAndReplayUseReadOnlyQueries() throws Exception {
         Generated generated = (Generated) generationCommands.startNewSession(
-                new StartNewSession(LocalDate.of(2026, 8, 13), List.of(), 37_000_031L));
+                new StartNewSession(LocalDate.of(2026, 8, 13), List.of(), 37_000_031L, 1, RestrictionMode.AUTO));
         int beforeAttempts = count("generation_attempt");
         int beforeBatches = count("generation_batch");
         int beforeChallenges = count("challenge");
@@ -322,7 +323,7 @@ class GeneratorLaboratoryAdministrationMvcTest {
                 new Metadata("test-report", "test-generator", "test-config", "test-rng", 1, "test-scenario",
                         Map.of(), "test-catalog", Map.of(), List.of("test-seeds")),
                 new Completion(status, 1, 0, 1, 0, 1, "test-detail"),
-                new Metrics(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                new Metrics(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                         emptyFrequencies, emptyFrequencies, emptyFrequencies, emptyFrequencies,
                         new Concentration(BigDecimal.ZERO, BigDecimal.ZERO, 0),
                         emptyFrequencies, emptyFrequencies, emptyFrequencies, emptyFrequencies, emptyFrequencies,
@@ -337,8 +338,8 @@ class GeneratorLaboratoryAdministrationMvcTest {
         org.assertj.core.api.Assertions.assertThat(request.scenarios()).singleElement().satisfies(scenario -> {
             org.assertj.core.api.Assertions.assertThat(scenario.effectiveDates()).hasSize(1);
             org.assertj.core.api.Assertions.assertThat(scenario.visibleCandidatePosition()).isEqualTo(1);
-            org.assertj.core.api.Assertions.assertThat(scenario.exclusionVariant())
-                    .isEqualTo(GeneratorSimulation.ExclusionVariant.DEFAULT);
+            org.assertj.core.api.Assertions.assertThat(scenario.restrictionMode())
+                    .isEqualTo(RestrictionMode.AUTO);
         });
         org.assertj.core.api.Assertions.assertThat(request.control().technicalErrorMode())
                 .isEqualTo(GeneratorSimulation.TechnicalErrorMode.FAIL_FAST);

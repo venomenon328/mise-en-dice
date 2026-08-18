@@ -2,7 +2,6 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.CatalogGeneratorSnapshot;
-import io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.GeneratedCandidateSet;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.AcceptedProposal;
@@ -110,11 +109,6 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
     }
 
     @Override
-    public GenerationOutcome startReroll(StartExistingSession command) {
-        return startReroll(new StartRerollSession(command.sessionId(), command.explicitSeed()));
-    }
-
-    @Override
     public GenerationOutcome startReroll(StartRerollSession command) {
         UUID operationToken = UUID.randomUUID();
         ClaimDecision decision = writeTransaction.execute(status -> {
@@ -202,17 +196,12 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
             PreparedGenerationAttempt prepared;
             if (attempt.status().equals("PENDING")) {
                 MaterializedInputs inputs = repeatableReadTransaction.execute(status -> new MaterializedInputs(
-                        catalogProjection.snapshotForMonth(attempt.seasonMonth()), repository.visibleHistory(), Set.of()));
+                        catalogProjection.snapshotForMonth(attempt.seasonMonth()), repository.visibleHistory()));
                 GenerationAttemptRequest request = request(attempt, inputs);
                 prepared = reservoirEngine.prepare(request);
                 GenerationSnapshotCodec.EncodedContext snapshot = repository.snapshotCodec().encode(request, prepared);
-                AttemptExclusionDecision exclusion = prepared.exclusionDecision();
-                Long exclusionId = exclusion instanceof AttemptExclusionDecision.Selected selected
-                        ? selected.rule().id() : null;
-                String exclusionText = exclusion instanceof AttemptExclusionDecision.Selected selected
-                        ? selected.rule().displayText() : null;
                 writeTransaction.executeWithoutResult(status -> repository.saveContext(
-                        attempt.attemptId(), operationToken, snapshot, exclusionId, exclusionText));
+                        attempt.attemptId(), operationToken, snapshot));
             } else if (attempt.status().equals("CONTEXT_READY")) {
                 prepared = repository.snapshotCodec().decodeAndVerify(repository.loadContext(attempt.attemptId()));
             } else {
@@ -263,7 +252,7 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
                                         "Matched manual concept is absent from the frozen catalog"))))
                 .toList();
         return new GenerationAttemptRequest(attempt.attemptType(), attempt.effectiveDate(), attempt.seasonMonth(),
-                inputs.catalog(), inputs.history(), manuals, inputs.rerollBlockedCodes(), configuration(),
+                inputs.catalog(), inputs.history(), manuals, configuration(),
                 attempt.attemptSeed(), attempt.restrictionMode());
     }
 
@@ -525,8 +514,7 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
 
     private record MaterializedInputs(
             CatalogGeneratorSnapshot catalog,
-            VisibleHistorySnapshot history,
-            Set<String> rerollBlockedCodes
+            VisibleHistorySnapshot history
     ) {
     }
 }

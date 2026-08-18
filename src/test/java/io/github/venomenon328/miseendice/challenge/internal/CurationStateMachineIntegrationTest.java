@@ -18,6 +18,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Genera
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartExistingSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -82,7 +83,7 @@ class CurationStateMachineIntegrationTest {
 
         assertThatThrownBy(() -> curationCommands.planRound(new CurationCommands.PlanRound(
                 offered.attemptId(), 2, offeredRound.request().primaryBatchId(),
-                CurationModel.RequestPurpose.TECHNICAL_RETRY, "future-curator", "prompt-v1", 1,
+                CurationModel.RequestPurpose.TECHNICAL_RETRY, "future-curator", OpenAiCuratorPrompt.CURRENT_VERSION, 1,
                 newParticipants(offeredRound)))).isInstanceOf(CurationConflictException.class);
         assertThatThrownBy(() -> curationCommands.recordExhaustion(
                 new CurationCommands.Exhaustion(offered.attemptId(), "NO_GOOD", null)))
@@ -101,7 +102,7 @@ class CurationStateMachineIntegrationTest {
                 .isInstanceOf(CurationConflictException.class);
         assertThatThrownBy(() -> curationCommands.planRound(new CurationCommands.PlanRound(
                 exhausted.attemptId(), 2, exhaustedRound.request().primaryBatchId(),
-                CurationModel.RequestPurpose.TECHNICAL_RETRY, "future-curator", "prompt-v1", 1,
+                CurationModel.RequestPurpose.TECHNICAL_RETRY, "future-curator", OpenAiCuratorPrompt.CURRENT_VERSION, 1,
                 newParticipants(exhaustedRound)))).isInstanceOf(CurationConflictException.class);
     }
 
@@ -150,7 +151,7 @@ class CurationStateMachineIntegrationTest {
         if ("EXHAUSTED".equals(attempt.curationStatus())) {
             assertThatThrownBy(() -> curationCommands.planRound(new CurationCommands.PlanRound(
                     generated.attemptId(), 2, planned.request().primaryBatchId(),
-                    CurationModel.RequestPurpose.TECHNICAL_RETRY, "future-curator", "prompt-v1", 1,
+                    CurationModel.RequestPurpose.TECHNICAL_RETRY, "future-curator", OpenAiCuratorPrompt.CURRENT_VERSION, 1,
                     newParticipants(planned)))).isInstanceOf(CurationConflictException.class);
         }
     }
@@ -178,17 +179,17 @@ class CurationStateMachineIntegrationTest {
         Generated generated = generated(2, 71_100_005L);
         GenerationQueries.BatchView batch = generationQueries.findBatch(generated.attemptId(), 1).orElseThrow();
         assertThatThrownBy(() -> curationCommands.planRound(new CurationCommands.PlanRound(generated.attemptId(), 1,
-                batch.batchId(), CurationModel.RequestPurpose.INITIAL_PASS, "future-curator", "prompt-v1", 2,
+                batch.batchId(), CurationModel.RequestPurpose.INITIAL_PASS, "future-curator", OpenAiCuratorPrompt.CURRENT_VERSION, 2,
                 newParticipants(batch.candidates().subList(0, 11))))).isInstanceOf(CurationConflictException.class);
         assertThatThrownBy(() -> curationCommands.planRound(new CurationCommands.PlanRound(generated.attemptId(), 2,
-                batch.batchId(), CurationModel.RequestPurpose.QUALITY_FOLLOW_UP, "future-curator", "prompt-v1", 1,
+                batch.batchId(), CurationModel.RequestPurpose.QUALITY_FOLLOW_UP, "future-curator", OpenAiCuratorPrompt.CURRENT_VERSION, 1,
                 newParticipants(batch.candidates())))).isInstanceOf(CurationConflictException.class);
 
         PlannedRound first = planInitial(generated);
         curationCommands.completeRound(new CurationCommands.CompleteRound(first.roundId(), response(first, 1)));
         assertThatThrownBy(() -> curationCommands.planRound(new CurationCommands.PlanRound(generated.attemptId(), 2,
                 first.request().primaryBatchId(), CurationModel.RequestPurpose.QUALITY_FOLLOW_UP,
-                "future-curator", "prompt-v1", 1, newParticipants(first))))
+                "future-curator", OpenAiCuratorPrompt.CURRENT_VERSION, 1, newParticipants(first))))
                 .isInstanceOf(CurationConflictException.class);
     }
 
@@ -199,12 +200,12 @@ class CurationStateMachineIntegrationTest {
         curationCommands.recordTechnicalFailure(new CurationCommands.TechnicalFailure(first.roundId(), "TIMEOUT", null));
         PlannedRound retry = (PlannedRound) curationCommands.planRound(new CurationCommands.PlanRound(
                 generated.attemptId(), 2, first.request().primaryBatchId(), CurationModel.RequestPurpose.TECHNICAL_RETRY,
-                "future-curator", "prompt-v1", 2, newParticipants(first)));
+                "future-curator", OpenAiCuratorPrompt.CURRENT_VERSION, 2, newParticipants(first)));
         assertThat(retry.request().candidates()).hasSize(12);
         assertThat(retry.request().openOfferSlots()).isEqualTo(2);
         assertThatThrownBy(() -> new CurationCommands.PlanRound(generated.attemptId(), 3,
                 first.request().primaryBatchId(), CurationModel.RequestPurpose.TECHNICAL_RETRY,
-                "future-curator", "prompt-v1", 2, newParticipants(first)))
+                "future-curator", OpenAiCuratorPrompt.CURRENT_VERSION, 2, newParticipants(first)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -287,7 +288,7 @@ class CurationStateMachineIntegrationTest {
         Generated second = generated(1, 71_100_041L);
         GenerationQueries.BatchView foreignBatch = generationQueries.findBatch(second.attemptId(), 1).orElseThrow();
         assertThatThrownBy(() -> curationCommands.planRound(new CurationCommands.PlanRound(first.attemptId(), 1,
-                foreignBatch.batchId(), CurationModel.RequestPurpose.INITIAL_PASS, "future-curator", "prompt-v1", 1,
+                foreignBatch.batchId(), CurationModel.RequestPurpose.INITIAL_PASS, "future-curator", OpenAiCuratorPrompt.CURRENT_VERSION, 1,
                 newParticipants(foreignBatch.candidates())))).isInstanceOf(CurationConflictException.class);
 
         PlannedRound planned = planInitial(first);
@@ -347,13 +348,12 @@ class CurationStateMachineIntegrationTest {
 
     @Test
     void preservesRequestedOfferCountAndUsesTheCandidateRestrictionContract() {
-        assertThatThrownBy(() -> new StartNewSession(DATE, List.of(), 1L, 0)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new StartNewSession(DATE, List.of(), 1L, 4)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new StartNewSession(DATE, List.of(), 1L, 0, RestrictionMode.AUTO)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new StartNewSession(DATE, List.of(), 1L, 4, RestrictionMode.AUTO)).isInstanceOf(IllegalArgumentException.class);
         Generated generated = generated(3, 71_100_050L);
         PlannedRound planned = planInitial(generated);
-        assertThat(planned.request().promptVersion()).isEqualTo("prompt-v1");
+        assertThat(planned.request().promptVersion()).isEqualTo(OpenAiCuratorPrompt.CURRENT_VERSION);
         assertThat(planned.request().contractVersion()).isEqualTo(CurationModel.CONTRACT_VERSION_V2);
-        assertThat(planned.request().attemptExclusion()).isNull();
         assertThat(planned.request().candidates()).allSatisfy(candidate ->
                 assertThat(candidate.snapshot().restriction()).isNotNull());
 
@@ -375,13 +375,14 @@ class CurationStateMachineIntegrationTest {
     }
 
     private Generated generated(int requestedOfferCount, long seed) {
-        return (Generated) generationCommands.startNewSession(new StartNewSession(DATE, List.of(), seed, requestedOfferCount));
+        return (Generated) generationCommands.startNewSession(new StartNewSession(
+                DATE, List.of(), seed, requestedOfferCount, RestrictionMode.AUTO));
     }
 
     private PlannedRound planInitial(Generated generated) {
         GenerationQueries.BatchView batch = generationQueries.findBatch(generated.attemptId(), 1).orElseThrow();
         return (PlannedRound) curationCommands.planRound(new CurationCommands.PlanRound(generated.attemptId(), 1,
-                batch.batchId(), CurationModel.RequestPurpose.INITIAL_PASS, "future-curator", "prompt-v1",
+                batch.batchId(), CurationModel.RequestPurpose.INITIAL_PASS, "future-curator", OpenAiCuratorPrompt.CURRENT_VERSION,
                 curationQueries.findAttempt(generated.attemptId()).orElseThrow().requestedOfferCount(),
                 newParticipants(batch.candidates())));
     }

@@ -10,6 +10,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.Previ
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.PreviewSuccess;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyCadence;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.SeedSource;
 import java.time.LocalDate;
 import java.util.List;
@@ -57,7 +58,7 @@ class GeneratorLaboratoryIntegrationTest {
 
     @Test void previewIsDeterministicAndWritesNothing() {
         PreviewRequest request = new PreviewRequest(AttemptType.INITIAL, DATE, 37_000_001L,
-                List.of(), HistoryScenario.EMPTY_HISTORY, List.of());
+                List.of(), HistoryScenario.EMPTY_HISTORY, RestrictionMode.AUTO);
         PreviewSuccess first = success(laboratory.preview(request));
         PreviewSuccess second = success(laboratory.preview(request));
 
@@ -72,11 +73,11 @@ class GeneratorLaboratoryIntegrationTest {
 
     @Test void autoSeedAndSyntheticCadenceRemainDiagnosticOnly() {
         PreviewSuccess auto = success(laboratory.preview(new PreviewRequest(AttemptType.INITIAL, DATE, null,
-                List.of(), HistoryScenario.EMPTY_HISTORY, List.of())));
+                List.of(), HistoryScenario.EMPTY_HISTORY, RestrictionMode.AUTO)));
         PreviewSuccess recovery = success(laboratory.preview(new PreviewRequest(AttemptType.INITIAL, DATE,
-                37_000_011L, List.of(), HistoryScenario.RECOVERY_AFTER_ADVENTUROUS, List.of())));
+                37_000_011L, List.of(), HistoryScenario.RECOVERY_AFTER_ADVENTUROUS, RestrictionMode.AUTO)));
         PreviewSuccess seeking = success(laboratory.preview(new PreviewRequest(AttemptType.INITIAL, DATE,
-                37_000_012L, List.of(), HistoryScenario.SEEKING_AFTER_THREE_FAMILIAR, List.of())));
+                37_000_012L, List.of(), HistoryScenario.SEEKING_AFTER_THREE_FAMILIAR, RestrictionMode.AUTO)));
 
         assertThat(auto.metadata().seed()).isEqualTo(FixedSeedSource.SEED);
         assertThat(fixedSeedSource.calls()).isEqualTo(1);
@@ -85,13 +86,11 @@ class GeneratorLaboratoryIntegrationTest {
         assertThat(counts()).containsExactly(0, 0, 0, 0);
     }
 
-    @Test void rerollPreviewIgnoresLegacyHardBlockInputsWithoutCreatingAReroll() {
-        List<Long> ids = jdbcTemplate.queryForList("select id from ingredient_concept "
-                + "where active and random_draw_enabled order by code, id limit 4", Long.class);
+    @Test void rerollPreviewUsesTheCurrentCandidateRestrictionModeWithoutPersistence() {
         PreviewSuccess result = success(laboratory.preview(new PreviewRequest(AttemptType.REROLL, DATE,
-                37_000_021L, List.of(), HistoryScenario.EMPTY_HISTORY, ids)));
+                37_000_021L, List.of(), HistoryScenario.EMPTY_HISTORY, RestrictionMode.REQUIRED)));
 
-        assertThat(result.preparedAttempt().request().rerollBlockedConceptCodes()).isEmpty();
+        assertThat(result.metadata().restrictionMode()).isEqualTo(RestrictionMode.REQUIRED);
         assertThat(counts()).containsExactly(0, 0, 0, 0);
     }
 

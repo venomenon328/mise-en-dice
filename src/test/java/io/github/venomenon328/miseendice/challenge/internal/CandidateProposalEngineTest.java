@@ -8,7 +8,6 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorExclusionRule;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorExclusionTarget;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Specificity;
-import io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.AcceptedProposal;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.ProposalResult;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext;
@@ -156,23 +155,6 @@ class CandidateProposalEngineTest {
     }
 
     @Test
-    void rejectsSelectedExclusionThatDoesNotEqualTheCatalogSnapshot() {
-        CatalogGeneratorSnapshot catalog = catalog(false);
-        GeneratorExclusionRule original = catalog.exclusionRules().getFirst();
-        GeneratorExclusionRule tampered = new GeneratorExclusionRule(
-                original.id(), original.code(), original.displayText(), original.baseDrawWeight(), original.targets(),
-                Set.of("ANIMAL_A"));
-        GenerationContext context = new GenerationContext(AttemptType.INITIAL, LocalDate.of(2026, 8, 12), 8,
-                catalog, VisibleHistorySnapshot.empty(), List.of(), Set.of(), AttemptExclusionDecision.selected(tampered),
-                NoveltyCadence.NEUTRAL,
-                Map.of(NoveltyBand.FAMILIAR, 3, NoveltyBand.BALANCED, 7, NoveltyBand.ADVENTUROUS, 2),
-                configuration, 83L, 1);
-
-        assertThat(engine.validateAndPlan(context).validationErrors())
-                .containsExactly(GeneratorReasonCode.CONTEXT_SNAPSHOT_INVALID);
-    }
-
-    @Test
     void projectedProfilesRequireDistinctDrawableRequirements() {
         CatalogGeneratorSnapshot base = catalog(false);
         Set<String> disabledProduce = Set.of("VEGETABLE_B", "FRUIT_A", "VEGETABLE_OPEN", "FRUIT_OPEN");
@@ -201,31 +183,6 @@ class CandidateProposalEngineTest {
     }
 
     @Test
-    void attemptExclusionStillAppliesWhileLegacyRerollBlockIsIgnored() {
-        CatalogGeneratorSnapshot catalog = catalog(false);
-        GeneratorExclusionRule exclusion = catalog.exclusionRules().getFirst();
-        GenerationContext reroll = new GenerationContext(AttemptType.REROLL, LocalDate.of(2026, 8, 12), 8,
-                catalog, VisibleHistorySnapshot.empty(), List.of(), Set.of("ANIMAL_A"),
-                AttemptExclusionDecision.selected(exclusion), NoveltyCadence.NEUTRAL,
-                Map.of(NoveltyBand.FAMILIAR, 3, NoveltyBand.BALANCED, 7, NoveltyBand.ADVENTUROUS, 2),
-                configuration, 77L, 1);
-
-        assertThat(reroll.rerollBlockedConceptCodes()).isEmpty();
-        boolean sawFormerlyBlockedConcept = false;
-        for (long ordinal = 0; ordinal < 2_000; ordinal++) {
-            if (engine.propose(reroll, ordinal) instanceof AcceptedProposal accepted) {
-                List<String> randomCodes = accepted.requirements().stream()
-                        .filter(requirement -> requirement.source() == RequirementSource.RANDOM)
-                        .map(requirement -> requirement.concept().code())
-                        .toList();
-                assertThat(randomCodes).doesNotContain("SEASONING_A");
-                sawFormerlyBlockedConcept |= randomCodes.contains("ANIMAL_A");
-            }
-        }
-        assertThat(sawFormerlyBlockedConcept).isTrue();
-    }
-
-    @Test
     void rerolledVisibleExposureBlocksOnlyTheExactConceptAndNotItsDescendant() {
         CatalogGeneratorSnapshot base = catalog(false);
         GeneratorConcept parent = base.conceptByCode("VEGETABLE_OPEN").orElseThrow();
@@ -244,10 +201,8 @@ class CandidateProposalEngineTest {
                 Instant.parse("2026-08-11T18:00:00Z"), "reroll-session", "rerolled-offer-set",
                 List.of(visibleRequirement("VEGETABLE_OPEN"), visibleRequirement("OLD_A"),
                         visibleRequirement("OLD_B"), visibleRequirement("OLD_C")))));
-        GenerationContext reroll = new GenerationContext(AttemptType.REROLL, LocalDate.of(2026, 8, 12), 8,
-                related, history, List.of(), Set.of(), AttemptExclusionDecision.none(), NoveltyCadence.NEUTRAL,
-                Map.of(NoveltyBand.FAMILIAR, 3, NoveltyBand.BALANCED, 7, NoveltyBand.ADVENTUROUS, 2),
-                configuration, 7788L, 1);
+        GenerationContext reroll = preparedContext(new DefaultCandidateReservoirEngine(engine), configuration,
+                related, List.of(), RestrictionMode.NONE, 7788L, history);
 
         boolean sawDescendant = false;
         for (long ordinal = 0; ordinal < 2_000; ordinal++) {
@@ -317,7 +272,6 @@ class CandidateProposalEngineTest {
 
         GenerationContext none = preparedContext(reservoir, version12, catalog, List.of(), RestrictionMode.NONE, 912L);
         GenerationContext required = preparedContext(reservoir, version12, catalog, List.of(), RestrictionMode.REQUIRED, 912L);
-        assertThat(required.exclusionDecision()).isEqualTo(AttemptExclusionDecision.none());
 
         AcceptedProposal unrestricted = null;
         AcceptedProposal restricted = null;
@@ -354,7 +308,7 @@ class CandidateProposalEngineTest {
         GenerationContext immediateReroll = preparedContext(reservoir, version12, catalog, List.of(),
                 RestrictionMode.REQUIRED, 914L, rerollHistory);
         assertThat(immediateReroll.noveltyCadence()).isEqualTo(NoveltyCadence.NEUTRAL);
-        assertThat(immediateReroll.exclusionRuleEvaluations().getFirst().diagnostics())
+        assertThat(immediateReroll.restrictionRuleEvaluations().getFirst().diagnostics())
                 .contains(GeneratorReasonCode.EXCLUSION_RULE_REPEAT_BLOCKED);
         assertThat(version12Engine.propose(immediateReroll, 0)).isInstanceOf(
                 io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.RejectedProposal.class);
@@ -369,11 +323,8 @@ class CandidateProposalEngineTest {
     }
 
     private GenerationContext context(CatalogGeneratorSnapshot catalog, List<ManualRequirement> manuals, long seed) {
-        return new GenerationContext(AttemptType.INITIAL, LocalDate.of(2026, 8, 12), 8, catalog,
-                VisibleHistorySnapshot.empty(), manuals, Set.of(), AttemptExclusionDecision.none(),
-                NoveltyCadence.NEUTRAL,
-                Map.of(NoveltyBand.FAMILIAR, 3, NoveltyBand.BALANCED, 7, NoveltyBand.ADVENTUROUS, 2),
-                configuration, seed, 1);
+        return preparedContext(new DefaultCandidateReservoirEngine(engine), configuration, catalog, manuals,
+                RestrictionMode.AUTO, seed);
     }
 
     private GenerationContext preparedContext(
@@ -397,8 +348,7 @@ class CandidateProposalEngineTest {
             VisibleHistorySnapshot history
     ) {
         GenerationAttemptRequest request = new GenerationAttemptRequest(AttemptType.INITIAL,
-                LocalDate.of(2026, 8, 12), 8, catalog, history, manuals, Set.of(),
-                configuration, seed, mode);
+                LocalDate.of(2026, 8, 12), 8, catalog, history, manuals, configuration, seed, mode);
         return reservoir.contextForBatch(reservoir.prepare(request), 1);
     }
 

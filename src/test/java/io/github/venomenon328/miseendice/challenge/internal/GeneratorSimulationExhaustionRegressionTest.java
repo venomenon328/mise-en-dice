@@ -13,9 +13,9 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.Histo
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.FallbackLevel;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyBand;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation;
-import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.ExclusionVariant;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SeedRange;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SimulationRequest;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SimulationScenario;
@@ -58,7 +58,6 @@ class GeneratorSimulationExhaustionRegressionTest {
     @Autowired CandidateReservoirEngine reservoirEngine;
     @Autowired CandidateSetEngine setEngine;
     @Autowired GeneratorProperties generatorProperties;
-    @Autowired ObjectMapper objectMapper;
     @Autowired PlatformTransactionManager transactionManager;
 
     @Test
@@ -80,9 +79,8 @@ class GeneratorSimulationExhaustionRegressionTest {
                 HistoryScenario.EMPTY_HISTORY,
                 AttemptType.INITIAL,
                 List.of(),
-                Set.of(),
                 1,
-                ExclusionVariant.DEFAULT);
+                RestrictionMode.AUTO);
 
         GeneratorSimulation.SimulationReport report = simulation.simulate(new SimulationRequest(
                 "EXHAUSTION_REGRESSION_V1", List.of(scenario), 2, GeneratorSimulation.SimulationControl.unbounded()));
@@ -131,9 +129,8 @@ class GeneratorSimulationExhaustionRegressionTest {
                 HistoryScenario.EMPTY_HISTORY,
                 AttemptType.INITIAL,
                 List.of(),
-                Set.of(),
                 1,
-                ExclusionVariant.DEFAULT);
+                RestrictionMode.AUTO);
 
         GeneratorSimulation.SimulationReport report = simulation.simulate(new SimulationRequest(
                 "STRICT_NOVELTY_QUOTA_REGRESSION_V1", List.of(scenario), 1,
@@ -147,6 +144,6 @@ class GeneratorSimulationExhaustionRegressionTest {
 
     private GeneratorSimulation simulationWith(CandidateSetEngine scriptedSetEngine) {
         return new GeneratorSimulationService(catalogProjection, repository, reservoirEngine, scriptedSetEngine,
-                generatorProperties, objectMapper, transactionManager);
+                generatorProperties, transactionManager);
     }
 }

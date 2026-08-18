@@ -59,9 +59,8 @@ Die Umstellung ist replayrelevant und erfordert eine neue Generator-Minorversion
 
 Für neue Läufe gilt ausschließlich die kandidatenspezifische Semantik dieses Dokuments.
 
-Historische Generatorversionen `1.0.x` und `1.1.x` behalten ihre persistierte attempt-weite Ausschlussentscheidung. Sie werden nicht nachträglich auf Kandidaten verteilt oder umgedeutet. Bestehende Snapshotfelder dürfen für historisches Replay lesbar bleiben.
-
-Mindestens ein historisches 1.1-Replay-Fixture muss unverändert bleiben; neue 1.2-Fixtures reproduzieren Restriction Mode und kandidatenspezifische Entscheidungen vollständig.
+Andere Generatorversionen und attempt-weite Ausschlussentscheidungen werden nicht unterstützt. Aktuelle 1.2-Fixtures
+reproduzieren Restriction Mode und kandidatenspezifische Entscheidungen vollständig.
 
 ## 6. Kuratorvertrag
 
@@ -123,7 +122,8 @@ Die bestätigte Challenge zeigt denselben Snapshot erneut. Mehrere Offers dürfe
 Die Umstellung erfolgt bewusst in zwei Paketen:
 
 1. **Phase 12B.5A / #93 – Core lifecycle:** Generator, Versionierung, Persistenz, Curation Contract, Offer-/Challenge-Snapshots und History-/REROLL-Wirkung.
-2. **Phase 12B.5B / #94 – Discord:** Command-Option, Darstellung und dünne Adapterintegration.
+2. **Phase 12B.5A.1 / #97 – Cleanup:** Entfernt die vorigen Generator- und Curation-Kompatibilitätspfade; nur die 1.2-Semantik bleibt.
+3. **Phase 12B.5B / #94 – Discord:** Command-Option, Darstellung und dünne Adapterintegration.
 
 Erst danach wird Phase 12C / #88 fortgesetzt. Die dortige Live-Matrix soll die endgültige Restriktionssemantik testen und keine anschließend obsolet werdenden Multi-Offer-/REROLL-Flows abnehmen.
 

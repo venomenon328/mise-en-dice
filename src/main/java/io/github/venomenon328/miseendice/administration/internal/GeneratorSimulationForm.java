@@ -3,8 +3,8 @@ package io.github.venomenon328.miseendice.administration.internal;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.HistoryScenario;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation;
-import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.ExclusionVariant;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.ManualInput;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SeedRange;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SimulationControl;
@@ -17,7 +17,6 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import org.springframework.util.MultiValueMap;
 
 /** Web-only input contract for the bounded administration simulation. */
@@ -28,6 +27,7 @@ record GeneratorSimulationForm(
         String monthCount,
         String attemptType,
         String historyScenario,
+        String restrictionMode,
         String manual1Text,
         String manual1ConceptId,
         String manual2Text,
@@ -35,18 +35,18 @@ record GeneratorSimulationForm(
 ) {
     static final int MAXIMUM_CASES = 64;
     private static final int MAXIMUM_MONTHS = 12;
-    private static final String SCENARIO_VERSION = "ADMIN_GENERATOR_SIMULATION_V1";
+    private static final String SCENARIO_VERSION = "ADMIN_GENERATOR_SIMULATION_1_2";
 
     static GeneratorSimulationForm defaults() {
         return new GeneratorSimulationForm("", "1", LocalDate.now().toString(), "1", "INITIAL",
-                "PRODUCTION_VISIBLE", "", "", "", "");
+                "PRODUCTION_VISIBLE", "AUTO", "", "", "", "");
     }
 
     static GeneratorSimulationForm from(MultiValueMap<String, String> values) {
         return new GeneratorSimulationForm(
                 text(values, "startSeed"), text(values, "seedCount"), text(values, "effectiveStartDate"),
                 text(values, "monthCount"), text(values, "attemptType"), text(values, "historyScenario"),
-                text(values, "manual1Text"), text(values, "manual1ConceptId"),
+                text(values, "restrictionMode"), text(values, "manual1Text"), text(values, "manual1ConceptId"),
                 text(values, "manual2Text"), text(values, "manual2ConceptId"));
     }
 
@@ -60,6 +60,8 @@ record GeneratorSimulationForm(
         LocalDate firstDate = date(effectiveStartDate);
         AttemptType type = enumValue(AttemptType.class, attemptType, "Attempt-Typ");
         HistoryScenario history = enumValue(HistoryScenario.class, historyScenario, "Historienszenario");
+        RestrictionMode mode = restrictionMode.isBlank() ? RestrictionMode.AUTO
+                : enumValue(RestrictionMode.class, restrictionMode, "Restriktionsmodus");
 
         List<ManualInput> manuals = manualInputs(catalogQueries);
         List<SimulationScenario> scenarios = new ArrayList<>(months);
@@ -72,9 +74,8 @@ record GeneratorSimulationForm(
                     history,
                     type,
                     manuals,
-                    Set.of(),
                     1,
-                    ExclusionVariant.DEFAULT));
+                    mode));
         }
         return new SimulationRequest(
                 SCENARIO_VERSION,

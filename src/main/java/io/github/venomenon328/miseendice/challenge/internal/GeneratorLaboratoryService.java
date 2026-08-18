@@ -22,7 +22,6 @@ import io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt
 import io.github.venomenon328.miseendice.challenge.api.SeedSource;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
 import java.util.List;
-import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -103,12 +102,12 @@ class GeneratorLaboratoryService implements GeneratorLaboratory {
 
         GeneratorConfiguration configuration = properties.configuration();
         GeneratorRunExecution.Result execution = GeneratorRunExecution.execute(new GeneratorRunExecution.Input(
-                request.attemptType(), request.effectiveDate(), seed, manuals, Set.of(), inputs.catalog(),
-                inputs.history(), PREVIEW_BATCH_NUMBER), configuration, reservoirEngine, candidateSetEngine);
+                request.attemptType(), request.effectiveDate(), seed, manuals, inputs.catalog(), inputs.history(),
+                PREVIEW_BATCH_NUMBER, request.restrictionMode()), configuration, reservoirEngine, candidateSetEngine);
         PreparedGenerationAttempt prepared = execution.preparedAttempt();
         CandidateSetEngine.CandidateSetResult generated = execution.candidateSet();
         PreviewMetadata metadata = new PreviewMetadata(seed, request.effectiveDate(), month, request.attemptType(),
-                request.historyScenario(), SCENARIO_VERSION, configuration.generatorVersion(),
+                request.restrictionMode(), request.historyScenario(), SCENARIO_VERSION, configuration.generatorVersion(),
                 configuration.configurationVersion(), configuration.rngAlgorithm().name(),
                 configuration.canonicalPayloadVersion());
         String preparedJson = repository.snapshotCodec().json(prepared);

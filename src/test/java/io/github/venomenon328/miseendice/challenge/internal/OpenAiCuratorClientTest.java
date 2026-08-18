@@ -100,18 +100,18 @@ class OpenAiCuratorClientTest {
 
     @Test
     void candidateSpecificRestrictionUsesTheVersionedV2PromptAndContract() throws Exception {
-        CurationRequest.Candidate v1Candidate = candidate(101, 1);
-        CurationRequest.CandidateSnapshot v1Snapshot = v1Candidate.snapshot();
-        CurationRequest.CandidateSnapshot v2Snapshot = new CurationRequest.CandidateSnapshot(
-                v1Snapshot.candidateNumber(), v1Snapshot.profile(), v1Snapshot.targetSpecificity(),
-                v1Snapshot.targetNoveltyBand(), v1Snapshot.actualNoveltyBand(), v1Snapshot.knownNoveltyLoad(),
-                v1Snapshot.totalScore(), v1Snapshot.dataConfidence(), v1Snapshot.canonicalSignature(),
-                v1Snapshot.componentScoresJson(), v1Snapshot.generatorReasonCodesJson(),
-                v1Snapshot.generatorDiagnosticsJson(), v1Snapshot.requirements(),
+        CurationRequest.Candidate candidate = candidate(101, 1);
+        CurationRequest.CandidateSnapshot snapshot = candidate.snapshot();
+        CurationRequest.CandidateSnapshot restrictedSnapshot = new CurationRequest.CandidateSnapshot(
+                snapshot.candidateNumber(), snapshot.profile(), snapshot.targetSpecificity(),
+                snapshot.targetNoveltyBand(), snapshot.actualNoveltyBand(), snapshot.knownNoveltyLoad(),
+                snapshot.totalScore(), snapshot.dataConfidence(), snapshot.canonicalSignature(),
+                snapshot.componentScoresJson(), snapshot.generatorReasonCodesJson(),
+                snapshot.generatorDiagnosticsJson(), snapshot.requirements(),
                 new CandidateRestriction(8L, "NO_SMOKE", "No smoked ingredients"));
         CurationRequest request = new CurationRequest(CurationModel.CONTRACT_VERSION_V2,
-                OpenAiCuratorPrompt.VERSION_V2, 11, 22, 33, 1, 1, null,
-                List.of(new CurationRequest.Candidate(101, 1, CurationModel.Participation.NEW, null, v2Snapshot)));
+                OpenAiCuratorPrompt.CURRENT_VERSION, 11, 22, 33, 1, 1,
+                List.of(new CurationRequest.Candidate(101, 1, CurationModel.Participation.NEW, null, restrictedSnapshot)));
 
         CuratorClient.PreparedDispatch prepared = client(Duration.ofSeconds(2)).prepare("gpt-5.6-terra", request);
         Map<String, Object> payload = objectMapper.readValue(prepared.requestPayload(), new TypeReference<>() { });
@@ -256,7 +256,7 @@ class OpenAiCuratorClientTest {
                     rank == 1 ? CurationModel.Evaluation.GOOD : CurationModel.Evaluation.ACCEPTABLE,
                     rank++, List.of("CULINARY_COHERENCE_STRONG"), diagnostics()));
         }
-        String output = objectMapper.writeValueAsString(new CurationResponse(CurationModel.CONTRACT_VERSION,
+        String output = objectMapper.writeValueAsString(new CurationResponse(CurationModel.CURRENT_CONTRACT_VERSION,
                 request.attemptId(), request.roundId(), request.primaryBatchId(), evaluations));
         return json(Map.of("id", "resp_test", "status", "completed", "output", List.of(
                         Map.of("type", "message", "content", List.of(Map.of("type", "output_text", "text", output)))),
@@ -266,8 +266,8 @@ class OpenAiCuratorClientTest {
 
     private CurationRequest request() {
         List<CurationRequest.Candidate> candidates = List.of(candidate(101, 1), candidate(102, 2));
-        return new CurationRequest(CurationModel.CONTRACT_VERSION, OpenAiCuratorPrompt.VERSION,
-                11, 22, 33, 2, 2, new CurationRequest.AttemptExclusion(null, null), candidates);
+        return new CurationRequest(CurationModel.CURRENT_CONTRACT_VERSION, OpenAiCuratorPrompt.CURRENT_VERSION,
+                11, 22, 33, 2, 2, candidates);
     }
 
     private CurationRequest.Candidate candidate(long id, int position) {
@@ -277,7 +277,7 @@ class OpenAiCuratorClientTest {
                 .toList();
         var snapshot = new CurationRequest.CandidateSnapshot(position, "FLEXIBLE_BALANCED", 4, "BALANCED",
                 "BALANCED", 4, BigDecimal.valueOf(70), BigDecimal.ONE, "signature-" + position,
-                "{}", "[]", "{}", requirements);
+                "{}", "[]", "{}", requirements, CandidateRestriction.none());
         return new CurationRequest.Candidate(id, position, CurationModel.Participation.NEW, null, snapshot);
     }
 

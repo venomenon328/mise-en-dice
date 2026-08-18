@@ -20,8 +20,8 @@ class GeneratorConfigurationModule {
     }
 
     @Bean
-    CandidateReservoirEngine candidateReservoirEngine(ObjectMapper objectMapper) {
-        return new VersionedCandidateReservoirEngine(objectMapper);
+    CandidateReservoirEngine candidateReservoirEngine(CandidateProposalEngine candidateProposalEngine) {
+        return new DefaultCandidateReservoirEngine(candidateProposalEngine);
     }
 
     @Bean

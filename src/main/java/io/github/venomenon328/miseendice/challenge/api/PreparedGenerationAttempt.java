@@ -16,13 +16,12 @@ public record PreparedGenerationAttempt(
         GenerationAttemptRequest request,
         NoveltyCadence noveltyCadence,
         Map<NoveltyBand, Integer> baselineNoveltyTargets,
-        AttemptExclusionDecision exclusionDecision,
-        List<ExclusionRuleEvaluation> exclusionRuleEvaluations,
+        List<RestrictionRuleEvaluation> restrictionRuleEvaluations,
         List<GeneratorReasonCode> diagnostics
 ) {
     public PreparedGenerationAttempt {
         if (request == null || noveltyCadence == null || baselineNoveltyTargets == null
-                || exclusionDecision == null || exclusionRuleEvaluations == null || diagnostics == null) {
+                || restrictionRuleEvaluations == null || diagnostics == null) {
             throw new IllegalArgumentException("Prepared attempt fields must not be null");
         }
         EnumMap<NoveltyBand, Integer> targets = new EnumMap<>(NoveltyBand.class);
@@ -34,7 +33,7 @@ public record PreparedGenerationAttempt(
             throw new IllegalArgumentException("Baseline novelty targets must cover all bands and sum to set size");
         }
         baselineNoveltyTargets = Collections.unmodifiableMap(targets);
-        exclusionRuleEvaluations = exclusionRuleEvaluations.stream()
+        restrictionRuleEvaluations = restrictionRuleEvaluations.stream()
                 .sorted((left, right) -> GeneratorExclusionRule.CANONICAL_ORDER.compare(left.rule(), right.rule()))
                 .toList();
         diagnostics = canonicalDiagnostics(diagnostics);
@@ -46,14 +45,14 @@ public record PreparedGenerationAttempt(
         return List.copyOf(ordered);
     }
 
-    public record ExclusionRuleEvaluation(
+    public record RestrictionRuleEvaluation(
             GeneratorExclusionRule rule,
             BigDecimal repetitionFactor,
             BigDecimal effectiveWeight,
             long quantizedWeight,
             List<GeneratorReasonCode> diagnostics
     ) {
-        public ExclusionRuleEvaluation {
+        public RestrictionRuleEvaluation {
             if (rule == null || repetitionFactor == null || effectiveWeight == null || quantizedWeight < 0) {
                 throw new IllegalArgumentException("Exclusion rule evaluation fields are invalid");
             }

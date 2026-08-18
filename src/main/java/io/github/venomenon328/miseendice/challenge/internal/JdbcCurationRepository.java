@@ -34,8 +34,7 @@ class JdbcCurationRepository {
         return jdbcTemplate.query("""
                 select attempt.id, attempt.challenge_session_id, session.requested_offer_count,
                        attempt.status, attempt.curation_status, attempt.curation_terminal_reason_code,
-                       attempt.curation_terminal_detail, attempt.exclusion_rule_id, attempt.exclusion_text_snapshot,
-                       attempt.generator_version
+                       attempt.curation_terminal_detail, attempt.generator_version
                 from generation_attempt attempt
                 join challenge_session session on session.id = attempt.challenge_session_id
                 where attempt.id = ? for update
@@ -306,8 +305,7 @@ class JdbcCurationRepository {
         Attempt attempt = jdbcTemplate.query("""
                 select attempt.id, attempt.challenge_session_id, session.requested_offer_count,
                        attempt.status, attempt.curation_status, attempt.curation_terminal_reason_code,
-                       attempt.curation_terminal_detail, attempt.exclusion_rule_id, attempt.exclusion_text_snapshot,
-                       attempt.generator_version
+                       attempt.curation_terminal_detail, attempt.generator_version
                 from generation_attempt attempt join challenge_session session on session.id = attempt.challenge_session_id
                 where attempt.id = ?
                 """, this::mapAttempt, attemptId).stream().findFirst().orElseThrow();
@@ -435,7 +433,6 @@ class JdbcCurationRepository {
         return new Attempt(result.getLong("id"), result.getLong("challenge_session_id"),
                 result.getInt("requested_offer_count"), result.getString("status"), result.getString("curation_status"),
                 result.getString("curation_terminal_reason_code"), result.getString("curation_terminal_detail"),
-                (Long) result.getObject("exclusion_rule_id"), result.getString("exclusion_text_snapshot"),
                 result.getString("generator_version"));
     }
 
@@ -468,8 +465,7 @@ class JdbcCurationRepository {
     }
 
     record Attempt(long id, long sessionId, int requestedOfferCount, String generationStatus, String curationStatus,
-                   String terminalReasonCode, String terminalDetail, Long exclusionRuleId, String exclusionTextSnapshot,
-                   String generatorVersion) {
+                   String terminalReasonCode, String terminalDetail, String generatorVersion) {
     }
 
     record Batch(long id, long attemptId, int batchNumber, String status, boolean legacyMigrated) {

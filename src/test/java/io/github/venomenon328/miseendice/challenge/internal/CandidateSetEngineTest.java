@@ -10,7 +10,6 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.CatalogGeneratorSnapshot;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Specificity;
-import io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.AcceptedProposal;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine.GeneratedReservoir;
@@ -192,11 +191,12 @@ class CandidateSetEngineTest {
 
     private PreparedGenerationAttempt prepared(Fixture fixture, long seed) {
         GenerationAttemptRequest request = new GenerationAttemptRequest(AttemptType.INITIAL,
-                LocalDate.of(2026, 8, 12), 8, fixture.catalog(), VisibleHistorySnapshot.empty(), List.of(), Set.of(),
-                fixture.configuration(), seed);
+                LocalDate.of(2026, 8, 12), 8, fixture.catalog(), VisibleHistorySnapshot.empty(), List.of(),
+                fixture.configuration(), seed,
+                io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode.AUTO);
         return new PreparedGenerationAttempt(request, NoveltyCadence.NEUTRAL,
                 fixture.configuration().cadenceSetTargets().get(NoveltyCadence.NEUTRAL),
-                AttemptExclusionDecision.none(), List.of(), List.of(GeneratorReasonCode.NOVELTY_CADENCE_NEUTRAL));
+                List.of(), List.of(GeneratorReasonCode.NOVELTY_CADENCE_NEUTRAL));
     }
 
     private Fixture fixture(int size, java.util.function.IntFunction<BigDecimal> score, Availability availability) {
@@ -277,9 +277,9 @@ class CandidateSetEngineTest {
             GenerationAttemptRequest request = preparedAttempt.request();
             return new GenerationContext(request.attemptType(), request.effectiveDate(), request.seasonMonth(),
                     request.catalog(), request.visibleHistory(), request.manualRequirements(),
-                    request.rerollBlockedConceptCodes(), preparedAttempt.exclusionDecision(),
                     preparedAttempt.noveltyCadence(), preparedAttempt.baselineNoveltyTargets(),
-                    request.configuration(), request.attemptSeed(), batchNumber);
+                    request.configuration(), request.attemptSeed(), batchNumber, request.restrictionMode(),
+                    preparedAttempt.restrictionRuleEvaluations());
         }
 
         @Override

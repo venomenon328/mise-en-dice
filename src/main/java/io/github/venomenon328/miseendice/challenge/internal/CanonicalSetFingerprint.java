@@ -1,9 +1,6 @@
 package io.github.venomenon328.miseendice.challenge.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
-import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorExclusionRule;
-import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorExclusionTarget;
-import io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.AcceptedProposal;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.RequirementSnapshot;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.WeightEvaluation;
@@ -48,16 +45,11 @@ final class CanonicalSetFingerprint {
             List<GeneratorReasonCode> diagnostics
     ) {
         Map<String, Object> payload = sortedMap();
-        boolean candidateSpecificRestrictions = reservoir.context().configuration().generatorVersion().equals("1.2.0");
-        if (candidateSpecificRestrictions) {
-            payload.put("restrictionMode", reservoir.context().restrictionMode().name());
-        } else {
-            payload.put("attemptExclusionDecision", exclusion(reservoir.context().exclusionDecision()));
-        }
+        payload.put("restrictionMode", reservoir.context().restrictionMode().name());
         payload.put("batchNumber", batchNumber);
         payload.put("batchSeed", batchSeed);
         payload.put("candidates", candidates.stream()
-                .map(candidate -> candidate(candidate, candidateSpecificRestrictions)).toList());
+                .map(CanonicalSetFingerprint::candidate).toList());
         payload.put("canonicalPayloadVersion", reservoir.context().configuration().canonicalPayloadVersion());
         payload.put("configurationVersion", nfc(reservoir.context().configuration().configurationVersion()));
         payload.put("diagnostics", reasonCodes(diagnostics));
@@ -202,7 +194,7 @@ final class CanonicalSetFingerprint {
         return value;
     }
 
-    private static Map<String, Object> candidate(AcceptedProposal candidate, boolean candidateSpecificRestrictions) {
+    private static Map<String, Object> candidate(AcceptedProposal candidate) {
         Map<String, Object> value = sortedMap();
         value.put("canonicalSignature", nfc(candidate.canonicalSignature()));
         value.put("diagnostics", reasonCodes(candidate.diagnostics()));
@@ -218,12 +210,10 @@ final class CanonicalSetFingerprint {
         value.put("evaluation", evaluation);
         value.put("profile", candidate.profile().name());
         value.put("proposalOrdinal", candidate.proposalOrdinal());
-        if (candidateSpecificRestrictions) {
-            value.put("restriction", candidate.restriction().ruleCode() == null ? null : Map.of(
-                    "ruleCode", nfc(candidate.restriction().ruleCode()),
-                    "ruleId", candidate.restriction().ruleId(),
-                    "textSnapshot", nfc(candidate.restriction().textSnapshot())));
-        }
+        value.put("restriction", candidate.restriction().ruleCode() == null ? null : Map.of(
+                "ruleCode", nfc(candidate.restriction().ruleCode()),
+                "ruleId", candidate.restriction().ruleId(),
+                "textSnapshot", nfc(candidate.restriction().textSnapshot())));
         value.put("requirements", candidate.requirements().stream()
                 .sorted(Comparator.comparingInt(RequirementSnapshot::position))
                 .map(CanonicalSetFingerprint::requirement).toList());
@@ -303,33 +293,6 @@ final class CanonicalSetFingerprint {
         value.put("rejectionsByReason", enumMap(attempt.rejectionsByReason()));
         value.put("selectedSignatures", attempt.selectedSignatures().stream()
                 .map(CanonicalSetFingerprint::nfc).toList());
-        return value;
-    }
-
-    private static Map<String, Object> exclusion(AttemptExclusionDecision decision) {
-        Map<String, Object> value = sortedMap();
-        if (decision instanceof AttemptExclusionDecision.None) {
-            value.put("type", "NONE");
-            return value;
-        }
-        GeneratorExclusionRule rule = ((AttemptExclusionDecision.Selected) decision).rule();
-        value.put("baseDrawWeight", rule.baseDrawWeight());
-        value.put("code", nfc(rule.code()));
-        value.put("displayText", nfc(rule.displayText()));
-        value.put("expandedTargetCodes", strings(rule.expandedTargetCodes()));
-        value.put("id", rule.id());
-        value.put("targets", rule.targets().stream()
-                .sorted(Comparator.comparing(GeneratorExclusionTarget::conceptCode)
-                        .thenComparingLong(GeneratorExclusionTarget::conceptId))
-                .map(target -> {
-            Map<String, Object> item = sortedMap();
-            item.put("conceptCode", nfc(target.conceptCode()));
-            item.put("conceptId", target.conceptId());
-            item.put("displayName", nfc(target.displayName()));
-            item.put("includeRefinements", target.includeRefinements());
-            return item;
-        }).toList());
-        value.put("type", "SELECTED");
         return value;
     }
 
