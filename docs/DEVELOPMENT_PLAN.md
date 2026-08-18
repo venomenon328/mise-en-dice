@@ -526,6 +526,30 @@ Issue #83 ergänzt die kleine öffentliche `ChallengeOfferPreparationCommands`-F
 - ein Vote, eine Entscheidung oder ein Reroll wird niemals außerhalb der 11A-/11B-Application-Services persistiert,
 - die in 11A garantierte Offer-Autorität, exakte Cooldown-Exposition und Confirm-vs.-Reroll-Serialisierung bleiben unverändert.
 
+## Phase 12: Produktionsnahe Live-Validierung und privater Pilot
+
+Phase 12 ergänzt keine Challenge-Fachfunktion. Sie validiert den nach Phase 11 nutzbaren Kern mit einer festen,
+serverseitigen Acceptance-Instanz, getrennten Providersecrets und nachvollziehbarer manueller Evidenz. Echte
+Discord- und OpenAI-Aufrufe bleiben ausdrücklich außerhalb von CI, Maven-Tests, Previews und Smokes.
+
+### Phase 12A: Isolierte Live-Acceptance und Secret-Härtung (Issue #86)
+
+- festes Compose-Projekt `med-acceptance`, eigener Loopback-Port, eigener Instanzordner und eigenes PostgreSQL-Volume,
+- ausschließlich `runtime/acceptance.properties` für Acceptance-Testbot und Acceptance-OpenAI-Projektkey,
+- Produktion behält `discord.properties` und kann zusätzlich `openai.properties` nutzen; keine Instanz erhält die
+  Properties eines anderen Instanztyps,
+- explizit providerfreie Preview- und Smoke-Konfiguration sowie `production`-Profil nur für Produktion und Acceptance,
+- Preflight, sichere Diagnose, Acceptance-Backup, read-only SQL und bestätigungspflichtiger Acceptance-Reset,
+- Runbook, Evidenztemplate und Kosten-/Latenzprotokoll unter [`PRODUCTION_VALIDATION.md`](PRODUCTION_VALIDATION.md),
+- Offline-Tests für Secret-Isolation, Port-/Projekt-/Volume-Trennung, Legacy-Runtime und Reset; keine Live-Providercalls.
+
+### Phase 12B–12E: Manuelle Inbetriebnahme, Abnahme und Pilot (Issues #87–#90)
+
+Die folgenden Pakete führen erst nach der isolierten 12A-Basis manuelle Discord-/OpenAI-Smokes, die vollständigen
+1..3-Offer- und Voting-Flows, Restart-/Recovery-/Backup-Szenarien sowie den privaten Produktionspilot durch. P0- oder
+P1-Befunde stoppen diese Folge bis zu einem separaten Fix. Die gemeinsame Evidenzregel bleibt: keine Tokens, API-Keys,
+vollständigen Authorization-Header oder unredigierten Runtime-Dateien dokumentieren.
+
 Persönliche Konkretisierungen, Zusatz-Zutaten, Grundpläne und Ergebnisdokumentation folgen in späteren Paketen.
 
 ## Bewusste Nicht-Ziele der nahen Pakete

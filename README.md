@@ -2,7 +2,7 @@
 
 ## Discord-Adapter
 
-Der Challenge-Bot ist standardmäßig deaktiviert (`mise-en-dice.discord.enabled=false`). Für den produktiven Betrieb werden außerhalb des Git-Checkouts ein Bot-Token, genau eine Guild-ID und stabile Discord-User-IDs für `GEORGIA` und `TOBIAS` konfiguriert. Lokale Starts und Branch-Previews bleiben ohne Token und Gateway; Details stehen in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Der Challenge-Bot ist standardmäßig deaktiviert (`mise-en-dice.discord.enabled=false`). Für Produktion und die feste serverseitige Acceptance-Instanz liegen getrennte Bot- und OpenAI-Secrets ausschließlich außerhalb des Git-Checkouts. Lokale Starts, Branch-Previews und Smoke-Läufe bleiben ohne Token, API-Key und Gateway; Details stehen in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) und [docs/PRODUCTION_VALIDATION.md](docs/PRODUCTION_VALIDATION.md).
 
 **Mise en Dice** ist ein privates Tool für kuratierte Koch-Challenges zwischen zwei Personen.
 
@@ -69,9 +69,13 @@ Nach der einmaligen Initialisierung sind die wichtigsten Befehle:
 
 # Produktion mit frischem Smoke-System und vorherigem Backup aktualisieren
 ./deploy/mise-en-dice.sh production deploy main
+
+# Getrennte Live-Acceptance mit Testbot und Testprojekt prüfen
+./deploy/mise-en-dice.sh acceptance preflight
+./deploy/mise-en-dice.sh acceptance deploy main
 ```
 
-Jede Preview verwendet ein eigenes Compose-Projekt, einen automatisch gewählten Loopback-Port und ein eigenes PostgreSQL-Volume. Produktion und Previews veröffentlichen niemals einen Datenbankport; der App-Port bindet ausschließlich an `127.0.0.1`. Die vollständige Erstinstallation, SSH-Tunnel, Caddy, Logs, Backup und Restore stehen in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+Jede Preview verwendet ein eigenes Compose-Projekt, einen automatisch gewählten Loopback-Port und ein eigenes PostgreSQL-Volume. Produktion (`med-production`), Acceptance (`med-acceptance`) und Previews teilen weder Datenbankvolumes noch Discord-/OpenAI-Properties. Kein Typ veröffentlicht einen Datenbankport; der App-Port bindet ausschließlich an `127.0.0.1`. Die vollständige Erstinstallation, SSH-Tunnel, Caddy, Logs, Backup und Restore stehen in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md); die kontrollierte Live-Abnahme in [`docs/PRODUCTION_VALIDATION.md`](docs/PRODUCTION_VALIDATION.md).
 
 Alle Datenbanktests verwenden PostgreSQL 17 in Testcontainers; H2, JPA und Hibernate sind nicht Bestandteil des Builds:
 
@@ -119,4 +123,4 @@ Der finale aktive Katalogstand umfasst **698 Zutatenkonzepte**, davon **651 zuf�
 
 ## Status
 
-Produktvision, Datenmodell, Anwendungsfundament, finaler Zutatenkatalog, vollständige Katalogadministration und der reproduzierbare Kandidatengenerator einschließlich Persistenz, Replay, Labor und Kalibrierung sind umgesetzt. Phase 10 ergänzt den transportneutralen Kuratorvertrag, den persistenten Multi-Offer-Lifecycle und die strikt auf höchstens zwei tatsächliche Requests begrenzte OpenAI-Orchestrierung bis zum kuratierten, noch nicht präsentierten Offer Set. Der Adapter ist standardmäßig deaktiviert; produktiv werden mindestens `SPRING_PROFILES_ACTIVE=production`, `MISE_EN_DICE_OPENAI_ENABLED=true` und `OPENAI_API_KEY` gesetzt. Eine Aktivierung außerhalb des Produktionsprofils scheitert beim Start. Standard sind `gpt-5.6-terra`, Reasoning `medium` und `CURATOR_PROMPT_V1`. Phase 11 ergänzt den persistenten Offer-Decision-, Voting- und Participation-Lifecycle sowie einen dünnen, standardmäßig deaktivierten Discord-Adapter für Challenge-Start, Präsentation, geheime Abstimmung, einmaligen Reroll, Bestätigung und spätere Teilnahme. Der Discord-Adapter arbeitet ausschließlich gegen die transportneutralen Challenge-APIs; lokale Starts und Branch-Previews bleiben ohne Bot-Token und Gateway.
+Produktvision, Datenmodell, Anwendungsfundament, finaler Zutatenkatalog, vollständige Katalogadministration und der reproduzierbare Kandidatengenerator einschließlich Persistenz, Replay, Labor und Kalibrierung sind umgesetzt. Phase 10 ergänzt den transportneutralen Kuratorvertrag, den persistenten Multi-Offer-Lifecycle und die strikt auf höchstens zwei tatsächliche Requests begrenzte OpenAI-Orchestrierung bis zum kuratierten, noch nicht präsentierten Offer Set. Phase 11 ergänzt den persistenten Offer-Decision-, Voting- und Participation-Lifecycle sowie einen dünnen, standardmäßig deaktivierten Discord-Adapter für Challenge-Start, Präsentation, geheime Abstimmung, einmaligen Reroll, Bestätigung und spätere Teilnahme. Phase 12A ergänzt die feste, serverseitige Acceptance-Instanz mit eigener Datenbank, Testbot und eigenem OpenAI-Projektkey. Nur Produktion und Acceptance dürfen Provideradapter aktivieren; alle automatisierten Tests, Previews und Smokes bleiben providerfrei.

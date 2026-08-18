@@ -279,6 +279,14 @@ Konfiguration erfolgt über Spring-Boot-Properties und Umgebungsvariablen. Gehei
 
 Web-, Discord- und Kuratoradapter müssen so gekapselt sein, dass nicht verwendete Adapter keine Zugangsdaten verlangen. Sobald ein Adapter aktiviert ist, führen fehlende oder ungültige Pflichtwerte zu einem klaren Startfehler.
 
+Für die Phase-12-Live-Abnahme existiert zusätzlich zur Produktion genau eine feste serverseitige Acceptance-Instanz. Sie verwendet
+ein eigenes Compose-Projekt, PostgreSQL-Volume, Loopback-Port, Discord-Testbot und OpenAI-Projektkey. Ihre ausschließlich außerhalb
+des Checkouts liegende `acceptance.properties` wird nur als read-only Anwendungsmount übernommen. Produktion liest getrennt
+`discord.properties` und optional `openai.properties`; Preview und Smoke schreiben beide Provider explizit auf deaktiviert und
+erhalten weder diese noch Acceptance-Properties. Providersecrets erscheinen damit weder in Compose-Environment noch Instanzmetadaten.
+Acceptance aktiviert wie Produktion das Spring-Profil `production`, bleibt aber ohne öffentliche Domain und ist nur per SSH-Tunnel
+erreichbar. Die verbindliche Operator- und Evidenzfolge steht in [`PRODUCTION_VALIDATION.md`](PRODUCTION_VALIDATION.md).
+
 Für die erste Ausbaustufe genügt ein Prozess mit einer PostgreSQL-Datenbank. Docker Compose stellt mindestens die lokale Datenbank bereit; die Anwendung kann lokal über Maven gestartet werden.
 
 ## 10. Teststrategie

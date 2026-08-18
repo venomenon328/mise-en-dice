@@ -20,7 +20,7 @@ command_doctor() {
 
     local doctor_dir="$TEMP_DIR/doctor-$$"
     mkdir -p "$doctor_dir"
-    write_instance_application_properties "$doctor_dir/application.properties" false
+    write_instance_application_properties "$doctor_dir/application.properties" false none
     write_compose_env "$doctor_dir/compose.env" 'mise-en-dice:doctor' "$PRODUCTION_PORT" 'doctor-password' "$doctor_dir/application.properties"
     docker compose --project-name med-doctor --env-file "$doctor_dir/compose.env" -f "$COMPOSE_FILE" config --quiet
     rm -rf "$doctor_dir"
@@ -29,6 +29,7 @@ command_doctor() {
     printf 'REPOSITORY=%s\n' "$origin_url"
     printf 'DEPLOY_ROOT=%s\n' "$DEPLOY_ROOT"
     printf 'PRODUCTION_PORT=%s\n' "$PRODUCTION_PORT"
+    printf 'ACCEPTANCE_PORT=%s\n' "$ACCEPTANCE_PORT"
     printf 'PREVIEW_PORT_RANGE=%s-%s\n' "$PREVIEW_PORT_START" "$PREVIEW_PORT_END"
 }
 
@@ -37,6 +38,7 @@ command_production_deploy() {
     ensure_runtime_initialized
     check_base_commands
     acquire_lock
+    validate_production_provider_configuration
 
     local build_data sha image
     build_data=$(build_image "$requested_ref")
@@ -48,7 +50,7 @@ command_production_deploy() {
     fi
 
     activate_instance "$PRODUCTION_DIR" production production med-production \
-        "$requested_ref" "$sha" "$image" "$PRODUCTION_PORT" true
+        "$requested_ref" "$sha" "$image" "$PRODUCTION_PORT" true production
 
     printf 'INSTANCE=production\n'
     printf 'SOURCE_REF=%s\n' "$requested_ref"
@@ -100,7 +102,7 @@ command_preview_deploy() {
     fi
 
     activate_instance "$instance_dir" preview "$preview_name" "med-preview-$preview_name" \
-        "$requested_ref" "$sha" "$image" "$port" false
+        "$requested_ref" "$sha" "$image" "$port" false none
 
     printf 'PREVIEW_NAME=%s\n' "$preview_name"
     printf 'SOURCE_REF=%s\n' "$requested_ref"
@@ -131,6 +133,26 @@ command_preview_list() {
     done < <(find "$PREVIEWS_DIR" -mindepth 2 -maxdepth 2 -type f -name metadata -print0 | sort -z)
 }
 
+print_instance_provider_status() {
+    local instance_dir=$1
+    local properties_file="$instance_dir/application.properties"
+    local discord_enabled openai_enabled model reasoning_effort
+    discord_enabled=$(properties_value "$properties_file" 'mise-en-dice.discord.enabled')
+    openai_enabled=$(properties_value "$properties_file" 'mise-en-dice.curation.openai.enabled')
+    [[ $discord_enabled == true ]] || discord_enabled=false
+    [[ $openai_enabled == true ]] || openai_enabled=false
+    printf 'DISCORD_ENABLED=%s\n' "$discord_enabled"
+    printf 'OPENAI_ENABLED=%s\n' "$openai_enabled"
+    if [[ $openai_enabled == true ]]; then
+        model=$(properties_value "$properties_file" 'mise-en-dice.curation.openai.model')
+        reasoning_effort=$(properties_value "$properties_file" 'mise-en-dice.curation.openai.reasoning-effort')
+        [[ $model =~ ^[A-Za-z0-9._-]+$ ]] || model=configured
+        [[ $reasoning_effort =~ ^(none|low|medium|high|xhigh|max)$ ]] || reasoning_effort=configured
+        printf 'OPENAI_MODEL=%s\n' "$model"
+        printf 'OPENAI_REASONING_EFFORT=%s\n' "$reasoning_effort"
+    fi
+}
+
 command_instance_status() {
     local instance_dir=$1
     load_metadata "$instance_dir"
@@ -139,6 +161,7 @@ command_instance_status() {
     printf 'SOURCE_REF=%s\n' "$SOURCE_REF"
     printf 'SOURCE_SHA=%s\n' "$SOURCE_SHA"
     printf 'APP_PORT=%s\n' "$PORT"
+    print_instance_provider_status "$instance_dir"
     compose_instance "$instance_dir" ps
 }
 
@@ -180,6 +203,69 @@ command_preview_remove() {
     compose_instance "$instance_dir" down --volumes --remove-orphans
     rm -rf "$instance_dir"
     med_note "Preview $INSTANCE_NAME einschließlich Datenbankvolume entfernt."
+}
+
+ensure_acceptance_deployed() {
+    [[ -f $ACCEPTANCE_DIR/metadata ]] || med_die 'Acceptance wurde noch nicht deployt.'
+    load_metadata "$ACCEPTANCE_DIR"
+    [[ $INSTANCE_TYPE == acceptance && $INSTANCE_NAME == acceptance && $PROJECT_NAME == med-acceptance ]] \
+        || med_die 'Die Acceptance-Metadaten sind ungültig; Aktion wird verweigert.'
+}
+
+command_acceptance_preflight() {
+    ensure_runtime_initialized
+    check_base_commands
+    validate_acceptance_preflight
+    printf 'ACCEPTANCE_CONFIG=valid\n'
+    printf 'ACCEPTANCE_PORT=%s\n' "$ACCEPTANCE_PORT"
+    printf 'DISCORD_ENABLED=%s\n' \
+        "$(properties_value "$ACCEPTANCE_PROPERTIES" 'mise-en-dice.discord.enabled')"
+    printf 'OPENAI_ENABLED=%s\n' \
+        "$(properties_value "$ACCEPTANCE_PROPERTIES" 'mise-en-dice.curation.openai.enabled')"
+    if [[ $(properties_value "$ACCEPTANCE_PROPERTIES" 'mise-en-dice.curation.openai.enabled') == true ]]; then
+        printf 'OPENAI_MODEL=%s\n' \
+            "$(properties_value "$ACCEPTANCE_PROPERTIES" 'mise-en-dice.curation.openai.model')"
+        printf 'OPENAI_REASONING_EFFORT=%s\n' \
+            "$(properties_value "$ACCEPTANCE_PROPERTIES" 'mise-en-dice.curation.openai.reasoning-effort')"
+    fi
+}
+
+command_acceptance_deploy() {
+    local requested_ref=${1:-main}
+    ensure_runtime_initialized
+    check_base_commands
+    acquire_lock
+    validate_acceptance_preflight
+
+    local build_data sha image
+    build_data=$(build_image "$requested_ref")
+    IFS=$'\t' read -r sha image <<< "$build_data"
+    smoke_image "$image" "$sha"
+
+    if [[ -f $ACCEPTANCE_DIR/metadata ]]; then
+        ensure_acceptance_deployed
+        backup_instance "$ACCEPTANCE_DIR" >/dev/null
+    fi
+
+    activate_instance "$ACCEPTANCE_DIR" acceptance acceptance med-acceptance \
+        "$requested_ref" "$sha" "$image" "$ACCEPTANCE_PORT" false acceptance
+
+    printf 'INSTANCE=acceptance\n'
+    printf 'SOURCE_REF=%s\n' "$requested_ref"
+    printf 'SOURCE_SHA=%s\n' "$sha"
+    printf 'APP_PORT=%s\n' "$ACCEPTANCE_PORT"
+    print_tunnel_hint "$ACCEPTANCE_PORT"
+}
+
+command_acceptance_reset() {
+    local supplied_yes=$1
+    acquire_lock
+    ensure_acceptance_deployed
+    med_warn 'Optional vor dem Reset sichern: mise-en-dice.sh acceptance backup'
+    confirm_destructive_action 'RESET-acceptance' "$supplied_yes"
+    compose_instance "$ACCEPTANCE_DIR" down --volumes --remove-orphans
+    rm -rf "$ACCEPTANCE_DIR"
+    med_note 'Acceptance-App, Acceptance-Datenbankvolume und Acceptance-Metadaten wurden entfernt.'
 }
 
 handle_production() {
@@ -268,6 +354,55 @@ handle_preview() {
     esac
 }
 
+handle_acceptance() {
+    local action=${1:-}
+    shift || true
+    case "$action" in
+        preflight) command_acceptance_preflight ;;
+        deploy) command_acceptance_deploy "$@" ;;
+        status)
+            ensure_runtime_initialized; check_base_commands
+            ensure_acceptance_deployed
+            command_instance_status "$ACCEPTANCE_DIR"
+            ;;
+        logs)
+            ensure_runtime_initialized; check_base_commands
+            ensure_acceptance_deployed
+            local follow=false
+            [[ ${1:-} == --follow ]] && follow=true
+            command_instance_logs "$ACCEPTANCE_DIR" "$follow"
+            ;;
+        stop)
+            ensure_runtime_initialized; check_base_commands
+            ensure_acceptance_deployed
+            command_instance_stop "$ACCEPTANCE_DIR"
+            ;;
+        start)
+            ensure_runtime_initialized; check_base_commands
+            ensure_acceptance_deployed
+            command_instance_start "$ACCEPTANCE_DIR"
+            ;;
+        sql)
+            ensure_runtime_initialized; check_base_commands
+            [[ -n ${1:-} ]] || med_die 'acceptance sql benötigt SQL als ein Argument.'
+            ensure_acceptance_deployed
+            command_acceptance_sql "$ACCEPTANCE_DIR" "$1"
+            ;;
+        backup)
+            ensure_runtime_initialized; check_base_commands; acquire_lock
+            ensure_acceptance_deployed
+            backup_instance "$ACCEPTANCE_DIR"
+            ;;
+        reset)
+            ensure_runtime_initialized; check_base_commands
+            local reset_yes=false
+            [[ ${1:-} == --yes ]] && reset_yes=true
+            command_acceptance_reset "$reset_yes"
+            ;;
+        *) usage; med_die "Unbekannte acceptance-Aktion: ${action:-<leer>}" ;;
+    esac
+}
+
 main() {
     local command=${1:-}
     shift || true
@@ -276,6 +411,7 @@ main() {
         doctor) command_doctor ;;
         production) handle_production "$@" ;;
         preview) handle_preview "$@" ;;
+        acceptance) handle_acceptance "$@" ;;
         help|-h|--help|'') usage ;;
         *) usage; med_die "Unbekanntes Kommando: $command" ;;
     esac

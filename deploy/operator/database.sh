@@ -12,12 +12,17 @@ backup_instance() {
     [[ -n $container_id ]] || med_die 'Die PostgreSQL-Instanz läuft nicht; Backup abgebrochen.'
 
     mkdir -p "$BACKUPS_DIR"
-    local timestamp short_sha base_name temporary_file final_file checksum_tmp
+    local timestamp short_sha backup_prefix base_name temporary_file final_file checksum_tmp
     timestamp=$(med_compact_timestamp)
     short_sha=${SOURCE_SHA:0:12}
-    base_name="mise-en-dice-${timestamp}-${short_sha}.dump"
+    case "$INSTANCE_TYPE" in
+        production) backup_prefix='mise-en-dice' ;;
+        acceptance) backup_prefix='mise-en-dice-acceptance' ;;
+        *) med_die 'Backups sind nur für Produktion oder Acceptance vorgesehen.' ;;
+    esac
+    base_name="${backup_prefix}-${timestamp}-${short_sha}.dump"
     if [[ -e $BACKUPS_DIR/$base_name || -e $BACKUPS_DIR/.$base_name.partial ]]; then
-        base_name="mise-en-dice-${timestamp}-${short_sha}-${RANDOM}.dump"
+        base_name="${backup_prefix}-${timestamp}-${short_sha}-${RANDOM}.dump"
     fi
     temporary_file="$BACKUPS_DIR/.${base_name}.partial"
     final_file="$BACKUPS_DIR/$base_name"
@@ -136,4 +141,30 @@ command_preview_sql() {
         --tuples-only \
         --set ON_ERROR_STOP=1 \
         --command "$sql"
+}
+
+validate_read_only_sql() {
+    local sql=$1
+    local upper_sql=${sql^^}
+    [[ -n $sql && $sql != *';'* ]] \
+        || med_die 'acceptance sql erwartet genau eine Query ohne Semikolon.'
+    [[ $upper_sql =~ ^[[:space:]]*(SELECT|WITH|EXPLAIN|SHOW)[[:space:]] ]] \
+        || med_die 'acceptance sql erlaubt nur read-only SELECT-, WITH-, EXPLAIN- oder SHOW-Queries.'
+}
+
+command_acceptance_sql() {
+    local instance_dir=$1
+    local sql=$2
+    validate_read_only_sql "$sql"
+    load_compose_env "$instance_dir"
+    compose_instance "$instance_dir" exec -T \
+        -e "PGPASSWORD=$MISE_EN_DICE_DB_PASSWORD" \
+        postgres psql \
+        --host=127.0.0.1 \
+        --username="$MISE_EN_DICE_DB_USERNAME" \
+        --dbname="$MISE_EN_DICE_DB_NAME" \
+        --no-align \
+        --tuples-only \
+        --set ON_ERROR_STOP=1 \
+        --command "BEGIN TRANSACTION READ ONLY; $sql; ROLLBACK;"
 }
