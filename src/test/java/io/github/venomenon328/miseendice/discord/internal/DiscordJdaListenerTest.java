@@ -1,5 +1,6 @@
 package io.github.venomenon328.miseendice.discord.internal;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -8,6 +9,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -17,6 +19,7 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
+import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.requests.restaction.interactions.InteractionCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
@@ -26,7 +29,21 @@ import org.mockito.InOrder;
 class DiscordJdaListenerTest {
 
     @Test
-    void defersSlashInteractionBeforeDelegatingTheDefaultOfferCount() {
+    void registersRestrictionModeAsTheThreeGermanChoices() {
+        var command = DiscordJdaListener.challengeCommand();
+        var restriction = command.getOptions().stream()
+                .filter(option -> "einschraenkung".equals(option.getName()))
+                .findFirst().orElseThrow();
+
+        assertThat(restriction.getType()).isEqualTo(OptionType.STRING);
+        assertThat(restriction.isRequired()).isFalse();
+        assertThat(restriction.getChoices())
+                .extracting(choice -> choice.getName() + ":" + choice.getAsString())
+                .containsExactly("automatisch:AUTO", "keine:NONE", "erzwingen:REQUIRED");
+    }
+
+    @Test
+    void defersSlashInteractionBeforeDelegatingDefaultOffersAndAutoRestrictions() {
         var workflow = mock(DiscordChallengeWorkflow.class);
         var event = slashEvent();
         var acknowledgement = acknowledgement(event);
@@ -37,7 +54,7 @@ class DiscordJdaListenerTest {
 
         InOrder order = inOrder(event, workflow);
         order.verify(event).deferReply();
-        order.verify(workflow).start(eq(1), any(), any());
+        order.verify(workflow).start(eq(1), eq(RestrictionMode.AUTO), any(), any());
         org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
     }
 
@@ -54,7 +71,27 @@ class DiscordJdaListenerTest {
 
             listener(workflow).onSlashCommandInteraction(event);
 
-            org.mockito.Mockito.verify(workflow).start(eq(offerCount), any(), any());
+            org.mockito.Mockito.verify(workflow).start(eq(offerCount), eq(RestrictionMode.AUTO), any(), any());
+        }
+    }
+
+    @Test
+    void delegatesAllRestrictionModesTogetherWithTheOfferCount() {
+        for (RestrictionMode mode : RestrictionMode.values()) {
+            var workflow = mock(DiscordChallengeWorkflow.class);
+            var event = slashEvent();
+            var offers = mock(OptionMapping.class);
+            var restriction = mock(OptionMapping.class);
+            acknowledgement(event);
+            when(event.getOption("angebote")).thenReturn(offers);
+            when(offers.getAsInt()).thenReturn(3);
+            when(event.getOption("einschraenkung")).thenReturn(restriction);
+            when(restriction.getAsString()).thenReturn(mode.name());
+            when(workflow.accepts(99, "10001")).thenReturn(true);
+
+            listener(workflow).onSlashCommandInteraction(event);
+
+            org.mockito.Mockito.verify(workflow).start(eq(3), eq(mode), any(), any());
         }
     }
 
@@ -94,7 +131,7 @@ class DiscordJdaListenerTest {
         listener(workflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event).reply(any(String.class));
-        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any());
+        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any(), any());
     }
 
     @Test
@@ -109,7 +146,7 @@ class DiscordJdaListenerTest {
         listener(workflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event).reply(any(String.class));
-        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any());
+        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any(), any());
     }
 
     private static DiscordJdaListener listener(DiscordChallengeWorkflow workflow) {

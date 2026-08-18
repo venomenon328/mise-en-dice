@@ -4,6 +4,8 @@
 
 Der Challenge-Bot ist standardmäßig deaktiviert (`mise-en-dice.discord.enabled=false`). Für Produktion und die feste serverseitige Acceptance-Instanz liegen getrennte Bot- und OpenAI-Secrets ausschließlich außerhalb des Git-Checkouts. Lokale Starts, Branch-Previews und Smoke-Läufe bleiben ohne Token, API-Key und Gateway; Details stehen in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) und [docs/PRODUCTION_VALIDATION.md](docs/PRODUCTION_VALIDATION.md).
 
+Der normale Start erfolgt per `/challenge`. Die optionale Choice `angebote` erlaubt ein bis drei Angebote und verwendet ohne Angabe `1`. Die optionale Choice `einschraenkung` bietet `automatisch` (`AUTO`, Default), `keine` (`NONE`) und `erzwingen` (`REQUIRED`). Sie steuert nur, ob Kandidaten Einschränkungen erhalten können oder müssen; die konkrete Regel bleibt Generatorentscheidung. Sichtbare Offers und die bestätigte Challenge zeigen immer den persistierten Restriction-Snapshot, bei uneingeschränkten Kandidaten ausdrücklich `Einschränkung: Keine`.
+
 **Mise en Dice** ist ein privates Tool für kuratierte Koch-Challenges zwischen zwei Personen.
 
 Die Grundidee: Beide erhalten dieselben vier kulinarischen Vorgaben, entwickeln daraus unabhängig voneinander ein Gericht und dürfen dabei nur begrenzt zusätzliche Zutaten ergänzen. Die Vorgaben werden zufällig aus einer gepflegten Datenbasis erzeugt und anschließend von einem Sprachmodell lediglich auf grundsätzliche kulinarische Plausibilität kuratiert. Das System garantiert also nur, dass mindestens ein sinnvoller Weg existiert — nicht, dass jede Entscheidung gut endet.

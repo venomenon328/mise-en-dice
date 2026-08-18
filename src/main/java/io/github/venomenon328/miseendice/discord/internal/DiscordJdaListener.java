@@ -1,5 +1,6 @@
 package io.github.venomenon328.miseendice.discord.internal;
 
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.util.List;
 import java.util.concurrent.Executor;
 import net.dv8tion.jda.api.entities.Guild;
@@ -7,8 +8,11 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
@@ -35,9 +39,18 @@ final class DiscordJdaListener extends ListenerAdapter {
             log.warn("Configured Discord guild is not available to the bot");
             return;
         }
-        guild.upsertCommand(Commands.slash("challenge", "Neue Koch-Challenge vorbereiten")
-                        .addOption(OptionType.INTEGER, "angebote", "Anzahl der Angebote (1 bis 3)", false))
+        guild.upsertCommand(challengeCommand())
                 .queue(null, failure -> log.warn("Discord slash command registration failed", failure));
+    }
+
+    static SlashCommandData challengeCommand() {
+        return Commands.slash("challenge", "Neue Koch-Challenge vorbereiten")
+                .addOption(OptionType.INTEGER, "angebote", "Anzahl der Angebote (1 bis 3)", false)
+                .addOptions(new OptionData(OptionType.STRING, "einschraenkung",
+                        "Einschränkungen automatisch, nie oder für jeden Kandidaten", false)
+                        .addChoice("automatisch", RestrictionMode.AUTO.name())
+                        .addChoice("keine", RestrictionMode.NONE.name())
+                        .addChoice("erzwingen", RestrictionMode.REQUIRED.name()));
     }
 
     @Override
@@ -55,7 +68,14 @@ final class DiscordJdaListener extends ListenerAdapter {
             event.reply("`angebote` muss zwischen 1 und 3 liegen.").setEphemeral(true).queue();
             return;
         }
-        event.deferReply().queue(hook -> executor.execute(() -> workflow.start(offers,
+        RestrictionMode restrictionMode;
+        try {
+            restrictionMode = restrictionMode(event.getOption("einschraenkung"));
+        } catch (IllegalArgumentException exception) {
+            event.reply("`einschraenkung` muss automatisch, keine oder erzwingen sein.").setEphemeral(true).queue();
+            return;
+        }
+        event.deferReply().queue(hook -> executor.execute(() -> workflow.start(offers, restrictionMode,
                 new HookDelivery(hook), new HookFeedback(hook))),
                 failure -> log.warn("Discord slash acknowledgement failed", failure));
     }
@@ -76,6 +96,10 @@ final class DiscordJdaListener extends ListenerAdapter {
 
     private boolean accepts(long guildId, String userId) {
         return workflow.accepts(guildId, userId);
+    }
+
+    private static RestrictionMode restrictionMode(OptionMapping option) {
+        return option == null ? RestrictionMode.AUTO : RestrictionMode.valueOf(option.getAsString());
     }
 
     private static final class HookDelivery implements DiscordChallengeWorkflow.Delivery {

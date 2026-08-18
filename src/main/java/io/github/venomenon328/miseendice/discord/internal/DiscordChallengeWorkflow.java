@@ -1,6 +1,7 @@
 package io.github.venomenon328.miseendice.discord.internal;
 
 import io.github.venomenon328.miseendice.challenge.api.ChallengeOfferPreparationCommands;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingCommands;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingConflictException;
@@ -34,10 +35,14 @@ final class DiscordChallengeWorkflow {
     }
 
     void start(int offerCount, Delivery delivery, Feedback feedback) {
+        start(offerCount, RestrictionMode.AUTO, delivery, feedback);
+    }
+
+    void start(int offerCount, RestrictionMode restrictionMode, Delivery delivery, Feedback feedback) {
         try {
             ChallengeOfferPreparationCommands.PreparationOutcome outcome = preparation.prepareInitial(
                     new ChallengeOfferPreparationCommands.PrepareInitialOfferSet(
-                            LocalDate.now(properties.effectiveDateZone()), offerCount));
+                            LocalDate.now(properties.effectiveDateZone()), offerCount, restrictionMode));
             presentPreparation(outcome, delivery, feedback);
         } catch (RuntimeException exception) {
             feedback.technicalFailure(exception);

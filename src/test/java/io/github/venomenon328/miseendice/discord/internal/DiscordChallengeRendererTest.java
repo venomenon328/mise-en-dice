@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.discord.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine;
 import io.github.venomenon328.miseendice.challenge.api.CurationModel;
 import io.github.venomenon328.miseendice.challenge.api.CurationRequest;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
@@ -14,13 +15,16 @@ import org.junit.jupiter.api.Test;
 class DiscordChallengeRendererTest {
 
     @Test
-    void rendersOneTwoAndThreeOffersFromStoredRequirementSnapshots() {
+    void rendersOneTwoAndThreeOffersFromStoredRequirementAndRestrictionSnapshots() {
         var renderer = new DiscordChallengeRenderer();
         for (int count = 1; count <= 3; count++) {
             var rendered = renderer.unpresentedOffers(offerSet(count));
             assertThat(rendered.content()).contains("Vorschlag " + count, "1. Snapshot " + count + ".1");
             assertThat(rendered.components()).hasSize(1);
         }
+
+        assertThat(renderer.offers(offerSet(3)).content())
+                .contains("Einschränkung: Keine", "Einschränkung: Kein Kochalkohol", "Einschränkung: Keine Rohkost");
     }
 
     @Test
@@ -65,7 +69,8 @@ class DiscordChallengeRendererTest {
         assertThat(rendered.content()).contains("Gewinner: Vorschlag 2", "Losentscheid", "Georgia: Vorschlag 2",
                 "Tobias: Vorschlag 1", "Challenge bestätigt: Vorschlag 2");
         String confirmedChallenge = rendered.content().substring(rendered.content().indexOf("**Challenge bestätigt"));
-        assertThat(confirmedChallenge).contains("Snapshot 2.1", "Snapshot 2.4").doesNotContain("Snapshot 1.1");
+        assertThat(confirmedChallenge).contains("Snapshot 2.1", "Snapshot 2.4", "Einschränkung: Kein Kochalkohol")
+                .doesNotContain("Snapshot 1.1", "Einschränkung: Keine\n");
     }
 
     @Test
@@ -111,12 +116,21 @@ class DiscordChallengeRendererTest {
                         java.util.stream.IntStream.rangeClosed(1, 4).mapToObj(position ->
                                 new CurationRequest.RequirementSnapshot(position, "RANDOM", 1L, null, "CODE",
                                         "Snapshot " + offer + "." + position, "SPECIFIC", 1, "{}", "{}", "[]"))
-                                .toList())).toList();
+                                .toList(), restriction(offer))).toList();
         OfferDecisionQueries.ChallengeView confirmed = confirmedPosition == null ? null
                 : new OfferDecisionQueries.ChallengeView(12, offers.get(confirmedPosition - 1).offerId(),
                 offers.get(confirmedPosition - 1).candidateId(), Instant.now(), "CONFIRMED");
         return new OfferDecisionQueries.OfferSetView(1, 2, 3, count,
                 confirmed == null ? CurationModel.OfferSetStatus.CURATED_UNPRESENTED : CurationModel.OfferSetStatus.CONFIRMED,
                 Instant.now(), null, null, confirmed, offers);
+    }
+
+    private static CandidateProposalEngine.CandidateRestriction restriction(int offerPosition) {
+        return switch (offerPosition) {
+            case 1 -> CandidateProposalEngine.CandidateRestriction.none();
+            case 2 -> new CandidateProposalEngine.CandidateRestriction(101L, "NO_COOKING_ALCOHOL", "Kein Kochalkohol");
+            case 3 -> new CandidateProposalEngine.CandidateRestriction(102L, "NO_RAW_FOOD", "Keine Rohkost");
+            default -> throw new IllegalArgumentException("Unsupported test offer position");
+        };
     }
 }

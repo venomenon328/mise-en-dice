@@ -1,5 +1,6 @@
 package io.github.venomenon328.miseendice.discord.internal;
 
+import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeOfferPreparationCommands;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingCommands;
@@ -16,6 +17,7 @@ final class DiscordChallengeRenderer {
             offer.requirements().stream().sorted(java.util.Comparator.comparingInt(value -> value.position()))
                     .forEach(requirement -> text.append(requirement.position()).append(". ")
                             .append(requirement.displayTextSnapshot()).append("\n"));
+            appendRestriction(text, offer.restriction());
         }
         return new RenderedMessage(text.toString().strip(), List.of());
     }
@@ -122,6 +124,13 @@ final class DiscordChallengeRenderer {
         offer.requirements().stream().sorted(java.util.Comparator.comparingInt(value -> value.position()))
                 .forEach(requirement -> text.append(requirement.position()).append(". ")
                         .append(requirement.displayTextSnapshot()).append("\n"));
+        appendRestriction(text, offer.restriction());
+    }
+
+    private static void appendRestriction(StringBuilder text, CandidateProposalEngine.CandidateRestriction restriction) {
+        text.append("Einschränkung: ")
+                .append(restriction.ruleId() == null ? "Keine" : restriction.textSnapshot())
+                .append("\n");
     }
 
     private static String choice(SelectionVotingCommands.VoteChoice choice, OfferDecisionQueries.OfferSetView offerSet) {

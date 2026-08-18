@@ -1,5 +1,6 @@
 package io.github.venomenon328.miseendice.challenge.api;
 
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.time.LocalDate;
 
 /**
@@ -12,11 +13,16 @@ public interface ChallengeOfferPreparationCommands {
 
     PreparationOutcome continueInitial(ContinueInitialOfferSet command);
 
-    record PrepareInitialOfferSet(LocalDate effectiveDate, int requestedOfferCount) {
+    record PrepareInitialOfferSet(LocalDate effectiveDate, int requestedOfferCount, RestrictionMode restrictionMode) {
         public PrepareInitialOfferSet {
-            if (effectiveDate == null || requestedOfferCount < 1 || requestedOfferCount > 3) {
-                throw new IllegalArgumentException("An effective date and an offer count between 1 and 3 are required");
+            if (effectiveDate == null || requestedOfferCount < 1 || requestedOfferCount > 3 || restrictionMode == null) {
+                throw new IllegalArgumentException(
+                        "An effective date, an offer count between 1 and 3, and a restriction mode are required");
             }
+        }
+
+        public PrepareInitialOfferSet(LocalDate effectiveDate, int requestedOfferCount) {
+            this(effectiveDate, requestedOfferCount, RestrictionMode.AUTO);
         }
     }
 
