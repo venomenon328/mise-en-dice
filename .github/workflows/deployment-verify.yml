@@ -137,7 +137,7 @@ jobs:
             | grep -E '^(OPENAI_API_KEY|MISE_EN_DICE_(DISCORD|OPENAI)_)=' || true)"
 
           acceptance_count=$(./deploy/mise-en-dice.sh acceptance sql \
-            'SELECT count(*) FROM ingredient_concept;' | tr -d '[:space:]')
+            'SELECT count(*) FROM ingredient_concept' | tr -d '[:space:]')
           test "$acceptance_count" -ge 600
           if ./deploy/mise-en-dice.sh acceptance sql \
             "UPDATE ingredient_concept SET curator_note = 'forbidden-acceptance-write'"; then
