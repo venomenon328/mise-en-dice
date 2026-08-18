@@ -64,8 +64,8 @@ validate_runtime_secret_file() {
     mode=$(stat -c '%a' -- "$file") || med_die "$description-Dateirechte können nicht gelesen werden."
     [[ $mode =~ ^[0-7]{3,4}$ ]] || med_die "$description-Dateirechte sind ungültig."
     permission_bits=$((8#$mode))
-    (( (permission_bits & 0077) == 0 )) \
-        || med_die "$description darf höchstens für den Betriebsbenutzer lesbar sein (maximal 0600)."
+    (( permission_bits == 0400 || permission_bits == 0600 )) \
+        || med_die "$description muss die Dateirechte 0400 oder 0600 besitzen; Gruppen-, Other- und Execute-Rechte sind unzulässig."
 }
 
 provider_property_allowed() {
@@ -208,7 +208,7 @@ reject_matching_provider_secrets() {
     local production_file=$2
     local production_key=$3
     local provider_name=$4
-    [[ -e $production_file || -L $production_file ]] || return
+    [[ -e $production_file || -L $production_file ]] || return 0
     local production_secret
     production_secret=$(properties_value "$production_file" "$production_key")
     [[ -z $acceptance_secret || -z $production_secret || $acceptance_secret != "$production_secret" ]] \
