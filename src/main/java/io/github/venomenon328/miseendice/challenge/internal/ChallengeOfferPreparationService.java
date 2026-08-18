@@ -67,7 +67,7 @@ final class ChallengeOfferPreparationService implements ChallengeOfferPreparatio
             return new Exhausted(sessionId, attemptId, exhausted.reasonCode(), null);
         }
         if (outcome instanceof CurationOrchestrationCommands.CuratorUnavailable unavailable) {
-            return new Failed(sessionId, attemptId, unavailable.reasonCode(), unavailable.detail());
+            return new InProgress(sessionId, attemptId, "CURATION", unavailable.reasonCode());
         }
         if (outcome instanceof CurationOrchestrationCommands.CuratorFailed failed) {
             return new Failed(sessionId, attemptId, failed.reasonCode(), failed.detail());

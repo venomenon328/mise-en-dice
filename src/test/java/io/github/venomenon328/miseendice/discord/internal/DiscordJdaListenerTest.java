@@ -16,6 +16,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.requests.restaction.interactions.InteractionCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
@@ -38,6 +39,23 @@ class DiscordJdaListenerTest {
         order.verify(event).deferReply();
         order.verify(workflow).start(eq(1), any(), any());
         org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
+    }
+
+    @Test
+    void delegatesExplicitTwoAndThreeOfferRequestsAfterAcknowledgement() {
+        for (int offerCount : java.util.List.of(2, 3)) {
+            var workflow = mock(DiscordChallengeWorkflow.class);
+            var event = slashEvent();
+            var option = mock(OptionMapping.class);
+            acknowledgement(event);
+            when(event.getOption("angebote")).thenReturn(option);
+            when(option.getAsInt()).thenReturn(offerCount);
+            when(workflow.accepts(99, "10001")).thenReturn(true);
+
+            listener(workflow).onSlashCommandInteraction(event);
+
+            org.mockito.Mockito.verify(workflow).start(eq(offerCount), any(), any());
+        }
     }
 
     @Test
@@ -79,12 +97,31 @@ class DiscordJdaListenerTest {
         org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any());
     }
 
+    @Test
+    void rejectsUnknownDiscordUsersWithoutStartingAnyWorkflow() {
+        var workflow = mock(DiscordChallengeWorkflow.class);
+        var event = slashEvent("99999");
+        var reply = mock(ReplyCallbackAction.class);
+        when(workflow.accepts(99, "99999")).thenReturn(false);
+        when(event.reply(any(String.class))).thenReturn(reply);
+        when(reply.setEphemeral(true)).thenReturn(reply);
+
+        listener(workflow).onSlashCommandInteraction(event);
+
+        org.mockito.Mockito.verify(event).reply(any(String.class));
+        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any());
+    }
+
     private static DiscordJdaListener listener(DiscordChallengeWorkflow workflow) {
         return new DiscordJdaListener(new DiscordProperties(true, "token", 99, ZoneId.of("Europe/Berlin"),
                 Map.of("GEORGIA", "10001", "TOBIAS", "10002")), workflow, Runnable::run);
     }
 
     private static SlashCommandInteractionEvent slashEvent() {
+        return slashEvent("10001");
+    }
+
+    private static SlashCommandInteractionEvent slashEvent(String userId) {
         var event = mock(SlashCommandInteractionEvent.class);
         var guild = mock(Guild.class);
         var user = mock(User.class);
@@ -92,7 +129,7 @@ class DiscordJdaListenerTest {
         when(event.getGuild()).thenReturn(guild);
         when(guild.getIdLong()).thenReturn(99L);
         when(event.getUser()).thenReturn(user);
-        when(user.getId()).thenReturn("10001");
+        when(user.getId()).thenReturn(userId);
         return event;
     }
 

@@ -35,4 +35,20 @@ class ChallengeOfferPreparationServiceTest {
         assertThat(command.getValue().requestedOfferCount()).isEqualTo(3);
         verify(curation).curate(11);
     }
+
+    @Test
+    void keepsCuratorUnavailabilityNonTerminalAndContinuable() {
+        var generations = mock(GenerationCommands.class);
+        var curation = mock(CurationOrchestrationCommands.class);
+        when(generations.startNewSession(any())).thenReturn(new GenerationCommands.Generated(10, 11, 12, "fingerprint"));
+        when(curation.curate(11)).thenReturn(new CurationOrchestrationCommands.CuratorUnavailable(
+                11, "CURATOR_UNAVAILABLE", "disabled locally"));
+        var service = new ChallengeOfferPreparationService(generations, mock(GenerationQueries.class), curation);
+
+        var outcome = service.prepareInitial(new ChallengeOfferPreparationCommands.PrepareInitialOfferSet(
+                LocalDate.of(2026, 8, 18), 1));
+
+        assertThat(outcome).isEqualTo(new ChallengeOfferPreparationCommands.InProgress(
+                10, 11, "CURATION", "CURATOR_UNAVAILABLE"));
+    }
 }

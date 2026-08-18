@@ -1,6 +1,9 @@
 package io.github.venomenon328.miseendice.discord.internal;
 
 import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -12,7 +15,7 @@ record DiscordProperties(boolean enabled, String token, long guildId, ZoneId eff
 
     DiscordProperties {
         effectiveDateZone = effectiveDateZone == null ? ZoneId.of("Europe/Berlin") : effectiveDateZone;
-        participantUserIds = participantUserIds == null ? Map.of() : Map.copyOf(participantUserIds);
+        participantUserIds = canonicalParticipantUserIds(participantUserIds);
     }
 
     void validateEnabledConfiguration() {
@@ -31,9 +34,36 @@ record DiscordProperties(boolean enabled, String token, long guildId, ZoneId eff
                 throw new IllegalStateException("A numeric Discord user ID for " + code + " is required when Discord is enabled");
             }
         }
+        if (new HashSet<>(participantUserIds.values()).size() != participantUserIds.size()) {
+            throw new IllegalStateException("Discord user IDs must not be assigned to multiple participant codes");
+        }
     }
 
     boolean isConfiguredUser(String externalSubject) {
-        return participantUserIds.containsValue(externalSubject);
+        if (externalSubject == null) {
+            return false;
+        }
+        return java.util.List.of("GEORGIA", "TOBIAS").stream()
+                .map(participantUserIds::get)
+                .anyMatch(externalSubject::equals);
+    }
+
+    private static Map<String, String> canonicalParticipantUserIds(Map<String, String> configured) {
+        if (configured == null || configured.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> canonical = new HashMap<>();
+        for (Map.Entry<String, String> entry : configured.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().isBlank() || entry.getValue() == null || entry.getValue().isBlank()) {
+                throw new IllegalArgumentException("Discord participant mappings need a participant code and user ID");
+            }
+            String code = entry.getKey().strip().toUpperCase(Locale.ROOT);
+            String userId = entry.getValue().strip();
+            String existing = canonical.putIfAbsent(code, userId);
+            if (existing != null && !existing.equals(userId)) {
+                throw new IllegalArgumentException("Conflicting Discord user IDs for participant code " + code);
+            }
+        }
+        return Map.copyOf(canonical);
     }
 }

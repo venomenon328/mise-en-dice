@@ -48,7 +48,7 @@ class DiscordChallengeRendererTest {
     @Test
     void rendersCompletedResultTieBreakAndConfirmedSnapshotChallenge() {
         var renderer = new DiscordChallengeRenderer();
-        var offerSet = offerSet(2);
+        var offerSet = offerSet(2, 2);
         var result = new SelectionVotingQueries.RoundResultView(SelectionVotingCommands.VoteChoice.offer(offerSet.offers().get(1).offerId()),
                 true, Instant.now(), SelectionVotingQueries.ApplyState.CONFIRMED, null, null);
         var completed = new SelectionVotingQueries.VotingRoundView(7, 1, offerSet.offerSetId(),
@@ -62,8 +62,10 @@ class DiscordChallengeRendererTest {
         var rendered = renderer.selection(new SelectionVotingQueries.SelectionView(1, electorate(), offerSet, null,
                 List.of(completed), null, challenge));
 
-        assertThat(rendered.content()).contains("Gewinner: Vorschlag gewählt", "Losentscheid", "Georgia: Vorschlag gewählt",
-                "Challenge bestätigt", "Snapshot 1.1");
+        assertThat(rendered.content()).contains("Gewinner: Vorschlag 2", "Losentscheid", "Georgia: Vorschlag 2",
+                "Tobias: Vorschlag 1", "Challenge bestätigt: Vorschlag 2");
+        String confirmedChallenge = rendered.content().substring(rendered.content().indexOf("**Challenge bestätigt"));
+        assertThat(confirmedChallenge).contains("Snapshot 2.1", "Snapshot 2.4").doesNotContain("Snapshot 1.1");
     }
 
     @Test
@@ -82,19 +84,39 @@ class DiscordChallengeRendererTest {
         assertThat(rendered.components()).isEmpty();
     }
 
+    @Test
+    void rendersCuratorUnavailabilityAsAnInitialContinuationInsteadOfATerminalFailure() {
+        var renderer = new DiscordChallengeRenderer();
+
+        var rendered = renderer.preparation(new io.github.venomenon328.miseendice.challenge.api.ChallengeOfferPreparationCommands.InProgress(
+                1, 2, "CURATION", "CURATOR_UNAVAILABLE"));
+
+        assertThat(rendered.content()).contains("Kuration gerade nicht erreichbar", "fortsetzen");
+        assertThat(rendered.components()).containsExactly(new DiscordChallengeRenderer.Component("Fortsetzen",
+                DiscordComponentId.initialContinue(1, 2)));
+    }
+
     private static List<SelectionVotingQueries.ElectorateMemberView> electorate() {
         return List.of(new SelectionVotingQueries.ElectorateMemberView(8, "GEORGIA", "Georgia", true),
                 new SelectionVotingQueries.ElectorateMemberView(9, "TOBIAS", "Tobias", true));
     }
 
     private static OfferDecisionQueries.OfferSetView offerSet(int count) {
+        return offerSet(count, null);
+    }
+
+    private static OfferDecisionQueries.OfferSetView offerSet(int count, Integer confirmedPosition) {
         List<OfferDecisionQueries.OfferView> offers = java.util.stream.IntStream.rangeClosed(1, count)
                 .mapToObj(offer -> new OfferDecisionQueries.OfferView(offer, offer, offer + 20,
                         java.util.stream.IntStream.rangeClosed(1, 4).mapToObj(position ->
                                 new CurationRequest.RequirementSnapshot(position, "RANDOM", 1L, null, "CODE",
                                         "Snapshot " + offer + "." + position, "SPECIFIC", 1, "{}", "{}", "[]"))
                                 .toList())).toList();
-        return new OfferDecisionQueries.OfferSetView(1, 2, 3, count, CurationModel.OfferSetStatus.CURATED_UNPRESENTED,
-                Instant.now(), null, null, null, offers);
+        OfferDecisionQueries.ChallengeView confirmed = confirmedPosition == null ? null
+                : new OfferDecisionQueries.ChallengeView(12, offers.get(confirmedPosition - 1).offerId(),
+                offers.get(confirmedPosition - 1).candidateId(), Instant.now(), "CONFIRMED");
+        return new OfferDecisionQueries.OfferSetView(1, 2, 3, count,
+                confirmed == null ? CurationModel.OfferSetStatus.CURATED_UNPRESENTED : CurationModel.OfferSetStatus.CONFIRMED,
+                Instant.now(), null, null, confirmed, offers);
     }
 }

@@ -28,17 +28,15 @@ final class DiscordChallengeRenderer {
 
     RenderedMessage preparation(ChallengeOfferPreparationCommands.PreparationOutcome outcome) {
         if (outcome instanceof ChallengeOfferPreparationCommands.InProgress progress) {
-            return new RenderedMessage("**Challenge wird vorbereitet**\nDie Generierung oder Kuration läuft noch. "
-                    + "Du kannst den Vorgang später fortsetzen.", List.of(new Component("Fortsetzen",
+            String message = "CURATOR_UNAVAILABLE".equals(progress.reasonCode())
+                    ? "**Kuration gerade nicht erreichbar**\nDu kannst den gespeicherten Vorgang später fortsetzen."
+                    : "**Challenge wird vorbereitet**\nDie Generierung oder Kuration läuft noch. "
+                    + "Du kannst den Vorgang später fortsetzen.";
+            return new RenderedMessage(message, List.of(new Component("Fortsetzen",
                     DiscordComponentId.initialContinue(progress.sessionId(), progress.attemptId()))));
         }
         if (outcome instanceof ChallengeOfferPreparationCommands.Exhausted exhausted) {
             return new RenderedMessage("**Keine Challenge verfügbar**\nDie verfügbare Auswahl ist für diesen Versuch erschöpft.", List.of());
-        }
-        if (outcome instanceof ChallengeOfferPreparationCommands.Failed failed
-                && "CURATOR_UNAVAILABLE".equals(failed.reasonCode())) {
-            return new RenderedMessage("**Challenge kann gerade nicht kuratiert werden**\nBitte versuche es später erneut.",
-                    List.of());
         }
         return new RenderedMessage("**Challenge konnte nicht vorbereitet werden**\nDer Kurator ist derzeit nicht verfügbar "
                 + "oder der Versuch ist technisch fehlgeschlagen.", List.of());
@@ -68,13 +66,13 @@ final class DiscordChallengeRenderer {
             SelectionVotingQueries.VotingRoundView completed = selection.completedRounds().getLast();
             text.append("**Abstimmung abgeschlossen**\n");
             if (completed.result() != null) {
-                text.append("Gewinner: ").append(choice(completed.result().winningChoice())).append("\n");
+                text.append("Gewinner: ").append(choice(completed.result().winningChoice(), selection.currentOfferSet())).append("\n");
             }
             if (completed.result() != null && completed.result().tieBreakUsed()) {
                 text.append("Gleichstand: Der einmalige Losentscheid wurde verwendet.\n");
             }
             for (SelectionVotingQueries.VoteStatusView vote : completed.votes()) {
-                text.append(vote.displayName()).append(": ").append(choice(vote.vote())).append("\n");
+                text.append(vote.displayName()).append(": ").append(choice(vote.vote(), selection.currentOfferSet())).append("\n");
             }
             SelectionVotingQueries.ApplyState applyState = completed.result() == null ? null : completed.result().applyState();
             if (applyState == SelectionVotingQueries.ApplyState.PENDING
@@ -84,7 +82,7 @@ final class DiscordChallengeRenderer {
             appendApplyStatus(text, applyState);
         }
         if (selection.confirmedChallenge() != null && selection.currentOfferSet() != null) {
-            text.append("\n**Challenge bestätigt**\nDie vier oben gespeicherten Vorgaben gelten für diese Challenge.");
+            appendConfirmedChallenge(text, selection.currentOfferSet(), selection.confirmedChallenge());
         }
         return new RenderedMessage(text.toString().strip(), List.copyOf(buttons));
     }
@@ -113,15 +111,36 @@ final class DiscordChallengeRenderer {
         }
     }
 
-    private static String choice(SelectionVotingCommands.VoteChoice choice) {
+    private static void appendConfirmedChallenge(StringBuilder text, OfferDecisionQueries.OfferSetView offerSet,
+                                                 SelectionVotingQueries.ChallengeParticipationView challenge) {
+        OfferDecisionQueries.ChallengeView confirmed = offerSet.confirmedChallenge();
+        if (confirmed == null || confirmed.challengeId() != challenge.challengeId()) {
+            throw new IllegalStateException("Confirmed challenge is missing from the authoritative offer snapshot");
+        }
+        OfferDecisionQueries.OfferView offer = offer(offerSet, confirmed.offerId());
+        text.append("\n**Challenge bestätigt: Vorschlag ").append(offer.position()).append("**\n");
+        offer.requirements().stream().sorted(java.util.Comparator.comparingInt(value -> value.position()))
+                .forEach(requirement -> text.append(requirement.position()).append(". ")
+                        .append(requirement.displayTextSnapshot()).append("\n"));
+    }
+
+    private static String choice(SelectionVotingCommands.VoteChoice choice, OfferDecisionQueries.OfferSetView offerSet) {
         if (choice == null) {
             return "–";
         }
         return switch (choice.type()) {
             case ACCEPT -> "Annehmen";
             case REROLL -> "Neu würfeln";
-            case OFFER -> "Vorschlag gewählt";
+            case OFFER -> "Vorschlag " + offer(offerSet, choice.offerId()).position();
         };
+    }
+
+    private static OfferDecisionQueries.OfferView offer(OfferDecisionQueries.OfferSetView offerSet, long offerId) {
+        if (offerSet == null) {
+            throw new IllegalStateException("Vote result has no authoritative offer snapshot");
+        }
+        return offerSet.offers().stream().filter(offer -> offer.offerId() == offerId).findFirst().orElseThrow(
+                () -> new IllegalStateException("Vote result refers to an offer outside its authoritative offer snapshot"));
     }
 
     record RenderedMessage(String content, List<Component> components) {

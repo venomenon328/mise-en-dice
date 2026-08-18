@@ -59,8 +59,7 @@ final class DiscordChallengeWorkflow {
             }
             SelectionVotingQueries.ParticipantIdentityView participant = votingQueries
                     .findParticipantByExternalIdentity(DiscordProperties.PROVIDER, externalSubject)
-                    .filter(SelectionVotingQueries.ParticipantIdentityView::active)
-                    .orElseThrow(() -> new SelectionVotingConflictException("Discord identity is not linked to an active participant"));
+                    .orElseThrow(() -> new SelectionVotingConflictException("Discord identity is not linked to the frozen electorate"));
             if (parsed instanceof DiscordComponentId.Resume resume) {
                 renderSelection(votingCommands.resume(new SelectionVotingCommands.ResumeSelection(resume.sessionId())),
                         delivery, feedback);

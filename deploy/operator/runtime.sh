@@ -28,7 +28,9 @@ write_instance_application_properties() {
     local secure_cookie=$2
     local include_discord=${3:-false}
 
-    cat "$ADMIN_PROPERTIES" > "$destination"
+    # Admin properties are deliberately never a fallback secret location. This also keeps any accidental
+    # Discord keys from a preview or smoke configuration file.
+    grep -vE '^[[:space:]]*mise-en-dice\.discord\.' "$ADMIN_PROPERTIES" > "$destination" || true
     # The external bot secret is deliberately production-only, never a preview or smoke input.
     if [[ $include_discord == true && -f $DISCORD_PROPERTIES ]]; then
         cat "$DISCORD_PROPERTIES" >> "$destination"
