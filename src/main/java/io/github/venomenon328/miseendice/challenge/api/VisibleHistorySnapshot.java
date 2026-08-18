@@ -60,6 +60,8 @@ public record VisibleHistorySnapshot(
         String cooldownKey();
 
         List<VisibleRequirement> requirements();
+
+        Set<String> restrictionRuleCodes();
     }
 
     public record VisibleChallenge(
@@ -84,6 +86,11 @@ public record VisibleHistorySnapshot(
         public String cooldownKey() {
             return "challenge:" + sessionKey;
         }
+
+        @Override
+        public Set<String> restrictionRuleCodes() {
+            return exclusionRuleCode == null ? Set.of() : Set.of(exclusionRuleCode);
+        }
     }
 
     /** A complete previously presented offer set; it contributes only exact cooldown codes, never cadence data. */
@@ -91,7 +98,8 @@ public record VisibleHistorySnapshot(
             Instant visibleAt,
             String sessionKey,
             String offerSetKey,
-            List<VisibleRequirement> requirements
+            List<VisibleRequirement> requirements,
+            Set<String> restrictionRuleCodes
     ) implements VisibleCooldownExposure {
         public VisibleRerollExposure {
             if (visibleAt == null || sessionKey == null || sessionKey.isBlank()
@@ -99,6 +107,12 @@ public record VisibleHistorySnapshot(
                 throw new IllegalArgumentException("Reroll exposures need stable identity and complete offer snapshots");
             }
             requirements = List.copyOf(requirements);
+            restrictionRuleCodes = restrictionRuleCodes == null ? Set.of() : Set.copyOf(restrictionRuleCodes);
+        }
+
+        public VisibleRerollExposure(Instant visibleAt, String sessionKey, String offerSetKey,
+                                     List<VisibleRequirement> requirements) {
+            this(visibleAt, sessionKey, offerSetKey, requirements, Set.of());
         }
 
         @Override

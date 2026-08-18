@@ -125,14 +125,18 @@ Für den Generator stellt `catalog` eine eigene unveränderliche Projektion bere
 
 Proposal-Erzeugung und Satzselektion sind reine Fachberechnungen auf einem unveränderlichen `GenerationContext`. Sie benötigen keine offene Datenbanktransaktion. Zufall wird ausschließlich über den in ADR 0007 festgelegten Seed-/Substream-Vertrag injiziert.
 
-Die reine Phase 9C1 bereitet einen Attempt aus bereits materialisierten Snapshots vor. Neuigkeitskadenz und
-Ausschlussentscheidung sind attempt-weit und bleiben für alle internen Batchnummern identisch; nur die
-Proposal-Substreams sind batch-spezifisch. Das Reservoir wird ausschließlich über die öffentliche
+Die reine Phase 9C1 bereitet einen Attempt aus bereits materialisierten Snapshots vor. Neuigkeitskadenz bleibt
+attempt-weit; die Ausschlussentscheidung ist dies nur für historische Generatoren `1.0.x`/`1.1.x`. Generator
+`1.2.0` entscheidet Restriktionsmodus und Regel in isolierten Candidate-Substreams vor jeder Requirement-Ziehung;
+der gespeicherte Restriction Mode und die Candidate-Snapshots bleiben für alle internen Batches unverändert. Das
+Reservoir wird ausschließlich über die öffentliche
 `CandidateProposalEngine`-API aufgebaut und enthält jeden eindeutigen harten gültigen Kandidaten unabhängig
 vom späteren Soft-Mindestscore. Phase 9C2 konsumiert es über `CandidateReservoirEngine`, berechnet die
 transportneutrale Paar- und Setdiagnose und liefert über `CandidateSetEngine` entweder genau zwölf Kandidaten
 in Auswahlreihenfolge oder typisierte Erschöpfung. Proposal-, Hard-Rule-, Score-, Kadenz- und
-Ausschlusslogik bleiben dabei Eigentum der vorgelagerten Fachpfade.
+Ausschluss- und Kandidatenrestriktionslogik bleiben dabei Eigentum der vorgelagerten Fachpfade. Die JDBC-Adapter
+kopieren nur autoritative Snapshots Candidate → Offer → Challenge beziehungsweise Reroll-Exposition; sie treffen
+keine Auswahlentscheidung und enthalten keine Discord-Transportlogik.
 
 Die PostgreSQL-Projektion der vollständigen sichtbaren Historie gehört erst zu Phase 9D. Phase 9C1 erhält den
 `VisibleHistorySnapshot` bereits materialisiert und darf fehlende historische Werte nicht aus dem aktuellen

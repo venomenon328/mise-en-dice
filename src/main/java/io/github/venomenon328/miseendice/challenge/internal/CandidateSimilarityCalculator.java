@@ -59,17 +59,22 @@ final class CandidateSimilarityCalculator {
         BigDecimal properties = propertySimilarity(first, second, configuration);
         components.put(SimilarityComponent.COMPARABLE_PROPERTIES,
                 properties == null ? ComponentSimilarity.notComparable() : ComponentSimilarity.comparable(properties));
+        if (configuration.generatorVersion().equals("1.2.0")) {
+            components.put(SimilarityComponent.RESTRICTION,
+                    ComponentSimilarity.comparable(restrictionSimilarity(first, second)));
+        }
 
         BigDecimal comparableWeight = scaled(BigDecimal.ZERO);
-        for (SimilarityComponent component : SimilarityComponent.values()) {
-            if (components.get(component).comparability()
+        for (Map.Entry<SimilarityComponent, ComponentSimilarity> entry : components.entrySet()) {
+            if (entry.getValue().comparability()
                     == io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.Comparability.COMPARABLE) {
-                comparableWeight = scaled(comparableWeight.add(configuration.similarityWeights().get(component)));
+                comparableWeight = scaled(comparableWeight.add(configuration.similarityWeights().get(entry.getKey())));
             }
         }
         EnumMap<SimilarityComponent, BigDecimal> renormalized = new EnumMap<>(SimilarityComponent.class);
-        for (SimilarityComponent component : SimilarityComponent.values()) {
-            ComponentSimilarity value = components.get(component);
+        for (Map.Entry<SimilarityComponent, ComponentSimilarity> entry : components.entrySet()) {
+            SimilarityComponent component = entry.getKey();
+            ComponentSimilarity value = entry.getValue();
             if (value.value() == null) {
                 continue;
             }
@@ -215,6 +220,11 @@ final class CandidateSimilarityCalculator {
         BigDecimal firstMean = meanAvailabilityLoad(first);
         BigDecimal secondMean = meanAvailabilityLoad(second);
         return scaled(ONE.subtract(firstMean.subtract(secondMean).abs()));
+    }
+
+    private BigDecimal restrictionSimilarity(AcceptedProposal first, AcceptedProposal second) {
+        return java.util.Objects.equals(first.restriction().ruleCode(), second.restriction().ruleCode())
+                ? ONE : scaled(BigDecimal.ZERO);
     }
 
     private BigDecimal meanAvailabilityLoad(AcceptedProposal candidate) {

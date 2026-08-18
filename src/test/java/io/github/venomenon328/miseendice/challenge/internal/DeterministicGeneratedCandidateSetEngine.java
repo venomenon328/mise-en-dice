@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.challenge.internal;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.AcceptedProposal;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.CandidateEvaluation;
+import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.CandidateRestriction;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.RequirementSnapshot;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.WeightEvaluation;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
@@ -24,6 +25,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.FallbackLe
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyBand;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RequirementSource;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RequirementSpecificity;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.ScoreComponent;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -149,7 +151,10 @@ final class DeterministicGeneratedCandidateSetEngine implements CandidateSetEngi
                         List.of(),
                         Set.of()),
                 "persistence-fixture-" + String.format("%02d", candidateNumber),
-                Set.of());
+                Set.of(),
+                context.restrictionMode() == RestrictionMode.REQUIRED
+                        ? CandidateRestriction.selected(context.catalog().exclusionRules().getFirst())
+                        : CandidateRestriction.none());
     }
 
     private static WeightEvaluation weight(GeneratorConcept concept) {

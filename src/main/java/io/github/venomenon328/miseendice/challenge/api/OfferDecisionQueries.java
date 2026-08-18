@@ -31,9 +31,16 @@ public interface OfferDecisionQueries {
     }
 
     record OfferView(long offerId, int position, long candidateId,
-                     List<CurationRequest.RequirementSnapshot> requirements) {
+                     List<CurationRequest.RequirementSnapshot> requirements,
+                     CandidateProposalEngine.CandidateRestriction restriction) {
         public OfferView {
             requirements = List.copyOf(requirements);
+            restriction = restriction == null ? CandidateProposalEngine.CandidateRestriction.none() : restriction;
+        }
+
+        public OfferView(long offerId, int position, long candidateId,
+                         List<CurationRequest.RequirementSnapshot> requirements) {
+            this(offerId, position, candidateId, requirements, CandidateProposalEngine.CandidateRestriction.none());
         }
     }
 
@@ -53,14 +60,28 @@ public interface OfferDecisionQueries {
     }
 
     record RerollExposureView(long exposureId, long sessionId, long offerSetId, Instant exposedAt,
-                              List<ExposedRequirementView> requirements) {
+                              List<ExposedRequirementView> requirements,
+                              List<ExposedRestrictionView> restrictions) {
         public RerollExposureView {
             requirements = List.copyOf(requirements);
+            restrictions = List.copyOf(restrictions);
+        }
+
+        public RerollExposureView(long exposureId, long sessionId, long offerSetId, Instant exposedAt,
+                                  List<ExposedRequirementView> requirements) {
+            this(exposureId, sessionId, offerSetId, exposedAt, requirements, List.of());
         }
     }
 
     record ExposedRequirementView(long offerId, long candidateId, int position, String source,
                                   Long ingredientConceptId, String conceptCodeSnapshot,
                                   String displayTextSnapshot) {
+    }
+
+    record ExposedRestrictionView(long offerId, long candidateId,
+                                  CandidateProposalEngine.CandidateRestriction restriction) {
+        public ExposedRestrictionView {
+            restriction = restriction == null ? CandidateProposalEngine.CandidateRestriction.none() : restriction;
+        }
     }
 }

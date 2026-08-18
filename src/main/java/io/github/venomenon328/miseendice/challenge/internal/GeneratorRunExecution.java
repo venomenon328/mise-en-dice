@@ -7,6 +7,7 @@ import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.Genera
 import io.github.venomenon328.miseendice.challenge.api.GenerationAttemptRequest;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext.ManualRequirement;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.PairEvidence;
 import io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
@@ -34,7 +35,7 @@ final class GeneratorRunExecution {
         GenerationAttemptRequest request = new GenerationAttemptRequest(
                 input.attemptType(), input.effectiveDate(), input.effectiveDate().getMonthValue(), input.catalog(),
                 input.visibleHistory(), input.manualRequirements(), input.rerollBlockedConceptCodes(), configuration,
-                input.seed());
+                input.seed(), input.restrictionMode());
         PreparedGenerationAttempt prepared = reservoirEngine.prepare(request);
         CandidateSetEngine.CandidateSetResult candidateSet = candidateSetEngine.generate(prepared, input.batchNumber());
         List<PairEvidence> evidence = candidateSet instanceof GeneratedCandidateSet generated
@@ -51,16 +52,25 @@ final class GeneratorRunExecution {
             Set<String> rerollBlockedConceptCodes,
             CatalogGeneratorSnapshot catalog,
             VisibleHistorySnapshot visibleHistory,
-            int batchNumber
+            int batchNumber,
+            RestrictionMode restrictionMode
     ) {
         Input {
             if (attemptType == null || effectiveDate == null || manualRequirements == null
                     || rerollBlockedConceptCodes == null || catalog == null || visibleHistory == null
-                    || batchNumber <= 0) {
+                    || batchNumber <= 0 || restrictionMode == null) {
                 throw new IllegalArgumentException("A materialized generator run needs complete inputs and a positive batch");
             }
             manualRequirements = List.copyOf(manualRequirements);
             rerollBlockedConceptCodes = Set.copyOf(rerollBlockedConceptCodes);
+        }
+
+        Input(io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType attemptType,
+              LocalDate effectiveDate, long seed, List<ManualRequirement> manualRequirements,
+              Set<String> rerollBlockedConceptCodes, CatalogGeneratorSnapshot catalog,
+              VisibleHistorySnapshot visibleHistory, int batchNumber) {
+            this(attemptType, effectiveDate, seed, manualRequirements, rerollBlockedConceptCodes, catalog,
+                    visibleHistory, batchNumber, RestrictionMode.AUTO);
         }
     }
 

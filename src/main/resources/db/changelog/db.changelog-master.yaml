@@ -59,3 +59,5 @@ databaseChangeLog:
       file: db/changelog/schema/009-challenge-voting-participation.sql
   - include:
       file: db/changelog/schema/010-selection-voting-review-hardening.sql
+  - include:
+      file: db/changelog/schema/011-candidate-specific-restrictions.sql

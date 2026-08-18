@@ -5,11 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.venomenon328.miseendice.MiseEnDiceApplication;
 import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands;
 import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands.OfferReady;
+import io.github.venomenon328.miseendice.challenge.api.CurationModel;
 import io.github.venomenon328.miseendice.challenge.api.CurationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Generated;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands;
+import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -49,6 +52,7 @@ class VisibleHistoryIntegrationTest {
     @Autowired CurationOrchestrationCommands curation;
     @Autowired CurationQueries curationQueries;
     @Autowired OfferDecisionCommands decisions;
+    @Autowired OfferDecisionQueries decisionQueries;
     @Autowired CurationOrchestrationIntegrationTest.ScriptedCuratorClient curator;
 
     @AfterEach
@@ -93,5 +97,37 @@ class VisibleHistoryIntegrationTest {
         } finally {
             jdbcTemplate.update("update ingredient_concept set novelty_level = ? where id = ?", currentNovelty, conceptId);
         }
+    }
+
+    @Test
+    void requiredCandidateRestrictionsPersistAcrossCurationOfferChallengeAndHistory() {
+        curator.script(CurationOrchestrationIntegrationTest.Script.success(1));
+        Generated generated = (Generated) generationCommands.startNewSession(
+                new StartNewSession(DATE, List.of(), 76_200_002L, 1, RestrictionMode.REQUIRED));
+
+        assertThat(curation.curate(generated.attemptId())).isInstanceOf(OfferReady.class);
+
+        CurationQueries.RoundView round = curationQueries.findRound(generated.attemptId(), 1).orElseThrow();
+        assertThat(round.request().contractVersion()).isEqualTo(CurationModel.CONTRACT_VERSION_V2);
+        assertThat(round.request().attemptExclusion()).isNull();
+        assertThat(round.request().candidates()).allSatisfy(candidate ->
+                assertThat(candidate.snapshot().restriction().ruleCode()).isNotBlank());
+
+        CurationQueries.OfferSetView curationOfferSet = curationQueries.findOfferSet(generated.attemptId()).orElseThrow();
+        long offerSetId = curationOfferSet.offerSetId();
+        OfferDecisionQueries.OfferView offer = decisionQueries.findOfferSet(offerSetId).orElseThrow().offers().getFirst();
+        assertThat(offer.restriction().ruleCode()).isNotBlank();
+
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(offerSetId));
+        decisions.confirm(new OfferDecisionCommands.ConfirmOffer(offerSetId, offer.offerId()));
+
+        String challengeCode = jdbcTemplate.queryForObject("select restriction_rule_code_snapshot from challenge", String.class);
+        String candidateCode = jdbcTemplate.queryForObject("""
+                select restriction_rule_code_snapshot from challenge_candidate
+                where id = ?
+                """, String.class, offer.candidateId());
+        assertThat(challengeCode).isEqualTo(candidateCode).isEqualTo(offer.restriction().ruleCode());
+        assertThat(repository.visibleHistory().challengesNewestFirst().getFirst().exclusionRuleCode())
+                .isEqualTo(challengeCode);
     }
 }

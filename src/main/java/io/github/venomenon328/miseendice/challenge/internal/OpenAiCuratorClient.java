@@ -45,7 +45,7 @@ final class OpenAiCuratorClient implements CuratorClient {
 
     @Override
     public PreparedDispatch prepare(String model, CurationRequest request) {
-        if (model == null || model.isBlank() || !OpenAiCuratorPrompt.VERSION.equals(request.promptVersion())) {
+        if (model == null || model.isBlank() || !OpenAiCuratorPrompt.supports(request.promptVersion(), request.contractVersion())) {
             throw new IllegalArgumentException("A persisted model and supported prompt version are required");
         }
         List<Long> candidateIds = request.candidates().stream()
@@ -58,7 +58,7 @@ final class OpenAiCuratorClient implements CuratorClient {
                 "background", false,
                 "reasoning", object("effort", properties.reasoningEffort()),
                 "tools", List.of(),
-                "instructions", OpenAiCuratorPrompt.TEXT,
+                "instructions", OpenAiCuratorPrompt.textFor(request.promptVersion()),
                 "input", List.of(object(
                         "role", "user",
                         "content", List.of(object(
@@ -66,7 +66,7 @@ final class OpenAiCuratorClient implements CuratorClient {
                                 "text", json(request))))),
                 "text", object("format", object(
                         "type", "json_schema",
-                        "name", "mise_en_dice_curator_v1",
+                        "name", "mise_en_dice_curator_" + request.contractVersion().toLowerCase(java.util.Locale.ROOT),
                         "description", "Complete ranked semantic evaluation of supplied challenge candidates",
                         "strict", true,
                         "schema", responseSchema(request, candidateIds)))
@@ -173,7 +173,7 @@ final class OpenAiCuratorClient implements CuratorClient {
                 "type", "object",
                 "additionalProperties", false,
                 "properties", object(
-                        "contractVersion", object("type", "string", "enum", List.of(CurationModel.CONTRACT_VERSION)),
+                        "contractVersion", object("type", "string", "enum", List.of(request.contractVersion())),
                         "attemptId", object("type", "integer", "enum", List.of(request.attemptId())),
                         "roundId", object("type", "integer", "enum", List.of(request.roundId())),
                         "primaryBatchId", object("type", "integer", "enum", List.of(request.primaryBatchId())),

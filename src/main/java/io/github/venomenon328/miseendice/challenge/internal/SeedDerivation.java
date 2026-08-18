@@ -82,6 +82,8 @@ final class SeedDerivation {
         BATCH_ROOT("batch-root"),
         ATTEMPT_EXCLUSION_MODE("attempt-exclusion-mode"),
         ATTEMPT_EXCLUSION_RULE("attempt-exclusion-rule"),
+        CANDIDATE_RESTRICTION_MODE("candidate-restriction-mode"),
+        CANDIDATE_RESTRICTION_RULE("candidate-restriction-rule"),
         PROPOSAL_PROFILE("proposal-profile"),
         PROPOSAL_SPECIFICITY("proposal-specificity"),
         PROPOSAL_NOVELTY("proposal-novelty"),

@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.challenge.api;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
+import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.CandidateRestriction;
 
 /** Immutable persisted request handed to a future external curator adapter. */
 public record CurationRequest(
@@ -17,12 +18,19 @@ public record CurationRequest(
         List<Candidate> candidates
 ) {
     public CurationRequest {
-        if (!CurationModel.CONTRACT_VERSION.equals(contractVersion) || promptVersion == null || promptVersion.isBlank()
+        if (!CurationModel.supportedContract(contractVersion) || promptVersion == null || promptVersion.isBlank()
                 || attemptId <= 0 || roundId <= 0
                 || primaryBatchId <= 0 || requestedOfferCount < 1 || requestedOfferCount > 3
-                || openOfferSlots < 1 || openOfferSlots > requestedOfferCount || attemptExclusion == null || candidates == null
+                || openOfferSlots < 1 || openOfferSlots > requestedOfferCount || candidates == null
                 || candidates.isEmpty()) {
             throw new IllegalArgumentException("Invalid curation request contract");
+        }
+        if (CurationModel.CONTRACT_VERSION_V1.equals(contractVersion) && attemptExclusion == null) {
+            throw new IllegalArgumentException("Curation contract V1 requires its historic attempt exclusion snapshot");
+        }
+        if (CurationModel.CONTRACT_VERSION_V2.equals(contractVersion)
+                && (attemptExclusion != null || candidates.stream().anyMatch(candidate -> candidate.snapshot().restriction() == null))) {
+            throw new IllegalArgumentException("Curation contract V2 carries exactly one restriction snapshot per candidate");
         }
         promptVersion = promptVersion.strip();
         candidates = List.copyOf(candidates);
@@ -74,7 +82,8 @@ public record CurationRequest(
             String componentScoresJson,
             String generatorReasonCodesJson,
             String generatorDiagnosticsJson,
-            List<RequirementSnapshot> requirements
+            List<RequirementSnapshot> requirements,
+            CandidateRestriction restriction
     ) {
         public CandidateSnapshot {
             if (candidateNumber < 1 || profile == null || targetSpecificity == null || targetNoveltyBand == null
@@ -84,6 +93,17 @@ public record CurationRequest(
                 throw new IllegalArgumentException("A curation candidate requires its complete generator snapshot");
             }
             requirements = List.copyOf(requirements);
+        }
+
+        /** Compatibility constructor for immutable Curation Contract V1 payloads. */
+        public CandidateSnapshot(int candidateNumber, String profile, Integer targetSpecificity,
+                                 String targetNoveltyBand, String actualNoveltyBand, Integer knownNoveltyLoad,
+                                 BigDecimal totalScore, BigDecimal dataConfidence, String canonicalSignature,
+                                 String componentScoresJson, String generatorReasonCodesJson,
+                                 String generatorDiagnosticsJson, List<RequirementSnapshot> requirements) {
+            this(candidateNumber, profile, targetSpecificity, targetNoveltyBand, actualNoveltyBand,
+                    knownNoveltyLoad, totalScore, dataConfidence, canonicalSignature, componentScoresJson,
+                    generatorReasonCodesJson, generatorDiagnosticsJson, requirements, null);
         }
     }
 

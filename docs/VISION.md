@@ -173,7 +173,11 @@ Außergewöhnlichkeit wird innerhalb eines Kandidaten, im Zwölfer-Satz und übe
 
 Alle Zufallsentscheidungen verwenden einen gespeicherten Seed, einen benannten RNG, kanonische Eingaben sowie Generator- und Konfigurationsversionen. Harte Regeln werden nie gelockert; begrenzte Fallbacks betreffen ausschließlich dokumentierte Softziele.
 
-Eine optionale Ausschlussregel wird einmal pro Generierungsversuch bestimmt und gilt für alle zwölf Kandidaten und alle internen Runden dieses Versuchs.
+Ab Generator `1.2.0` wird eine optionale Restriktion pro Kandidat und vor dessen Requirement-Ziehungen bestimmt:
+`AUTO` ist der persistierte Default und zieht deterministisch mit 20 %, `NONE` zieht keine, `REQUIRED` verlangt
+eine eligible Restriktion. Candidate-Signatur, Satzdiversität, Kuratorrequest, Offer, bestätigte Challenge und
+Reroll-Historie tragen genau diesen Snapshot. Historische Generatoren `1.0.x` und `1.1.x` behalten dagegen ihre
+einmalige attempt-weite Ausschlussentscheidung ausschließlich für Replay und Audit.
 
 ### 5.3 Rolle des Sprachmodells und Auswahl mehrerer Angebote
 

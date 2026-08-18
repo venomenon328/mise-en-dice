@@ -543,6 +543,22 @@ Discord- und OpenAI-Aufrufe bleiben ausdrücklich außerhalb von CI, Maven-Tests
 - Runbook, Evidenztemplate und Kosten-/Latenzprotokoll unter [`PRODUCTION_VALIDATION.md`](PRODUCTION_VALIDATION.md),
 - Offline-Tests für Secret-Isolation, Port-/Projekt-/Volume-Trennung, Legacy-Runtime und Reset; keine Live-Providercalls.
 
+### Phase 12B.5A: Kandidatenspezifischer Restriction-Core (Issue #93)
+
+Issue #93 schließt eine replayrelevante Kernkorrektur vor der manuellen Abnahme ab, ohne Discord-Bedienung oder
+Darstellung vorwegzunehmen:
+
+- Generator `1.2.0` führt `AUTO` (deterministisch 20 %), `NONE` und `REQUIRED` als persistierten Sessionmodus ein;
+- Rule-Auswahl, Hard-Konflikte, Candidate-Signatur und Satzdiversität sind kandidatenspezifisch und versioniert;
+- `CURATION_CONTRACT_V2`/`CURATOR_PROMPT_V2`, Offer, bestätigte Challenge und Reroll-Exposition tragen den
+  unveränderlichen Restriktionssnapshot;
+- `1.0.x`-/`1.1.x`-Attempts bleiben über getrennte Replay-Payloads und den versionierten Dispatcher unverändert;
+- echte PostgreSQL-Tests prüfen Snapshotkopien, History und Migration; breite Simulationsmatrizen werden nicht
+  erneut ausgeführt.
+
+Discord-Commands, Buttons, Nachrichten oder Darstellung gehören ausdrücklich nicht zu diesem Paket und bleiben
+Gegenstand des nachfolgenden Adapters.
+
 ### Phase 12B–12E: Manuelle Inbetriebnahme, Abnahme und Pilot (Issues #87–#90)
 
 Die folgenden Pakete führen erst nach der isolierten 12A-Basis manuelle Discord-/OpenAI-Smokes, die vollständigen

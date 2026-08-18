@@ -13,12 +13,14 @@ import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.A
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.ProposalResult;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext.ManualRequirement;
+import io.github.venomenon328.miseendice.challenge.api.GenerationAttemptRequest;
 import io.github.venomenon328.miseendice.challenge.api.GenerationPlan;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.CandidateProfile;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyBand;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyCadence;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RequirementSource;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
@@ -305,6 +307,59 @@ class CandidateProposalEngineTest {
         }
     }
 
+    @Test
+    void candidateRestrictionModesAreDeterministicAndRequiredManualConflictsExhaust() {
+        GeneratorConfiguration version12 = TestGeneratorConfiguration.candidateRestrictionDefaults();
+        DefaultCandidateProposalEngine version12Engine = new DefaultCandidateProposalEngine(version12,
+                "{\"configurationVersion\":\"2026-08-18.1\"}");
+        DefaultCandidateReservoirEngine reservoir = new DefaultCandidateReservoirEngine(version12Engine);
+        CatalogGeneratorSnapshot catalog = catalog(false);
+
+        GenerationContext none = preparedContext(reservoir, version12, catalog, List.of(), RestrictionMode.NONE, 912L);
+        GenerationContext required = preparedContext(reservoir, version12, catalog, List.of(), RestrictionMode.REQUIRED, 912L);
+        assertThat(required.exclusionDecision()).isEqualTo(AttemptExclusionDecision.none());
+
+        AcceptedProposal unrestricted = null;
+        AcceptedProposal restricted = null;
+        for (long ordinal = 0; ordinal < 100; ordinal++) {
+            ProposalResult without = version12Engine.propose(none, ordinal);
+            ProposalResult with = version12Engine.propose(required, ordinal);
+            if (without instanceof AcceptedProposal withoutRestriction && with instanceof AcceptedProposal withRestriction) {
+                unrestricted = withoutRestriction;
+                restricted = withRestriction;
+                break;
+            }
+        }
+        assertThat(unrestricted).isNotNull();
+        assertThat(restricted.restriction().ruleCode()).isEqualTo("NO_SEASONING");
+        assertThat(restricted.diagnostics()).contains(GeneratorReasonCode.CANDIDATE_RESTRICTION_SELECTED);
+        assertThat(restricted.requirements()).filteredOn(requirement -> requirement.source() == RequirementSource.RANDOM)
+                .extracting(requirement -> requirement.concept().code()).doesNotContain("SEASONING_A");
+        assertThat(restricted.canonicalSignature()).isNotEqualTo(unrestricted.canonicalSignature());
+        assertThat(version12Engine.propose(required, restricted.proposalOrdinal())).isEqualTo(restricted);
+
+        GeneratorConcept manualConflict = catalog.conceptByCode("SEASONING_A").orElseThrow();
+        GenerationContext unavailable = preparedContext(reservoir, version12, catalog,
+                List.of(new ManualRequirement(1, "Seasoning", manualConflict)), RestrictionMode.REQUIRED, 913L);
+        ProposalResult rejected = version12Engine.propose(unavailable, 0);
+        assertThat(rejected).isInstanceOf(io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.RejectedProposal.class);
+        assertThat(((io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.RejectedProposal) rejected)
+                .hardReasons()).containsExactly(GeneratorReasonCode.REQUIRED_RESTRICTION_UNAVAILABLE);
+
+        VisibleHistorySnapshot rerollHistory = new VisibleHistorySnapshot(List.of(), List.of(new VisibleRerollExposure(
+                Instant.parse("2026-08-12T18:00:00Z"), "session", "offer-set",
+                List.of(visibleRequirement("ANIMAL_A"), visibleRequirement("PLANT_A"),
+                        visibleRequirement("VEGETABLE_A"), visibleRequirement("STARCH_A")),
+                Set.of("NO_SEASONING"))));
+        GenerationContext immediateReroll = preparedContext(reservoir, version12, catalog, List.of(),
+                RestrictionMode.REQUIRED, 914L, rerollHistory);
+        assertThat(immediateReroll.noveltyCadence()).isEqualTo(NoveltyCadence.NEUTRAL);
+        assertThat(immediateReroll.exclusionRuleEvaluations().getFirst().diagnostics())
+                .contains(GeneratorReasonCode.EXCLUSION_RULE_REPEAT_BLOCKED);
+        assertThat(version12Engine.propose(immediateReroll, 0)).isInstanceOf(
+                io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.RejectedProposal.class);
+    }
+
     private AcceptedProposal findAccepted(GenerationContext context) {
         for (long ordinal = 0; ordinal < 2_000; ordinal++) {
             ProposalResult result = engine.propose(context, ordinal);
@@ -319,6 +374,32 @@ class CandidateProposalEngineTest {
                 NoveltyCadence.NEUTRAL,
                 Map.of(NoveltyBand.FAMILIAR, 3, NoveltyBand.BALANCED, 7, NoveltyBand.ADVENTUROUS, 2),
                 configuration, seed, 1);
+    }
+
+    private GenerationContext preparedContext(
+            DefaultCandidateReservoirEngine reservoir,
+            GeneratorConfiguration configuration,
+            CatalogGeneratorSnapshot catalog,
+            List<ManualRequirement> manuals,
+            RestrictionMode mode,
+            long seed
+    ) {
+        return preparedContext(reservoir, configuration, catalog, manuals, mode, seed, VisibleHistorySnapshot.empty());
+    }
+
+    private GenerationContext preparedContext(
+            DefaultCandidateReservoirEngine reservoir,
+            GeneratorConfiguration configuration,
+            CatalogGeneratorSnapshot catalog,
+            List<ManualRequirement> manuals,
+            RestrictionMode mode,
+            long seed,
+            VisibleHistorySnapshot history
+    ) {
+        GenerationAttemptRequest request = new GenerationAttemptRequest(AttemptType.INITIAL,
+                LocalDate.of(2026, 8, 12), 8, catalog, history, manuals, Set.of(),
+                configuration, seed, mode);
+        return reservoir.contextForBatch(reservoir.prepare(request), 1);
     }
 
     private VisibleRequirement visibleRequirement(String conceptCode) {

@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.challenge.api;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Availability;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorExclusionRule;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.CandidateProfile;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyBand;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RequirementSource;
@@ -44,11 +45,44 @@ public interface CandidateProposalEngine {
             List<RequirementSnapshot> requirements,
             CandidateEvaluation evaluation,
             String canonicalSignature,
-            Set<GeneratorReasonCode> diagnostics
+            Set<GeneratorReasonCode> diagnostics,
+            CandidateRestriction restriction
     ) implements ProposalResult {
         public AcceptedProposal {
             requirements = List.copyOf(requirements);
             diagnostics = Set.copyOf(diagnostics);
+            restriction = restriction == null ? CandidateRestriction.none() : restriction;
+        }
+
+        /** Compatibility constructor for generator-1.0/1.1 candidate fixtures. */
+        public AcceptedProposal(long proposalOrdinal, CandidateProfile profile, int targetSpecificity,
+                                NoveltyBand targetNoveltyBand, List<RequirementSnapshot> requirements,
+                                CandidateEvaluation evaluation, String canonicalSignature,
+                                Set<GeneratorReasonCode> diagnostics) {
+            this(proposalOrdinal, profile, targetSpecificity, targetNoveltyBand, requirements, evaluation,
+                    canonicalSignature, diagnostics, CandidateRestriction.none());
+        }
+    }
+
+    /** Immutable candidate-local exclusion snapshot. A null rule is the explicit no-restriction state. */
+    record CandidateRestriction(Long ruleId, String ruleCode, String textSnapshot) {
+        public CandidateRestriction {
+            if ((ruleId == null) != (ruleCode == null) || (ruleId == null) != (textSnapshot == null)
+                    || (ruleId != null && (ruleId <= 0 || ruleCode.isBlank() || textSnapshot.isBlank()))) {
+                throw new IllegalArgumentException("Invalid candidate restriction snapshot");
+            }
+            if (ruleCode != null) {
+                ruleCode = ruleCode.strip();
+                textSnapshot = textSnapshot.strip();
+            }
+        }
+
+        public static CandidateRestriction none() {
+            return new CandidateRestriction(null, null, null);
+        }
+
+        public static CandidateRestriction selected(GeneratorExclusionRule rule) {
+            return new CandidateRestriction(rule.id(), rule.code(), rule.displayText());
         }
     }
 

@@ -7,6 +7,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.github.venomenon328.miseendice.challenge.api.CurationModel;
 import io.github.venomenon328.miseendice.challenge.api.CurationRequest;
+import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.CandidateRestriction;
 import io.github.venomenon328.miseendice.challenge.api.CurationResponse;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
@@ -95,6 +96,28 @@ class OpenAiCuratorClientTest {
         assertThat(authorizationHeader).isEqualTo("Bearer test-secret");
         assertThat(acceptHeader).isEqualTo("application/json");
         assertThat(contentTypeHeader).startsWith("application/json");
+    }
+
+    @Test
+    void candidateSpecificRestrictionUsesTheVersionedV2PromptAndContract() throws Exception {
+        CurationRequest.Candidate v1Candidate = candidate(101, 1);
+        CurationRequest.CandidateSnapshot v1Snapshot = v1Candidate.snapshot();
+        CurationRequest.CandidateSnapshot v2Snapshot = new CurationRequest.CandidateSnapshot(
+                v1Snapshot.candidateNumber(), v1Snapshot.profile(), v1Snapshot.targetSpecificity(),
+                v1Snapshot.targetNoveltyBand(), v1Snapshot.actualNoveltyBand(), v1Snapshot.knownNoveltyLoad(),
+                v1Snapshot.totalScore(), v1Snapshot.dataConfidence(), v1Snapshot.canonicalSignature(),
+                v1Snapshot.componentScoresJson(), v1Snapshot.generatorReasonCodesJson(),
+                v1Snapshot.generatorDiagnosticsJson(), v1Snapshot.requirements(),
+                new CandidateRestriction(8L, "NO_SMOKE", "No smoked ingredients"));
+        CurationRequest request = new CurationRequest(CurationModel.CONTRACT_VERSION_V2,
+                OpenAiCuratorPrompt.VERSION_V2, 11, 22, 33, 1, 1, null,
+                List.of(new CurationRequest.Candidate(101, 1, CurationModel.Participation.NEW, null, v2Snapshot)));
+
+        CuratorClient.PreparedDispatch prepared = client(Duration.ofSeconds(2)).prepare("gpt-5.6-terra", request);
+        Map<String, Object> payload = objectMapper.readValue(prepared.requestPayload(), new TypeReference<>() { });
+
+        assertThat(payload.get("instructions").toString()).contains("Each candidate carries its own");
+        assertThat(prepared.requestPayload()).contains("CURATION_CONTRACT_V2").contains("NO_SMOKE");
     }
 
     @ParameterizedTest

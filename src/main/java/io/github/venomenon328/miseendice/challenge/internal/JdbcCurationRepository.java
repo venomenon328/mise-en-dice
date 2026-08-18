@@ -34,7 +34,8 @@ class JdbcCurationRepository {
         return jdbcTemplate.query("""
                 select attempt.id, attempt.challenge_session_id, session.requested_offer_count,
                        attempt.status, attempt.curation_status, attempt.curation_terminal_reason_code,
-                       attempt.curation_terminal_detail, attempt.exclusion_rule_id, attempt.exclusion_text_snapshot
+                       attempt.curation_terminal_detail, attempt.exclusion_rule_id, attempt.exclusion_text_snapshot,
+                       attempt.generator_version
                 from generation_attempt attempt
                 join challenge_session session on session.id = attempt.challenge_session_id
                 where attempt.id = ? for update
@@ -86,15 +87,15 @@ class JdbcCurationRepository {
 
     void insertRound(long roundId, long attemptId, int roundNumber, long primaryBatchId,
                      CurationModel.RequestPurpose purpose, String curatorModel, String promptVersion,
-                     int openOfferSlots, String requestPayload) {
+                     String contractVersion, int openOfferSlots, String requestPayload) {
         jdbcTemplate.update("""
                 insert into curation_round (
                     id, generation_attempt_id, round_number, curator_model, prompt_version, status,
                     request_payload, legacy_migrated, primary_generation_batch_id, request_purpose, contract_version,
                     open_offer_slots
-                ) values (?, ?, ?, ?, ?, 'PENDING', cast(? as jsonb), false, ?, ?, 'CURATION_CONTRACT_V1', ?)
+                ) values (?, ?, ?, ?, ?, 'PENDING', cast(? as jsonb), false, ?, ?, ?, ?)
                 """, roundId, attemptId, roundNumber, curatorModel, promptVersion, requestPayload,
-                primaryBatchId, purpose.name(), openOfferSlots);
+                primaryBatchId, purpose.name(), contractVersion, openOfferSlots);
     }
 
     long insertRoundCandidate(long roundId, long candidateId, int requestPosition,
@@ -266,18 +267,23 @@ class JdbcCurationRepository {
     void insertOffer(long offerSetId, int position, long candidateId, long curationRoundCandidateId) {
         jdbcTemplate.update("""
                 insert into curated_offer (curated_offer_set_id, position, challenge_candidate_id,
-                                           curation_round_candidate_id)
-                values (?, ?, ?, ?)
-                """, offerSetId, position, candidateId, curationRoundCandidateId);
+                                           curation_round_candidate_id, restriction_rule_id,
+                                           restriction_rule_code_snapshot, restriction_text_snapshot)
+                select ?, ?, candidate.id, ?, candidate.restriction_rule_id,
+                       candidate.restriction_rule_code_snapshot, candidate.restriction_text_snapshot
+                from challenge_candidate candidate where candidate.id = ?
+                """, offerSetId, position, curationRoundCandidateId, candidateId);
     }
 
     CurationRequest.CandidateSnapshot candidateSnapshot(long candidateId) {
         return jdbcTemplate.query("""
-                select id, candidate_number, profile, target_specificity, target_novelty_band,
+                select candidate.id, candidate.candidate_number, candidate.profile, candidate.target_specificity, candidate.target_novelty_band,
                        actual_novelty_band, known_novelty_load, total_score, data_confidence,
                        canonical_signature, component_scores::text, generator_reason_codes::text,
-                       generator_diagnostics::text
-                from challenge_candidate where id = ?
+                       generator_diagnostics::text, candidate.restriction_rule_id,
+                       candidate.restriction_rule_code_snapshot, candidate.restriction_text_snapshot
+                from challenge_candidate candidate
+                where candidate.id = ?
                 """, (result, row) -> snapshot(result), candidateId).stream().findFirst().orElseThrow(
                 () -> new IllegalArgumentException("Challenge candidate does not exist"));
     }
@@ -300,7 +306,8 @@ class JdbcCurationRepository {
         Attempt attempt = jdbcTemplate.query("""
                 select attempt.id, attempt.challenge_session_id, session.requested_offer_count,
                        attempt.status, attempt.curation_status, attempt.curation_terminal_reason_code,
-                       attempt.curation_terminal_detail, attempt.exclusion_rule_id, attempt.exclusion_text_snapshot
+                       attempt.curation_terminal_detail, attempt.exclusion_rule_id, attempt.exclusion_text_snapshot,
+                       attempt.generator_version
                 from generation_attempt attempt join challenge_session session on session.id = attempt.challenge_session_id
                 where attempt.id = ?
                 """, this::mapAttempt, attemptId).stream().findFirst().orElseThrow();
@@ -366,7 +373,10 @@ class JdbcCurationRepository {
                 result.getString("actual_novelty_band"), (Integer) result.getObject("known_novelty_load"),
                 result.getBigDecimal("total_score"), result.getBigDecimal("data_confidence"),
                 result.getString("canonical_signature"), result.getString("component_scores"),
-                result.getString("generator_reason_codes"), result.getString("generator_diagnostics"), requirements);
+                result.getString("generator_reason_codes"), result.getString("generator_diagnostics"), requirements,
+                new io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.CandidateRestriction(
+                        (Long) result.getObject("restriction_rule_id"), result.getString("restriction_rule_code_snapshot"),
+                        result.getString("restriction_text_snapshot")));
     }
 
     String json(Object value) {
@@ -385,7 +395,7 @@ class JdbcCurationRepository {
         }
     }
 
-    private CurationRequest readRequest(String json) {
+    CurationRequest readRequest(String json) {
         try {
             return objectMapper.readValue(json, CurationRequest.class);
         } catch (JacksonException exception) {
@@ -425,7 +435,8 @@ class JdbcCurationRepository {
         return new Attempt(result.getLong("id"), result.getLong("challenge_session_id"),
                 result.getInt("requested_offer_count"), result.getString("status"), result.getString("curation_status"),
                 result.getString("curation_terminal_reason_code"), result.getString("curation_terminal_detail"),
-                (Long) result.getObject("exclusion_rule_id"), result.getString("exclusion_text_snapshot"));
+                (Long) result.getObject("exclusion_rule_id"), result.getString("exclusion_text_snapshot"),
+                result.getString("generator_version"));
     }
 
     private static CurationModel.Evaluation nullableEvaluation(ResultSet result, String column) throws SQLException {
@@ -457,7 +468,8 @@ class JdbcCurationRepository {
     }
 
     record Attempt(long id, long sessionId, int requestedOfferCount, String generationStatus, String curationStatus,
-                   String terminalReasonCode, String terminalDetail, Long exclusionRuleId, String exclusionTextSnapshot) {
+                   String terminalReasonCode, String terminalDetail, Long exclusionRuleId, String exclusionTextSnapshot,
+                   String generatorVersion) {
     }
 
     record Batch(long id, long attemptId, int batchNumber, String status, boolean legacyMigrated) {

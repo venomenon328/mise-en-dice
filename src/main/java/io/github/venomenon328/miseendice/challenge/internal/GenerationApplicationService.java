@@ -95,7 +95,7 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
         long seed = command.explicitSeed() == null ? seedSource.nextSeed() : command.explicitSeed();
         UUID operationToken = UUID.randomUUID();
         JdbcGenerationRepository.AttemptState attempt = writeTransaction.execute(status -> {
-            long sessionId = repository.createSession(command.requestedOfferCount());
+            long sessionId = repository.createSession(command.requestedOfferCount(), command.restrictionMode());
             return repository.createAttempt(sessionId, AttemptType.INITIAL, command.effectiveDate(), seed,
                     configuration().generatorVersion(), configuration().configurationVersion(),
                     configuration().rngAlgorithm().name(), configuration().canonicalPayloadVersion(),
@@ -264,7 +264,7 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
                 .toList();
         return new GenerationAttemptRequest(attempt.attemptType(), attempt.effectiveDate(), attempt.seasonMonth(),
                 inputs.catalog(), inputs.history(), manuals, inputs.rerollBlockedCodes(), configuration(),
-                attempt.attemptSeed());
+                attempt.attemptSeed(), attempt.restrictionMode());
     }
 
     private GenerationOutcome outcomeFor(JdbcGenerationRepository.AttemptState attempt) {
