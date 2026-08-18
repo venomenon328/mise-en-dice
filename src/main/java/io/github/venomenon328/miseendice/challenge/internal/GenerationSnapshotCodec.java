@@ -72,9 +72,15 @@ final class GenerationSnapshotCodec {
         if (!configuration.generatorVersion().equals("1.2.0")) {
             throw new InvalidContextSnapshotException("Stored generator version is not supported");
         }
+        if (!configuration.equals(supportedConfiguration)) {
+            throw new InvalidContextSnapshotException("Stored generator configuration is not the currently supported configuration");
+        }
         CatalogGeneratorSnapshot catalog = read(stored.catalogSnapshot(), CatalogGeneratorSnapshot.class);
         VisibleHistorySnapshot history = read(stored.visibleHistorySnapshot(), VisibleHistorySnapshot.class);
         RequestSnapshot requestSnapshot = read(stored.requestSnapshot(), RequestSnapshot.class);
+        if (requestSnapshot.rerollBlockedConceptCodes() == null || !requestSnapshot.rerollBlockedConceptCodes().isEmpty()) {
+            throw new InvalidContextSnapshotException("Generator 1.2 requires an empty canonical REROLL block snapshot");
+        }
         List<ManualRequirement> manuals = requestSnapshot.manualRequirements().stream()
                 .map(manual -> new ManualRequirement(
                         manual.position(),
@@ -148,6 +154,8 @@ final class GenerationSnapshotCodec {
                     item.put("position", manual.position());
                     return item;
                 }).toList());
+        // Generator 1.2 published this always-empty slot in #93; keep it stable although it has no runtime semantics.
+        value.put("rerollBlockedConceptCodes", List.of());
         value.put("restrictionMode", request.restrictionMode().name());
         value.put("seasonMonth", request.seasonMonth());
         return value;
@@ -158,7 +166,8 @@ final class GenerationSnapshotCodec {
         value.put("baselineNoveltyTargets", enumMap(prepared.baselineNoveltyTargets()));
         value.put("diagnostics", prepared.diagnostics().stream().map(Enum::name).sorted().toList());
         value.put("restrictionMode", prepared.request().restrictionMode().name());
-        value.put("restrictionRuleEvaluations", prepared.restrictionRuleEvaluations().stream().map(evaluation -> {
+        // This is the published Generator-1.2 canonical key from #93; Java terminology may evolve independently.
+        value.put("exclusionRuleEvaluations", prepared.restrictionRuleEvaluations().stream().map(evaluation -> {
             Map<String, Object> item = sortedMap();
             item.put("diagnostics", evaluation.diagnostics().stream().map(Enum::name).sorted().toList());
             item.put("effectiveWeight", evaluation.effectiveWeight());
@@ -371,6 +380,7 @@ final class GenerationSnapshotCodec {
             LocalDate effectiveDate,
             int seasonMonth,
             List<ManualSnapshot> manualRequirements,
+            List<String> rerollBlockedConceptCodes,
             long attemptSeed,
             RestrictionMode restrictionMode
     ) {
