@@ -221,7 +221,7 @@ class DiscordChallengeWorkflowTest {
     void continuesInitialCuratorUnavailabilityThroughTheFacade() {
         var preparation = mock(ChallengeOfferPreparationCommands.class);
         when(preparation.prepareInitial(any())).thenReturn(new ChallengeOfferPreparationCommands.InProgress(
-                1, 2, "CURATION", "CURATOR_UNAVAILABLE"));
+                1, 2, "CURATION", "CURATOR_ADAPTER_DISABLED"));
         when(preparation.continueInitial(new ChallengeOfferPreparationCommands.ContinueInitialOfferSet(1, 2)))
                 .thenReturn(new ChallengeOfferPreparationCommands.Exhausted(1, 2, "CURATION_EXHAUSTED", null));
         var messages = new ArrayList<DiscordChallengeRenderer.RenderedMessage>();
