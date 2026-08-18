@@ -223,8 +223,12 @@ final class CandidateSimilarityCalculator {
     }
 
     private BigDecimal restrictionSimilarity(AcceptedProposal first, AcceptedProposal second) {
-        return java.util.Objects.equals(first.restriction().ruleCode(), second.restriction().ruleCode())
-                ? ONE : scaled(BigDecimal.ZERO);
+        String firstCode = first.restriction().ruleCode();
+        String secondCode = second.restriction().ruleCode();
+        if (firstCode == null || secondCode == null) {
+            return scaled(BigDecimal.ZERO);
+        }
+        return firstCode.equals(secondCode) ? ONE : scaled(BigDecimal.ZERO);
     }
 
     private BigDecimal meanAvailabilityLoad(AcceptedProposal candidate) {
