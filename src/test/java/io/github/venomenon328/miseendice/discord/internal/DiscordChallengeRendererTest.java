@@ -89,7 +89,7 @@ class DiscordChallengeRendererTest {
         var renderer = new DiscordChallengeRenderer();
 
         var rendered = renderer.preparation(new io.github.venomenon328.miseendice.challenge.api.ChallengeOfferPreparationCommands.InProgress(
-                1, 2, "CURATION", "CURATOR_UNAVAILABLE"));
+                1, 2, "CURATION", "CURATOR_ADAPTER_DISABLED"));
 
         assertThat(rendered.content()).contains("Kuration gerade nicht erreichbar", "fortsetzen");
         assertThat(rendered.components()).containsExactly(new DiscordChallengeRenderer.Component("Fortsetzen",

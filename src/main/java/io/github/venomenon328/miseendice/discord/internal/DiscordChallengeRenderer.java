@@ -28,7 +28,7 @@ final class DiscordChallengeRenderer {
 
     RenderedMessage preparation(ChallengeOfferPreparationCommands.PreparationOutcome outcome) {
         if (outcome instanceof ChallengeOfferPreparationCommands.InProgress progress) {
-            String message = "CURATOR_UNAVAILABLE".equals(progress.reasonCode())
+            String message = "CURATOR_ADAPTER_DISABLED".equals(progress.reasonCode())
                     ? "**Kuration gerade nicht erreichbar**\nDu kannst den gespeicherten Vorgang später fortsetzen."
                     : "**Challenge wird vorbereitet**\nDie Generierung oder Kuration läuft noch. "
                     + "Du kannst den Vorgang später fortsetzen.";
