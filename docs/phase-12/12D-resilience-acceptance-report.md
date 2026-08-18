@@ -14,14 +14,12 @@ Phase 12C ist abgeschlossen. Der Branch basiert auf dem finalen 12C-`main` nach 
 
 ## Baseline vor dem ersten Szenario
 
-Noch einzutragen:
-
-- getesteter `main`-Commit:
-- Acceptance-Status:
-- Production-Status unverändert:
-- Acceptance-Backup:
+- getesteter `main`-Commit: `325996dc0704bdc8139c63fcb04d4ff5322fc7d0`
+- Acceptance vor 12D-Deployment: `running/healthy`, Port `18090`, Source `8e7565ef791d4a85cbb7a8aedbbba095d3582164`, Discord/OpenAI aktiviert, `gpt-5.6-terra`, Reasoning `medium`
+- Production unverändert gesund: `running/healthy`, Port `18080`, Source `3ffc239fc357a8b8579aeb77b1de637e6f6562db`, Discord/OpenAI deaktiviert
+- Acceptance-Baseline-Backup: `/opt/mise-en-dice/runtime/backups/mise-en-dice-acceptance-20260818T231430Z-8e7565ef791d.dump`, durch Operator validiert
 - OpenAI-Acceptance-Ausgangsstand: 8 Requests / 0,59 USD kumulativ aus 12B+12C
-- Verify / Deployment Verify auf dem getesteten Commit:
+- CI: Der finale `main`-Commit enthält gegenüber dem zuvor abgenommenen Code-Stand nur den 12C-Dokumentationsmerge aus PR #104. `Verify` und `Deployment Verify` waren auf dem unmittelbar vorherigen Produktcode-Stand aus PR #103 grün.
 
 ## Optimierte Szenarioreihenfolge
 
