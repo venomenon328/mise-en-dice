@@ -49,6 +49,9 @@ final class OpenAiCuratorPrompt {
             """;
 
     static String textFor(String promptVersion) {
+        if (promptVersion == null) {
+            throw new IllegalArgumentException("Unsupported curator prompt version: null");
+        }
         return switch (promptVersion) {
             case VERSION_V2 -> TEXT_V2;
             case VERSION_V3 -> TEXT_V3;
