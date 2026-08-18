@@ -2,7 +2,6 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Specificity;
-import io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext;
 import io.github.venomenon328.miseendice.challenge.api.GenerationPlan;
 import io.github.venomenon328.miseendice.challenge.api.GenerationPlan.ProjectedDistribution;
@@ -92,10 +91,6 @@ final class GenerationPlanProjector {
 
     private void validateContextReferences(GenerationContext context, List<GeneratorReasonCode> errors,
                                            Set<GeneratorReasonCode> diagnostics) {
-        if (context.exclusionDecision() instanceof AttemptExclusionDecision.Selected selected
-                && context.catalog().exclusionRules().stream().noneMatch(selected.rule()::equals)) {
-            addError(errors, GeneratorReasonCode.CONTEXT_SNAPSHOT_INVALID);
-        }
         for (GenerationContext.ManualRequirement manual : context.manualRequirements()) {
             if (manual.matchedConcept() == null) {
                 diagnostics.add(GeneratorReasonCode.UNCLASSIFIED_MANUAL_REQUIREMENT);
@@ -106,10 +101,6 @@ final class GenerationPlanProjector {
                     .isPresent();
             if (!exactSnapshotMatch) {
                 addError(errors, GeneratorReasonCode.CONTEXT_SNAPSHOT_INVALID);
-            }
-            if (context.exclusionDecision() instanceof AttemptExclusionDecision.Selected selected
-                    && selected.rule().expandedTargetCodes().contains(manual.matchedConcept().code())) {
-                addError(errors, GeneratorReasonCode.CANDIDATE_EXCLUSION_CONFLICT);
             }
         }
         List<GeneratorConcept> matched = context.manualRequirements().stream()
@@ -133,12 +124,9 @@ final class GenerationPlanProjector {
                 && concept.availabilityByParticipant().values().stream()
                 .noneMatch(value -> value == io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Availability.UNAVAILABLE)
                 && exactHistoryDistance(concept.code(), context) > context.configuration().cooldown().hardWindow()
-                && !context.rerollBlockedConceptCodes().contains(concept.code())
                 && context.manualRequirements().stream().filter(manual -> manual.matchedConcept() != null)
                 .noneMatch(manual -> manual.matchedConcept().code().equals(concept.code())
-                        || related(manual.matchedConcept(), concept))
-                && !(context.exclusionDecision() instanceof AttemptExclusionDecision.Selected selected
-                && selected.rule().expandedTargetCodes().contains(concept.code()));
+                        || related(manual.matchedConcept(), concept));
     }
 
     private int exactHistoryDistance(String code, GenerationContext context) {

@@ -9,8 +9,8 @@ import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.HistoryScenario;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation;
-import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.ExclusionVariant;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.ManualInput;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SeedRange;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SimulationReport;
@@ -24,7 +24,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,7 +61,6 @@ class GeneratorSimulationIntegrationTest {
     @Autowired JdbcGenerationRepository repository;
     @Autowired CandidateReservoirEngine reservoirEngine;
     @Autowired GeneratorProperties generatorProperties;
-    @Autowired tools.jackson.databind.ObjectMapper objectMapper;
     @Autowired PlatformTransactionManager transactionManager;
 
     @Test void ciScenarioSetIsReadOnlySequentialAndCanonicallyReproducible() throws IOException {
@@ -100,7 +98,7 @@ class GeneratorSimulationIntegrationTest {
     @Test void frozenInputsProduceTheSameCanonicalReport() {
         SimulationScenario oneCase = scenario("REPRODUCIBLE", new SeedRange(53_200_001L, 1),
                 List.of(LocalDate.of(2026, 8, 20)), HistoryScenario.EMPTY_HISTORY, AttemptType.INITIAL,
-                List.of(), Set.of());
+                List.of(), RestrictionMode.AUTO);
         SimulationRequest request = new SimulationRequest("ISSUE_53_REPRODUCIBLE_V1", List.of(oneCase), 1,
                 GeneratorSimulation.SimulationControl.unbounded());
         assertThat(simulation.simulate(request).canonicalFingerprint())
@@ -109,12 +107,12 @@ class GeneratorSimulationIntegrationTest {
 
     @Test void caseBoundsFailBeforeAnySimulationWork() {
         SimulationScenario atLimit = scenario("BOUND_4096", new SeedRange(1, 4_096), List.of(LocalDate.of(2026, 8, 20)),
-                HistoryScenario.EMPTY_HISTORY, AttemptType.INITIAL, List.of(), Set.of());
+                HistoryScenario.EMPTY_HISTORY, AttemptType.INITIAL, List.of(), RestrictionMode.AUTO);
         assertThat(new SimulationRequest("BOUND_V1", List.of(atLimit), 4_096,
                 GeneratorSimulation.SimulationControl.unbounded()).plannedCases()).isEqualTo(4_096);
 
         SimulationScenario overLimit = scenario("BOUND_4097", new SeedRange(1, 4_097),
-                List.of(LocalDate.of(2026, 8, 20)), HistoryScenario.EMPTY_HISTORY, AttemptType.INITIAL, List.of(), Set.of());
+                List.of(LocalDate.of(2026, 8, 20)), HistoryScenario.EMPTY_HISTORY, AttemptType.INITIAL, List.of(), RestrictionMode.AUTO);
         assertThatThrownBy(() -> new SimulationRequest("BOUND_V1", List.of(overLimit), 4_096,
                 GeneratorSimulation.SimulationControl.unbounded()))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("4096-case bound");
@@ -123,7 +121,7 @@ class GeneratorSimulationIntegrationTest {
     @Test void timeoutAndTechnicalFailuresStayExplicitlyIncomplete() {
         SimulationScenario sequence = scenario("TECHNICAL_SEQUENCE", new SeedRange(53_100_001L, 1),
                 List.of(LocalDate.of(2026, 8, 20), LocalDate.of(2026, 8, 27)), HistoryScenario.EMPTY_HISTORY,
-                AttemptType.INITIAL, List.of(), Set.of());
+                AttemptType.INITIAL, List.of(), RestrictionMode.AUTO);
         SimulationReport timedOut = simulation.simulate(new SimulationRequest("ISSUE_53_TIMEOUT_V1", List.of(sequence),
                 2, new GeneratorSimulation.SimulationControl(Instant.now(), () -> false,
                 GeneratorSimulation.TechnicalErrorMode.CONTINUE)));
@@ -135,7 +133,7 @@ class GeneratorSimulationIntegrationTest {
             throw new IllegalStateException("synthetic test failure");
         };
         GeneratorSimulation failingSimulation = new GeneratorSimulationService(catalogProjection, repository,
-                reservoirEngine, failingSetEngine, generatorProperties, objectMapper, transactionManager);
+                reservoirEngine, failingSetEngine, generatorProperties, transactionManager);
         SimulationReport technical = failingSimulation.simulate(new SimulationRequest("ISSUE_53_TECHNICAL_V1",
                 List.of(sequence), 2, GeneratorSimulation.SimulationControl.unbounded()));
         assertThat(technical.completion().status()).isEqualTo(GeneratorSimulation.CompletionStatus.INCOMPLETE);
@@ -150,27 +148,26 @@ class GeneratorSimulationIntegrationTest {
         LocalDate august = LocalDate.of(2026, 8, 20);
         return List.of(
                 scenario("CI_EMPTY", new SeedRange(53_000_001L, 1), List.of(august), HistoryScenario.EMPTY_HISTORY,
-                        AttemptType.INITIAL, List.of(), Set.of()),
+                        AttemptType.INITIAL, List.of(), RestrictionMode.AUTO),
                 scenario("CI_PRODUCTION", new SeedRange(53_000_010L, 1), List.of(august),
-                        HistoryScenario.PRODUCTION_VISIBLE, AttemptType.INITIAL, List.of(), Set.of()),
+                        HistoryScenario.PRODUCTION_VISIBLE, AttemptType.INITIAL, List.of(), RestrictionMode.AUTO),
                 scenario("CI_REROLL", new SeedRange(53_000_060L, 1), List.of(august), HistoryScenario.EMPTY_HISTORY,
-                        AttemptType.REROLL, List.of(), Set.of("ARTICHOKE", "ASPARAGUS", "BACON", "BAMBOO_SHOOTS")),
+                        AttemptType.REROLL, List.of(), RestrictionMode.REQUIRED),
                 scenario("CI_ONE_MANUAL", new SeedRange(53_000_070L, 1), List.of(august), HistoryScenario.EMPTY_HISTORY,
-                        AttemptType.INITIAL, List.of(new ManualInput(1, "Artischocke", "ARTICHOKE")), Set.of()),
+                        AttemptType.INITIAL, List.of(new ManualInput(1, "Artischocke", "ARTICHOKE")), RestrictionMode.AUTO),
                 scenario("CI_TWO_MANUALS", new SeedRange(53_000_080L, 1), List.of(august), HistoryScenario.EMPTY_HISTORY,
                         AttemptType.INITIAL, List.of(new ManualInput(1, "Speck", "BACON"),
-                                new ManualInput(2, "Use a waffle iron", null)), Set.of()),
+                                new ManualInput(2, "Use a waffle iron", null)), RestrictionMode.AUTO),
                 scenario("CI_SEQUENCE", new SeedRange(53_000_090L, 1), List.of(LocalDate.of(2026, 9, 3),
                         LocalDate.of(2026, 9, 10), LocalDate.of(2026, 9, 17)), HistoryScenario.EMPTY_HISTORY,
-                        AttemptType.INITIAL, List.of(), Set.of()));
+                        AttemptType.INITIAL, List.of(), RestrictionMode.NONE));
     }
 
     private static SimulationScenario scenario(
             String code, SeedRange seeds, List<LocalDate> dates, HistoryScenario history, AttemptType attempt,
-            List<ManualInput> manuals, Set<String> rerollBlock
+            List<ManualInput> manuals, RestrictionMode restrictionMode
     ) {
-        return new SimulationScenario(code, seeds, dates, history, attempt, manuals, rerollBlock, 1,
-                ExclusionVariant.DEFAULT);
+        return new SimulationScenario(code, seeds, dates, history, attempt, manuals, 1, restrictionMode);
     }
 
     private List<Integer> operationalCounts() {

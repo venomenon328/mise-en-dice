@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
-import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.ExclusionVariant;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.TechnicalErrorMode;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -36,28 +36,27 @@ class GeneratorSimulationFormTest {
             assertThat(scenario.seedPlan().seeds()).containsExactly(37_000_001L, 37_000_002L);
             assertThat(scenario.attemptType()).isEqualTo(AttemptType.INITIAL);
             assertThat(scenario.visibleCandidatePosition()).isEqualTo(1);
-            assertThat(scenario.exclusionVariant()).isEqualTo(ExclusionVariant.DEFAULT);
-            assertThat(scenario.rerollBlockedConceptCodes()).isEmpty();
+            assertThat(scenario.restrictionMode()).isEqualTo(RestrictionMode.AUTO);
         });
     }
 
     @Test
-    void resolvesManualMatchForRerollWithoutDedicatedBlockInput() {
+    void resolvesManualMatchForReroll() {
         var request = form("37000001", "1", "2026-08-13", "1", "REROLL", "manual", "10", "", "")
                 .toRequest(catalogQueries(), DEADLINE);
 
         var scenario = request.scenarios().getFirst();
         assertThat(scenario.manualRequirements()).singleElement()
                 .satisfies(manual -> assertThat(manual.matchedConceptCode()).isEqualTo("CODE_10"));
-        assertThat(scenario.rerollBlockedConceptCodes()).isEmpty();
+        assertThat(scenario.restrictionMode()).isEqualTo(RestrictionMode.AUTO);
     }
 
     @Test
-    void rerollNeedsNoDedicatedBlock() {
+    void rerollUsesTheCurrentCandidateRestrictionMode() {
         var request = form("37000001", "1", "2026-08-13", "1", "REROLL", "", "", "", "")
                 .toRequest(catalogQueries(), DEADLINE);
 
-        assertThat(request.scenarios().getFirst().rerollBlockedConceptCodes()).isEmpty();
+        assertThat(request.scenarios().getFirst().restrictionMode()).isEqualTo(RestrictionMode.AUTO);
     }
 
     @Test
@@ -97,7 +96,7 @@ class GeneratorSimulationFormTest {
             String manual1, String manual1Id, String manual2, String manual2Id
     ) {
         return new GeneratorSimulationForm(startSeed, seedCount, date, monthCount, type, "EMPTY_HISTORY",
-                manual1, manual1Id, manual2, manual2Id);
+                "AUTO", manual1, manual1Id, manual2, manual2Id);
     }
 
     private static CatalogQueries catalogQueries() {

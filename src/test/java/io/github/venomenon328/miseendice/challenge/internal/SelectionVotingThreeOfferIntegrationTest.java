@@ -8,6 +8,7 @@ import io.github.venomenon328.miseendice.challenge.api.CurationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Generated;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingCommands;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingQueries;
@@ -153,7 +154,7 @@ class SelectionVotingThreeOfferIntegrationTest {
     private OfferDecisionQueries.OfferSetView offered(int count, long seed) {
         curator.script(CurationOrchestrationIntegrationTest.Script.success(count));
         Generated generated = (Generated) generationCommands.startNewSession(
-                new StartNewSession(DATE, List.of(), seed, count));
+                new StartNewSession(DATE, List.of(), seed, count, RestrictionMode.AUTO));
         assertThat(curation.curate(generated.attemptId())).isInstanceOf(CurationOrchestrationCommands.OfferReady.class);
         return offerDecisionQueries.findOfferSet(curationQueries.findOfferSet(generated.attemptId())
                 .orElseThrow().offerSetId()).orElseThrow();

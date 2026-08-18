@@ -21,21 +21,18 @@ public record GenerationContext(
         CatalogGeneratorSnapshot catalog,
         VisibleHistorySnapshot visibleHistory,
         List<ManualRequirement> manualRequirements,
-        Set<String> rerollBlockedConceptCodes,
-        AttemptExclusionDecision exclusionDecision,
         NoveltyCadence noveltyCadence,
         Map<NoveltyBand, Integer> noveltyTargetDistribution,
         GeneratorConfiguration configuration,
         long attemptSeed,
         int batchNumber,
         RestrictionMode restrictionMode,
-        List<PreparedGenerationAttempt.ExclusionRuleEvaluation> exclusionRuleEvaluations
+        List<PreparedGenerationAttempt.RestrictionRuleEvaluation> restrictionRuleEvaluations
 ) {
     public GenerationContext {
         if (attemptType == null || effectiveDate == null || catalog == null || visibleHistory == null
-                || exclusionDecision == null || noveltyCadence == null || configuration == null
-                || restrictionMode == null || exclusionRuleEvaluations == null
-                || rerollBlockedConceptCodes == null) {
+                || noveltyCadence == null || configuration == null || restrictionMode == null
+                || restrictionRuleEvaluations == null) {
             throw invalid("Generation context fields must not be null");
         }
         if (seasonMonth < 1 || seasonMonth > 12 || seasonMonth != catalog.seasonMonth()) {
@@ -55,11 +52,6 @@ public record GenerationContext(
             }
         }
 
-        // Kept as a snapshot-compatibility component for historic v1.0 payloads only.
-        // Generator v1.1+ obtains reroll repetition effects exclusively from exact visible-history cooldowns.
-        rerollBlockedConceptCodes = configuration.generatorVersion().startsWith("1.0.")
-                ? Set.copyOf(rerollBlockedConceptCodes) : Set.of();
-
         noveltyTargetDistribution = Map.copyOf(noveltyTargetDistribution);
         if (!noveltyTargetDistribution.keySet().equals(Set.of(NoveltyBand.values()))
                 || noveltyTargetDistribution.values().stream().anyMatch(value -> value == null || value < 0)
@@ -67,32 +59,11 @@ public record GenerationContext(
                 != configuration.candidateSetSize()) {
             throw invalid("Novelty target distribution must cover all bands and sum to set size");
         }
-        exclusionRuleEvaluations = List.copyOf(exclusionRuleEvaluations);
-        if (!configuration.generatorVersion().matches("1\\.(0|1|2)\\.0")) {
+        restrictionRuleEvaluations = List.copyOf(restrictionRuleEvaluations);
+        if (!configuration.generatorVersion().equals("1.2.0")) {
             throw new GeneratorValidationException(GeneratorReasonCode.UNSUPPORTED_GENERATOR_VERSION,
-                    "Only generator versions 1.0.0, 1.1.0, and 1.2.0 are implemented");
+                    "Only generator version 1.2.0 is implemented");
         }
-    }
-
-    /** Compatibility constructor for persisted generator-1.0/1.1 semantics. */
-    public GenerationContext(
-            AttemptType attemptType,
-            LocalDate effectiveDate,
-            int seasonMonth,
-            CatalogGeneratorSnapshot catalog,
-            VisibleHistorySnapshot visibleHistory,
-            List<ManualRequirement> manualRequirements,
-            Set<String> rerollBlockedConceptCodes,
-            AttemptExclusionDecision exclusionDecision,
-            NoveltyCadence noveltyCadence,
-            Map<NoveltyBand, Integer> noveltyTargetDistribution,
-            GeneratorConfiguration configuration,
-            long attemptSeed,
-            int batchNumber
-    ) {
-        this(attemptType, effectiveDate, seasonMonth, catalog, visibleHistory, manualRequirements,
-                rerollBlockedConceptCodes, exclusionDecision, noveltyCadence, noveltyTargetDistribution,
-                configuration, attemptSeed, batchNumber, RestrictionMode.AUTO, List.of());
     }
 
     private static GeneratorValidationException invalid(String detail) {

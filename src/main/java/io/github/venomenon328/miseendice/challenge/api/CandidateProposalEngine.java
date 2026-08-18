@@ -54,14 +54,6 @@ public interface CandidateProposalEngine {
             restriction = restriction == null ? CandidateRestriction.none() : restriction;
         }
 
-        /** Compatibility constructor for generator-1.0/1.1 candidate fixtures. */
-        public AcceptedProposal(long proposalOrdinal, CandidateProfile profile, int targetSpecificity,
-                                NoveltyBand targetNoveltyBand, List<RequirementSnapshot> requirements,
-                                CandidateEvaluation evaluation, String canonicalSignature,
-                                Set<GeneratorReasonCode> diagnostics) {
-            this(proposalOrdinal, profile, targetSpecificity, targetNoveltyBand, requirements, evaluation,
-                    canonicalSignature, diagnostics, CandidateRestriction.none());
-        }
     }
 
     /** Immutable candidate-local exclusion snapshot. A null rule is the explicit no-restriction state. */

@@ -4,7 +4,6 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorExclusionRule;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Specificity;
-import io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.CandidateRestriction;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext;
@@ -21,7 +20,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.ScoreCompo
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleChallenge;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleRequirement;
-import io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt.ExclusionRuleEvaluation;
+import io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt.RestrictionRuleEvaluation;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -195,9 +194,6 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
         }
         if (concept.availabilityByParticipant().values().stream().anyMatch(value -> value == Availability.UNAVAILABLE)) {
             reasons.add(GeneratorReasonCode.AVAILABILITY_UNAVAILABLE);
-        }
-        if (context.rerollBlockedConceptCodes().contains(concept.code())) {
-            reasons.add(GeneratorReasonCode.REROLL_EXACT_BLOCKED);
         }
         int distance = exactHistoryDistance(concept.code(), context);
         BigDecimal cooldownFactor = cooldownFactor(distance, configuration);
@@ -660,12 +656,6 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
 
     /** Candidate-local decision, made before any profile, novelty, or requirement substream is consumed. */
     private CandidateRestrictionSelection candidateRestriction(GenerationContext context, long proposalOrdinal) {
-        if (!context.configuration().generatorVersion().equals("1.2.0")) {
-            if (context.exclusionDecision() instanceof AttemptExclusionDecision.Selected selected) {
-                return CandidateRestrictionSelection.selected(selected.rule(), Set.of());
-            }
-            return CandidateRestrictionSelection.none(Set.of());
-        }
         if (context.restrictionMode() == RestrictionMode.NONE) {
             return CandidateRestrictionSelection.none(Set.of(GeneratorReasonCode.CANDIDATE_RESTRICTION_NOT_SELECTED));
         }
@@ -681,20 +671,20 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
         if (!requested) {
             return CandidateRestrictionSelection.none(Set.of(GeneratorReasonCode.CANDIDATE_RESTRICTION_NOT_SELECTED));
         }
-        List<ExclusionRuleEvaluation> eligible = context.exclusionRuleEvaluations().stream()
-                .filter(ExclusionRuleEvaluation::eligible).toList();
+        List<RestrictionRuleEvaluation> eligible = context.restrictionRuleEvaluations().stream()
+                .filter(RestrictionRuleEvaluation::eligible).toList();
         if (eligible.isEmpty()) {
             return context.restrictionMode() == RestrictionMode.REQUIRED
                     ? CandidateRestrictionSelection.requiredUnavailable()
                     : CandidateRestrictionSelection.none(Set.of(GeneratorReasonCode.CANDIDATE_RESTRICTION_NO_ELIGIBLE_RULE));
         }
-        long total = eligible.stream().mapToLong(ExclusionRuleEvaluation::quantizedWeight)
+        long total = eligible.stream().mapToLong(RestrictionRuleEvaluation::quantizedWeight)
                 .reduce(0L, Math::addExact);
         long seed = SeedDerivation.derive(context.configuration().generatorVersion(), context.attemptSeed(),
                 SeedDerivation.batchScope(context.batchNumber()), SeedDerivation.Purpose.CANDIDATE_RESTRICTION_RULE,
                 proposalOrdinal);
         long ticket = new SplitMix64(seed).nextLong(total);
-        for (ExclusionRuleEvaluation evaluation : eligible) {
+        for (RestrictionRuleEvaluation evaluation : eligible) {
             if (ticket < evaluation.quantizedWeight()) {
                 return CandidateRestrictionSelection.selected(evaluation.rule(),
                         Set.of(GeneratorReasonCode.CANDIDATE_RESTRICTION_SELECTED));

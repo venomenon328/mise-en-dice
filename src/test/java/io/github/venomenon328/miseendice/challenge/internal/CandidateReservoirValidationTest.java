@@ -9,6 +9,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationContext;
 import io.github.venomenon328.miseendice.challenge.api.GenerationPlan;
 import io.github.venomenon328.miseendice.challenge.api.GenerationPlan.ProjectedDistribution;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorValidationException;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
@@ -45,10 +46,10 @@ class CandidateReservoirValidationTest {
             }
         };
         DefaultCandidateReservoirEngine engine = new DefaultCandidateReservoirEngine(invalidContextProposalEngine);
-        var configuration = TestGeneratorConfiguration.withLimitsAndExclusion(12, 12, 12, "0.00");
+        var configuration = TestGeneratorConfiguration.withLimits(12, 12, 12);
         var request = new GenerationAttemptRequest(AttemptType.INITIAL, LocalDate.of(2026, 8, 12), 8,
                 new CatalogGeneratorSnapshot(8, List.of(), List.of(), List.of()), VisibleHistorySnapshot.empty(),
-                List.of(), Set.of(), configuration, 35L);
+                List.of(), configuration, 35L, RestrictionMode.NONE);
         var prepared = engine.prepare(request);
 
         assertThatThrownBy(() -> engine.generate(prepared, 1))

@@ -5,6 +5,7 @@ import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.Genera
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.PairAssessment;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyBand;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
@@ -61,11 +62,11 @@ public interface GeneratorLaboratory {
             Long explicitSeed,
             List<ManualInput> manualRequirements,
             HistoryScenario historyScenario,
-            List<Long> rerollBlockedConceptIds
+            RestrictionMode restrictionMode
     ) {
         public PreviewRequest {
             if (attemptType == null || effectiveDate == null || manualRequirements == null
-                    || historyScenario == null || rerollBlockedConceptIds == null) {
+                    || historyScenario == null || restrictionMode == null) {
                 throw new IllegalArgumentException("Laboratory preview fields must not be null");
             }
             manualRequirements = List.copyOf(manualRequirements);
@@ -76,9 +77,6 @@ public interface GeneratorLaboratory {
             if (manualRequirements.stream().anyMatch(manual -> !positions.add(manual.position()))) {
                 throw new IllegalArgumentException("Manual positions must be unique");
             }
-
-            // Compatibility slot for historic v1.0 laboratory payloads. Generator v1.1 uses only visible-history cooldown.
-            rerollBlockedConceptIds = List.of();
         }
     }
 
@@ -95,6 +93,7 @@ public interface GeneratorLaboratory {
             LocalDate effectiveDate,
             int seasonMonth,
             AttemptType attemptType,
+            RestrictionMode restrictionMode,
             HistoryScenario historyScenario,
             String scenarioVersion,
             String generatorVersion,

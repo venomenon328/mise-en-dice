@@ -5,15 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.venomenon328.miseendice.MiseEnDiceApplication;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.HistoryScenario;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation;
-import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.ExclusionVariant;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SeedRange;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SimulationReport;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SimulationRequest;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.SimulationScenario;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -47,9 +46,8 @@ class GeneratorSimulationNoveltySoftTargetIntegrationTest {
                 HistoryScenario.EMPTY_HISTORY,
                 AttemptType.INITIAL,
                 List.of(),
-                Set.of(),
                 1,
-                ExclusionVariant.DEFAULT);
+                RestrictionMode.AUTO);
         SimulationReport report = simulation.simulate(new SimulationRequest(
                 "ISSUE_40_SOFT_NOVELTY_V1",
                 List.of(scenario),

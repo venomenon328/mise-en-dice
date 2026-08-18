@@ -10,6 +10,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Exhausted;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -54,7 +55,7 @@ class PersistedGenerationExhaustionIntegrationTest {
     @Test
     void publicCommandPersistsTerminalExhaustionWithoutCandidates() {
         var outcome = commands.startNewSession(new StartNewSession(
-                LocalDate.of(2026, 8, 13), List.of(), 47_000_061L));
+                LocalDate.of(2026, 8, 13), List.of(), 47_000_061L, 1, RestrictionMode.AUTO));
 
         assertThat(outcome).isInstanceOf(Exhausted.class);
         Exhausted exhausted = (Exhausted) outcome;
@@ -74,7 +75,7 @@ class PersistedGenerationExhaustionIntegrationTest {
     @Test
     void unknownRuntimeFailureStaysTechnicalAndDoesNotCreateAnExhaustedBatch() {
         assertThatThrownBy(() -> commands.startNewSession(new StartNewSession(
-                LocalDate.of(2026, 8, 13), List.of(), 47_000_062L)))
+                LocalDate.of(2026, 8, 13), List.of(), 47_000_062L, 1, RestrictionMode.AUTO)))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("injected technical generator failure");
 

@@ -5,6 +5,7 @@ import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationComm
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +25,7 @@ final class ChallengeOfferPreparationService implements ChallengeOfferPreparatio
     @Override
     public PreparationOutcome prepareInitial(PrepareInitialOfferSet command) {
         return continueFromGeneration(generations.startNewSession(new GenerationCommands.StartNewSession(
-                command.effectiveDate(), List.of(), null, command.requestedOfferCount())));
+                command.effectiveDate(), List.of(), null, command.requestedOfferCount(), RestrictionMode.AUTO)));
     }
 
     @Override

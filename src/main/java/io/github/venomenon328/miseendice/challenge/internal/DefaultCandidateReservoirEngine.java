@@ -1,7 +1,6 @@
 package io.github.venomenon328.miseendice.challenge.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorExclusionRule;
-import io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.AcceptedProposal;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.RejectedProposal;
@@ -16,7 +15,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.Restrictio
 import io.github.venomenon328.miseendice.challenge.api.GeneratorReasonCode;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorValidationException;
 import io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt;
-import io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt.ExclusionRuleEvaluation;
+import io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt.RestrictionRuleEvaluation;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleChallenge;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -30,7 +29,6 @@ import java.util.Objects;
 final class DefaultCandidateReservoirEngine implements CandidateReservoirEngine {
     private static final int SCALE = 12;
     private static final RoundingMode ROUNDING = RoundingMode.HALF_EVEN;
-    private static final long PROBABILITY_UNITS = 1_000_000_000L;
 
     private final CandidateProposalEngine proposalEngine;
 
@@ -43,23 +41,20 @@ final class DefaultCandidateReservoirEngine implements CandidateReservoirEngine 
         NoveltyCadence cadence = cadence(request);
         List<GeneratorReasonCode> diagnostics = new ArrayList<>();
         diagnostics.add(cadenceReason(cadence));
-        ExclusionPreparation exclusion = request.configuration().generatorVersion().equals("1.2.0")
-                ? prepareCandidateRestrictions(request) : prepareExclusion(request);
-        diagnostics.addAll(exclusion.diagnostics());
+        RestrictionPreparation restrictions = prepareCandidateRestrictions(request);
+        diagnostics.addAll(restrictions.diagnostics());
         return new PreparedGenerationAttempt(request, cadence,
-                request.configuration().cadenceSetTargets().get(cadence), exclusion.decision(),
-                exclusion.ruleEvaluations(), diagnostics);
+                request.configuration().cadenceSetTargets().get(cadence), restrictions.ruleEvaluations(), diagnostics);
     }
 
     @Override
     public GenerationContext contextForBatch(PreparedGenerationAttempt preparedAttempt, int batchNumber) {
         GenerationAttemptRequest request = preparedAttempt.request();
         return new GenerationContext(request.attemptType(), request.effectiveDate(), request.seasonMonth(),
-                request.catalog(), request.visibleHistory(), request.manualRequirements(),
-                request.rerollBlockedConceptCodes(), preparedAttempt.exclusionDecision(),
-                preparedAttempt.noveltyCadence(), preparedAttempt.baselineNoveltyTargets(),
+                request.catalog(), request.visibleHistory(), request.manualRequirements(), preparedAttempt.noveltyCadence(),
+                preparedAttempt.baselineNoveltyTargets(),
                 request.configuration(), request.attemptSeed(), batchNumber, request.restrictionMode(),
-                preparedAttempt.exclusionRuleEvaluations());
+                preparedAttempt.restrictionRuleEvaluations());
     }
 
     @Override
@@ -131,77 +126,22 @@ final class DefaultCandidateReservoirEngine implements CandidateReservoirEngine 
         }
     }
 
-    private ExclusionPreparation prepareExclusion(GenerationAttemptRequest request) {
-        GeneratorConfiguration configuration = request.configuration();
-        long selectedUnits;
-        try {
-            selectedUnits = configuration.exclusionProbability().multiply(BigDecimal.valueOf(PROBABILITY_UNITS))
-                    .setScale(0, ROUNDING).longValueExact();
-        } catch (ArithmeticException exception) {
-            throw weightOverflow("Exclusion probability cannot be quantized", exception);
-        }
-        long modeSeed = SeedDerivation.derive(configuration.generatorVersion(), request.attemptSeed(),
-                SeedDerivation.attemptScope(), SeedDerivation.Purpose.ATTEMPT_EXCLUSION_MODE, 0);
-        boolean exclusionEnabled = new SplitMix64(modeSeed).nextLong(PROBABILITY_UNITS) < selectedUnits;
-        if (!exclusionEnabled) {
-            return new ExclusionPreparation(AttemptExclusionDecision.none(), List.of(),
-                    List.of(GeneratorReasonCode.EXCLUSION_MODE_NOT_SELECTED));
-        }
-
-        List<ExclusionRuleEvaluation> evaluations = request.catalog().exclusionRules().stream()
-                .sorted(GeneratorExclusionRule.CANONICAL_ORDER)
-                .map(rule -> evaluateExclusionRule(rule, request))
-                .toList();
-        List<ExclusionRuleEvaluation> eligible = evaluations.stream()
-                .filter(ExclusionRuleEvaluation::eligible)
-                .toList();
-        if (eligible.isEmpty()) {
-            return new ExclusionPreparation(AttemptExclusionDecision.none(), evaluations,
-                    List.of(GeneratorReasonCode.NO_ELIGIBLE_EXCLUSION_RULE));
-        }
-
-        long total = 0;
-        try {
-            for (ExclusionRuleEvaluation evaluation : eligible) {
-                total = Math.addExact(total, evaluation.quantizedWeight());
-            }
-        } catch (ArithmeticException exception) {
-            throw weightOverflow("Exclusion rule weight sum overflowed", exception);
-        }
-        long ruleSeed = SeedDerivation.derive(configuration.generatorVersion(), request.attemptSeed(),
-                SeedDerivation.attemptScope(), SeedDerivation.Purpose.ATTEMPT_EXCLUSION_RULE, 0);
-        long ticket = new SplitMix64(ruleSeed).nextLong(total);
-        GeneratorExclusionRule selected = null;
-        for (ExclusionRuleEvaluation evaluation : eligible) {
-            if (ticket < evaluation.quantizedWeight()) {
-                selected = evaluation.rule();
-                break;
-            }
-            ticket -= evaluation.quantizedWeight();
-        }
-        if (selected == null) {
-            throw new IllegalStateException("Weighted exclusion selection did not resolve a rule");
-        }
-        return new ExclusionPreparation(AttemptExclusionDecision.selected(selected), evaluations,
-                List.of(GeneratorReasonCode.EXCLUSION_RULE_SELECTED));
-    }
-
-    /** Generator 1.2 retains evaluated rule weights, but deliberately does not choose an attempt-wide rule. */
-    private ExclusionPreparation prepareCandidateRestrictions(GenerationAttemptRequest request) {
-        List<ExclusionRuleEvaluation> evaluations = request.catalog().exclusionRules().stream()
+    /** Evaluates candidate-local restriction rules without choosing an attempt-wide rule. */
+    private RestrictionPreparation prepareCandidateRestrictions(GenerationAttemptRequest request) {
+        List<RestrictionRuleEvaluation> evaluations = request.catalog().exclusionRules().stream()
                 .sorted(GeneratorExclusionRule.CANONICAL_ORDER)
                 .map(rule -> evaluateExclusionRule(rule, request))
                 .toList();
         List<GeneratorReasonCode> diagnostics = new ArrayList<>();
         if (request.restrictionMode() == RestrictionMode.NONE) {
             diagnostics.add(GeneratorReasonCode.CANDIDATE_RESTRICTION_NOT_SELECTED);
-        } else if (evaluations.stream().noneMatch(ExclusionRuleEvaluation::eligible)) {
+        } else if (evaluations.stream().noneMatch(RestrictionRuleEvaluation::eligible)) {
             diagnostics.add(GeneratorReasonCode.CANDIDATE_RESTRICTION_NO_ELIGIBLE_RULE);
         }
-        return new ExclusionPreparation(AttemptExclusionDecision.none(), evaluations, diagnostics);
+        return new RestrictionPreparation(evaluations, diagnostics);
     }
 
-    private ExclusionRuleEvaluation evaluateExclusionRule(
+    private RestrictionRuleEvaluation evaluateExclusionRule(
             GeneratorExclusionRule rule,
             GenerationAttemptRequest request
     ) {
@@ -237,7 +177,7 @@ final class DefaultCandidateReservoirEngine implements CandidateReservoirEngine 
                 diagnostics.add(GeneratorReasonCode.EXCLUSION_RULE_WEIGHT_ROUNDED_TO_ZERO);
             }
         }
-        return new ExclusionRuleEvaluation(rule, repetitionFactor, effectiveWeight, quantizedWeight, diagnostics);
+        return new RestrictionRuleEvaluation(rule, repetitionFactor, effectiveWeight, quantizedWeight, diagnostics);
     }
 
     private BigDecimal exclusionRepetitionFactor(String ruleCode, GenerationAttemptRequest request) {
@@ -305,9 +245,8 @@ final class DefaultCandidateReservoirEngine implements CandidateReservoirEngine 
         return exception;
     }
 
-    private record ExclusionPreparation(
-            AttemptExclusionDecision decision,
-            List<ExclusionRuleEvaluation> ruleEvaluations,
+    private record RestrictionPreparation(
+            List<RestrictionRuleEvaluation> ruleEvaluations,
             List<GeneratorReasonCode> diagnostics
     ) {
     }

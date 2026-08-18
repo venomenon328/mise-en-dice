@@ -145,7 +145,7 @@ Interne Zwölfer-Sätze, Kuratorablehnungen und niemals präsentierte Kandidaten
 
 Persönliche Konkretisierungen oder Zusatz-Zutaten beeinflussen die Generatorhistorie ebenfalls nicht automatisch.
 
-Der frühere dedizierte Vierer-REROLL-Hardblock aus Generator 1.0 ist ab Generator 1.1 keine fachliche Regel mehr. Historische Snapshotfelder dürfen lesbar bleiben; neue REROLL-Attempts erhalten Wiederholungswirkung ausschließlich über die normale Historienprojektion.
+Ein REROLL besitzt keinen dedizierten Zutaten-Hardblock. Wiederholungswirkung entsteht ausschließlich über die normale Historienprojektion mit exakten Konzeptcodes.
 
 ## 9. Ausschlussregeln
 
@@ -335,7 +335,7 @@ Phase 10A ergänzt Kuratorrequest/-response, qualitative Bewertungen, Ränge, Ka
 
 Diese Daten dürfen nicht mit bestätigter Challenge-Historie gleichgesetzt werden: Bestätigte Challenges wirken auf den vollständigen Historienvertrag; ein rerolltes unbestätigtes Offer Set wirkt nur auf den exakten Zutaten-Cooldown; intern verworfene oder normal nicht gewählte Angebote wirken gar nicht.
 
-Replay verwendet historische Snapshots und nicht den aktuellen Katalog. Eine nicht mehr unterstützte Generatorversion wird ausdrücklich als nicht unterstützt klassifiziert; sie wird nicht mit aktuellen Regeln scheinbar reproduziert. Der historische v1.0-REROLL-Block darf deshalb in Alt-Snapshots lesbar bleiben, ohne von v1.1 erneut angewendet zu werden.
+Replay verwendet den gespeicherten 1.2-Snapshot und nicht den aktuellen Katalog. Eine nicht unterstützte Generatorversion wird ausdrücklich als nicht unterstützt klassifiziert; sie wird nicht mit aktuellen Regeln scheinbar reproduziert.
 
 ## 13. Administrationsversionen und Katalog-Audit
 

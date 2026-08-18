@@ -11,6 +11,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.CandidateP
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyBand;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyCadence;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RequirementSource;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleChallenge;
 import io.github.venomenon328.miseendice.challenge.api.VisibleHistorySnapshot.VisibleRequirement;
@@ -108,8 +109,8 @@ class CandidateReservoirCatalogIntegrationTest {
 
     private GenerationAttemptRequest request(int month, long seed, VisibleHistorySnapshot history) {
         return new GenerationAttemptRequest(AttemptType.INITIAL, LocalDate.of(2026, month, 12), month,
-                catalogProjection.snapshotForMonth(month), history, List.of(), Set.of(),
-                generatorProperties.configuration(), seed);
+                catalogProjection.snapshotForMonth(month), history, List.of(),
+                generatorProperties.configuration(), seed, RestrictionMode.AUTO);
     }
 
     private int count(String table) {

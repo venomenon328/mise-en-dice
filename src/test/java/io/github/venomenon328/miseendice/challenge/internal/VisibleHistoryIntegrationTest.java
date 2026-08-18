@@ -70,7 +70,7 @@ class VisibleHistoryIntegrationTest {
     void confirmedOfferChallengeKeepsItsStableSnapshotsInVisibleHistory() {
         curator.script(CurationOrchestrationIntegrationTest.Script.success(1));
         Generated generated = (Generated) generationCommands.startNewSession(
-                new StartNewSession(DATE, List.of(), 76_200_001L, 1));
+                new StartNewSession(DATE, List.of(), 76_200_001L, 1, RestrictionMode.AUTO));
         assertThat(curation.curate(generated.attemptId())).isInstanceOf(OfferReady.class);
         CurationQueries.OfferSetView offerSet = curationQueries.findOfferSet(generated.attemptId()).orElseThrow();
         decisions.present(new OfferDecisionCommands.PresentOfferSet(offerSet.offerSetId()));
@@ -109,7 +109,6 @@ class VisibleHistoryIntegrationTest {
 
         CurationQueries.RoundView round = curationQueries.findRound(generated.attemptId(), 1).orElseThrow();
         assertThat(round.request().contractVersion()).isEqualTo(CurationModel.CONTRACT_VERSION_V2);
-        assertThat(round.request().attemptExclusion()).isNull();
         assertThat(round.request().candidates()).allSatisfy(candidate ->
                 assertThat(candidate.snapshot().restriction().ruleCode()).isNotBlank());
 

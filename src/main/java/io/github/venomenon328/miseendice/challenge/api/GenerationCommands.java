@@ -14,12 +14,6 @@ public interface GenerationCommands {
     /** Starts or resumes the single REROLL attempt from the persisted INITIAL input after a committed offer reroll. */
     GenerationOutcome startReroll(StartRerollSession command);
 
-    /**
-     * Compatibility entry point. REROLL input is deliberately ignored: Phase 11A always copies the INITIAL input.
-     */
-    @Deprecated(forRemoval = false)
-    GenerationOutcome startReroll(StartExistingSession command);
-
     record ManualRequirementInput(int position, String displayText, Long matchedIngredientConceptId) {
         public ManualRequirementInput {
             if (position < 1 || position > 2 || displayText == null || displayText.isBlank()) {
@@ -46,17 +40,6 @@ public interface GenerationCommands {
             manualRequirements = List.copyOf(manualRequirements);
         }
 
-        /** Compatibility constructor retaining the pre-10A single-offer default. */
-        public StartNewSession(LocalDate effectiveDate, List<ManualRequirementInput> manualRequirements,
-                               Long explicitSeed) {
-            this(effectiveDate, manualRequirements, explicitSeed, 1, RestrictionMode.AUTO);
-        }
-
-        /** Compatibility constructor retaining the Phase-10A requested-offer input. */
-        public StartNewSession(LocalDate effectiveDate, List<ManualRequirementInput> manualRequirements,
-                               Long explicitSeed, int requestedOfferCount) {
-            this(effectiveDate, manualRequirements, explicitSeed, requestedOfferCount, RestrictionMode.AUTO);
-        }
     }
 
     record StartExistingSession(

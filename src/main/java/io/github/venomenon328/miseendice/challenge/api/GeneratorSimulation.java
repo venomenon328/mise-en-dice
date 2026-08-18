@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.challenge.api;
 
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.HistoryScenario;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,7 +21,7 @@ public interface GeneratorSimulation {
 
     int MAXIMUM_CASES = 4_096;
     int MAXIMUM_REPORT_ENTRIES = 50;
-    String REPORT_VERSION = "2026-08-16.1";
+    String REPORT_VERSION = "2026-08-18.1";
 
     SimulationReport simulate(SimulationRequest request);
 
@@ -61,12 +62,6 @@ public interface GeneratorSimulation {
         }
     }
 
-    enum ExclusionVariant {
-        DEFAULT,
-        DISABLED,
-        REQUIRED
-    }
-
     enum TechnicalErrorMode {
         CONTINUE,
         FAIL_FAST
@@ -99,15 +94,13 @@ public interface GeneratorSimulation {
             HistoryScenario historyScenario,
             AttemptType attemptType,
             List<ManualInput> manualRequirements,
-            Set<String> rerollBlockedConceptCodes,
             int visibleCandidatePosition,
-            ExclusionVariant exclusionVariant
+            RestrictionMode restrictionMode
     ) {
         public SimulationScenario {
             if (code == null || !code.matches("[A-Z][A-Z0-9_]{1,79}") || seedPlan == null
                     || effectiveDates == null || effectiveDates.isEmpty() || historyScenario == null
-                    || attemptType == null || manualRequirements == null || rerollBlockedConceptCodes == null
-                    || exclusionVariant == null) {
+                    || attemptType == null || manualRequirements == null || restrictionMode == null) {
                 throw new IllegalArgumentException("A simulation scenario is incomplete or has an unstable code");
             }
             effectiveDates = List.copyOf(effectiveDates);
@@ -126,10 +119,6 @@ public interface GeneratorSimulation {
             if (manualRequirements.stream().anyMatch(manual -> manual == null || !positions.add(manual.position()))) {
                 throw new IllegalArgumentException("Simulation manual positions must be unique");
             }
-
-            // Retained in the report/request shape for historic v1.0 fixtures only. New simulations never hard-block
-            // individual ingredients merely because the attempt type is REROLL.
-            rerollBlockedConceptCodes = Set.of();
 
             if (visibleCandidatePosition < 1 || visibleCandidatePosition > 12) {
                 throw new IllegalArgumentException("Synthetic sequence exposure needs a visible candidate position from 1 to 12");
@@ -274,14 +263,13 @@ public interface GeneratorSimulation {
             long replayIntegrityMismatches,
             long hardRuleViolations,
             long cooldownViolations,
-            long rerollViolations,
-            long exclusionViolations,
+            long restrictionViolations,
             long quotaViolations,
             long setCapViolations,
             long strictPairMeanViolations,
             long recoveryCadenceViolations,
             long incompleteSuccesses,
-            long selectedExclusions,
+            long restrictedCandidates,
             FrequencyList fallbackUsage,
             FrequencyList hardRejectionsByReason,
             FrequencyList fallbackRejectionsByReason,
@@ -292,7 +280,7 @@ public interface GeneratorSimulation {
             FrequencyList targetNoveltyBandFrequency,
             FrequencyList actualNoveltyBandFrequency,
             FrequencyList specificityFrequency,
-            FrequencyList exclusionFrequency,
+            FrequencyList restrictionFrequency,
             FrequencyList informativeAncestorFrequency,
             NumericSummary proposalAttempts,
             NumericSummary knownNoveltyLoad,

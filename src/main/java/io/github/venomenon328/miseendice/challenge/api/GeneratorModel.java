@@ -56,7 +56,7 @@ public final class GeneratorModel {
         NOVELTY,
         AVAILABILITY_LOAD,
         COMPARABLE_PROPERTIES,
-        /** Generator 1.2 only; omitted from preserved 1.0/1.1 similarity snapshots. */
+        /** Candidate-restriction similarity component. */
         RESTRICTION
     }
 

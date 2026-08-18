@@ -10,6 +10,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Generated;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -60,7 +61,7 @@ class GeneratedCandidateUniquenessIntegrationTest {
     @Test
     void postgresqlRejectsDuplicateCanonicalSignaturesInsideAGeneratedBatch() {
         var outcome = commands.startNewSession(new StartNewSession(
-                LocalDate.of(2026, 8, 13), List.of(), 47_000_061L));
+                LocalDate.of(2026, 8, 13), List.of(), 47_000_061L, 1, RestrictionMode.AUTO));
         assertThat(outcome).isInstanceOf(Generated.class);
         Generated generated = (Generated) outcome;
         var candidates = queries.findBatch(generated.attemptId(), 1).orElseThrow().candidates();

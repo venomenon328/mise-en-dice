@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-/** Immutable input whose attempt-wide decisions have not yet been made. */
+/** Immutable input for a deterministic candidate-restriction generation attempt. */
 public record GenerationAttemptRequest(
         AttemptType attemptType,
         LocalDate effectiveDate,
@@ -18,14 +18,13 @@ public record GenerationAttemptRequest(
         CatalogGeneratorSnapshot catalog,
         VisibleHistorySnapshot visibleHistory,
         List<ManualRequirement> manualRequirements,
-        Set<String> rerollBlockedConceptCodes,
         GeneratorConfiguration configuration,
         long attemptSeed,
         RestrictionMode restrictionMode
 ) {
     public GenerationAttemptRequest {
         if (attemptType == null || effectiveDate == null || catalog == null || visibleHistory == null
-                || manualRequirements == null || rerollBlockedConceptCodes == null || configuration == null
+                || manualRequirements == null || configuration == null
                 || restrictionMode == null) {
             throw invalid("Generation attempt request fields must not be null");
         }
@@ -46,26 +45,6 @@ public record GenerationAttemptRequest(
             }
         }
 
-        // Generator v1.0 keeps its historical REROLL behaviour. Later versions obtain all
-        // repeat effects exclusively from persisted visible-history snapshots.
-        rerollBlockedConceptCodes = configuration.generatorVersion().startsWith("1.0.")
-                ? Set.copyOf(rerollBlockedConceptCodes) : Set.of();
-    }
-
-    /** Compatibility input for the historic attempt-wide restriction contract. */
-    public GenerationAttemptRequest(
-            AttemptType attemptType,
-            LocalDate effectiveDate,
-            int seasonMonth,
-            CatalogGeneratorSnapshot catalog,
-            VisibleHistorySnapshot visibleHistory,
-            List<ManualRequirement> manualRequirements,
-            Set<String> rerollBlockedConceptCodes,
-            GeneratorConfiguration configuration,
-            long attemptSeed
-    ) {
-        this(attemptType, effectiveDate, seasonMonth, catalog, visibleHistory, manualRequirements,
-                rerollBlockedConceptCodes, configuration, attemptSeed, RestrictionMode.AUTO);
     }
 
     private static GeneratorValidationException invalid(String detail) {

@@ -160,8 +160,7 @@ class JdbcGenerationRepository {
         return Boolean.TRUE.equals(result);
     }
 
-    void saveContext(long attemptId, UUID operationToken, GenerationSnapshotCodec.EncodedContext context,
-                     Long exclusionRuleId, String exclusionText) {
+    void saveContext(long attemptId, UUID operationToken, GenerationSnapshotCodec.EncodedContext context) {
         int updated = jdbcTemplate.update("""
                 insert into generation_context_snapshot (
                     generation_attempt_id, configuration_snapshot, catalog_snapshot, request_snapshot,
@@ -179,9 +178,9 @@ class JdbcGenerationRepository {
         }
         updated = jdbcTemplate.update("""
                 update generation_attempt
-                set status = 'CONTEXT_READY', exclusion_rule_id = ?, exclusion_text_snapshot = ?
+                set status = 'CONTEXT_READY'
                 where id = ? and status = 'PENDING' and operation_token = ?
-                """, exclusionRuleId, exclusionText, attemptId, operationToken);
+                """, attemptId, operationToken);
         if (updated != 1) {
             throw new LostGenerationClaimException("Generation attempt claim changed while freezing context");
         }
@@ -372,11 +371,7 @@ class JdbcGenerationRepository {
                 select challenge.id as challenge_id, challenge.shown_at, challenge.status,
                        session.id as session_id, attempt.attempt_type,
                        candidate.profile, candidate.actual_novelty_band,
-                       coalesce(
-                           candidate.restriction_rule_code_snapshot,
-                           context.prepared_attempt_snapshot #>> '{exclusionDecision,ruleCode}',
-                           legacy_exclusion.code
-                       ) as exclusion_rule_code,
+                       candidate.restriction_rule_code_snapshot as exclusion_rule_code,
                        requirement.position, requirement.concept_code_snapshot,
                        requirement.novelty_level_snapshot, requirement.concept_snapshot::text
                 from challenge
@@ -384,8 +379,6 @@ class JdbcGenerationRepository {
                 join challenge_session session on session.id = attempt.challenge_session_id
                 join challenge_candidate candidate on candidate.id = challenge.selected_candidate_id
                 join candidate_requirement requirement on requirement.candidate_id = candidate.id
-                left join generation_context_snapshot context on context.generation_attempt_id = attempt.id
-                left join exclusion_rule legacy_exclusion on legacy_exclusion.id = attempt.exclusion_rule_id
                 order by challenge.shown_at desc, challenge.id desc, requirement.position
                 """, this::mapHistoryRow);
         Map<Long, HistoryBuilder> grouped = new LinkedHashMap<>();

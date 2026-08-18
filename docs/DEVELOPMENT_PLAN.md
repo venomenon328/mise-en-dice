@@ -358,7 +358,7 @@ Issue #37 und Issue #40 bleiben eigenständige nachgelagerte Pakete; ihre Labor-
 - dünne geschützte Verwaltungsansicht über den gemeinsamen Simulationskern mit maximal 64 expandierten Fällen,
   fester serverseitiger Fünf-Minuten-Deadline und `FAIL_FAST`,
 - deterministische Single-Step-Monatsexpansion, ID→Code-Auflösung nur über `CatalogQueries` sowie 0–2 Manuals,
-- REROLL-Diagnostik ausschließlich über Attempt-Typ und sichtbares Historienszenario; ab Generator 1.1 keine editierbaren REROLL-Block-IDs,
+- REROLL-Diagnostik ausschließlich über Attempt-Typ und sichtbares Historienszenario; keine editierbaren REROLL-Block-IDs,
 - Full-Page-/No-JS-POST und HTMX-Ergebnisfragment mit CSRF- und flüchtigem Session-Doppelstartschutz,
 - keine Duplizierung von Generator-, Statistik- oder Persistenzlogik und keine operativen Generation-/Challenge-Writes.
 
@@ -372,16 +372,8 @@ Issue #37 und Issue #40 bleiben eigenständige nachgelagerte Pakete; ihre Labor-
 - ausschließlich evidenzbasiertes Tuning innerhalb des spezifizierten Modells,
 - verbindlicher Kalibrierungsbericht.
 
-Der technische Lieferstand verwendet dafür ein eigenes, im normalen Verify ausgeschlossenes Profil
-`generator-calibration`. Rohreports bleiben unter `target/generator-calibration/`; das versionierte Acht-Satz-Korpus,
-die Bewertungsrubrik und die operative Schrittfolge stehen in
-[`CANDIDATE_GENERATOR_CALIBRATION.md`](CANDIDATE_GENERATOR_CALIBRATION.md).
-
-Der operative Kataloglauf wurde bestanden und das feste Korpus durch den Administrator fachlich abgenommen. MC-01
-wurde nach der in Issue #62 korrigierten `NO_BEEF`/`VEAL`-Lücke am 16. August 2026 auf Produktion erneut reproduziert
-und freigegeben. Der ausdrücklich nicht wiederholte breite 9.216-Fälle-Endlauf bleibt im Kalibrierungsbericht als
-**nicht ausgeführt und nicht als bestanden erklärt** dokumentiert; der Phase-9-Abschluss deutet diesen Nachweis nicht
-rückwirkend um.
+Die alten breiten Kalibrierungsprofile und Berichte sind mit Issue #97 entfernt. Der aktuelle Nachweis verwendet
+kleine feste 1.2-Szenarien im normalen Verify.
 
 ### Erfülltes Abschlussgate
 
@@ -394,22 +386,14 @@ Phase 9 ist abgeschlossen:
 - der operative Kataloglauf ist dokumentiert,
 - und die repräsentative Seed-Auswahl wurde ausdrücklich fachlich abgenommen.
 
-Die bewusst nicht erneut ausgeführte breite Endmatrix bleibt eine dokumentierte Nachweisgrenze und wird nicht als
-bestandene Messung ausgegeben. Die isolierten Generator-Labor-UX-Nacharbeiten aus Issues #60 und #61 verändern den
-fachlichen Phase-9-Abschluss nicht.
+Die isolierten Generator-Labor-UX-Nacharbeiten aus Issues #60 und #61 verändern den fachlichen Phase-9-Abschluss nicht.
 
-### Nachschärfung nach Phase 9: REROLL-Semantik (Issue #63)
-
-Issue #63 korrigiert nach dem historischen Phase-9-Abschluss eine unnötig enge Annahme des Generatorvertrags:
+### REROLL-Semantik
 
 - Ein freiwilliger REROLL verwirft das präsentierte Offer Set als Kombination und ist kein Zutaten-Ablehnungssignal.
-- Generatorversion `1.1.0` entfernt deshalb den dedizierten ingredient-level REROLL-Hardblock.
 - Der normale Cooldown bleibt exakt codebasiert; Parent-, Child-, Refinement- oder Sibling-Expansion findet nicht statt.
-- Labor und Simulation besitzen ab v1.1 keine operativen REROLL-Blockfelder mehr.
-- Historische v1.0-Snapshotfelder und Reason-Codes bleiben lesbar; Replay wird über die Generatorversion sauber getrennt.
-- Die persistente Exposition eines vollständig rerollten sichtbaren Offer Sets mit 1–3 Optionen war bewusst nicht Teil von Issue #63 und wird in Phase 11A durch Issue #76 umgesetzt.
-
-Der historische Kalibrierungsbericht bleibt für Generator 1.0 unverändert wahr. Für #63 gelten gezielte REROLL-/Cooldown-/Replayregressionen und der normale `./mvnw clean verify`; der bewusst nicht wiederholte 9.216er-Lauf wird nicht nachträglich erfunden.
+- Labor und Simulation besitzen keine operativen REROLL-Blockfelder.
+- Die persistente Exposition eines vollständig rerollten sichtbaren Offer Sets mit 1–3 Optionen ist in Phase 11A umgesetzt.
 
 OpenAI-Aufruf, Kuratorauswahl, sichtbare Challenge und Discord bleiben außerhalb von Phase 9. Die künftige Historienprojektion unterscheidet bestätigte Challenges, Cooldown-only-Exposition rerollter Offer Sets und vollständig interne/nicht gewählte Kandidaten ausdrücklich.
 
@@ -485,7 +469,7 @@ Dieses Paket implementiert den tatsächlichen externen Kurator und die höchsten
 
 - `CurationOrchestrationCommands` führt den transportneutralen, restartfähigen Use Case bis zu `CURATED_UNPRESENTED`, typisierter Kurations-/Generatorerschöpfung oder einem sichtbaren technischen Kuratorfehler.
 - Eine persistierte Dispatch-Claim pro Runde erteilt genau einmal die Berechtigung zu einem externen Request. `CLAIMED`, `RESULT_RECORDED` und `UNKNOWN_EXTERNAL_OUTCOME` sind irreversible PostgreSQL-Zustände; damit bleiben auch Konkurrenz, Prozessabbruch und Restart innerhalb des Attempt-Budgets von zwei Requests.
-- Der OpenAI-Adapter verwendet die Responses API direkt, ohne SDK-, HTTP- oder versteckte Client-Retries, mit `store=false`, deaktiviertem Streaming/Background-Modus, strengem JSON-Schema, `CURATOR_PROMPT_V1`, Standardmodell `gpt-5.6-terra` und Reasoning `medium`. Gemäß ADR 0008 erfordert er zusätzlich zur expliziten Aktivierung das Spring-Profil `production`; widersprüchliche Konfiguration scheitert beim Start.
+- Der OpenAI-Adapter verwendet die Responses API direkt, ohne SDK-, HTTP- oder versteckte Client-Retries, mit `store=false`, deaktiviertem Streaming/Background-Modus, strengem JSON-Schema, `CURATOR_PROMPT_V2`, Standardmodell `gpt-5.6-terra` und Reasoning `medium`. Gemäß ADR 0008 erfordert er zusätzlich zur expliziten Aktivierung das Spring-Profil `production`; widersprüchliche Konfiguration scheitert beim Start.
 - Providerrequest, Raw-Response beziehungsweise Transportfehler, Response-ID, Tokenverbrauch und Diagnose werden auf der tatsächlich verbrauchten Runde auditiert. Der Netzwerkzugriff liegt zwischen zwei kurzen Datenbanktransaktionen.
 - Batch 2 wird ausschließlich aus dem verifizierten, gespeicherten Context Snapshot desselben Attempts berechnet. Runde-1-`GOOD`s bleiben Locked Context; nur die besten benötigten `ACCEPTABLE`/`BAD` werden Carry-over; alle zwölf Kandidaten aus Batch 2 sind `NEW`.
 - Ein technischer Fehler in Runde 1 kann den zweiten Request als `TECHNICAL_RETRY` verbrauchen und schließt damit eine Qualitätsrunde aus. Ungültiger strukturierter Output wird nie erneut gesendet. Bei technischem Fehler der Qualitätsrunde oder erschöpftem Batch 2 gilt der dokumentierte Runde-1-Fallback nur, wenn dort mindestens ein `GOOD` vorliegt.
@@ -552,12 +536,24 @@ Darstellung vorwegzunehmen:
 - Rule-Auswahl, Hard-Konflikte, Candidate-Signatur und Satzdiversität sind kandidatenspezifisch und versioniert;
 - `CURATION_CONTRACT_V2`/`CURATOR_PROMPT_V2`, Offer, bestätigte Challenge und Reroll-Exposition tragen den
   unveränderlichen Restriktionssnapshot;
-- `1.0.x`-/`1.1.x`-Attempts bleiben über getrennte Replay-Payloads und den versionierten Dispatcher unverändert;
-- echte PostgreSQL-Tests prüfen Snapshotkopien, History und Migration; breite Simulationsmatrizen werden nicht
-  erneut ausgeführt.
+- echte PostgreSQL-Tests prüfen Snapshotkopien, History und Migration.
 
 Discord-Commands, Buttons, Nachrichten oder Darstellung gehören ausdrücklich nicht zu diesem Paket und bleiben
 Gegenstand des nachfolgenden Adapters.
+
+### Phase 12B.5A.1: Entfernen der Legacy-Kompatibilität (Issue #97)
+
+Issue #97 reduziert den Generator auf die aktuelle 1.2-Architektur:
+
+- entfernt die obsoleten Generator-, attempt-weiten Ausschluss- sowie Curation- und Prompt-Pfade;
+- entfernt obsolete Schemaanteile ausschließlich durch eine vorwärtsgerichtete Liquibase-Migration;
+- behält Katalog- und Administrationsdaten sowie aktuelle 1.2-Snapshots, Restriction Mode und Candidate Restrictions;
+- vereinfacht Labor, Simulation und Tests auf `AUTO`, `NONE` und `REQUIRED` ohne künstliche Kompatibilitätsmatrix.
+
+### Phase 12B.5B: Discord-Adapter (Issue #94)
+
+Erst danach ergänzt Issue #94 Command-Option, Darstellung und dünne Discord-Adapterintegration. Dieser Schritt ist
+nicht Teil von Issue #97.
 
 ### Phase 12B–12E: Manuelle Inbetriebnahme, Abnahme und Pilot (Issues #87–#90)
 

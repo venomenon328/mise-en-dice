@@ -4,6 +4,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.CatalogGeneratorSnapshot;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Specificity;
+import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.AcceptedProposal;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.CandidateEvaluation;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.RequirementSnapshot;
@@ -61,7 +62,7 @@ final class CandidateSetTestData {
         CandidateEvaluation evaluation = new CandidateEvaluation(components, score, bd("80.000000000000"), band,
                 noveltyLoad, List.of(), Set.of());
         return new AcceptedProposal(Math.abs(signature.hashCode()), profile, specificCount, band, requirements,
-                evaluation, signature, Set.of());
+                evaluation, signature, Set.of(), CandidateProposalEngine.CandidateRestriction.none());
     }
 
     static AcceptedProposal withManual(
@@ -88,7 +89,7 @@ final class CandidateSetTestData {
         }
         return new AcceptedProposal(Math.abs(signature.hashCode()), profile, 4, band, requirements,
                 new CandidateEvaluation(components, score, bd("80.000000000000"), band, 3, List.of(), Set.of()),
-                signature, Set.of());
+                signature, Set.of(), CandidateProposalEngine.CandidateRestriction.none());
     }
 
     static BigDecimal bd(String value) {

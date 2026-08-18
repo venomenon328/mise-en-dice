@@ -1127,8 +1127,8 @@ Wenn einer dieser Punkte später relevant wird, wird er als eigenes Paket spezif
 ersetzt aber keinen produktiven Challenge-Flow und enthält keine Katalogbearbeitung.
 
 Die Preview nimmt fachliches Datum, INITIAL/REROLL, optionalen Seed, einen stabilen Historienszenariocode und
-null bis zwei manuelle Vorgaben entgegen. Der verwendete Seed wird angezeigt. Ab Generator 1.1 besitzt die Oberfläche
-**keine REROLL-Hardblock-IDs mehr**: ein diagnostischer REROLL erhält Wiederholungswirkung ausschließlich aus den exakten
+null bis zwei manuelle Vorgaben und einen Restriction Mode entgegen. Der verwendete Seed wird angezeigt. Die Oberfläche besitzt
+**keine REROLL-Hardblock-IDs**: ein diagnostischer REROLL erhält Wiederholungswirkung ausschließlich aus den exakten
 Konzeptcodes des gewählten sichtbaren Historiensnapshots und dem normalen Cooldown. Der Konkretisierungsgraph erweitert
 diesen Cooldown nicht auf Parent-, Child- oder Sibling-Konzepte. Die Aktion verwendet die öffentliche Challenge-API,
 besitzt CSRF-Schutz und erzeugt weder Session, Attempt, Batch, Candidate noch sichtbare Challenge; sie verändert deshalb
@@ -1142,8 +1142,7 @@ Ein Persisted-Abschnitt lädt Attempt und Batch ausschließlich über `Generatio
 Versionen, Fingerprints, historische Candidate-/Requirement-Snapshots und Legacy-Grenzen bleiben sichtbar.
 Replay ist ein read-only POST mit CSRF-Schutz und zeigt Match, nicht unterstützte Version, ungültigen Snapshot oder
 die erste strukturierte Differenz. Aktuelle Katalogwerte reparieren keine historischen Anzeige- oder Replaydaten.
-Historische Generator-1.0-Snapshots dürfen dabei noch den damaligen REROLL-Block enthalten; er wird nicht als neue
-Generator-1.1-Regel interpretiert.
+Nicht unterstützte Snapshotversionen werden sichtbar als nicht unterstützt ausgewiesen und nicht nachgebildet.
 
 ### Simulation (Phase 9E3 / Issue #54)
 

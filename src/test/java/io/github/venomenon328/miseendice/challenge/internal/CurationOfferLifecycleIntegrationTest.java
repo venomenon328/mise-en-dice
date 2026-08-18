@@ -18,6 +18,7 @@ import io.github.venomenon328.miseendice.challenge.api.CurationResponse;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Generated;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import java.time.LocalDate;
 import java.util.List;
@@ -79,9 +80,8 @@ class CurationOfferLifecycleIntegrationTest {
 
         PlannedRound planned = (PlannedRound) curationCommands.planRound(command);
         assertThat(planned.request().requestedOfferCount()).isEqualTo(2);
-        assertThat(planned.request().promptVersion()).isEqualTo("prompt-v1");
+        assertThat(planned.request().promptVersion()).isEqualTo(OpenAiCuratorPrompt.CURRENT_VERSION);
         assertThat(planned.request().contractVersion()).isEqualTo(CurationModel.CONTRACT_VERSION_V2);
-        assertThat(planned.request().attemptExclusion()).isNull();
         assertThat(planned.request().candidates()).hasSize(12);
         assertThat(planned.request().candidates()).allSatisfy(candidate -> {
             assertThat(candidate.participation()).isEqualTo(CurationModel.Participation.NEW);
@@ -184,7 +184,7 @@ class CurationOfferLifecycleIntegrationTest {
 
         CurationCommands.PlanRound followUp = new CurationCommands.PlanRound(generated.attemptId(), 2,
                 secondBatch.batchId(), CurationModel.RequestPurpose.QUALITY_FOLLOW_UP,
-                "future-curator", "prompt-v1", 1, followUpCandidates(secondBatch, firstCompleted));
+                "future-curator", OpenAiCuratorPrompt.CURRENT_VERSION, 1, followUpCandidates(secondBatch, firstCompleted));
         PlannedRound second = (PlannedRound) curationCommands.planRound(followUp);
         curationCommands.completeRound(new CurationCommands.CompleteRound(second.roundId(), response(second, 1)));
 
@@ -198,13 +198,13 @@ class CurationOfferLifecycleIntegrationTest {
 
     private Generated generated(int requestedOfferCount, long seed) {
         return (Generated) generationCommands.startNewSession(
-                new StartNewSession(DATE, List.of(), seed, requestedOfferCount));
+                new StartNewSession(DATE, List.of(), seed, requestedOfferCount, RestrictionMode.AUTO));
     }
 
     private CurationCommands.PlanRound initialPlan(Generated generated, int openOfferSlots) {
         GenerationQueries.BatchView batch = generationQueries.findBatch(generated.attemptId(), 1).orElseThrow();
         return new CurationCommands.PlanRound(generated.attemptId(), 1, batch.batchId(),
-                CurationModel.RequestPurpose.INITIAL_PASS, "future-curator", "prompt-v1", openOfferSlots,
+                CurationModel.RequestPurpose.INITIAL_PASS, "future-curator", OpenAiCuratorPrompt.CURRENT_VERSION, openOfferSlots,
                 batch.candidates().stream().map(candidate -> new CandidateParticipation(candidate.candidateId(),
                         CurationModel.Participation.NEW, null)).toList());
     }

@@ -62,12 +62,10 @@ class CurationApplicationService implements CurationCommands, CurationQueries {
 
             long roundId = repository.nextRoundId();
             List<CurationRequest.Candidate> candidates = candidates(command.candidates());
-            String contractVersion = CurationModel.contractForGenerator(attempt.generatorVersion());
+            String contractVersion = CurationModel.currentContractVersion();
             CurationRequest request = new CurationRequest(contractVersion, command.promptVersion().strip(),
                     command.attemptId(), roundId, command.primaryBatchId(), attempt.requestedOfferCount(),
-                    command.openOfferSlots(), CurationModel.CONTRACT_VERSION_V1.equals(contractVersion)
-                            ? new CurationRequest.AttemptExclusion(attempt.exclusionRuleId(),
-                            attempt.exclusionTextSnapshot()) : null, candidates);
+                    command.openOfferSlots(), candidates);
             repository.insertRound(roundId, command.attemptId(), command.roundNumber(), command.primaryBatchId(),
                     command.purpose(), command.curatorModel().strip(), command.promptVersion().strip(),
                     contractVersion, command.openOfferSlots(), repository.json(request));

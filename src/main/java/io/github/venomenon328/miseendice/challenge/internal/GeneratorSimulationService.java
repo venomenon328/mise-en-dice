@@ -3,7 +3,6 @@ package io.github.venomenon328.miseendice.challenge.internal;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.CatalogGeneratorSnapshot;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
-import io.github.venomenon328.miseendice.challenge.api.AttemptExclusionDecision;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.AcceptedProposal;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.RequirementSnapshot;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
@@ -23,7 +22,6 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.Completion;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.CompletionStatus;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.Concentration;
-import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.ExclusionVariant;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.FingerprintVariation;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.Frequency;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorSimulation.FrequencyList;
@@ -44,7 +42,6 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -56,7 +53,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
-import tools.jackson.databind.ObjectMapper;
 
 /** Phase-9E2 implementation: one frozen read snapshot, then only sequential pure generator calls. */
 @Service
@@ -70,9 +66,7 @@ class GeneratorSimulationService implements GeneratorSimulation {
     private final CandidateReservoirEngine defaultReservoirEngine;
     private final CandidateSetEngine defaultSetEngine;
     private final GeneratorProperties properties;
-    private final ObjectMapper objectMapper;
     private final TransactionTemplate repeatableReadTransaction;
-    private final Map<ExclusionVariant, Engines> enginesByVariant = new EnumMap<>(ExclusionVariant.class);
 
     GeneratorSimulationService(
             CatalogGeneratorProjection catalogProjection,
@@ -80,7 +74,6 @@ class GeneratorSimulationService implements GeneratorSimulation {
             CandidateReservoirEngine defaultReservoirEngine,
             CandidateSetEngine defaultSetEngine,
             GeneratorProperties properties,
-            ObjectMapper objectMapper,
             PlatformTransactionManager transactionManager
     ) {
         this.catalogProjection = catalogProjection;
@@ -88,7 +81,6 @@ class GeneratorSimulationService implements GeneratorSimulation {
         this.defaultReservoirEngine = defaultReservoirEngine;
         this.defaultSetEngine = defaultSetEngine;
         this.properties = properties;
-        this.objectMapper = objectMapper;
         this.repeatableReadTransaction = new TransactionTemplate(transactionManager);
         this.repeatableReadTransaction.setReadOnly(true);
         this.repeatableReadTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
@@ -133,19 +125,17 @@ class GeneratorSimulationService implements GeneratorSimulation {
 
                     LocalDate date = scenario.effectiveDates().get(step);
                     CatalogGeneratorSnapshot catalog = inputs.catalogsByMonth().get(date.getMonthValue());
-                    Engines engines = enginesFor(scenario.exclusionVariant());
                     GeneratorRunExecution.Input runInput = input(scenario, date, seed, catalog, history);
                     try {
                         aggregates.attempts++;
                         GeneratorRunExecution.Result execution = GeneratorRunExecution.execute(
-                                runInput, engines.configuration(), engines.reservoir(), engines.set());
+                                runInput, properties.configuration(), defaultReservoirEngine, defaultSetEngine);
                         CandidateSetResult result = execution.candidateSet();
-                        aggregates.recordCommon(scenario, execution.preparedAttempt(), result);
+                        aggregates.recordCommon(result);
                         if (result instanceof GeneratedCandidateSet generated) {
                             aggregates.recordSuccess(scenario, execution.preparedAttempt(), generated);
-                            verifyFrozenReplay(runInput, engines, generated, aggregates);
-                            history = appendSyntheticExposure(history, scenario, seed, step, date,
-                                    execution.preparedAttempt(), generated);
+                            verifyFrozenReplay(runInput, generated, aggregates);
+                            history = appendSyntheticExposure(history, scenario, seed, step, date, generated);
                         } else if (result instanceof ExhaustedCandidateSet) {
                             // Exhaustion is a processed domain result. It creates no exposure, but later steps still run.
                             aggregates.exhaustedSets++;
@@ -205,7 +195,6 @@ class GeneratorSimulationService implements GeneratorSimulation {
                 CatalogGeneratorSnapshot catalog = catalogs.get(date.getMonthValue());
                 scenario.manualRequirements().stream().filter(manual -> manual.matchedConceptCode() != null)
                         .forEach(manual -> requireConcept(catalog, manual.matchedConceptCode(), "manual match"));
-                scenario.rerollBlockedConceptCodes().forEach(code -> requireConcept(catalog, code, "REROLL block"));
             }
         }
     }
@@ -238,19 +227,18 @@ class GeneratorSimulationService implements GeneratorSimulation {
                 new ManualRequirement(manual.position(), manual.displayText(), manual.matchedConceptCode() == null
                         ? null : catalog.conceptByCode(manual.matchedConceptCode()).orElseThrow())).toList();
         return new GeneratorRunExecution.Input(scenario.attemptType(), date, seed, manuals,
-                scenario.rerollBlockedConceptCodes(), catalog, history, BATCH_NUMBER);
+                catalog, history, BATCH_NUMBER, scenario.restrictionMode());
     }
 
     private void verifyFrozenReplay(
             GeneratorRunExecution.Input input,
-            Engines engines,
             GeneratedCandidateSet generated,
             Aggregates aggregates
     ) {
         aggregates.replayChecks++;
         try {
             GeneratorRunExecution.Result replay = GeneratorRunExecution.execute(
-                    input, engines.configuration(), engines.reservoir(), engines.set());
+                    input, properties.configuration(), defaultReservoirEngine, defaultSetEngine);
             if (!(replay.candidateSet() instanceof GeneratedCandidateSet replayed)
                     || !generated.fingerprint().equals(replayed.fingerprint())
                     || !signatures(generated).equals(signatures(replayed))) {
@@ -271,7 +259,6 @@ class GeneratorSimulationService implements GeneratorSimulation {
             long seed,
             int step,
             LocalDate date,
-            io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt prepared,
             GeneratedCandidateSet generated
     ) {
         Instant visibleAt = date.atTime(12, 0).toInstant(ZoneOffset.UTC);
@@ -289,12 +276,11 @@ class GeneratorSimulationService implements GeneratorSimulation {
                     concept == null ? Set.of() : concept.culinaryFlags(),
                     concept == null ? Set.of() : concept.transitiveAncestorCodes());
         }).toList();
-        String exclusionRuleCode = prepared.exclusionDecision() instanceof AttemptExclusionDecision.Selected selectedRule
-                ? selectedRule.rule().code() : null;
+        String restrictionRuleCode = selected.restriction().ruleCode();
         VisibleChallenge exposure = new VisibleChallenge(visibleAt,
                 "simulation/" + scenario.code() + "/" + seed + "/" + step,
                 scenario.attemptType(), "COMPLETED", requirements, selected.profile(),
-                selected.evaluation().actualNoveltyBand(), exclusionRuleCode);
+                selected.evaluation().actualNoveltyBand(), restrictionRuleCode);
         List<VisibleChallenge> extended = new ArrayList<>(history.challengesNewestFirst().size() + 1);
         extended.add(exposure);
         extended.addAll(history.challengesNewestFirst());
@@ -309,38 +295,17 @@ class GeneratorSimulationService implements GeneratorSimulation {
                 ? CompletionStatus.TIMED_OUT : null;
     }
 
-    private synchronized Engines enginesFor(ExclusionVariant variant) {
-        return enginesByVariant.computeIfAbsent(variant, value -> {
-            GeneratorConfiguration configuration = switch (value) {
-                case DEFAULT -> properties.configuration();
-                case DISABLED -> properties.configuration().withExclusionProbability(BigDecimal.ZERO);
-                case REQUIRED -> properties.configuration().withExclusionProbability(BigDecimal.ONE);
-            };
-            if (value == ExclusionVariant.DEFAULT) {
-                return new Engines(configuration, defaultReservoirEngine, defaultSetEngine);
-            }
-            var proposal = new DefaultCandidateProposalEngine(configuration,
-                    new CanonicalConfigurationSnapshot(objectMapper).serialize(configuration));
-            CandidateReservoirEngine reservoir = new DefaultCandidateReservoirEngine(proposal);
-            return new Engines(configuration, reservoir, new DefaultCandidateSetEngine(reservoir, objectMapper));
-        });
-    }
-
     private Metadata metadata(SimulationRequest request, MaterializedInputs inputs) {
         GeneratorConfiguration defaultConfiguration = properties.configuration();
         TreeMap<Integer, String> catalogFingerprints = new TreeMap<>();
         inputs.catalogsByMonth().forEach((month, catalog) ->
                 catalogFingerprints.put(month, GeneratorSimulationReportCodec.catalogFingerprint(catalog)));
         TreeMap<String, String> configurationFingerprints = new TreeMap<>();
-        for (SimulationScenario scenario : request.scenarios()) {
-            configurationFingerprints.putIfAbsent(scenario.exclusionVariant().name(),
-                    GeneratorSimulationReportCodec.configurationFingerprint(enginesFor(scenario.exclusionVariant())
-                            .configuration()));
-        }
+        configurationFingerprints.put("CURRENT", GeneratorSimulationReportCodec.configurationFingerprint(defaultConfiguration));
         List<String> descriptions = request.scenarios().stream().map(scenario -> scenario.code()
                 + ";history=" + scenario.historyScenario().name()
                 + ";attempt=" + scenario.attemptType().name()
-                + ";variant=" + scenario.exclusionVariant().name()
+                + ";restrictionMode=" + scenario.restrictionMode().name()
                 + ";seeds=" + seedDescription(scenario.seedPlan())
                 + ";dates=" + scenario.effectiveDates()).toList();
         return new Metadata(REPORT_VERSION, defaultConfiguration.generatorVersion(),
@@ -363,13 +328,6 @@ class GeneratorSimulationService implements GeneratorSimulation {
     ) {
     }
 
-    private record Engines(
-            GeneratorConfiguration configuration,
-            CandidateReservoirEngine reservoir,
-            CandidateSetEngine set
-    ) {
-    }
-
     private static final class Aggregates {
         private long attempts;
         private long successfulSets;
@@ -379,14 +337,13 @@ class GeneratorSimulationService implements GeneratorSimulation {
         private long replayIntegrityMismatches;
         private long hardRuleViolations;
         private long cooldownViolations;
-        private long rerollViolations;
-        private long exclusionViolations;
+        private long restrictionViolations;
         private long quotaViolations;
         private long setCapViolations;
         private long strictPairMeanViolations;
         private long recoveryCadenceViolations;
         private long incompleteSuccesses;
-        private long selectedExclusions;
+        private long restrictedCandidates;
         private int completedSequences;
         private int incompleteSequences;
         private final Map<String, Long> fallbackUsage = new TreeMap<>();
@@ -398,7 +355,7 @@ class GeneratorSimulationService implements GeneratorSimulation {
         private final Map<String, Long> targetNoveltyBands = new TreeMap<>();
         private final Map<String, Long> actualNoveltyBands = new TreeMap<>();
         private final Map<String, Long> specificities = new TreeMap<>();
-        private final Map<String, Long> exclusions = new TreeMap<>();
+        private final Map<String, Long> restrictions = new TreeMap<>();
         private final Map<String, Long> ancestors = new TreeMap<>();
         private final List<BigDecimal> proposalAttempts = new ArrayList<>();
         private final List<BigDecimal> noveltyLoads = new ArrayList<>();
@@ -411,20 +368,11 @@ class GeneratorSimulationService implements GeneratorSimulation {
         private final Map<String, Set<String>> fingerprintsByScenario = new TreeMap<>();
         private final Map<String, Integer> successesByScenario = new TreeMap<>();
 
-        private void recordCommon(
-                SimulationScenario scenario,
-                io.github.venomenon328.miseendice.challenge.api.PreparedGenerationAttempt prepared,
-                CandidateSetResult result
-        ) {
-            if (prepared.exclusionDecision() instanceof AttemptExclusionDecision.Selected selected) {
-                selectedExclusions++;
-                increment(exclusions, scenario.exclusionVariant().name() + "/" + selected.rule().code(), 1);
-            }
+        private void recordCommon(CandidateSetResult result) {
             result.reservoir().metrics().hardRejectionsByReason().forEach((reason, count) ->
                     increment(hardRejections, reason.name(), count));
             result.fallbackAttempts().forEach(attempt -> attempt.rejectionsByReason().forEach((reason, count) ->
-                    increment(fallbackRejections, scenario.exclusionVariant().name() + "/"
-                            + attempt.fallbackLevel().name() + "/" + reason.name(), count)));
+                    increment(fallbackRejections, attempt.fallbackLevel().name() + "/" + reason.name(), count)));
         }
 
         private void recordSuccess(
@@ -433,7 +381,7 @@ class GeneratorSimulationService implements GeneratorSimulation {
                 GeneratedCandidateSet generated
         ) {
             successfulSets++;
-            increment(fallbackUsage, scenario.exclusionVariant().name() + "/" + generated.fallbackLevel().name(), 1);
+            increment(fallbackUsage, generated.fallbackLevel().name(), 1);
             proposalAttempts.add(BigDecimal.valueOf(generated.reservoir().metrics().proposalAttempts()));
             pairMeans.add(generated.evaluation().pairStatistics().mean());
             pairPercentile95s.add(generated.evaluation().pairStatistics().percentile95());
@@ -475,6 +423,10 @@ class GeneratorSimulationService implements GeneratorSimulation {
                 hardRuleViolations++;
             }
             for (AcceptedProposal candidate : generated.candidates()) {
+                if (candidate.restriction().ruleCode() != null) {
+                    restrictedCandidates++;
+                    increment(restrictions, candidate.restriction().ruleCode(), 1);
+                }
                 increment(profiles, candidate.profile().name(), 1);
                 increment(targetNoveltyBands, candidate.targetNoveltyBand().name(), 1);
                 increment(actualNoveltyBands, candidate.evaluation().actualNoveltyBand().name(), 1);
@@ -504,13 +456,8 @@ class GeneratorSimulationService implements GeneratorSimulation {
                         hardRuleViolations++;
                     }
                     if (requirement.weightEvaluation().diagnostics()
-                            .contains(GeneratorReasonCode.REROLL_EXACT_BLOCKED)) {
-                        rerollViolations++;
-                        hardRuleViolations++;
-                    }
-                    if (requirement.weightEvaluation().diagnostics()
                             .contains(GeneratorReasonCode.EXCLUSION_TARGET_BLOCKED)) {
-                        exclusionViolations++;
+                        restrictionViolations++;
                         hardRuleViolations++;
                     }
                 }
@@ -535,13 +482,13 @@ class GeneratorSimulationService implements GeneratorSimulation {
                 variations = variations.subList(0, MAXIMUM_REPORT_ENTRIES);
             }
             return new Metrics(attempts, successfulSets, exhaustedSets, technicalErrors, replayChecks,
-                    replayIntegrityMismatches, hardRuleViolations, cooldownViolations, rerollViolations,
-                    exclusionViolations, quotaViolations, setCapViolations, strictPairMeanViolations,
-                    recoveryCadenceViolations, incompleteSuccesses, selectedExclusions, frequencies(fallbackUsage),
+                    replayIntegrityMismatches, hardRuleViolations, cooldownViolations, restrictionViolations,
+                    quotaViolations, setCapViolations, strictPairMeanViolations,
+                    recoveryCadenceViolations, incompleteSuccesses, restrictedCandidates, frequencies(fallbackUsage),
                     frequencies(hardRejections), frequencies(fallbackRejections), frequencies(concepts), concentration(concepts),
                     frequencies(roles),
                     frequencies(profiles), frequencies(targetNoveltyBands), frequencies(actualNoveltyBands),
-                    frequencies(specificities), frequencies(exclusions), frequencies(ancestors), summary(proposalAttempts),
+                    frequencies(specificities), frequencies(restrictions), frequencies(ancestors), summary(proposalAttempts),
                     summary(noveltyLoads), summary(availabilityLoads), summary(confidences), summary(pairMeans),
                     summary(pairPercentile95s), summary(pairMaximums), summary(difficultCandidates), variations, omitted);
         }

@@ -16,6 +16,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartN
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayDifferenceType;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayStatus;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -79,7 +80,7 @@ class PersistedGenerationIntegrationTest {
     @Test
     void persistsBatchOneWithoutCurationAndReplaysEverySnapshot() {
         Generated generated = generated(commands.startNewSession(
-                new StartNewSession(DATE, List.of(), 47_000_001L)));
+                new StartNewSession(DATE, List.of(), 47_000_001L, 1, RestrictionMode.AUTO)));
 
         var attempt = queries.findAttempt(generated.attemptId()).orElseThrow();
         var context = queries.findContext(generated.attemptId()).orElseThrow();
@@ -126,7 +127,7 @@ class PersistedGenerationIntegrationTest {
     @Test
     void replayReportsTheFirstPersistedDifferenceThroughThePublicReadOnlyQuery() {
         Generated generated = generated(commands.startNewSession(
-                new StartNewSession(DATE, List.of(), 47_000_002L)));
+                new StartNewSession(DATE, List.of(), 47_000_002L, 1, RestrictionMode.AUTO)));
         GenerationQueries.BatchView batch = queries.findBatch(generated.attemptId(), 1).orElseThrow();
         GenerationQueries.CandidateView candidate = batch.candidates().getFirst();
 
@@ -180,7 +181,7 @@ class PersistedGenerationIntegrationTest {
     @Test
     void replayKeepsMatchAndNonMismatchStatesFreeOfDifferences() {
         Generated generated = generated(commands.startNewSession(
-                new StartNewSession(DATE, List.of(), 47_000_003L)));
+                new StartNewSession(DATE, List.of(), 47_000_003L, 1, RestrictionMode.AUTO)));
 
         assertThat(queries.replay(generated.attemptId(), 1))
                 .extracting(GenerationQueries.ReplayResult::status, GenerationQueries.ReplayResult::difference)
@@ -198,13 +199,13 @@ class PersistedGenerationIntegrationTest {
 
     @Test
     void supportsZeroOneAndTwoManualInputsThroughThePublicCommand() {
-        Generated zero = generated(commands.startNewSession(new StartNewSession(DATE, List.of(), 7_100L)));
+        Generated zero = generated(commands.startNewSession(new StartNewSession(DATE, List.of(), 7_100L, 1, RestrictionMode.AUTO)));
         long firstConcept = conceptId(0);
         Generated one = generated(commands.startNewSession(new StartNewSession(DATE,
-                List.of(new ManualRequirementInput(1, "Miso manual", firstConcept)), 7_101L)));
+                List.of(new ManualRequirementInput(1, "Miso manual", firstConcept)), 7_101L, 1, RestrictionMode.AUTO)));
         Generated two = generated(commands.startNewSession(new StartNewSession(DATE,
                 List.of(new ManualRequirementInput(1, "Miso manual", firstConcept),
-                        new ManualRequirementInput(2, "Freitext manual", null)), 7_102L)));
+                        new ManualRequirementInput(2, "Freitext manual", null)), 7_102L, 1, RestrictionMode.AUTO)));
 
         assertThat(manualCount(zero.attemptId())).isZero();
         assertThat(manualCount(one.attemptId())).isEqualTo(1);
@@ -216,7 +217,7 @@ class PersistedGenerationIntegrationTest {
     @Test
     void unconfirmedGeneratedCandidatesStayOutOfVisibleHistory() {
         Generated unconfirmed = generated(commands.startNewSession(
-                new StartNewSession(DATE, List.of(), 47_000_011L)));
+                new StartNewSession(DATE, List.of(), 47_000_011L, 1, RestrictionMode.AUTO)));
         assertThat(repository.visibleHistory().challengesNewestFirst()).isEmpty();
         assertThat(queries.findAttempt(unconfirmed.attemptId()).orElseThrow().nextAction())
                 .isEqualTo(GenerationQueries.NextAction.AWAIT_CURATION);
@@ -225,7 +226,7 @@ class PersistedGenerationIntegrationTest {
     @Test
     void generatedCandidateCannotBypassCurationThroughTheLegacySelectionFlag() {
         Generated generated = generated(commands.startNewSession(
-                new StartNewSession(DATE, List.of(), 47_000_013L)));
+                new StartNewSession(DATE, List.of(), 47_000_013L, 1, RestrictionMode.AUTO)));
         long candidateId = queries.findBatch(generated.attemptId(), 1).orElseThrow().candidates().getFirst().candidateId();
 
         assertThatThrownBy(() -> jdbcTemplate.update(
@@ -239,7 +240,7 @@ class PersistedGenerationIntegrationTest {
     @Test
     void batchTwoReusesTheFrozenContextAndBatchThreeIsRejectedByPostgresql() {
         Generated initial = generated(commands.startNewSession(
-                new StartNewSession(DATE, List.of(), 47_000_021L)));
+                new StartNewSession(DATE, List.of(), 47_000_021L, 1, RestrictionMode.AUTO)));
         var prepared = repository.snapshotCodec().decodeAndVerify(repository.loadContext(initial.attemptId()));
         var second = candidateSetEngine.generate(prepared, 2);
         new TransactionTemplate(transactionManager).executeWithoutResult(status ->
@@ -262,7 +263,7 @@ class PersistedGenerationIntegrationTest {
     @Test
     void staleContextReadyAttemptReplaysAfterRestartWithoutChangingItsSet() {
         Generated first = generated(commands.startNewSession(
-                new StartNewSession(DATE, List.of(), 47_000_031L)));
+                new StartNewSession(DATE, List.of(), 47_000_031L, 1, RestrictionMode.AUTO)));
         jdbcTemplate.update("delete from generation_batch where generation_attempt_id = ?", first.attemptId());
         jdbcTemplate.update("""
                 update generation_attempt
@@ -281,7 +282,7 @@ class PersistedGenerationIntegrationTest {
     @Test
     void retryAfterCommittedInitialReturnsTheExistingResult() {
         Generated first = generated(commands.startNewSession(
-                new StartNewSession(DATE, List.of(), 47_000_032L)));
+                new StartNewSession(DATE, List.of(), 47_000_032L, 1, RestrictionMode.AUTO)));
 
         Generated repeated = generated(commands.startInitial(new StartExistingSession(
                 first.sessionId(), DATE.plusMonths(1), List.of(), 999L)));
@@ -337,7 +338,7 @@ class PersistedGenerationIntegrationTest {
                 """);
 
         assertThatThrownBy(() -> commands.startNewSession(
-                new StartNewSession(DATE, List.of(), 47_000_051L)))
+                new StartNewSession(DATE, List.of(), 47_000_051L, 1, RestrictionMode.AUTO)))
                 .isInstanceOf(DataAccessException.class);
 
         long attemptId = jdbcTemplate.queryForObject("select max(id) from generation_attempt", Long.class);

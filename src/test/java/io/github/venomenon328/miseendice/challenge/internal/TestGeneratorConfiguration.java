@@ -28,8 +28,8 @@ final class TestGeneratorConfiguration {
 
     static GeneratorConfiguration defaults() {
         return new GeneratorConfiguration(
-                "1.1.0", "2026-08-12.2", RngAlgorithm.SPLITMIX64_V1, 1,
-                12, 144, 72, 36, 5_000, 1_000_000_000L, bd("0.30"),
+                "1.2.0", "2026-08-18.1", RngAlgorithm.SPLITMIX64_V1, 1,
+                12, 144, 72, 36, 5_000, 1_000_000_000L, bd("0.20"),
                 Map.of(Availability.EASY, bd("1.00"), Availability.PLANNED, bd("0.65"),
                         Availability.DIFFICULT, bd("0.20"), Availability.UNAVAILABLE, bd("0.00")),
                 new CooldownConfiguration(6, 9, 12, 16, bd("0.25"), bd("0.50"), bd("0.75")),
@@ -62,10 +62,10 @@ final class TestGeneratorConfiguration {
                         ScoreComponent.NOVELTY_TARGET_FIT, bd("0.10"), ScoreComponent.AVAILABILITY_LOAD, bd("0.08"),
                         ScoreComponent.HISTORY_FRESHNESS, bd("0.08"), ScoreComponent.DATA_CONFIDENCE, bd("0.05"),
                         ScoreComponent.KNOWN_CULINARY_LOAD_BALANCE, bd("0.04")),
-                Map.of(SimilarityComponent.EXACT_RANDOM_CONCEPTS, bd("0.35"), SimilarityComponent.INFORMATIVE_ANCESTORS, bd("0.20"),
-                        SimilarityComponent.ROLES_AND_PROFILE, bd("0.15"), SimilarityComponent.SPECIFICITY_MIX, bd("0.05"),
+                Map.of(SimilarityComponent.EXACT_RANDOM_CONCEPTS, bd("0.30"), SimilarityComponent.INFORMATIVE_ANCESTORS, bd("0.17"),
+                        SimilarityComponent.ROLES_AND_PROFILE, bd("0.13"), SimilarityComponent.SPECIFICITY_MIX, bd("0.05"),
                         SimilarityComponent.NOVELTY, bd("0.10"), SimilarityComponent.AVAILABILITY_LOAD, bd("0.05"),
-                        SimilarityComponent.COMPARABLE_PROPERTIES, bd("0.10")),
+                        SimilarityComponent.COMPARABLE_PROPERTIES, bd("0.10"), SimilarityComponent.RESTRICTION, bd("0.10")),
                 new SimilarityConfiguration(bd("0.25"), bd("0.90"), bd("0.10"), bd("0.60"), bd("0.40"),
                         bd("0.40"), bd("0.60")),
                 new SelectionConfiguration(bd("0.55"), bd("0.30"), bd("0.15"), bd("0.04"), 20),
@@ -75,11 +75,10 @@ final class TestGeneratorConfiguration {
                 Duration.ofMinutes(15));
     }
 
-    static GeneratorConfiguration withLimitsAndExclusion(
+    static GeneratorConfiguration withLimits(
             int reservoirTarget,
             int reservoirStrictMinimum,
-            int maximumProposalAttempts,
-            String exclusionProbability
+            int maximumProposalAttempts
     ) {
         GeneratorConfiguration defaults = defaults();
         return new GeneratorConfiguration(
@@ -87,7 +86,7 @@ final class TestGeneratorConfiguration {
                 defaults.canonicalPayloadVersion(), defaults.candidateSetSize(), reservoirTarget,
                 reservoirStrictMinimum, Math.max(12, (reservoirStrictMinimum + 1) / 2), maximumProposalAttempts,
                 defaults.weightQuantization(),
-                bd(exclusionProbability), defaults.availabilityFactors(), defaults.cooldown(), defaults.exclusion(),
+                defaults.exclusionProbability(), defaults.availabilityFactors(), defaults.cooldown(), defaults.exclusion(),
                 defaults.novelty(), defaults.anchorRoles(), defaults.supportRoles(), defaults.flavorRoles(),
                 defaults.profiles(), defaults.profileWeights(), defaults.profileSetTargets(),
                 defaults.specificityWeights(), defaults.specificitySetTargets(), defaults.cadenceSetTargets(),
@@ -97,25 +96,7 @@ final class TestGeneratorConfiguration {
     }
 
     static GeneratorConfiguration candidateRestrictionDefaults() {
-        GeneratorConfiguration defaults = defaults();
-        return new GeneratorConfiguration(
-                "1.2.0", "2026-08-18.1", defaults.rngAlgorithm(), defaults.canonicalPayloadVersion(),
-                defaults.candidateSetSize(), defaults.reservoirTarget(), defaults.reservoirStrictMinimum(),
-                defaults.reservoirRelaxedOneMinimum(), defaults.maximumProposalAttempts(), defaults.weightQuantization(),
-                bd("0.20"), defaults.availabilityFactors(), defaults.cooldown(), defaults.exclusion(),
-                defaults.novelty(), defaults.anchorRoles(), defaults.supportRoles(), defaults.flavorRoles(),
-                defaults.profiles(), defaults.profileWeights(), defaults.profileSetTargets(),
-                defaults.specificityWeights(), defaults.specificitySetTargets(), defaults.cadenceSetTargets(),
-                defaults.scoreWeights(), Map.of(
-                        SimilarityComponent.EXACT_RANDOM_CONCEPTS, bd("0.30"),
-                        SimilarityComponent.INFORMATIVE_ANCESTORS, bd("0.17"),
-                        SimilarityComponent.ROLES_AND_PROFILE, bd("0.13"),
-                        SimilarityComponent.SPECIFICITY_MIX, bd("0.05"),
-                        SimilarityComponent.NOVELTY, bd("0.10"),
-                        SimilarityComponent.AVAILABILITY_LOAD, bd("0.05"),
-                        SimilarityComponent.COMPARABLE_PROPERTIES, bd("0.10"),
-                        SimilarityComponent.RESTRICTION, bd("0.10")),
-                defaults.similarity(), defaults.selection(), defaults.fallbacks(), defaults.processingLease());
+        return defaults();
     }
 
     private static BigDecimal bd(String value) { return new BigDecimal(value); }

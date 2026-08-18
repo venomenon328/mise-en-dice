@@ -106,8 +106,8 @@ final class GeneratorSimulationReportCodec {
         value.put("randomConceptConcentration", concentration(metrics.randomConceptConcentration()));
         value.put("cooldownViolations", metrics.cooldownViolations());
         value.put("difficultCandidatesPerSet", summary(metrics.difficultCandidatesPerSet()));
-        value.put("exclusionFrequency", frequencies(metrics.exclusionFrequency()));
-        value.put("exclusionViolations", metrics.exclusionViolations());
+        value.put("restrictionFrequency", frequencies(metrics.restrictionFrequency()));
+        value.put("restrictionViolations", metrics.restrictionViolations());
         value.put("exhaustedSets", metrics.exhaustedSets());
         value.put("fallbackRejectionsByReason", frequencies(metrics.fallbackRejectionsByReason()));
         value.put("fallbackUsage", frequencies(metrics.fallbackUsage()));
@@ -128,9 +128,8 @@ final class GeneratorSimulationReportCodec {
         value.put("recoveryCadenceViolations", metrics.recoveryCadenceViolations());
         value.put("replayChecks", metrics.replayChecks());
         value.put("replayIntegrityMismatches", metrics.replayIntegrityMismatches());
-        value.put("rerollViolations", metrics.rerollViolations());
         value.put("roleFrequency", frequencies(metrics.roleFrequency()));
-        value.put("selectedExclusions", metrics.selectedExclusions());
+        value.put("restrictedCandidates", metrics.restrictedCandidates());
         value.put("setCapViolations", metrics.setCapViolations());
         value.put("specificityFrequency", frequencies(metrics.specificityFrequency()));
         value.put("strictPairMeanViolations", metrics.strictPairMeanViolations());
