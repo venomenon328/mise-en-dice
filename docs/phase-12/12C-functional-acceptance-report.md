@@ -1,183 +1,159 @@
 # Phase 12C – Funktionale Live-Abnahme
 
-Stand: 18. August 2026
+Stand: 19. August 2026
 
 Issue: #88  
 Umbrella: #85  
 Evidenzbranch: `test/88-live-functional-acceptance`  
-Getesteter Commit: `8e7565ef791d4a85cbb7a8aedbbba095d3582164`
+Live getesteter Commit: `8e7565ef791d4a85cbb7a8aedbbba095d3582164`
 
 ## Ergebnis
 
-**FUNCTIONAL PASS – persistente Detail-/Provider-Evidenz noch zu ergänzen**
+**PASS WITH ACCEPTED TEST GAPS**
 
-Die manuelle Live-Matrix in Discord wurde funktional vollständig erfolgreich durchgeführt. 1, 2 und 3 Angebote,
-Tie-Break, Vote-Änderung, REROLL, Runde 2, Ein-Offer-Auto-Confirm sowie die sichtbare Restriction-Darstellung
-funktionierten im beobachteten End-to-End-Flow. Es wurde kein P0/P1-Befund gemeldet.
+Die funktionale Live-Matrix auf der isolierten Acceptance-Instanz war erfolgreich. 1, 2 und 3 Angebote, geheime und änderbare Votes, Tie-Break, REROLL, neue Angebote, Ein-Offer-Auto-Confirm sowie AUTO/NONE/REQUIRED-Restriktionen funktionierten im beobachteten Discord-/OpenAI-End-to-End-Flow. Es trat kein P0/P1-Befund auf.
 
-Die noch offenen Punkte dieses Reports sind keine erneuten Live-Sessions, sondern die redigierte Zuordnung der
-persistierten Session-/Attempt-/Request-/History-Evidenz. Die bereitgestellten Discord-Screenshots und der
-OpenAI-Dashboard-Snapshot werden nicht zu nicht belegten DB-IDs oder Per-Session-Tokenwerten hochgerechnet.
+Zwei ursprünglich vorgesehene Detailnachweise wurden bewusst nicht nachträglich erzwungen und gelten als akzeptierte Testlücken:
 
-## Preflight und Baseline
+1. In Session D wurde nach dem Multi-Offer-REROLL die Discord-Nachricht später gelöscht. Der Abschluss der zweiten Abstimmungsrunde konnte deshalb nicht nochmals persistent bis zur finalen Challenge nachgewiesen werden. Die Präsentation der neuen Runde ohne zweiten REROLL wurde live beobachtet und der REROLL-Attempt selbst ist persistent belegt.
+2. Für die REROLL-History wurde die Kardinalität der persistierten Requirement-/Restriction-Snapshots nachgewiesen; die zusätzliche vollständige Einzelzeilen-Zuordnung wurde bewusst nicht mehr erhoben.
 
-Die Acceptance lief laut `acceptance status` auf `main`, Commit
-`8e7565ef791d4a85cbb7a8aedbbba095d3582164`, Port `18090`, Status `running/healthy`, Discord und OpenAI aktiviert,
-Modell `gpt-5.6-terra`, Reasoning `medium`.
+Diese Lücken betreffen keine beobachtete Fehlfunktion und werden für den Übergang nach 12D akzeptiert. Restart-, Recovery- und Failure-Injection sind ausdrücklich Scope von #89 / Phase 12D.
 
-Noch vor Abschluss des Reports ergänzen:
+## Preflight und Acceptance-Baseline
 
-- [ ] Post-Migration-/Pre-Request-Baseline dokumentieren
-- [ ] Production/Previews unverändert bestätigen
-- [ ] finalen secretfreien Logcheck dokumentieren
+Die Acceptance lief auf `main`, Commit `8e7565ef791d4a85cbb7a8aedbbba095d3582164`, Port `18090`, Status `running/healthy`, Discord und OpenAI aktiviert, Modell `gpt-5.6-terra`, Reasoning `medium`.
+
+Vor der 12C-Matrix wurde die isolierte Acceptance-Instanz entsprechend der Generator-1.2-Vorgabe kontrolliert neu aufgebaut. Production blieb getrennt und wurde nicht für die Live-Matrix verwendet.
 
 ## Session- und Restriction-Matrix
 
-| Flow | Command / Modus | Beobachtetes Ergebnis | Funktional |
-| --- | --- | --- | --- |
-| 12C-01/02 | `/challenge` / AUTO Default | 1 Offer; Gleichstand ACCEPT/REROLL; Losentscheid gewann ACCEPT; bestätigte Challenge entsprach Vorschlag 1; Restriktion `Keine` | PASS |
-| 12C-03 | 2 Offers / NONE | 2 Offers mit `Einschränkung: Keine`; Vote-Änderung; gemeinsamer Gewinner Vorschlag 2; bestätigte Challenge entsprach Vorschlag 2 | PASS |
-| 12C-04 | 3 Offers / AUTO | 3 Offers; Stimmen auf Vorschlag 1 und 3; Losentscheid gewann Vorschlag 3; ungewählter Vorschlag 2 gewann nicht | PASS |
-| 12C-05 | Multi-Offer / REQUIRED | gemeinsamer REROLL; neue Offers mit echten Restriktionen; Runde 2 bot nur die neuen Vorschläge und keinen zweiten REROLL | PASS |
-| 12C-06 | 1 Offer nach REROLL | neues einzelnes Offer wurde ohne künstliche zweite Abstimmung automatisch bestätigt | PASS |
+| Session | Flow | Modus | Attempts | Beobachtetes Ergebnis | Status |
+| ---: | --- | --- | --- | --- | --- |
+| 1 | Default / 1 Offer / Tie ACCEPT vs. REROLL | AUTO | INITIAL 1 | Losentscheid gewann ACCEPT; Challenge 1 aus Offer 1 | PASS |
+| 2 | 2 Offers / Vote-Änderung | NONE | INITIAL 2 | beide Offers `Einschränkung: Keine`; gemeinsamer Gewinner Vorschlag 2 | PASS |
+| 3 | 3 Offers / Tie-Break | AUTO | INITIAL 3 | Stimmen Vorschlag 1 vs. 3; Losentscheid gewann Vorschlag 3 | PASS |
+| 4 | 2 Offers / gemeinsamer REROLL | REQUIRED | INITIAL 4, REROLL 5 | altes Set rerolled; neue Runde mit echten Restriktionen und ohne zweiten REROLL präsentiert | PASS mit akzeptierter Abschlusslücke |
+| 5 | 1 Offer / gemeinsamer REROLL | AUTO | INITIAL 6, REROLL 7 | neues einzelnes Offer ohne künstliche Runde 2 auto-bestätigt; Challenge 4 | PASS |
 
-Die persistierte Session-/Attempt-Matrix bestätigt bisher:
+Alle sieben Attempts verwendeten Generator `1.2.0` und endeten fachlich mit `OFFER_READY`.
 
-- Session 1: AUTO, 1 Offer, INITIAL Attempt 1, Generator 1.2.0, `OFFER_READY`
-- Session 2: NONE, 2 Offers, INITIAL Attempt 2, Generator 1.2.0, `OFFER_READY`
-- Session 3: AUTO, 3 Offers, INITIAL Attempt 3, Generator 1.2.0, `OFFER_READY`
-- Session 4: REQUIRED, 2 Offers, INITIAL Attempt 4 und REROLL Attempt 5, beide Generator 1.2.0, `OFFER_READY`
-- Session 5: AUTO, 1 Offer, INITIAL Attempt 6 und REROLL Attempt 7, beide Generator 1.2.0, `OFFER_READY`
+## Funktionale Beobachtungen
 
-Die sichtbaren Beispiele bestätigen außerdem, dass uneingeschränkte Kandidaten explizit als `Einschränkung: Keine`
-gerendert werden und dass in REQUIRED-/REROLL-Flows echte kandidatenspezifische Restriktionen erscheinen können,
-u. a. `keine Kokosmilch` und `kein Fisch und keine Meeresfrüchte`.
-
-## Gemeinsame funktionale Beobachtungen
-
-- [x] exakt 1..3 voneinander getrennte Offers mit je vier Requirement-Snapshots sichtbar
-- [x] jedes sichtbare Offer besitzt genau eine Restriktionszeile
-- [x] offene Abstimmung verrät die konkrete Wahl anderer Teilnehmer nicht
+- [x] exakt 1..3 getrennte Offers mit jeweils vier Requirement-Snapshots
+- [x] sichtbare Restriction-Zeile je Offer, einschließlich explizitem `Einschränkung: Keine`
+- [x] offene Abstimmungen verraten die konkrete Wahl anderer Teilnehmer nicht
 - [x] Vote-Änderung funktioniert und nur die letzte Stimme zählt
 - [x] Tie-Break entscheidet nur zwischen tatsächlich gleichauf liegenden Optionen
-- [x] bestätigte Challenge wird aus dem Gewinneroffer dargestellt
-- [x] Runde 2 nach Multi-Offer-REROLL besitzt keinen zweiten REROLL
-- [x] ein einzelnes REROLL-Offer wird ohne zweite Abstimmung bestätigt
-- [x] keine Providerdiagnostik oder SQL-Details wurden in den gezeigten Discord-Nachrichten sichtbar
+- [x] Gewinneroffer wird als Challenge verwendet
+- [x] neue Runde nach Multi-Offer-REROLL enthält keinen zweiten REROLL
+- [x] ein einzelnes REROLL-Offer wird ohne Fake-Vote auto-bestätigt
+- [x] keine Providerdiagnostik oder SQL-Details in Discord sichtbar
+- [x] höchstens ein Providerrequest je beobachtetem Attempt; keine dritte/unbegrenzte Anfrage
 
-## Detail-Evidenz Session A / Session 1
+## Persistierte Attempt-/Provider-Evidenz
 
-Session A ist persistiert als Session `1`, INITIAL Attempt `1`, AUTO, ein angefordertes Offer, Generator `1.2.0`.
-Der einzige Curation-Request war Runde `1` / `INITIAL_PASS` gegen `gpt-5.6-terra`, `CURATOR_PROMPT_V2`,
-`CURATION_CONTRACT_V2`. Der Request wurde mit HTTP 200 abgeschlossen; Providerlaufzeit zwischen Claim und
-persistiertem Ergebnis: **19,269 s**. Usage: **22.307 Input**, **1.492 Output**, **707 Reasoning**, **23.799 Gesamt-Tokens**.
-Es gab genau einen Providerrequest für diesen Attempt.
+| Attempt | Session | Typ | Input | Output | Reasoning | Gesamt |
+| ---: | ---: | --- | ---: | ---: | ---: | ---: |
+| 1 | 1 | INITIAL | 22.307 | 1.492 | 707 | 23.799 |
+| 2 | 2 | INITIAL | 22.722 | 1.352 | 511 | 24.074 |
+| 3 | 3 | INITIAL | 22.457 | 1.269 | 390 | 23.726 |
+| 4 | 4 | INITIAL | 22.774 | 1.265 | 492 | 24.039 |
+| 5 | 4 | REROLL | 23.040 | 1.737 | 892 | 24.777 |
+| 6 | 5 | INITIAL | 23.050 | 1.790 | 1.009 | 24.840 |
+| 7 | 5 | REROLL | 22.698 | 1.616 | 842 | 24.314 |
+| **Summe 12C** |  |  | **159.048** | **10.521** | **4.843** | **169.569** |
 
-Kuratorergebnis der zwölf Kandidaten:
+Jeder Attempt besitzt genau einen persistierten Providerrequest. Modell war `gpt-5.6-terra`, Reasoning `medium`, Prompt `CURATOR_PROMPT_V2`, Contract `CURATION_CONTRACT_V2`; alle sieben Responses wurden mit HTTP 200 persistiert.
 
-| Kandidat | Generator-Score | Kurator | Rang | Kernaussage | Ergebnis |
-| ---: | ---: | --- | ---: | --- | --- |
-| 1 | 96,82 | GOOD | 2 | starke Kohärenz und kreative Offenheit, geringe Interaktionsgefahr | nicht gewählt |
-| 2 | 90,35 | GOOD | 3 | starke Kohärenz und Offenheit, geringe Interaktionsgefahr | nicht gewählt |
-| 3 | 94,52 | ACCEPTABLE | 4 | kreative Offenheit, aber schwächere Kohärenz und Lock-in-Risiko | nicht gewählt |
-| 4 | 92,35 | GOOD | **1** | starke Kohärenz und kreative Offenheit, geringe Interaktionsgefahr, hoher Diversitätsbeitrag | **Offer 1 / Challenge 1** |
-| 5 | 86,14 | ACCEPTABLE | 9 | schwächere Kohärenz, hohe Interaktions- und Offenheitsrisiken | nicht gewählt |
-| 6 | 92,58 | ACCEPTABLE | 7 | kohärent, aber begrenzte Offenheit und Standardgericht-Risiko | nicht gewählt |
-| 7 | 86,20 | BAD | 11 | schwache Kohärenz und hohe Interaktionsgefahr | nicht gewählt |
-| 8 | 88,52 | ACCEPTABLE | 6 | schwächere Kohärenz und begrenzte kreative Offenheit | nicht gewählt |
-| 9 | 84,84 | ACCEPTABLE | 10 | schwächere Kohärenz, hohe Interaktionsgefahr und Lock-in-Risiko | nicht gewählt |
-| 10 | 88,68 | BAD | 12 | schwache Kohärenz sowie hohe Interaktions- und Offenheitsrisiken | nicht gewählt |
-| 11 | 91,48 | ACCEPTABLE | 5 | starke Kohärenz und Offenheit, aber hohes Offenheitsrisiko durch breite Vorgaben | nicht gewählt |
-| 12 | 85,34 | ACCEPTABLE | 8 | schwächere Kohärenz, hohe Interaktionsgefahr und Lock-in-Risiko | nicht gewählt |
+## OpenAI-Dashboard-Reconciliation
 
-Der Offer-Selection-Pfad ist `INITIAL_GOOD_SELECTION`. Kandidat 4 wurde als einziges sichtbares Offer materialisiert
-und anschließend als Challenge 1 bestätigt. Seine persistierten Requirements waren `Schweineleber`,
-`koreanische Reiskuchen`, `Sauerkirsche`, `Lauch- und Zwiebelgemüse`; Restriktion: `Keine`.
+Der finale Acceptance-Dashboard-Snapshot nach 12C zeigt kumulativ für 12B+12C:
 
-Bemerkenswert: Kandidat 1 hatte mit 96,82 den höchsten Generator-Score, der semantische Kurator setzte jedoch
-Kandidat 4 auf Rang 1. Damit zeigt der Live-Lauf die beabsichtigte Arbeitsteilung: der Generator bewertet harte
-Struktur-/Datenmerkmale, während der Kurator die kulinarische Semantik und kreative Nutzbarkeit separat ordnet.
+- **8 Requests**
+- **181.780 Input-Tokens**
+- **11.568 Output-Tokens**
+- **193.348 Gesamt-Tokens**
+- **0,59 USD Spend**
 
-## UX-Befunde – P2 / Folgeissue #100
+Der bereits dokumentierte 12B-Live-Request hatte 22.732 Input-, 1.047 Output- und 23.779 Gesamt-Tokens. Zusammen mit den sieben 12C-Requests ergibt dies exakt die Dashboardwerte:
 
-Die funktionale Abnahme hat drei nicht blockierende, aber vor dem Produktionspilot sinnvolle UX-Schärfungen ergeben:
+- Input: `22.732 + 159.048 = 181.780`
+- Output: `1.047 + 10.521 = 11.568`
+- Gesamt: `23.779 + 169.569 = 193.348`
 
-1. **Ergebnisdarstellung:** `Abstimmung abgeschlossen` trennt Gewinner, Tie-Break und Einzelstimmen visuell zu wenig.
-   Die Formulierung `Der einmalige Losentscheid wurde verwendet` wirkt sperrig. Gewünschte Richtung: Gewinner deutlich
-   hervorheben, Einzelstimmen als eigenen Block darstellen und den Tie-Break knapp beim Gewinner notieren, z. B.
-   `Gewinner: Vorschlag 3 (Gleichstand – per Los entschieden)`.
-2. **Teilnehmernamen:** Sichtbar sollen aktuelle Discord-/Guild-Displaynamen erscheinen. Die stabile fachliche Identität
-   bleibt ID-basiert; mutable Discord-Namen sollen nicht als autoritativer DB-Zustand gespeichert werden.
-3. **REROLL-Zwischenfeedback:** Beim entscheidenden zweiten `Neu würfeln`-Vote blieb die öffentliche Nachricht während
-   der längeren Generation/Kuration zunächst unverändert; der klickende Teilnehmer konnte noch als `noch offen`
-   erscheinen. Nach Ende der Angebotsermittlung war der Zustand korrekt. Gewünscht ist ein sofortiger persistierter
-   Zwischenstand mit abgeschlossener Abstimmung und Hinweis wie `Neue Angebote werden vorbereitet …`.
+Damit ist die Provider-/Usage-Evidenz vollständig plausibilisiert. Die 12C-Matrix verursachte ungefähr 0,52 USD zusätzlichen Spend; kumulativ mit 12B zeigt das Projekt 0,59 USD.
 
-Diese Punkte sind als P2 in #100 erfasst und ändern das funktionale PASS von 12C nicht.
+## REROLL- und Auto-Confirm-Evidenz
 
-## Semantikbeobachtung: `keine Nudeln` + `Dumpling-Hülle`
+Persistierte REROLL-Expositionskardinalität:
 
-Im Live-Lauf fiel die Kombination einer Restriktion `keine Nudeln` mit einer Requirement-Vorgabe
-`Dumpling-Hülle` auf.
+- Session 4: 2 exponierte Offers → **8 Requirement-Snapshots + 2 Restriction-Snapshots**
+- Session 5: 1 exponiertes Offer → **4 Requirement-Snapshots + 1 Restriction-Snapshot**
 
-Nach Prüfung der aktuellen Generator- und Katalogsemantik ist dies **kein nachgewiesener Generatorfehler**:
+Für Session 5 bestätigt die Votingrunde:
 
-- `NO_NOODLES` zielt auf das Katalogkonzept `NOODLES` einschließlich dessen bekannten Konkretisierungen.
-- `DUMPLING_WRAPPERS` ist im aktuellen Refinement-Graph kein Kind von `NOODLES`, sondern ein eigener Stärke-Zweig;
-  darunter liegen u. a. Dumpling-Teig, Reispapier und Wonton-Hüllen.
-- Der Generator blockiert bekannte Restriktionskonflikte anhand der expandierten Zielcodes. Er soll keine zusätzlichen
-  semantischen Freitextkonflikte erfinden, die im Katalog nicht modelliert sind.
+- Runde 1 `COMPLETED`
+- Gewinner `REROLL`
+- `tie_break_used = false`
+- `apply_state = REROLL_AUTO_CONFIRMED`
+- `resulting_offer_set_id = 7`
+- keine zweite Votingrunde
 
-Damit ist die Kombination gemäß aktuellem Datenmodell zulässig und auch sprachlich vertretbar: eine Dumpling-Hülle
-ist nicht automatisch eine Nudel. Falls die Produktabsicht eigentlich `keine Nudeln oder vergleichbare Teigwaren/-hüllen`
-lauten soll, muss die kuratierte Ausschlussregel beziehungsweise deren Zielmenge bewusst verbreitert werden; das wäre
-eine Katalog-/Regelentscheidung und keine Reparatur der Generator-Konfliktprüfung.
+Offer-Set 7 ist `CONFIRMED`, Kandidat 78 wurde als Challenge 4 materialisiert. Damit ist der Ein-Offer-REROLL-/Auto-Confirm-Pfad persistent vollständig nachgewiesen.
 
-## Provider-Snapshot
+Für Session 4 ist der INITIAL-Offer-Set-Zustand `REROLLED`, Attempt 5 ist der persistierte REROLL-Attempt und das neue Set wurde präsentiert. Der abschließende Runde-2-Gewinner wurde wegen der später gelöschten Discord-Nachricht nicht nochmals abgeschlossen/nachgewiesen; diese Lücke ist bewusst akzeptiert.
 
-Der bereitgestellte OpenAI-Dashboard-Screenshot nach der Live-Matrix zeigt für das ausgewählte Acceptance-Projekt/
-den dargestellten Zeitraum kumulativ:
+## Qualitative Kuration A–E
 
-- **7 Requests**
-- **159.082 Tokens**
-- **0,52 USD Spend**
+Die 84 kuratierten Kandidaten aus Sessions A–E wurden zusätzlich qualitativ betrachtet. Die Kuratorentscheidungen waren insgesamt plausibel; `gpt-5.6-terra` mit Reasoning `medium` zeigte keinen Anlass für einen Modell- oder Reasoning-Wechsel.
 
-Die persistierten Usage-Snapshots der sieben Attempts summieren sich ebenfalls zu sieben Requestslots; die genaue
-Per-Attempt-Tokenevidenz wird sukzessive in diesem Report ergänzt. Session A ist bereits vollständig zugeordnet.
+Auffällig war nicht ein pauschaler Bias gegen `OPEN`, sondern die mögliche Übergewichtung sehr breiter Choice-Risiken. Über alle 84 Kandidaten:
 
-Die zwei REROLL-Expositionen besitzen die erwartete Kardinalität:
+| opennessRisk | Kandidaten | GOOD | ACCEPTABLE | BAD | Ø Rang |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| LOW | 33 | 12 | 18 | 3 | 6,30 |
+| MEDIUM | 44 | 19 | 16 | 9 | 6,23 |
+| HIGH | 7 | 0 | 5 | 2 | 9,14 |
 
-- Session 4: 2 exponierte Offers → 8 Requirement-Snapshots und 2 Restriction-Snapshots
-- Session 5: 1 exponiertes Offer → 4 Requirement-Snapshots und 1 Restriction-Snapshot
+Daraus entstand Folgeissue #101. `CURATOR_PROMPT_V3` schärft inzwischen explizit, dass ein offenes Requirement kein Qualitätsmangel ist und Choice-Risk allein keine Herabstufung begründen darf. Die Änderung wurde mit PR #102 vor 12D gemergt; V2 bleibt für persistierte alte Runden unterstützt.
 
-## Noch ausstehende Persistenz-/History-Evidenz
+## UX-Folgeissue #100
 
-Ohne neue kostenpflichtige Session per read-only Operatorqueries nachweisen und in diesen Report übernehmen:
+12C zeigte drei P2-Punkte:
 
-- [x] Session-/Attempt-Zuordnung der fünf Live-Flows
-- [x] Session A: genau ein Providerrequest und persistierte Tokenusage
-- [x] REROLL-Expositions-Kardinalität einschließlich Restriction-Snapshots
-- [ ] Sessions B–E: Kandidaten-/Curator-/Usage-Detailzuordnung
-- [ ] genau eine Challenge pro bestätigter Session
-- [ ] bestätigtes Offer stimmt mit Challenge-Requirement- und Restriction-Snapshots überein
-- [ ] nicht gewählte normale Offers beeinflussen normale Requirement-/Restriction-History nicht
-- [ ] REROLL-Session behält den INITIAL-Restriction-Mode
-- [ ] Tie-Break genau einmal persistiert
-- [ ] Runde 2 besitzt keine REROLL-Option
-- [ ] Electorate/Participation korrekt und keine verwaisten offenen Runden
+- klarere Ergebnisdarstellung und kompakter Tie-Break-Hinweis,
+- aktuelle Discord-Guild-Namen aus stabilen Discord-IDs statt persistierter Anzeigenamen,
+- sofort sichtbarer persistierter REROLL-Zwischenzustand vor der langen Fortsetzung.
+
+Diese Punkte wurden in #100 umgesetzt und mit PR #103 vor 12D gemergt. Die fachliche Voting-/Restriction-/Identitätssemantik blieb unverändert.
+
+## Semantikbeobachtung `keine Nudeln` + `Dumpling-Hülle`
+
+Die Kombination ist nach aktuellem Katalogmodell kein Restriktionskonflikt. `NO_NOODLES` blockiert `NOODLES` und bekannte Refinements; `DUMPLING_WRAPPERS` ist ein separater Stärke-/Teigblatt-Zweig. Der Generator soll keine zusätzlichen Freitextkonflikte erfinden, die nicht im strukturierten Katalog modelliert sind.
+
+## Akzeptierte Evidenzlücken
+
+Folgende Punkte werden nicht als PASS umetikettiert, sondern bewusst als nicht mehr nachgeholte Testlücken dokumentiert:
+
+- Session D: finaler Abschluss der zweiten Votingrunde / Challenge-Materialisierung nach dem REROLL
+- Session D: vollständige Einzelzeilen-Dokumentation der REROLL-Exposition über die bereits bewiesene Kardinalität hinaus
+- einzelne ursprüngliche 12C-Detailgates besitzen keinen separaten dauerhaft archivierten Query-Auszug, obwohl der funktionale Lauf insgesamt erfolgreich gemeldet wurde
+
+Keiner dieser Punkte ist ein beobachteter P0/P1-Produktfehler. Die riskanteren Restart-/Resume-/Idempotenzpfade werden in 12D gezielt erneut unter Störung geprüft.
 
 ## Gesamt-Gate
 
 - [x] 1, 2 und 3 Angebote live geprüft
-- [x] AUTO, NONE und REQUIRED funktional in der Matrix geprüft
+- [x] AUTO, NONE und REQUIRED live geprüft
 - [x] Vote-Geheimhaltung und Vote-Änderung funktionieren
-- [x] Tie-Break funktional korrekt
-- [x] REROLL und Runde 2 funktional korrekt
-- [x] Ein-Offer-REROLL ohne Fake-Vote auto-bestätigt
-- [x] sichtbare Requirement-/Restriction-Snapshotdarstellung funktioniert
-- [ ] persistente Request-/History-/Snapshot-Invarianten abschließend per DB-Evidenz dokumentiert
-- [x] kein gemeldeter P0/P1
+- [x] Tie-Break funktional korrekt und persistent beobachtet
+- [x] REROLL und neue Runde funktional beobachtet
+- [x] Ein-Offer-REROLL ohne Fake-Vote persistent auto-bestätigt
+- [x] Requestbudget eingehalten; 7 Attempts = 7 Requests
+- [x] Provider-Dashboard exakt mit 12B+12C Usage reconciled
+- [x] keine P0/P1-Befunde
+- [x] P2-/Qualitätsbefunde als #100/#101 vor 12D umgesetzt
+- [x] verbleibende Testlücken explizit akzeptiert und nicht als PASS verschleiert
 
-## Folge-Issues
-
-- #100 – P2: Discord-Ergebnisformatierung, aktuelle Discord-Namen und sofortiges REROLL-Zwischenfeedback.
+**Entscheidung: Phase 12C ist abgeschlossen. Phase 12D / #89 darf auf dem aktuellen `main` beginnen.**
