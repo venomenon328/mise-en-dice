@@ -83,6 +83,17 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
 
     @Override
     public SelectionView castVote(CastVote command) {
+        persistVote(command);
+        return resume(new ResumeSelection(command.sessionId()));
+    }
+
+    @Override
+    public SelectionView castVoteDeferred(CastVote command) {
+        persistVote(command);
+        return selection(command.sessionId());
+    }
+
+    private void persistVote(CastVote command) {
         inWriteTransaction(() -> {
             lockSession(command.sessionId());
             JdbcSelectionVotingRepository.Round round = repository.lockOpenRound(command.sessionId())
@@ -107,7 +118,6 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
             }
             return null;
         });
-        return resume(new ResumeSelection(command.sessionId()));
     }
 
     @Override

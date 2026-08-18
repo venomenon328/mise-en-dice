@@ -66,7 +66,7 @@ class DiscordChallengeRendererTest {
         var rendered = renderer.selection(new SelectionVotingQueries.SelectionView(1, electorate(), offerSet, null,
                 List.of(completed), null, challenge));
 
-        assertThat(rendered.content()).contains("Gewinner: Vorschlag 2", "Losentscheid", "Georgia: Vorschlag 2",
+        assertThat(rendered.content()).contains("**Gewinner: Vorschlag 2**", "**Einzelstimmen**", "- Georgia: Vorschlag 2",
                 "Tobias: Vorschlag 1", "Challenge bestätigt: Vorschlag 2");
         String confirmedChallenge = rendered.content().substring(rendered.content().indexOf("**Challenge bestätigt"));
         assertThat(confirmedChallenge).contains("Snapshot 2.1", "Snapshot 2.4", "Einschränkung: Kein Kochalkohol")
@@ -87,6 +87,24 @@ class DiscordChallengeRendererTest {
 
         assertThat(rendered.content()).contains("Gewinner: Neu würfeln", "keine neuen Angebote");
         assertThat(rendered.components()).isEmpty();
+    }
+
+    @Test
+    void usesResolvedDiscordMemberNamesOnlyForVisibleVotePresentation() {
+        var renderer = new DiscordChallengeRenderer();
+        var offerSet = offerSet(1);
+        var selection = new SelectionVotingQueries.SelectionView(1, electorate(), offerSet,
+                new SelectionVotingQueries.VotingRoundView(7, 1, offerSet.offerSetId(),
+                        SelectionVotingQueries.VotingRoundStatus.OPEN, List.of(),
+                        List.of(new SelectionVotingQueries.VoteStatusView(8, "GEORGIA", "Georgia", true, null),
+                                new SelectionVotingQueries.VoteStatusView(9, "TOBIAS", "Tobias", false, null)), null),
+                List.of(), null, null);
+
+        var rendered = renderer.selection(selection, (participantId, storedFallback) ->
+                participantId == 8 ? "Georgia Jetzt" : "Tobias Jetzt");
+
+        assertThat(rendered.content()).contains("Georgia Jetzt: abgestimmt", "Tobias Jetzt: noch offen")
+                .doesNotContain("Georgia: abgestimmt", "Tobias: noch offen");
     }
 
     @Test

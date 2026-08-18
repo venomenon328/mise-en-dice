@@ -19,6 +19,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
 
@@ -100,14 +103,15 @@ class DiscordChallengeWorkflowTest {
         when(queries.findParticipantByExternalIdentity("discord", "10001")).thenReturn(java.util.Optional.of(
                 new SelectionVotingQueries.ParticipantIdentityView(6, "GEORGIA", "Georgia", true, "discord", "10001")));
         when(queries.findSelection(1)).thenReturn(java.util.Optional.of(selection));
-        when(voting.castVote(any())).thenReturn(selection);
+        when(voting.castVoteDeferred(any())).thenReturn(selection);
+        when(voting.resume(new SelectionVotingCommands.ResumeSelection(1))).thenReturn(selection);
         var result = new TestFeedback();
 
         workflow(preparation, offers, voting, queries).component(
                 DiscordComponentId.vote(1, 7, SelectionVotingCommands.VoteOptionType.ACCEPT, null), "10001", delivered(), result);
 
         var command = ArgumentCaptor.forClass(SelectionVotingCommands.CastVote.class);
-        verify(voting).castVote(command.capture());
+        verify(voting).castVoteDeferred(command.capture());
         assertThat(command.getValue().participantId()).isEqualTo(6);
         assertThat(command.getValue().choice()).isEqualTo(SelectionVotingCommands.VoteChoice.accept());
         assertThat(result.success).containsExactly("Deine Stimme wurde gespeichert.");
@@ -126,7 +130,7 @@ class DiscordChallengeWorkflowTest {
         workflow(mock(ChallengeOfferPreparationCommands.class), mock(OfferDecisionQueries.class), voting, queries).component(
                 DiscordComponentId.vote(1, 99, SelectionVotingCommands.VoteOptionType.ACCEPT, null), "10001", delivered(), result);
 
-        verify(voting, never()).castVote(any());
+        verify(voting, never()).castVoteDeferred(any());
         assertThat(result.stale).containsExactly("Diese Interaktion ist nicht mehr aktuell oder nicht erlaubt.");
     }
 
@@ -174,12 +178,13 @@ class DiscordChallengeWorkflowTest {
         when(queries.findParticipantByExternalIdentity("discord", "10001")).thenReturn(java.util.Optional.of(
                 new SelectionVotingQueries.ParticipantIdentityView(6, "GEORGIA", "Georgia", false, "discord", "10001")));
         when(queries.findSelection(1)).thenReturn(java.util.Optional.of(selection));
-        when(voting.castVote(any())).thenReturn(selection);
+        when(voting.castVoteDeferred(any())).thenReturn(selection);
+        when(voting.resume(new SelectionVotingCommands.ResumeSelection(1))).thenReturn(selection);
 
         workflow(mock(ChallengeOfferPreparationCommands.class), offers, voting, queries).component(
                 DiscordComponentId.vote(1, 7, SelectionVotingCommands.VoteOptionType.ACCEPT, null), "10001", delivered(), feedback());
 
-        verify(voting).castVote(any());
+        verify(voting).castVoteDeferred(any());
     }
 
     @Test
@@ -199,7 +204,8 @@ class DiscordChallengeWorkflowTest {
         when(queries.findParticipantByExternalIdentity("discord", "10001")).thenReturn(java.util.Optional.of(
                 new SelectionVotingQueries.ParticipantIdentityView(6, "GEORGIA", "Georgia", true, "discord", "10001")));
         when(queries.findSelection(1)).thenReturn(java.util.Optional.of(selection));
-        when(voting.castVote(any())).thenReturn(selection);
+        when(voting.castVoteDeferred(any())).thenReturn(selection);
+        when(voting.resume(new SelectionVotingCommands.ResumeSelection(1))).thenReturn(selection);
         var workflow = workflow(mock(ChallengeOfferPreparationCommands.class), mock(OfferDecisionQueries.class), voting, queries);
 
         workflow.component(DiscordComponentId.vote(1, 7, SelectionVotingCommands.VoteOptionType.OFFER, set.offers().get(0).offerId()),
@@ -210,11 +216,94 @@ class DiscordChallengeWorkflowTest {
                 "10001", delivered(), feedback());
 
         var commands = ArgumentCaptor.forClass(SelectionVotingCommands.CastVote.class);
-        verify(voting, org.mockito.Mockito.times(3)).castVote(commands.capture());
+        verify(voting, org.mockito.Mockito.times(3)).castVoteDeferred(commands.capture());
         assertThat(commands.getAllValues()).extracting(SelectionVotingCommands.CastVote::choice).containsExactly(
                 SelectionVotingCommands.VoteChoice.offer(set.offers().get(0).offerId()),
                 SelectionVotingCommands.VoteChoice.offer(set.offers().get(2).offerId()),
                 SelectionVotingCommands.VoteChoice.reroll());
+    }
+
+    @Test
+    void resolvesCurrentMemberNamesFromConfiguredDiscordIdsWithoutChangingVoteIdentity() {
+        var voting = mock(SelectionVotingCommands.class);
+        var queries = mock(SelectionVotingQueries.class);
+        var set = offerSet();
+        var selection = selection(set);
+        when(queries.findParticipantByExternalIdentity("discord", "10001")).thenReturn(java.util.Optional.of(
+                new SelectionVotingQueries.ParticipantIdentityView(6, "GEORGIA", "Georgia", true, "discord", "10001")));
+        when(queries.findSelection(1)).thenReturn(java.util.Optional.of(selection));
+        when(voting.castVoteDeferred(any())).thenReturn(selection);
+        when(voting.resume(new SelectionVotingCommands.ResumeSelection(1))).thenReturn(selection);
+        var resolvedIds = new ArrayList<String>();
+        var messages = new ArrayList<DiscordChallengeRenderer.RenderedMessage>();
+
+        workflow(mock(ChallengeOfferPreparationCommands.class), mock(OfferDecisionQueries.class), voting, queries).component(
+                DiscordComponentId.vote(1, 7, SelectionVotingCommands.VoteOptionType.ACCEPT, null), "10001",
+                (discordUserId, storedFallback) -> {
+                    resolvedIds.add(discordUserId);
+                    return "Georgia Jetzt";
+                }, recordingDelivery(messages), feedback());
+
+        var command = ArgumentCaptor.forClass(SelectionVotingCommands.CastVote.class);
+        verify(voting).castVoteDeferred(command.capture());
+        assertThat(command.getValue().participantId()).isEqualTo(6);
+        assertThat(resolvedIds).containsExactly("10001");
+        assertThat(messages.getLast().content()).contains("Georgia Jetzt: noch offen");
+        verify(voting, never()).linkExternalIdentity(any());
+    }
+
+    @Test
+    void rendersPersistedRerollCompletionBeforeItsBlockableContinuationStarts() throws Exception {
+        var voting = mock(SelectionVotingCommands.class);
+        var queries = mock(SelectionVotingQueries.class);
+        var set = offerSet(2);
+        var electorate = List.of(new SelectionVotingQueries.ElectorateMemberView(6, "GEORGIA", "Georgia", true),
+                new SelectionVotingQueries.ElectorateMemberView(7, "TOBIAS", "Tobias", true));
+        var open = new SelectionVotingQueries.SelectionView(1, electorate, set,
+                new SelectionVotingQueries.VotingRoundView(7, 1, set.offerSetId(), SelectionVotingQueries.VotingRoundStatus.OPEN,
+                        List.of(new SelectionVotingQueries.AllowedOptionView(SelectionVotingCommands.VoteOptionType.REROLL, null)),
+                        List.of(new SelectionVotingQueries.VoteStatusView(6, "GEORGIA", "Georgia", true,
+                                        SelectionVotingCommands.VoteChoice.reroll()),
+                                new SelectionVotingQueries.VoteStatusView(7, "TOBIAS", "Tobias", false, null)), null),
+                List.of(), null, null);
+        var completed = completedRerollSelection(electorate, set, SelectionVotingQueries.ApplyState.PENDING);
+        var inProgress = completedRerollSelection(electorate, set, SelectionVotingQueries.ApplyState.REROLL_IN_PROGRESS);
+        when(queries.findParticipantByExternalIdentity("discord", "10002")).thenReturn(java.util.Optional.of(
+                new SelectionVotingQueries.ParticipantIdentityView(7, "TOBIAS", "Tobias", true, "discord", "10002")));
+        when(queries.findSelection(1)).thenReturn(java.util.Optional.of(open));
+        when(voting.castVoteDeferred(any())).thenReturn(completed);
+        var continuationStarted = new CountDownLatch(1);
+        var releaseContinuation = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            continuationStarted.countDown();
+            if (!releaseContinuation.await(5, TimeUnit.SECONDS)) {
+                throw new AssertionError("Reroll continuation was not released");
+            }
+            return inProgress;
+        }).when(voting).resume(new SelectionVotingCommands.ResumeSelection(1));
+        var messages = new ArrayList<DiscordChallengeRenderer.RenderedMessage>();
+        var deliveredCallback = new AtomicReference<Runnable>();
+        DiscordChallengeWorkflow.Delivery delivery = (message, delivered, failed) -> {
+            messages.add(message);
+            deliveredCallback.set(delivered);
+        };
+
+        workflow(mock(ChallengeOfferPreparationCommands.class), mock(OfferDecisionQueries.class), voting, queries).component(
+                DiscordComponentId.vote(1, 7, SelectionVotingCommands.VoteOptionType.REROLL, null), "10002", delivery, feedback());
+
+        assertThat(messages).singleElement().satisfies(message -> assertThat(message.content()).contains(
+                "**Gewinner:", "Georgia:", "Tobias:", "Neue Angebote werden vorbereitet")
+                .doesNotContain("noch offen"));
+        verify(voting, never()).resume(any());
+
+        Thread continuation = new Thread(deliveredCallback.get());
+        continuation.start();
+        assertThat(continuationStarted.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(messages).hasSize(1);
+        releaseContinuation.countDown();
+        continuation.join(5_000);
+        assertThat(continuation.isAlive()).isFalse();
+        assertThat(messages).hasSize(2);
     }
 
     @Test
@@ -290,7 +379,7 @@ class DiscordChallengeWorkflowTest {
         workflow(mock(ChallengeOfferPreparationCommands.class), offers, voting, queries).component(
                 DiscordComponentId.resume(1), "10001", recordingDelivery(messages), feedback());
 
-        verify(voting, never()).castVote(any());
+        verify(voting, never()).castVoteDeferred(any());
         assertThat(messages.getLast().content()).contains("Challenge bestätigt: Vorschlag 1", "Zutat 1.1");
     }
 
@@ -359,5 +448,19 @@ class DiscordChallengeWorkflowTest {
                 List.of(new SelectionVotingQueries.AllowedOptionView(SelectionVotingCommands.VoteOptionType.ACCEPT, null)),
                 List.of(new SelectionVotingQueries.VoteStatusView(6, "GEORGIA", "Georgia", false, null)), null);
         return new SelectionVotingQueries.SelectionView(1, List.of(member), set, round, List.of(), null, null);
+    }
+
+    private static SelectionVotingQueries.SelectionView completedRerollSelection(
+            List<SelectionVotingQueries.ElectorateMemberView> electorate, OfferDecisionQueries.OfferSetView set,
+            SelectionVotingQueries.ApplyState applyState) {
+        var result = new SelectionVotingQueries.RoundResultView(SelectionVotingCommands.VoteChoice.reroll(), false,
+                Instant.now(), applyState, null, null);
+        var round = new SelectionVotingQueries.VotingRoundView(7, 1, set.offerSetId(),
+                SelectionVotingQueries.VotingRoundStatus.COMPLETED, List.of(),
+                List.of(new SelectionVotingQueries.VoteStatusView(6, "GEORGIA", "Georgia", true,
+                                SelectionVotingCommands.VoteChoice.reroll()),
+                        new SelectionVotingQueries.VoteStatusView(7, "TOBIAS", "Tobias", true,
+                                SelectionVotingCommands.VoteChoice.reroll())), result);
+        return new SelectionVotingQueries.SelectionView(1, electorate, set, null, List.of(round), null, null);
     }
 }

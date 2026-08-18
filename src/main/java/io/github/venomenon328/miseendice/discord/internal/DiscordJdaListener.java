@@ -4,6 +4,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.Restrictio
 import java.util.List;
 import java.util.concurrent.Executor;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
@@ -75,8 +76,9 @@ final class DiscordJdaListener extends ListenerAdapter {
             event.reply("`einschraenkung` muss automatisch, keine oder erzwingen sein.").setEphemeral(true).queue();
             return;
         }
-        event.deferReply().queue(hook -> executor.execute(() -> workflow.start(offers, restrictionMode,
-                new HookDelivery(hook), new HookFeedback(hook))),
+        Guild guild = event.getGuild();
+        event.deferReply().queue(hook -> executor.execute(() -> workflow.start(offers, restrictionMode, memberNames(guild),
+                new HookDelivery(hook, executor), new HookFeedback(hook))),
                 failure -> log.warn("Discord slash acknowledgement failed", failure));
     }
 
@@ -89,8 +91,9 @@ final class DiscordJdaListener extends ListenerAdapter {
             event.reply("Diese Challenge-Interaktion ist hier nicht erlaubt.").setEphemeral(true).queue();
             return;
         }
+        Guild guild = event.getGuild();
         event.deferEdit().queue(hook -> executor.execute(() -> workflow.component(event.getComponentId(), event.getUser().getId(),
-                new HookDelivery(hook), new HookFeedback(hook))),
+                memberNames(guild), new HookDelivery(hook, executor), new HookFeedback(hook))),
                 failure -> log.warn("Discord component acknowledgement failed", failure));
     }
 
@@ -102,18 +105,32 @@ final class DiscordJdaListener extends ListenerAdapter {
         return option == null ? RestrictionMode.AUTO : RestrictionMode.valueOf(option.getAsString());
     }
 
+    private DiscordMemberNameResolver memberNames(Guild guild) {
+        return (userId, storedFallback) -> {
+            try {
+                Member member = guild.retrieveMemberById(userId).complete();
+                return member.getEffectiveName();
+            } catch (RuntimeException exception) {
+                log.debug("Could not resolve current Discord member display name for user {}", userId, exception);
+                return storedFallback;
+            }
+        };
+    }
+
     private static final class HookDelivery implements DiscordChallengeWorkflow.Delivery {
         private final net.dv8tion.jda.api.interactions.InteractionHook hook;
+        private final Executor executor;
 
-        private HookDelivery(net.dv8tion.jda.api.interactions.InteractionHook hook) {
+        private HookDelivery(net.dv8tion.jda.api.interactions.InteractionHook hook, Executor executor) {
             this.hook = hook;
+            this.executor = executor;
         }
 
         @Override
         public void replace(DiscordChallengeRenderer.RenderedMessage message, Runnable delivered,
                             java.util.function.Consumer<Throwable> failed) {
             hook.editOriginal(new MessageEditBuilder().setContent(message.content()).setComponents(rows(message.components())).build())
-                    .queue(ignored -> delivered.run(), failed);
+                    .queue(ignored -> executor.execute(delivered), failed);
         }
     }
 

@@ -14,6 +14,7 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.function.Consumer;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -23,7 +24,9 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.requests.restaction.interactions.InteractionCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
+import net.dv8tion.jda.api.requests.restaction.CacheRestAction;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
 class DiscordJdaListenerTest {
@@ -54,7 +57,7 @@ class DiscordJdaListenerTest {
 
         InOrder order = inOrder(event, workflow);
         order.verify(event).deferReply();
-        order.verify(workflow).start(eq(1), eq(RestrictionMode.AUTO), any(), any());
+        order.verify(workflow).start(eq(1), eq(RestrictionMode.AUTO), any(DiscordMemberNameResolver.class), any(), any());
         org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
     }
 
@@ -71,7 +74,8 @@ class DiscordJdaListenerTest {
 
             listener(workflow).onSlashCommandInteraction(event);
 
-            org.mockito.Mockito.verify(workflow).start(eq(offerCount), eq(RestrictionMode.AUTO), any(), any());
+            org.mockito.Mockito.verify(workflow).start(eq(offerCount), eq(RestrictionMode.AUTO),
+                    any(DiscordMemberNameResolver.class), any(), any());
         }
     }
 
@@ -91,7 +95,7 @@ class DiscordJdaListenerTest {
 
             listener(workflow).onSlashCommandInteraction(event);
 
-            org.mockito.Mockito.verify(workflow).start(eq(3), eq(mode), any(), any());
+            org.mockito.Mockito.verify(workflow).start(eq(3), eq(mode), any(DiscordMemberNameResolver.class), any(), any());
         }
     }
 
@@ -116,7 +120,37 @@ class DiscordJdaListenerTest {
 
         InOrder order = inOrder(event, workflow);
         order.verify(event).deferEdit();
-        order.verify(workflow).component(eq("med:v1:resume:1"), eq("10001"), any(), any());
+        order.verify(workflow).component(eq("med:v1:resume:1"), eq("10001"), any(DiscordMemberNameResolver.class), any(), any());
+    }
+
+    @Test
+    void resolvesCurrentGuildMemberNamesFromTheConfiguredStableDiscordId() {
+        var workflow = mock(DiscordChallengeWorkflow.class);
+        var event = mock(ButtonInteractionEvent.class);
+        var guild = mock(Guild.class);
+        var user = mock(User.class);
+        var member = mock(Member.class);
+        @SuppressWarnings("unchecked")
+        CacheRestAction<Member> memberLookup = mock(CacheRestAction.class);
+        when(event.getComponentId()).thenReturn("med:v1:resume:1");
+        when(event.getGuild()).thenReturn(guild);
+        when(guild.getIdLong()).thenReturn(99L);
+        when(event.getUser()).thenReturn(user);
+        when(user.getId()).thenReturn("10001");
+        when(workflow.accepts(99, "10001")).thenReturn(true);
+        when(guild.retrieveMemberById("10002")).thenReturn(memberLookup);
+        when(memberLookup.complete()).thenReturn(member);
+        when(member.getEffectiveName()).thenReturn("Tobias aktuell");
+        MessageEditCallbackAction acknowledgement = mock(MessageEditCallbackAction.class);
+        when(event.deferEdit()).thenReturn(acknowledgement);
+        invokeAcknowledgement(acknowledgement, mock(InteractionHook.class));
+
+        listener(workflow).onButtonInteraction(event);
+
+        var resolver = ArgumentCaptor.forClass(DiscordMemberNameResolver.class);
+        org.mockito.Mockito.verify(workflow).component(eq("med:v1:resume:1"), eq("10001"), resolver.capture(), any(), any());
+        assertThat(resolver.getValue().resolve("10002", "Tobias gespeichert")).isEqualTo("Tobias aktuell");
+        org.mockito.Mockito.verify(guild).retrieveMemberById("10002");
     }
 
     @Test
@@ -131,7 +165,7 @@ class DiscordJdaListenerTest {
         listener(workflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event).reply(any(String.class));
-        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any(), any());
+        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any(), any(), any());
     }
 
     @Test
@@ -146,7 +180,7 @@ class DiscordJdaListenerTest {
         listener(workflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event).reply(any(String.class));
-        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any(), any());
+        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any(), any(), any());
     }
 
     private static DiscordJdaListener listener(DiscordChallengeWorkflow workflow) {
