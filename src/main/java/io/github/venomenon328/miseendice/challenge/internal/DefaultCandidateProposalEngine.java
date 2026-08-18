@@ -156,11 +156,7 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
     }
 
     private void validateConfigurationIdentity(GenerationContext context) {
-        GeneratorConfiguration snapshot = context.configuration();
-        if (!snapshot.generatorVersion().equals(configuration.generatorVersion())
-                || !snapshot.configurationVersion().equals(configuration.configurationVersion())
-                || snapshot.rngAlgorithm() != configuration.rngAlgorithm()
-                || snapshot.canonicalPayloadVersion() != configuration.canonicalPayloadVersion()) {
+        if (!context.configuration().equals(configuration)) {
             throw new IllegalArgumentException(GeneratorReasonCode.CONTEXT_SNAPSHOT_INVALID.name()
                     + ": context configuration differs from engine configuration");
         }
