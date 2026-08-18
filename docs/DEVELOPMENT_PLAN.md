@@ -514,9 +514,11 @@ Phase 11B folgt der verbindlichen Spezifikation [`CHALLENGE_VOTING_AND_PARTICIPA
 - getrennte Challenge-Teilnahme mit späteren Beitritten,
 - keine Veränderung des Generator-, Kurator- oder Historienvertrags aus 11A.
 
-### Phase 11C: Dünner Discord-Adapter (ausstehend)
+### Phase 11C: Dünner Discord-Adapter (erfüllt mit Issue #83)
 
 Erst Phase 11C rendert Offers und Votingstatus, transportiert Slash-/Component-Interaktionen und ordnet Discord-IDs zu den 11B-Teilnehmern zu. Der Adapter verwendet ausschließlich die öffentlichen APIs aus 11A und 11B; er besitzt keine eigene Generator-, Kurator-, Voting-, Fallback- oder Persistenzlogik.
+
+Issue #83 ergänzt die kleine öffentliche `ChallengeOfferPreparationCommands`-Fassade für den normalen INITIAL-Generation-/Kurationspfad. Der Discord-Adapter deferiert Interaktionen vor längerer Arbeit, verwendet einen begrenzten adaptereigenen Executor und aktiviert Vote-Components erst nach erfolgreicher sichtbarer Auslieferung und dem unveränderten 11B-Presentation-Handshake. Previews, Smoke-Tests und der deaktivierte Standardbetrieb starten weder JDA noch erhalten sie Discord-Secrets.
 
 ### Gate
 

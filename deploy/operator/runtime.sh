@@ -26,8 +26,18 @@ EOF_ENV
 write_instance_application_properties() {
     local destination=$1
     local secure_cookie=$2
+    local include_discord=${3:-false}
 
-    cat "$ADMIN_PROPERTIES" > "$destination"
+    # Admin properties are deliberately never a fallback secret location. This also keeps any accidental
+    # Discord keys from a preview or smoke configuration file.
+    grep -vE '^[[:space:]]*mise-en-dice\.discord\.' "$ADMIN_PROPERTIES" > "$destination" || true
+    # The external bot secret is deliberately production-only, never a preview or smoke input.
+    if [[ $include_discord == true && -f $DISCORD_PROPERTIES ]]; then
+        cat "$DISCORD_PROPERTIES" >> "$destination"
+    else
+        # Make preview and smoke isolation explicit even if an unrelated local property file contains this key.
+        echo 'mise-en-dice.discord.enabled=false' >> "$destination"
+    fi
     cat >> "$destination" <<EOF_PROPERTIES
 server.servlet.session.cookie.secure=$secure_cookie
 server.forward-headers-strategy=native
@@ -188,7 +198,9 @@ prepare_instance_files() {
     local compose_tmp properties_tmp
     compose_tmp=$(mktemp "$TEMP_DIR/compose.XXXXXX")
     properties_tmp=$(mktemp "$TEMP_DIR/application.XXXXXX")
-    write_instance_application_properties "$properties_tmp" "$secure_cookie"
+    local include_discord=false
+    [[ $secure_cookie == true ]] && include_discord=true
+    write_instance_application_properties "$properties_tmp" "$secure_cookie" "$include_discord"
     write_compose_env "$compose_tmp" "$image" "$port" "$db_password" "$instance_dir/application.properties"
     mv -f "$compose_tmp" "$instance_dir/compose.env"
     mv -f "$properties_tmp" "$instance_dir/application.properties"
@@ -282,7 +294,7 @@ create_temporary_instance_files() {
     local port=$3
     mkdir -p "$instance_dir"
     chmod 0750 "$instance_dir"
-    write_instance_application_properties "$instance_dir/application.properties" false
+    write_instance_application_properties "$instance_dir/application.properties" false false
     write_compose_env "$instance_dir/compose.env" "$image" "$port" "$(med_random_hex 32)" "$instance_dir/application.properties"
 }
 

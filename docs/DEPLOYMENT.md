@@ -31,6 +31,7 @@ Die Laufzeitdaten liegen bewusst außerhalb des Git-Checkouts:
 ├── repository/                 Git-Checkout und Deployment-Werkzeug
 └── runtime/                    nicht versionierter Betriebszustand
     ├── admin.properties        BCrypt-Hash und Admin-Identität
+    ├── discord.properties      optionales Bot-Secret, nur Produktion
     ├── operator.conf           Ports, SSH-Hinweis und Ressourcenlimits
     ├── instances/
     │   ├── production/
@@ -246,6 +247,25 @@ Produktion erst ausrollen, wenn die Domain beziehungsweise der Reverse Proxy vor
 ```bash
 ./deploy/mise-en-dice.sh production deploy main
 ```
+
+### 6.1 Discord produktiv konfigurieren
+
+Der Bot bleibt deaktiviert, bis eine nur für den Betriebsbenutzer lesbare Datei
+`/opt/mise-en-dice/runtime/discord.properties` angelegt wird (`chmod 0600`). Sie wird ausschließlich in die
+Produktionsinstanz übernommen, niemals in Previews oder den Produktions-Smoke-Test:
+
+```properties
+mise-en-dice.discord.enabled=true
+mise-en-dice.discord.token=BOT_TOKEN_AUSSERHALB_DES_REPOSITORIES
+mise-en-dice.discord.guild-id=DEINE_PRIVATE_GUILD_ID
+mise-en-dice.discord.effective-date-zone=Europe/Berlin
+mise-en-dice.discord.participant-user-ids.GEORGIA=DISCORD_USER_ID
+mise-en-dice.discord.participant-user-ids.TOBIAS=DISCORD_USER_ID
+```
+
+Die Datei ist optional; vorhandene Installationen benötigen kein `init --force`. Ohne sie bleiben Produktion,
+`doctor`, Backups und alle Previews Discord-disabled. Tokens und IDs gehören weder in `.env`, Commit, Statusausgabe
+noch Logs.
 
 Vor dem eigentlichen Umschalten führt der Operator einen vollständigen Smoke-Test des gebauten Images mit einer frischen temporären PostgreSQL-Datenbank aus. Existiert bereits eine Produktion, wird danach automatisch ein validiertes Backup erzeugt. Erst dann wird das feste Projekt `med-production` aktualisiert.
 
