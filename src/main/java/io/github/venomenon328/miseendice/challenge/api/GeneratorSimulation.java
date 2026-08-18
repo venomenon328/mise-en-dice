@@ -21,7 +21,7 @@ public interface GeneratorSimulation {
 
     int MAXIMUM_CASES = 4_096;
     int MAXIMUM_REPORT_ENTRIES = 50;
-    String REPORT_VERSION = "2026-08-16.1";
+    String REPORT_VERSION = "2026-08-18.1";
 
     SimulationReport simulate(SimulationRequest request);
 
