@@ -11,6 +11,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md): verbindliche Regeln für Gewichtung, harte Kandidatengültigkeit, Scores, Diversität, Determinismus, Replay und Simulation
 - [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md): verbindlicher Vertrag für 1–3 kuratierte Angebote, maximal zwei externe Kuratoraufrufe, Carry-over, Nutzerbestätigung und Historienwirkung
 - [`CHALLENGE_VOTING_AND_PARTICIPATION.md`](CHALLENGE_VOTING_AND_PARTICIPATION.md): verbindliche Mehrnutzer-Semantik für Electorate-Snapshots, geheime Abstimmung, Tie-Break, einmaligen Reroll und von der Stimmberechtigung getrennte Challenge-Teilnahme
+- [`DISCORD_INGREDIENT_LOOKUP.md`](DISCORD_INGREDIENT_LOOKUP.md): verbindliche Such-, Auswahl-, Darstellungs- und Modulgrenzen für die rein lesende Discord-Zutatenabfrage aus Issue #108
 - [`CANDIDATE_GENERATOR_DATA_READINESS.md`](CANDIDATE_GENERATOR_DATA_READINESS.md): gemessene Metadatenabdeckung und Gate für den Generatorstart
 - [`analysis/candidate-generator-data-readiness.sql`](analysis/candidate-generator-data-readiness.sql): reproduzierbare PostgreSQL-Auswertung des aktiven Ziehpools
 - [`analysis/final-catalog-review-20260813.md`](analysis/final-catalog-review-20260813.md): verbindlicher fachlicher Review für den finalen Katalog
@@ -39,4 +40,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Phase 11A erweitert den abgeschlossenen Phase-10-Kuratorvertrag um transportneutrale Präsentation, autoritative Offer-Bestätigung und einmaligen vollständigen Reroll mit exakter Cooldown-only-Exposition. Nach ADR 0008 sind echte OpenAI-Aufrufe ausschließlich im explizit aktivierten Produktivbetrieb zulässig; Entwicklung und automatisierte Tests verwenden Fakes, Fixtures beziehungsweise lokale HTTP-Stubs. Als Nächstes folgt Phase 11B mit dem transportneutralen Voting-/Participation-Core; ein dünner Discord-Adapter ist erst Phase 11C.
+Die produktionsnahe Live-Abnahme aus Phase 12A bis 12D ist abgeschlossen. Vor dem privaten Produktionspilot aus Phase 12E / Issue #90 folgt als bewusst kleines Zwischenpaket Issue #108: eine rein lesende Discord-Zutatenabfrage über eine schmale `catalog :: api`-Projektion. Entwicklung und automatisierte Tests bleiben vollständig ohne echte Discord- oder OpenAI-Verbindungen.
