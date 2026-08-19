@@ -42,6 +42,7 @@ cat > "$DISCORD_PROPERTIES" <<'EOF_DISCORD'
 mise-en-dice.discord.enabled=true
 mise-en-dice.discord.token=production-discord-secret
 mise-en-dice.discord.guild-id=123456789
+mise-en-dice.discord.challenge-operator-role-id=555555555
 mise-en-dice.discord.participant-user-ids.GEORGIA=111111111
 mise-en-dice.discord.participant-user-ids.TOBIAS=222222222
 EOF_DISCORD
@@ -55,6 +56,7 @@ cat > "$ACCEPTANCE_PROPERTIES" <<'EOF_ACCEPTANCE'
 mise-en-dice.discord.enabled=true
 mise-en-dice.discord.token=acceptance-discord-secret
 mise-en-dice.discord.guild-id=987654321
+mise-en-dice.discord.challenge-operator-role-id=666666666
 mise-en-dice.discord.participant-user-ids.GEORGIA=333333333
 mise-en-dice.discord.participant-user-ids.TOBIAS=444444444
 mise-en-dice.curation.openai.enabled=true
@@ -114,6 +116,7 @@ mv "$DISCORD_PROPERTIES.saved" "$DISCORD_PROPERTIES"
 cat > "$ACCEPTANCE_PROPERTIES" <<'EOF_INCOMPLETE_DISCORD'
 mise-en-dice.discord.enabled=true
 mise-en-dice.discord.guild-id=987654321
+mise-en-dice.discord.challenge-operator-role-id=666666666
 mise-en-dice.discord.participant-user-ids.GEORGIA=333333333
 mise-en-dice.discord.participant-user-ids.TOBIAS=444444444
 mise-en-dice.curation.openai.enabled=false
@@ -121,6 +124,20 @@ EOF_INCOMPLETE_DISCORD
 chmod 0600 "$ACCEPTANCE_PROPERTIES"
 assert_failure_without_secret \
     'Aktiviertes Discord ohne Token' \
+    'acceptance-discord-secret' \
+    validate_acceptance_provider_configuration
+
+cat > "$ACCEPTANCE_PROPERTIES" <<'EOF_MISSING_OPERATOR_ROLE'
+mise-en-dice.discord.enabled=true
+mise-en-dice.discord.token=acceptance-discord-secret
+mise-en-dice.discord.guild-id=987654321
+mise-en-dice.discord.participant-user-ids.GEORGIA=333333333
+mise-en-dice.discord.participant-user-ids.TOBIAS=444444444
+mise-en-dice.curation.openai.enabled=false
+EOF_MISSING_OPERATOR_ROLE
+chmod 0600 "$ACCEPTANCE_PROPERTIES"
+assert_failure_without_secret \
+    'Aktiviertes Discord ohne Challenge-Operator-Rolle' \
     'acceptance-discord-secret' \
     validate_acceptance_provider_configuration
 

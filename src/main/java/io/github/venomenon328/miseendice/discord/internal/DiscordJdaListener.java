@@ -83,8 +83,8 @@ final class DiscordJdaListener extends ListenerAdapter {
         if (!"challenge".equals(event.getName())) {
             return;
         }
-        if (!accepts(event.getGuild() == null ? 0 : event.getGuild().getIdLong(), event.getUser().getId())) {
-            event.reply("Dieser Command ist nur für die konfigurierte Challenge-Gilde und ihre Teilnehmer verfügbar.")
+        if (!acceptsChallengeCommand(event.getGuild(), event.getMember())) {
+            event.reply("Dieser Command ist nur für Mitglieder mit der konfigurierten Challenge-Operator-Rolle verfügbar.")
                     .setEphemeral(true).queue();
             return;
         }
@@ -110,8 +110,8 @@ final class DiscordJdaListener extends ListenerAdapter {
         if (ingredientLookupWorkflow == null) {
             return;
         }
-        if (!ingredientLookupWorkflow.accepts(event.getGuild() == null ? 0 : event.getGuild().getIdLong(), event.getUser().getId())) {
-            event.reply("Dieser Command ist nur für die konfigurierte Challenge-Gilde und ihre Teilnehmer verfügbar.")
+        if (!ingredientLookupWorkflow.acceptsGuild(event.getGuild() == null ? 0 : event.getGuild().getIdLong())) {
+            event.reply("Dieser Command ist nur in der konfigurierten Guild verfügbar.")
                     .setEphemeral(true).queue();
             return;
         }
@@ -121,8 +121,9 @@ final class DiscordJdaListener extends ListenerAdapter {
             event.reply("`suche` darf nicht leer sein.").setEphemeral(true).queue();
             return;
         }
-        event.deferReply().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.search(searchText, event.getUser().getId(),
-                new HookIngredientDelivery(hook, executor), new HookIngredientFeedback(hook))),
+        String ownerUserId = event.getUser().getId();
+        event.deferReply().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.search(searchText, ownerUserId,
+                new HookIngredientDelivery(hook, executor, ownerUserId), new HookIngredientFeedback(hook))),
                 failure -> log.warn("Discord ingredient lookup acknowledgement failed", failure));
     }
 
@@ -131,7 +132,8 @@ final class DiscordJdaListener extends ListenerAdapter {
         if (!event.getComponentId().startsWith("med:")) {
             return;
         }
-        if (!accepts(event.getGuild() == null ? 0 : event.getGuild().getIdLong(), event.getUser().getId())) {
+        if (!acceptsChallengeInteraction(event.getGuild() == null ? 0 : event.getGuild().getIdLong(),
+                event.getUser().getId())) {
             event.reply("Diese Challenge-Interaktion ist hier nicht erlaubt.").setEphemeral(true).queue();
             return;
         }
@@ -151,22 +153,29 @@ final class DiscordJdaListener extends ListenerAdapter {
                 && !DiscordIngredientComponentId.isNavigationSelect(componentId)) {
             return;
         }
-        if (!ingredientLookupWorkflow.accepts(event.getGuild() == null ? 0 : event.getGuild().getIdLong(), event.getUser().getId())) {
+        if (!ingredientLookupWorkflow.acceptsGuild(event.getGuild() == null ? 0 : event.getGuild().getIdLong())) {
             event.reply("Diese Zutaten-Auswahl ist hier nicht erlaubt.").setEphemeral(true).queue();
             return;
         }
+        String userId = event.getUser().getId();
         if (DiscordIngredientComponentId.isNavigationSelect(componentId)) {
-            event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.navigateSelect(componentId, event.getValues(),
-                    new HookIngredientDelivery(hook, executor), new HookIngredientFeedback(hook))),
+            event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.navigateSelect(componentId,
+                    event.getValues(), userId, new HookIngredientDelivery(hook, executor, userId),
+                    new HookIngredientFeedback(hook))),
                     failure -> log.warn("Discord ingredient navigation acknowledgement failed", failure));
             return;
         }
         event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.component(componentId, event.getValues(),
-                event.getUser().getId(), new HookIngredientDelivery(hook, executor), new HookIngredientFeedback(hook))),
+                userId, new HookIngredientDelivery(hook, executor, userId), new HookIngredientFeedback(hook))),
                 failure -> log.warn("Discord ingredient selection acknowledgement failed", failure));
     }
 
-    private boolean accepts(long guildId, String userId) {
+    private boolean acceptsChallengeCommand(Guild guild, Member member) {
+        return guild != null && guild.getIdLong() == properties.guildId() && member != null
+                && member.getRoles().stream().anyMatch(role -> role.getIdLong() == properties.challengeOperatorRoleId());
+    }
+
+    private boolean acceptsChallengeInteraction(long guildId, String userId) {
         return workflow.accepts(guildId, userId);
     }
 
@@ -206,16 +215,19 @@ final class DiscordJdaListener extends ListenerAdapter {
     private static final class HookIngredientDelivery implements DiscordIngredientLookupWorkflow.Delivery {
         private final net.dv8tion.jda.api.interactions.InteractionHook hook;
         private final Executor executor;
+        private final String ownerUserId;
 
-        private HookIngredientDelivery(net.dv8tion.jda.api.interactions.InteractionHook hook, Executor executor) {
+        private HookIngredientDelivery(net.dv8tion.jda.api.interactions.InteractionHook hook, Executor executor,
+                                       String ownerUserId) {
             this.hook = hook;
             this.executor = executor;
+            this.ownerUserId = ownerUserId;
         }
 
         @Override
         public void replace(DiscordIngredientLookupRenderer.RenderedResponse response, Runnable delivered,
                             java.util.function.Consumer<Throwable> failed) {
-            hook.editOriginal(ingredientMessage(response)).queue(ignored -> executor.execute(delivered), failed);
+            hook.editOriginal(ingredientMessage(response, ownerUserId)).queue(ignored -> executor.execute(delivered), failed);
         }
     }
 
@@ -274,6 +286,11 @@ final class DiscordJdaListener extends ListenerAdapter {
 
     static net.dv8tion.jda.api.utils.messages.MessageEditData ingredientMessage(
             DiscordIngredientLookupRenderer.RenderedResponse response) {
+        return ingredientMessage(response, null);
+    }
+
+    static net.dv8tion.jda.api.utils.messages.MessageEditData ingredientMessage(
+            DiscordIngredientLookupRenderer.RenderedResponse response, String ownerUserId) {
         MessageEditBuilder builder = new MessageEditBuilder().setAllowedMentions(List.of());
         if (response instanceof DiscordIngredientLookupRenderer.RenderedText text) {
             return builder.setContent(text.content()).setEmbeds(List.of()).setComponents(List.of()).build();
@@ -289,14 +306,17 @@ final class DiscordJdaListener extends ListenerAdapter {
                 .setColor(embed.color());
         embed.fields().forEach(field -> embedBuilder.addField(field.name(), field.value(), field.inline()));
         return builder.setContent("").setEmbeds(List.of(embedBuilder.build()))
-                .setComponents(ingredientRows(embed.navigationRows())).build();
+                .setComponents(ingredientRows(embed.navigationRows(), ownerUserId)).build();
     }
 
-    private static List<ActionRow> ingredientRows(List<DiscordIngredientLookupRenderer.NavigationRow> rows) {
+    private static List<ActionRow> ingredientRows(List<DiscordIngredientLookupRenderer.NavigationRow> rows,
+                                                  String ownerUserId) {
         return rows.stream().map(row -> {
             DiscordIngredientLookupRenderer.NavigationSelectRow select =
                     (DiscordIngredientLookupRenderer.NavigationSelectRow) row;
-            return ActionRow.of(selectMenu(select.customId(), select.placeholder(), select.options()));
+            String customId = ownerUserId == null ? select.customId()
+                    : DiscordIngredientComponentId.bindNavigationOwner(select.customId(), ownerUserId);
+            return ActionRow.of(selectMenu(customId, select.placeholder(), select.options()));
         }).toList();
     }
 

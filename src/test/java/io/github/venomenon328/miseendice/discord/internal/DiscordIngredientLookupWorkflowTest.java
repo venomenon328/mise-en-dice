@@ -83,15 +83,16 @@ class DiscordIngredientLookupWorkflowTest {
     }
 
     @Test
-    void hierarchyNavigationLoadsTheConceptIdDirectlyWithoutAnyNameSearchOrInvokerBinding() {
+    void hierarchyNavigationLoadsTheConceptIdDirectlyForTheCardOwnerWithoutAnyNameSearch() {
         var queries = new FakeQueries();
         queries.profiles.put(9L, profile(9, "Tempeh"));
         var workflow = workflow(queries);
         var delivery = new CapturingDelivery();
         var feedback = new CapturingFeedback();
+        String navigation = DiscordIngredientComponentId.navigationSelect("child", "10001");
 
-        workflow.navigateSelect(DiscordIngredientComponentId.navigationSelect("child"),
-                List.of(DiscordIngredientComponentId.conceptValue(9)), delivery, feedback);
+        workflow.navigateSelect(navigation, List.of(DiscordIngredientComponentId.conceptValue(9)),
+                "10001", delivery, feedback);
 
         assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedEmbed.class);
         assertThat(queries.profileLookups).containsExactly(9L);
@@ -100,32 +101,51 @@ class DiscordIngredientLookupWorkflowTest {
     }
 
     @Test
-    void staleAndMalformedHierarchyNavigationNeverShowsAnInactiveProfile() {
+    void foreignUserCannotNavigateAnotherUsersCardOrTriggerCatalogWork() {
+        var queries = new FakeQueries();
+        queries.profiles.put(9L, profile(9, "Tempeh"));
+        var delivery = new CapturingDelivery();
+        var feedback = new CapturingFeedback();
+
+        workflow(queries).navigateSelect(DiscordIngredientComponentId.navigationSelect("child", "10001"),
+                List.of(DiscordIngredientComponentId.conceptValue(9)), "10002", delivery, feedback);
+
+        assertThat(delivery.response).isNull();
+        assertThat(queries.profileLookups).isEmpty();
+        assertThat(queries.searchCalls).isZero();
+        assertThat(feedback.messages).singleElement().satisfies(message -> assertThat(message).contains("anderen Nutzer"));
+    }
+
+    @Test
+    void staleMalformedAndLegacyUnownedHierarchyNavigationNeverShowsAnInactiveProfile() {
         var queries = new FakeQueries();
         var workflow = workflow(queries);
         var delivery = new CapturingDelivery();
         var feedback = new CapturingFeedback();
 
-        workflow.navigateSelect(DiscordIngredientComponentId.navigationSelect("parent"),
-                List.of(DiscordIngredientComponentId.conceptValue(77)), delivery, feedback);
+        workflow.navigateSelect(DiscordIngredientComponentId.navigationSelect("parent", "10001"),
+                List.of(DiscordIngredientComponentId.conceptValue(77)), "10001", delivery, feedback);
         assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedText.class);
         assertThat(((DiscordIngredientLookupRenderer.RenderedText) delivery.response).content()).contains("nicht mehr aktuell");
 
-        workflow.navigateSelect("med:v1:ingredient:navigate-select:sideways",
-                List.of(DiscordIngredientComponentId.conceptValue(77)), delivery, feedback);
-        assertThat(feedback.messages).singleElement().satisfies(message -> assertThat(message).contains("Navigation", "ungültig"));
+        workflow.navigateSelect(DiscordIngredientComponentId.navigationSelect("parent"),
+                List.of(DiscordIngredientComponentId.conceptValue(77)), "10001", delivery, feedback);
+        workflow.navigateSelect("med:v2:ingredient:navigate-select:sideways:10001",
+                List.of(DiscordIngredientComponentId.conceptValue(77)), "10001", delivery, feedback);
+
+        assertThat(feedback.messages).hasSize(2).allSatisfy(message -> assertThat(message).contains("Navigation", "ungültig"));
+        assertThat(queries.profileLookups).containsExactly(77L);
     }
 
     @Test
-    void appliesTheSameGuildAndParticipantGuardBeforeAnyLookupWork() {
+    void guildGuardDoesNotDependOnParticipantRegistration() {
         var queries = new FakeQueries();
         var workflow = workflow(queries);
 
-        assertThat(workflow.accepts(99, "10001")).isTrue();
-        assertThat(workflow.accepts(99, "10002")).isTrue();
-        assertThat(workflow.accepts(99, "99999")).isFalse();
-        assertThat(workflow.accepts(98, "10001")).isFalse();
+        assertThat(workflow.acceptsGuild(99)).isTrue();
+        assertThat(workflow.acceptsGuild(98)).isFalse();
         assertThat(queries.profileLookups).isEmpty();
+        assertThat(queries.searchCalls).isZero();
     }
 
     @Test
@@ -133,15 +153,16 @@ class DiscordIngredientLookupWorkflowTest {
         var queries = new FakeQueries();
         var feedback = new CapturingFeedback();
 
-        workflow(queries).search("   ", "10001", new CapturingDelivery(), feedback);
+        workflow(queries).search("   ", "99999", new CapturingDelivery(), feedback);
 
         assertThat(feedback.messages).singleElement().satisfies(message -> assertThat(message).contains("nicht leer"));
         assertThat(queries.searchCalls).isZero();
     }
 
     private static DiscordIngredientLookupWorkflow workflow(FakeQueries queries) {
-        return new DiscordIngredientLookupWorkflow(new DiscordProperties(true, "token", 99, ZoneId.of("Europe/Berlin"),
-                Map.of("GEORGIA", "10001", "TOBIAS", "10002")), queries, new DiscordIngredientLookupRenderer());
+        return new DiscordIngredientLookupWorkflow(new DiscordProperties(true, "token", 99, 77777,
+                ZoneId.of("Europe/Berlin"), Map.of("GEORGIA", "10001", "TOBIAS", "10002")),
+                queries, new DiscordIngredientLookupRenderer());
     }
 
     private static IngredientLookupSearchResult result(String text, List<IngredientLookupMatch> matches, long total) {

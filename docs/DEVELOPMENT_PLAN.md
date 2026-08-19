@@ -583,6 +583,14 @@ Nachricht, verwendet unmittelbar die stabile Konzept-ID und bleibt auf höchsten
 begrenzt. Der nicht mehr benötigte Zutaten-Navigationsbutton-Pfad entfällt; Challenge-Buttons und sämtliche Katalog-,
 Such-, Persistenz-, Generator-, Kurator- und Providersemantik bleiben unverändert. Danach folgt Phase 12E / #90.
 
+### Phase 12D.5.3: Discord-Operator-Autorisierung (Issue #115)
+
+Vor dem privaten Produktionspilot trennt Issue #115 die Berechtigung, `/challenge` zu starten, von fachlicher
+Teilnahme und Electorate: Ausschließlich Mitglieder einer separat konfigurierten Discord-Operator-Rolle dürfen den
+Command in der konfigurierten Guild ausführen. `/zutat` bleibt innerhalb dieser Guild für jedes Mitglied nutzbar,
+aber sowohl die anfängliche Trefferauswahl als auch jede Hierarchienavigation bleiben stateless an den jeweiligen
+Card-Owner gebunden. Voting-, Participation-, Generator-, Kurator- und Persistenzsemantik bleiben unverändert.
+
 ### Phase 12B–12E: Manuelle Inbetriebnahme, Abnahme und Pilot (Issues #87–#90)
 
 Die folgenden Pakete führen erst nach der isolierten 12A-Basis manuelle Discord-/OpenAI-Smokes, die vollständigen

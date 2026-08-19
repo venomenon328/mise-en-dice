@@ -2,11 +2,11 @@
 
 Stand: 19. August 2026
 
-Dieses Dokument beschreibt den verbindlichen Fach- und Adaptervertrag der mit Issue #108 eingeführten Discord-Zutatenabfrage einschließlich der UX-Follow-ups aus Issues #111 und #113.
+Dieses Dokument beschreibt den verbindlichen Fach- und Adaptervertrag der mit Issue #108 eingeführten Discord-Zutatenabfrage einschließlich der UX-Follow-ups aus Issues #111 und #113 sowie der Autorisierungs- und Ownership-Schärfung aus Issue #115.
 
 ## 1. Ziel und Grundsatz
 
-Georgia und Tobias können Informationen aus dem gepflegten Zutatenkatalog direkt über Discord abrufen und von einer angezeigten Zutat zu ihren direkten allgemeineren Begriffen beziehungsweise bekannten Konkretisierungen navigieren.
+Mitglieder der konfigurierten Discord-Guild können Informationen aus dem gepflegten Zutatenkatalog direkt über Discord abrufen und von einer angezeigten Zutat zu ihren direkten allgemeineren Begriffen beziehungsweise bekannten Konkretisierungen navigieren. Dafür ist keine fachliche Participant-Registrierung erforderlich.
 
 Der Ablauf ist ausschließlich lesend:
 
@@ -28,13 +28,18 @@ Der Guild-Slash-Command lautet:
 
 `suche` ist genau ein erforderlicher String-Parameter. Autocomplete, Modals oder weitere Filter gehören nicht zum aktuellen Stand.
 
-Der Command verwendet dieselbe private Zugriffspolitik wie `/challenge`:
+Für `/zutat` gilt bewusst eine andere Zugriffspolitik als für `/challenge`:
 
 - ausschließlich die konfigurierte Guild,
-- ausschließlich die bereits konfigurierten Discord-Teilnehmer,
+- innerhalb dieser Guild für jedes Mitglied nutzbar,
+- kein Eintrag unter `participant-user-ids` erforderlich,
 - keine gültige Nutzung in DMs oder fremden Guilds.
 
 Die fachliche Antwort ist öffentlich. Reine Autorisierungs-, Eingabe-, Stale- oder technische Fehlermeldungen dürfen ephemer bleiben.
+
+Die Interaktion mit einer einmal erzeugten Zutaten-Card bleibt dagegen vollständig an deren ursprünglichen Aufrufer gebunden. Das betrifft sowohl eine initiale Mehrdeutigkeitsauswahl als auch sämtliche anschließend erzeugten Eltern-/Kind-Selects. Andere Guild-Mitglieder dürfen parallel eigene `/zutat`-Abfragen starten, aber keine fremde Card verändern.
+
+Die Berechtigung zum Starten von `/challenge` ist davon unabhängig und wird im Discord-Adapter über die konfigurierte Challenge-Operator-Rolle geprüft. Fachliche Challenge-Teilnahme, Electorate und Operator-Berechtigung sind keine Synonyme.
 
 ## 3. Suchsemantik
 
@@ -192,7 +197,9 @@ Es gibt ausdrücklich:
 
 Eine Auswahl ersetzt dieselbe öffentliche Nachricht durch die aktuelle Card des Zielkonzepts. Wurde das Ziel inzwischen deaktiviert oder entfernt, wird die bestehende sichere Stale-Antwort angezeigt.
 
-Die Navigation ist nicht an den ursprünglichen `/zutat`-Aufrufer gebunden. Jeder konfigurierte Teilnehmer derselben Guild darf eine sichtbare Zutaten-Card weiter navigieren. Die Invoker-Bindung der initialen Mehrdeutigkeitsauswahl bleibt davon unberührt.
+Sämtliche Navigationskomponenten sind an die Discord-User-ID des ursprünglichen `/zutat`-Aufrufers gebunden. Klickt ein anderer Nutzer auf eine sichtbare Card, wird die Interaktion ephemer abgewiesen, bevor eine Katalogabfrage oder Message-Änderung stattfindet. Nach erfolgreicher Navigation bleibt derselbe Owner auch für die neu gerenderte Card maßgeblich.
+
+Die Ownership wird vollständig stateless in versionierten Component-IDs getragen. Ein App-Restart benötigt daher keine Message-State-Tabelle. Vor #115 erzeugte ungebundene Navigationskomponenten werden nach dem Update sicher als veraltet abgewiesen; sie erhalten keine implizite neue Freigabe.
 
 ### Einheitliche Komponentenwahl
 
@@ -212,7 +219,7 @@ Verbindliche Platzhalter:
 
 Bei mehr als 25 direkten Zielen werden die ersten 25 der stabilen alphabetischen Reihenfolge angeboten. Die Card nennt die exakte Restanzahl und verweist für weitere Ziele auf `/zutat`. Lange Anzeigenamen werden innerhalb der Discord-Grenzen sichtbar mit Ellipse gekürzt; bei nach der Kürzung identischen Labels werden sichtbare Ordinal-Suffixe ergänzt. Der interne Option-Value bleibt die Konzept-ID.
 
-Component-IDs und Values bleiben versioniert, strikt parsebar und vollständig stateless. Vorhandene Navigation funktioniert damit nach einem App-Restart weiter, sofern das Ziel weiterhin aktiv ist.
+Component-IDs und Values bleiben versioniert, strikt parsebar und vollständig stateless. Owner-gebundene Navigation funktioniert damit nach einem App-Restart weiter, sofern das Ziel weiterhin aktiv ist und derselbe Discord-Nutzer interagiert.
 
 ## 10. Längenbegrenzung
 
@@ -231,18 +238,22 @@ Discord-Grenzen werden vor dem Senden deterministisch eingehalten. Eine überlan
 - Kein JDBC-Zugriff aus Listener, Workflow oder Renderer.
 - Keine Wiederverwendung der administrationsorientierten Vollprojektion.
 - Keine Schreibtransaktion und kein Katalogaudit durch Suche, Detailanzeige oder Navigation.
-- Der bestehende `/challenge`-Flow bleibt unverändert.
+- Die Änderung der `/challenge`-Startautorisierung aus #115 betrifft ausschließlich den Discord-Adapter; Generator-, Offer-, Voting- und Participation-Lifecycle bleiben unverändert.
 
-`DiscordIngredientLookupRenderer` besitzt ein transportneutrales Render-Modell für Embed-Description, Inline-Felder und String-Select-Navigation. Erst `DiscordJdaListener` mappt dieses Modell auf JDA-Embeds und native String Selects. Zutaten-Navigationsbuttons existieren nicht.
+`DiscordIngredientLookupRenderer` besitzt ein transportneutrales Render-Modell für Embed-Description, Inline-Felder und String-Select-Navigation. Erst `DiscordJdaListener` mappt dieses Modell auf JDA-Embeds und native String Selects und bindet dabei die Navigationskomponenten an den Card-Owner. Zutaten-Navigationsbuttons existieren nicht.
+
+Die `/challenge`-Startautorisierung verwendet separat `mise-en-dice.discord.challenge-operator-role-id`. Sie ist kein Ersatz für Participant-Identitäten und verleiht keine Stimme in einem Electorate. Umgekehrt berechtigt ein Participant-Mapping nicht zum Start einer Challenge.
 
 ## 12. Fehlerdarstellung und Verifikation
 
-Nutzertexte unterscheiden knapp zwischen ungültiger Eingabe, keinem Treffer, veralteter Navigation/Auswahl und unbekanntem technischen Fehler. Interne Codes, IDs, SQL-Details, Stacktraces und Providerdiagnostik erscheinen niemals in Discord.
+Nutzertexte unterscheiden knapp zwischen ungültiger Eingabe, keinem Treffer, veralteter Navigation/Auswahl, fremder Card und unbekanntem technischen Fehler. Interne Codes, IDs, SQL-Details, Stacktraces und Providerdiagnostik erscheinen niemals in Discord.
 
 Automatisierte Tests decken mindestens ab:
 
 - echte PostgreSQL-Suche und aktive Relation-ID/Name-Projektion,
 - exakten Direktfund, Einzel- und Mehrfachtreffer,
+- `/zutat` für nicht als Participant registrierte Mitglieder der konfigurierten Guild,
+- Abweisung von `/zutat` außerhalb der konfigurierten Guild vor Lookup-Arbeit,
 - ziehbare/nicht ziehbare Profile und fehlende Werte,
 - native Inline-Felder mit langen linken Inhalten,
 - verbale Stufen, `○`-Leersymbol und exakt fünf Skalenpositionen,
@@ -250,10 +261,13 @@ Automatisierte Tests decken mindestens ab:
 - 1 bis 25 Beziehungen als Select, leere Richtungen ohne Navigation, mehr als 25 mit sichtbarer Restanzahl,
 - getrennte Eltern-/Kind-Selects mit den verbindlichen Platzhaltern,
 - direkte Navigation per Konzept-ID ohne Namenssuche,
-- Stale-Verhalten nach Deaktivierung,
+- Owner-Bindung der initialen Auswahl und aller nachfolgenden Hierarchie-Selects,
+- keine Katalogabfrage und keine Card-Änderung bei fremder Navigation,
+- Stale-Verhalten nach Deaktivierung sowie für alte ungebundene Navigationskomponenten,
 - stateless Component-Parsing,
 - JDA-Routing der Zutaten-Navigation als String Select,
-- bestehende `/zutat`-Suche und `/challenge`-Regressionen.
+- `/challenge`-Start nur mit Operator-Rolle und unabhängig vom Participant-Mapping,
+- bestehende Challenge-Interaktions-/Voting-Regressionen.
 
 Verpflichtendes Gate:
 
@@ -276,6 +290,7 @@ Automatisierte Tests und Entwicklung öffnen weder eine echte Discord-Verbindung
 - Rollen- oder Eigenschaftsvererbung,
 - Zutatenempfehlungen, Rezeptvorschläge oder KI-Erklärungen,
 - Änderung des bestehenden Challenge-Lifecycles,
+- dynamische Participant-Registrierung oder Erweiterung des Electorates,
 - Vorziehen persönlicher Konkretisierungen, Zusatz-Zutaten, Kochpläne, Fotos oder Ergebnisdokumentation.
 
-Nach vollständiger Umsetzung und Live-Abnahme von #113 kann Phase 12E / #90 mit dem privaten Produktionspilot beginnen.
+Nach vollständiger Umsetzung und Abnahme von #115 kann Phase 12E / #90 mit dem privaten Produktionspilot beginnen.

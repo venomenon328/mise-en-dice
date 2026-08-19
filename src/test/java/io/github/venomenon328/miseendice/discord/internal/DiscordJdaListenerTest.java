@@ -17,6 +17,7 @@ import java.util.function.Consumer;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -50,10 +51,10 @@ class DiscordJdaListenerTest {
     void rejectsIngredientLookupFromWrongGuildWithoutStartingLookupWork() {
         var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
         var lookupWorkflow = mock(DiscordIngredientLookupWorkflow.class);
-        var event = slashEvent();
+        var event = slashEvent("99999", 98, false);
         var reply = mock(ReplyCallbackAction.class);
         when(event.getName()).thenReturn("zutat");
-        when(lookupWorkflow.accepts(99, "10001")).thenReturn(false);
+        when(lookupWorkflow.acceptsGuild(98)).thenReturn(false);
         when(event.reply(any(String.class))).thenReturn(reply);
         when(reply.setEphemeral(true)).thenReturn(reply);
 
@@ -65,22 +66,22 @@ class DiscordJdaListenerTest {
     }
 
     @Test
-    void defersIngredientSlashBeforeDelegatingTheRequiredSearchString() {
+    void defersIngredientSlashForAnUnregisteredGuildMemberBeforeDelegatingTheSearch() {
         var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
         var lookupWorkflow = mock(DiscordIngredientLookupWorkflow.class);
-        var event = slashEvent();
+        var event = slashEvent("99999", 99, false);
         var option = mock(OptionMapping.class);
         var acknowledgement = acknowledgement(event);
         when(event.getName()).thenReturn("zutat");
         when(event.getOption("suche")).thenReturn(option);
         when(option.getAsString()).thenReturn("  Tempeh  ");
-        when(lookupWorkflow.accepts(99, "10001")).thenReturn(true);
+        when(lookupWorkflow.acceptsGuild(99)).thenReturn(true);
 
         ingredientListener(challengeWorkflow, lookupWorkflow).onSlashCommandInteraction(event);
 
         InOrder order = inOrder(event, lookupWorkflow);
         order.verify(event).deferReply();
-        order.verify(lookupWorkflow).search(eq("  Tempeh  "), eq("10001"), any(), any());
+        order.verify(lookupWorkflow).search(eq("  Tempeh  "), eq("99999"), any(), any());
         org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
         org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
     }
@@ -90,7 +91,7 @@ class DiscordJdaListenerTest {
         var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
         var lookupWorkflow = mock(DiscordIngredientLookupWorkflow.class);
         var event = stringSelectEvent(DiscordIngredientComponentId.selection("10001"),
-                List.of(DiscordIngredientComponentId.conceptValue(42)), lookupWorkflow);
+                List.of(DiscordIngredientComponentId.conceptValue(42)), lookupWorkflow, "10001", 99);
 
         ingredientListener(challengeWorkflow, lookupWorkflow).onStringSelectInteraction(event);
 
@@ -102,18 +103,18 @@ class DiscordJdaListenerTest {
     }
 
     @Test
-    void routesIngredientNavigationSelectWithoutInvokerBinding() {
+    void routesIngredientNavigationSelectWithTheClickingUserForOwnerValidation() {
         var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
         var lookupWorkflow = mock(DiscordIngredientLookupWorkflow.class);
-        String componentId = DiscordIngredientComponentId.navigationSelect("child");
+        String componentId = DiscordIngredientComponentId.navigationSelect("child", "10001");
         List<String> values = List.of(DiscordIngredientComponentId.conceptValue(42));
-        var event = stringSelectEvent(componentId, values, lookupWorkflow);
+        var event = stringSelectEvent(componentId, values, lookupWorkflow, "10001", 99);
 
         ingredientListener(challengeWorkflow, lookupWorkflow).onStringSelectInteraction(event);
 
         InOrder order = inOrder(event, lookupWorkflow);
         order.verify(event).deferEdit();
-        order.verify(lookupWorkflow).navigateSelect(eq(componentId), eq(values), any(), any());
+        order.verify(lookupWorkflow).navigateSelect(eq(componentId), eq(values), eq("10001"), any(), any());
         org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
     }
 
@@ -132,7 +133,7 @@ class DiscordJdaListenerTest {
                         List.of(new DiscordIngredientLookupRenderer.SelectionOption(
                                 "Sojaprodukt", DiscordIngredientComponentId.conceptValue(42), null)))));
 
-        var message = DiscordJdaListener.ingredientMessage(response);
+        var message = DiscordJdaListener.ingredientMessage(response, "10001");
 
         assertThat(message.getEmbeds()).singleElement().satisfies(embed -> {
             assertThat(embed.getTitle()).isEqualTo("🥢 Tempeh");
@@ -145,6 +146,7 @@ class DiscordJdaListenerTest {
             assertThat(row.getComponents()).singleElement().isInstanceOf(StringSelectMenu.class);
             var select = (StringSelectMenu) row.getComponents().getFirst();
             assertThat(select.getPlaceholder()).isEqualTo("⬆️ Allgemeineren Begriff öffnen …");
+            assertThat(select.getCustomId()).isEqualTo(DiscordIngredientComponentId.navigationSelect("parent", "10001"));
             assertThat(select.getOptions()).singleElement().satisfies(option -> {
                 assertThat(option.getLabel()).isEqualTo("Sojaprodukt");
                 assertThat(option.getValue()).isEqualTo(DiscordIngredientComponentId.conceptValue(42));
@@ -158,7 +160,7 @@ class DiscordJdaListenerTest {
                 "🥢 Tempeh", "```\nGewichtung  1,0\n```", DiscordIngredientLookupRenderer.CARD_COLOR,
                 List.of(new DiscordIngredientLookupRenderer.EmbedField("🍽️ Geschmacksprofil", "keine", false)), List.of());
 
-        var message = DiscordJdaListener.ingredientMessage(response);
+        var message = DiscordJdaListener.ingredientMessage(response, "10001");
 
         assertThat(message.getComponents()).isEmpty();
         assertThat(message.getEmbeds()).hasSize(1);
@@ -179,12 +181,11 @@ class DiscordJdaListenerTest {
     }
 
     @Test
-    void defersSlashInteractionBeforeDelegatingDefaultOffersAndAutoRestrictions() {
+    void defersSlashInteractionBeforeDelegatingDefaultOffersAndAutoRestrictionsForOperator() {
         var workflow = mock(DiscordChallengeWorkflow.class);
-        var event = slashEvent();
+        var event = slashEvent("99999", 99, true);
         var acknowledgement = acknowledgement(event);
         var listener = listener(workflow);
-        when(workflow.accepts(99, "10001")).thenReturn(true);
 
         listener.onSlashCommandInteraction(event);
 
@@ -192,18 +193,18 @@ class DiscordJdaListenerTest {
         order.verify(event).deferReply();
         order.verify(workflow).start(eq(1), eq(RestrictionMode.AUTO), any(DiscordMemberNameResolver.class), any(), any());
         org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
+        org.mockito.Mockito.verify(workflow, never()).accepts(99, "99999");
     }
 
     @Test
     void delegatesExplicitTwoAndThreeOfferRequestsAfterAcknowledgement() {
         for (int offerCount : java.util.List.of(2, 3)) {
             var workflow = mock(DiscordChallengeWorkflow.class);
-            var event = slashEvent();
+            var event = slashEvent("99999", 99, true);
             var option = mock(OptionMapping.class);
             acknowledgement(event);
             when(event.getOption("angebote")).thenReturn(option);
             when(option.getAsInt()).thenReturn(offerCount);
-            when(workflow.accepts(99, "10001")).thenReturn(true);
 
             listener(workflow).onSlashCommandInteraction(event);
 
@@ -216,7 +217,7 @@ class DiscordJdaListenerTest {
     void delegatesAllRestrictionModesTogetherWithTheOfferCount() {
         for (RestrictionMode mode : RestrictionMode.values()) {
             var workflow = mock(DiscordChallengeWorkflow.class);
-            var event = slashEvent();
+            var event = slashEvent("99999", 99, true);
             var offers = mock(OptionMapping.class);
             var restriction = mock(OptionMapping.class);
             acknowledgement(event);
@@ -224,7 +225,6 @@ class DiscordJdaListenerTest {
             when(offers.getAsInt()).thenReturn(3);
             when(event.getOption("einschraenkung")).thenReturn(restriction);
             when(restriction.getAsString()).thenReturn(mode.name());
-            when(workflow.accepts(99, "10001")).thenReturn(true);
 
             listener(workflow).onSlashCommandInteraction(event);
 
@@ -287,74 +287,95 @@ class DiscordJdaListenerTest {
     }
 
     @Test
-    void rejectsInteractionsFromWrongGuildWithoutStartingAnyWorkflow() {
+    void rejectsChallengeSlashFromWrongGuildEvenWithOperatorRoleWithoutStartingWorkflow() {
         var workflow = mock(DiscordChallengeWorkflow.class);
-        var event = slashEvent();
+        var event = slashEvent("99999", 98, true);
         var reply = mock(ReplyCallbackAction.class);
-        when(workflow.accepts(99, "10001")).thenReturn(false);
         when(event.reply(any(String.class))).thenReturn(reply);
         when(reply.setEphemeral(true)).thenReturn(reply);
 
         listener(workflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event).reply(any(String.class));
-        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any(), any(), any());
+        org.mockito.Mockito.verify(workflow, never()).start(org.mockito.ArgumentMatchers.anyInt(), any(), any(), any(), any());
     }
 
     @Test
-    void rejectsUnknownDiscordUsersWithoutStartingAnyWorkflow() {
+    void rejectsConfiguredParticipantWithoutOperatorRoleBeforeStartingWorkflow() {
         var workflow = mock(DiscordChallengeWorkflow.class);
-        var event = slashEvent("99999");
+        var event = slashEvent("10001", 99, false);
         var reply = mock(ReplyCallbackAction.class);
-        when(workflow.accepts(99, "99999")).thenReturn(false);
         when(event.reply(any(String.class))).thenReturn(reply);
         when(reply.setEphemeral(true)).thenReturn(reply);
 
         listener(workflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event).reply(any(String.class));
-        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any(), any(), any());
+        org.mockito.Mockito.verify(workflow, never()).start(org.mockito.ArgumentMatchers.anyInt(), any(), any(), any(), any());
+    }
+
+    @Test
+    void operatorDoesNotNeedParticipantMappingToStartChallenge() {
+        var workflow = mock(DiscordChallengeWorkflow.class);
+        var event = slashEvent("99999", 99, true);
+        acknowledgement(event);
+
+        listener(workflow).onSlashCommandInteraction(event);
+
+        org.mockito.Mockito.verify(workflow).start(eq(1), eq(RestrictionMode.AUTO),
+                any(DiscordMemberNameResolver.class), any(), any());
+        org.mockito.Mockito.verify(workflow, never()).accepts(99, "99999");
     }
 
     private static DiscordJdaListener listener(DiscordChallengeWorkflow workflow) {
-        return new DiscordJdaListener(new DiscordProperties(true, "token", 99, ZoneId.of("Europe/Berlin"),
+        return new DiscordJdaListener(new DiscordProperties(true, "token", 99, 77777, ZoneId.of("Europe/Berlin"),
                 Map.of("GEORGIA", "10001", "TOBIAS", "10002")), workflow, Runnable::run);
     }
 
     private static DiscordJdaListener ingredientListener(DiscordChallengeWorkflow challengeWorkflow,
                                                          DiscordIngredientLookupWorkflow lookupWorkflow) {
-        return new DiscordJdaListener(new DiscordProperties(true, "token", 99, ZoneId.of("Europe/Berlin"),
+        return new DiscordJdaListener(new DiscordProperties(true, "token", 99, 77777, ZoneId.of("Europe/Berlin"),
                 Map.of("GEORGIA", "10001", "TOBIAS", "10002")), challengeWorkflow, lookupWorkflow, Runnable::run);
     }
 
     private static SlashCommandInteractionEvent slashEvent() {
-        return slashEvent("10001");
+        return slashEvent("10001", 99, true);
     }
 
-    private static SlashCommandInteractionEvent slashEvent(String userId) {
+    private static SlashCommandInteractionEvent slashEvent(String userId, long guildId, boolean operator) {
         var event = mock(SlashCommandInteractionEvent.class);
         var guild = mock(Guild.class);
         var user = mock(User.class);
+        var member = mock(Member.class);
         when(event.getName()).thenReturn("challenge");
         when(event.getGuild()).thenReturn(guild);
-        when(guild.getIdLong()).thenReturn(99L);
+        when(guild.getIdLong()).thenReturn(guildId);
         when(event.getUser()).thenReturn(user);
         when(user.getId()).thenReturn(userId);
+        when(event.getMember()).thenReturn(member);
+        if (operator) {
+            var role = mock(Role.class);
+            when(role.getIdLong()).thenReturn(77777L);
+            when(member.getRoles()).thenReturn(List.of(role));
+        } else {
+            when(member.getRoles()).thenReturn(List.of());
+        }
         return event;
     }
 
     private static StringSelectInteractionEvent stringSelectEvent(String componentId, List<String> values,
-                                                                  DiscordIngredientLookupWorkflow lookupWorkflow) {
+                                                                  DiscordIngredientLookupWorkflow lookupWorkflow,
+                                                                  String userId, long guildId) {
         var event = mock(StringSelectInteractionEvent.class);
         var guild = mock(Guild.class);
         var user = mock(User.class);
         when(event.getComponentId()).thenReturn(componentId);
         when(event.getValues()).thenReturn(values);
         when(event.getGuild()).thenReturn(guild);
-        when(guild.getIdLong()).thenReturn(99L);
+        when(guild.getIdLong()).thenReturn(guildId);
         when(event.getUser()).thenReturn(user);
-        when(user.getId()).thenReturn("10001");
-        when(lookupWorkflow.accepts(99, "10001")).thenReturn(true);
+        when(user.getId()).thenReturn(userId);
+        when(lookupWorkflow.acceptsGuild(guildId)).thenReturn(true);
         MessageEditCallbackAction acknowledgement = mock(MessageEditCallbackAction.class);
         when(event.deferEdit()).thenReturn(acknowledgement);
         invokeAcknowledgement(acknowledgement, mock(InteractionHook.class));

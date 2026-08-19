@@ -1,6 +1,6 @@
 # Produktionsnahe Live-Validierung
 
-Stand: 18. August 2026
+Stand: 19. August 2026
 
 ## 1. Zweck und Paketfolge
 
@@ -14,7 +14,8 @@ Die Reihenfolge ist verbindlich:
 2. **12B / #87:** manuelle Discord-/OpenAI-Inbetriebnahme und negativer Zugriffssmoke.
 3. **12C / #88:** vollständige 1..3-Offer-, Voting-, Reroll- und Snapshot-Abnahme.
 4. **12D / #89:** Restart, Recovery, Redeploy, Backup/Restore und Acceptance-Reset.
-5. **12E / #90:** privater Produktionspilot und dokumentiertes Go/No-Go.
+5. **Sicherheitsgate / #115:** `/challenge`-Start von Teilnahme entkoppeln und über eine Discord-Operator-Rolle schützen; `/zutat` guildweit, aber Card-Owner-gebunden öffnen.
+6. **12E / #90:** erst nach Abnahme von #115 privater Produktionspilot und dokumentiertes Go/No-Go.
 
 Ein P0- oder P1-Befund stoppt die Folgepakete. Tokens, API-Keys, vollständige Authorization-Header, unredigierte
 Runtime-Dateien und nicht zwingend erforderliche persönliche Discord-IDs gehören weder in diese Datei noch in
@@ -32,6 +33,16 @@ Evidenz, Issues oder Commits.
 Alle Webports binden nur an `127.0.0.1`; PostgreSQL erhält keinen Hostport. Acceptance benötigt keinen Caddy-Eintrag
 und keine öffentliche Domain. Die Properties-Datei wird read-only nach `/run/mise-en-dice/application.properties`
 gemountet. Providerwerte erscheinen weder als Compose-Environment noch in Metadaten oder Statusausgaben.
+
+Die Berechtigung zum Start von `/challenge` ist eine reine Discord-Adapter-Autorisierung. Sie ist ausdrücklich
+unabhängig von fachlichem `participant`, Electorate und Challenge-Teilnahme. Nur Mitglieder der konfigurierten Guild,
+die zusätzlich die Rolle `mise-en-dice.discord.challenge-operator-role-id` besitzen, dürfen eine neue Challenge
+starten. Die Rolle benötigt keine Discord-`Administrator`-Berechtigung. Bestehende Challenge-Buttons und Votes
+verwenden weiterhin die fachliche Teilnehmeridentität.
+
+`/zutat` verwendet diese Operator-Rolle nicht. Der Command steht jedem Mitglied der konfigurierten Guild offen;
+initiale Auswahl und sämtliche nachfolgenden Hierarchie-Selects bleiben jedoch stateless an den ursprünglichen
+Aufrufer der jeweiligen Card gebunden.
 
 ## 3. Installation der Acceptance-Instanz
 
@@ -74,6 +85,7 @@ Produktion behält die bestehende Datei `discord.properties` und kann zusätzlic
 mise-en-dice.discord.enabled=true
 mise-en-dice.discord.token=PRODUCTION_DISCORD_TOKEN
 mise-en-dice.discord.guild-id=PRODUCTION_GUILD_ID
+mise-en-dice.discord.challenge-operator-role-id=PRODUCTION_CHALLENGE_OPERATOR_ROLE_ID
 mise-en-dice.discord.effective-date-zone=Europe/Berlin
 mise-en-dice.discord.participant-user-ids.GEORGIA=PRODUCTION_GEORGIA_ID
 mise-en-dice.discord.participant-user-ids.TOBIAS=PRODUCTION_TOBIAS_ID
@@ -94,6 +106,7 @@ Acceptance besitzt nur eine kombinierte Datei mit **anderen** Providerwerten:
 mise-en-dice.discord.enabled=true
 mise-en-dice.discord.token=ACCEPTANCE_DISCORD_TESTBOT_TOKEN
 mise-en-dice.discord.guild-id=ACCEPTANCE_GUILD_ID
+mise-en-dice.discord.challenge-operator-role-id=ACCEPTANCE_CHALLENGE_OPERATOR_ROLE_ID
 mise-en-dice.discord.effective-date-zone=Europe/Berlin
 mise-en-dice.discord.participant-user-ids.GEORGIA=ACCEPTANCE_GEORGIA_ID
 mise-en-dice.discord.participant-user-ids.TOBIAS=ACCEPTANCE_TOBIAS_ID
@@ -104,9 +117,9 @@ mise-en-dice.curation.openai.model=gpt-5.6-terra
 mise-en-dice.curation.openai.reasoning-effort=medium
 ```
 
-Der Preflight akzeptiert nur die dokumentierten Providerkeys. Er verlangt bei aktivem Discord positive Guild- und
-User-IDs sowie verschiedene IDs für `GEORGIA` und `TOBIAS`; bei aktivem OpenAI Modell und unterstützte
-Reasoning-Stufe. Bei deaktiviertem Provider muss der jeweilige Secretwert fehlen:
+Der Preflight akzeptiert nur die dokumentierten Providerkeys. Er verlangt bei aktivem Discord positive Guild-,
+Challenge-Operator-Rollen- und User-IDs sowie verschiedene IDs für `GEORGIA` und `TOBIAS`; bei aktivem OpenAI Modell
+und unterstützte Reasoning-Stufe. Bei deaktiviertem Provider muss der jeweilige Secretwert fehlen:
 
 ```properties
 mise-en-dice.discord.enabled=false
@@ -182,7 +195,34 @@ Für jede Testszenario-ID die zugehörigen IDs separat in der Evidenz halten und
 Die vierte Abfrage bestätigt nur die Existenz der Exposition und gibt keine Requirementtexte oder Providerpayloads aus.
 Für tiefergehende, sensitive Audits existiert bewusst kein Kopierbefehl im Runbook.
 
-## 7. Backup, Restore, Reset und Notfall
+## 7. Autorisierungs-Smoke vor Phase 12E
+
+Nach Merge von #115 und vor dem ersten produktiven Pilot-Command wird die Rollen- und Ownership-Grenze einmal in der
+Live-Acceptance geprüft. Dazu erhält zunächst nur ein beabsichtigter Operator die konfigurierte Challenge-Operator-
+Rolle; mindestens ein weiterhin gemappter Electorate-Teilnehmer besitzt sie bewusst nicht.
+
+Verbindliche Fälle:
+
+1. Ein Mitglied mit Operator-Rolle kann `/challenge` in der konfigurierten Guild starten.
+2. Ein gemappter Challenge-Teilnehmer **ohne** Operator-Rolle erhält bei `/challenge` eine ephemere Ablehnung. Vor und
+   nach diesem Versuch werden Session-/Curation-Zähler beziehungsweise die Provider-Usage geprüft: Es darf weder eine
+   neue `challenge_session` noch ein `generation_attempt`, eine `curation_round` oder ein OpenAI-Request entstehen.
+3. Die bestehende Challenge-Interaktion bleibt vom Startrecht unabhängig: Electorate-Teilnehmer können die für sie
+   autorisierten Voting-/Reroll-Komponenten weiterhin bedienen, auch wenn sie keine Operator-Rolle besitzen.
+4. Ein Guild-Mitglied ohne `participant-user-ids`-Mapping kann `/zutat` aufrufen und seine eigene Card vollständig
+   navigieren.
+5. Ein zweites Guild-Mitglied kann eine fremde `/zutat`-Card nicht navigieren; die Card bleibt unverändert und die
+   Ablehnung ist ephemer. Es darf dabei keine neue Katalogabfrage ausgelöst werden.
+6. `/zutat` aus einer anderen Guild beziehungsweise per DM sowie `/challenge` aus einer anderen Guild bleiben
+   abgewiesen.
+
+Die Rolle ist ein Bot-Autorisierungsmerkmal, keine Discord-Serveradministration. Für Produktion darf sie anfangs nur
+einem einzigen Nutzer zugewiesen werden; weitere Operatoren werden später ausschließlich bewusst über die
+Discord-Rollenzuweisung freigeschaltet. Die Role-ID selbst ist Konfiguration und wird nicht aus Namen abgeleitet.
+
+Die Fälle 2 und 5 sind Sicherheitsgates. Scheitert einer davon, beginnt #90 nicht.
+
+## 8. Backup, Restore, Reset und Notfall
 
 Ein Acceptance-Backup ist ein validiertes PostgreSQL-Custom-Archiv mit Prefix `mise-en-dice-acceptance-`:
 
@@ -209,7 +249,7 @@ Bei Secretverdacht, unerwarteter Provideraktivierung, Kostenanstieg, Datenverlus
 Challenge-Materialisierung: Acceptance sofort stoppen, keine weiteren Live-Interaktionen auslösen, relevante
 secretfreie IDs und Zeitpunkte sichern, Secret beim Provider rotieren und einen P0/P1-Befund anlegen.
 
-## 8. Evidenz- und Kostenprotokoll
+## 9. Evidenz- und Kostenprotokoll
 
 Für jedes manuelle Szenario eine kopierbare, secretfreie Zeile ausfüllen:
 

@@ -75,6 +75,7 @@ provider_property_allowed() {
         production-discord:mise-en-dice.discord.enabled|\
         production-discord:mise-en-dice.discord.token|\
         production-discord:mise-en-dice.discord.guild-id|\
+        production-discord:mise-en-dice.discord.challenge-operator-role-id|\
         production-discord:mise-en-dice.discord.effective-date-zone|\
         production-discord:mise-en-dice.discord.participant-user-ids.GEORGIA|\
         production-discord:mise-en-dice.discord.participant-user-ids.TOBIAS|\
@@ -89,6 +90,7 @@ provider_property_allowed() {
         acceptance:mise-en-dice.discord.enabled|\
         acceptance:mise-en-dice.discord.token|\
         acceptance:mise-en-dice.discord.guild-id|\
+        acceptance:mise-en-dice.discord.challenge-operator-role-id|\
         acceptance:mise-en-dice.discord.effective-date-zone|\
         acceptance:mise-en-dice.discord.participant-user-ids.GEORGIA|\
         acceptance:mise-en-dice.discord.participant-user-ids.TOBIAS|\
@@ -132,7 +134,7 @@ validate_discord_provider_configuration() {
     local description=$2
     local require_explicit=$3
     local reject_disabled_secret=$4
-    local enabled token guild_id georgia_id tobias_id
+    local enabled token guild_id operator_role_id georgia_id tobias_id
 
     if [[ $require_explicit == true ]]; then
         properties_has_key "$file" 'mise-en-dice.discord.enabled' \
@@ -151,10 +153,13 @@ validate_discord_provider_configuration() {
 
     [[ -n $token ]] || med_die "$description aktiviert Discord ohne Token."
     guild_id=$(properties_value "$file" 'mise-en-dice.discord.guild-id')
+    operator_role_id=$(properties_value "$file" 'mise-en-dice.discord.challenge-operator-role-id')
     georgia_id=$(properties_value "$file" 'mise-en-dice.discord.participant-user-ids.GEORGIA')
     tobias_id=$(properties_value "$file" 'mise-en-dice.discord.participant-user-ids.TOBIAS')
     [[ $guild_id =~ ^[1-9][0-9]{4,31}$ ]] \
         || med_die "$description benötigt eine positive numerische Discord-Guild-ID."
+    [[ $operator_role_id =~ ^[1-9][0-9]{4,31}$ ]] \
+        || med_die "$description benötigt eine positive numerische Discord-Challenge-Operator-Rollen-ID."
     [[ $georgia_id =~ ^[1-9][0-9]{4,31}$ && $tobias_id =~ ^[1-9][0-9]{4,31}$ ]] \
         || med_die "$description benötigt positive numerische Discord-User-IDs für GEORGIA und TOBIAS."
     [[ $georgia_id != "$tobias_id" ]] \
@@ -497,7 +502,6 @@ prepare_instance_files() {
 rollback_instance_files() {
     local instance_dir=$1
     local had_previous=$2
-
     if [[ $had_previous == true ]]; then
         mv -f "$instance_dir/compose.env.previous" "$instance_dir/compose.env"
         mv -f "$instance_dir/application.properties.previous" "$instance_dir/application.properties"

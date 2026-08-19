@@ -20,8 +20,8 @@ final class DiscordIngredientLookupWorkflow {
         this.renderer = renderer;
     }
 
-    boolean accepts(long guildId, String userId) {
-        return guildId == properties.guildId() && properties.isConfiguredUser(userId);
+    boolean acceptsGuild(long guildId) {
+        return guildId == properties.guildId();
     }
 
     void search(String searchText, String invokerUserId, Delivery delivery, Feedback feedback) {
@@ -64,9 +64,14 @@ final class DiscordIngredientLookupWorkflow {
         }
     }
 
-    void navigateSelect(String customId, List<String> values, Delivery delivery, Feedback feedback) {
+    void navigateSelect(String customId, List<String> values, String userId, Delivery delivery, Feedback feedback) {
         try {
-            DiscordIngredientComponentId.validateNavigationSelect(customId);
+            DiscordIngredientComponentId.NavigationSelect navigation =
+                    DiscordIngredientComponentId.parseNavigationSelect(customId);
+            if (!navigation.invokerUserId().equals(userId)) {
+                feedback.staleOrRejected("Diese Zutaten-Card gehört zu einem anderen Nutzer.");
+                return;
+            }
             renderSingleValue(values, delivery, feedback);
         } catch (IllegalArgumentException exception) {
             feedback.staleOrRejected("Diese Zutaten-Navigation ist ungültig oder nicht mehr aktuell.");
