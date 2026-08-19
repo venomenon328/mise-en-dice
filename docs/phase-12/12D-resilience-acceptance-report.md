@@ -267,7 +267,9 @@ Nach 12D-10 und Cleanup:
   - Production App ca. 293,9 MiB / 768 MiB
   - Production PostgreSQL ca. 19,59 MiB / 512 MiB
 - finaler secretfreier Logscan: `SUSPICIOUS_SECRET_LINES=0`
-- der Logscan fand zwei `WARN`/`ERROR`-Zeilen; deren Inhalt wird vor formaler PR-Abnahme noch kurz klassifiziert
+- finaler `WARN`/`ERROR`-Scan ergab genau zwei Startup-Zeilen, beide als nicht blockierend klassifiziert:
+  - PostgreSQL meldete beim ersten Start der frisch zurückgesetzten Acceptance-DB einmalig `relation "public.databasechangeloglock" does not exist`. Der Befund trat im Liquibase-Bootstrapfenster der leeren DB auf; die Migration legte die Metadaten anschließend erfolgreich an, die App wurde gesund und es gab keinen Restart. In diesem Kontext ist die Zeile transientes Bootstrap-Rauschen, kein Persistenzfehler.
+  - Spring Security warnte vor zwei `UserDetailsService`-Beans und deshalb nicht verwendeter globaler Auto-Konfiguration. Die Administration registriert jedoch ihren `DaoAuthenticationProvider` explizit im eigenen `SecurityFilterChain`; der globale Auto-Konfigurationspfad ist nicht die Authentifizierungsautorität. Funktion und Security-Tests blieben grün. Die Zeile ist nicht blockierendes Startup-Rauschen; eine spätere Bereinigung wäre höchstens P3.
 
 Kein OOM, kein Container-Restart, keine auffällige Ressourcensättigung.
 
@@ -300,7 +302,7 @@ Kein OOM, kein Container-Restart, keine auffällige Ressourcensättigung.
 - [x] Reset entfernt ausschließlich Acceptance; Neuaufbau erfolgreich
 - [x] Requestbudget eingehalten
 - [x] keine Secrets, unkontrollierten Requests oder P0/P1-Befunde
-- [ ] finale zwei WARN/ERROR-Logzeilen klassifiziert
+- [x] finale WARN/ERROR-Logzeilen klassifiziert; keine davon blockiert 12D
 
 ## Folgepunkte
 
@@ -308,4 +310,4 @@ Kein OOM, kein Container-Restart, keine auffällige Ressourcensättigung.
 
 ## Abschluss
 
-**12D ist inhaltlich bestanden.** Vor der formalen PR-/Issue-Abnahme ist nur noch die Klassifikation der zwei final gefundenen `WARN`/`ERROR`-Logzeilen offen. Danach kann der Evidenz-PR ohne weitere Live-Providerläufe gemergt und #89 geschlossen werden.
+**12D ist vollständig bestanden.** Die beiden finalen Logzeilen sind als nicht blockierendes Startup-Rauschen klassifiziert. Der Evidenz-PR kann ohne weitere Live-Providerläufe gemergt und #89 geschlossen werden.
