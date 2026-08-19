@@ -4,6 +4,7 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeOfferPreparation
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingCommands;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingQueries;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -35,8 +36,17 @@ class DiscordConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = "mise-en-dice.discord", name = "enabled", havingValue = "true")
+    DiscordIngredientLookupWorkflow discordIngredientLookupWorkflow(DiscordProperties properties,
+                                                                     IngredientLookupQueries ingredientLookupQueries) {
+        properties.validateEnabledConfiguration();
+        return new DiscordIngredientLookupWorkflow(properties, ingredientLookupQueries, new DiscordIngredientLookupRenderer());
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "mise-en-dice.discord", name = "enabled", havingValue = "true")
     DiscordJdaLifecycle discordJdaLifecycle(DiscordProperties properties, DiscordChallengeWorkflow workflow,
+                                            DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
                                             ExecutorService discordChallengeExecutor) {
-        return new DiscordJdaLifecycle(properties, workflow, discordChallengeExecutor);
+        return new DiscordJdaLifecycle(properties, workflow, ingredientLookupWorkflow, discordChallengeExecutor);
     }
 }

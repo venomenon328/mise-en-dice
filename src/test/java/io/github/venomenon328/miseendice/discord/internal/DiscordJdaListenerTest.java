@@ -32,6 +32,36 @@ import org.mockito.InOrder;
 class DiscordJdaListenerTest {
 
     @Test
+    void registersIngredientLookupWithOneRequiredSearchString() {
+        var command = DiscordJdaListener.ingredientCommand();
+
+        assertThat(command.getName()).isEqualTo("zutat");
+        assertThat(command.getOptions()).singleElement().satisfies(option -> {
+            assertThat(option.getName()).isEqualTo("suche");
+            assertThat(option.getType()).isEqualTo(OptionType.STRING);
+            assertThat(option.isRequired()).isTrue();
+        });
+    }
+
+    @Test
+    void rejectsIngredientLookupFromWrongGuildWithoutStartingLookupWork() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var lookupWorkflow = mock(DiscordIngredientLookupWorkflow.class);
+        var event = slashEvent();
+        var reply = mock(ReplyCallbackAction.class);
+        when(event.getName()).thenReturn("zutat");
+        when(lookupWorkflow.accepts(99, "10001")).thenReturn(false);
+        when(event.reply(any(String.class))).thenReturn(reply);
+        when(reply.setEphemeral(true)).thenReturn(reply);
+
+        ingredientListener(challengeWorkflow, lookupWorkflow).onSlashCommandInteraction(event);
+
+        org.mockito.Mockito.verify(event).reply(any(String.class));
+        org.mockito.Mockito.verify(lookupWorkflow, never()).search(any(), any(), any(), any());
+        org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
+    }
+
+    @Test
     void registersRestrictionModeAsTheThreeGermanChoices() {
         var command = DiscordJdaListener.challengeCommand();
         var restriction = command.getOptions().stream()
@@ -186,6 +216,12 @@ class DiscordJdaListenerTest {
     private static DiscordJdaListener listener(DiscordChallengeWorkflow workflow) {
         return new DiscordJdaListener(new DiscordProperties(true, "token", 99, ZoneId.of("Europe/Berlin"),
                 Map.of("GEORGIA", "10001", "TOBIAS", "10002")), workflow, Runnable::run);
+    }
+
+    private static DiscordJdaListener ingredientListener(DiscordChallengeWorkflow challengeWorkflow,
+                                                         DiscordIngredientLookupWorkflow lookupWorkflow) {
+        return new DiscordJdaListener(new DiscordProperties(true, "token", 99, ZoneId.of("Europe/Berlin"),
+                Map.of("GEORGIA", "10001", "TOBIAS", "10002")), challengeWorkflow, lookupWorkflow, Runnable::run);
     }
 
     private static SlashCommandInteractionEvent slashEvent() {
