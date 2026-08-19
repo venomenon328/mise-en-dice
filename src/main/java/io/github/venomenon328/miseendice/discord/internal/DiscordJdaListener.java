@@ -3,10 +3,14 @@ package io.github.venomenon328.miseendice.discord.internal;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.util.List;
 import java.util.concurrent.Executor;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.components.selections.SelectOption;
+import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
@@ -25,11 +29,18 @@ final class DiscordJdaListener extends ListenerAdapter {
     private static final Logger log = LoggerFactory.getLogger(DiscordJdaListener.class);
     private final DiscordProperties properties;
     private final DiscordChallengeWorkflow workflow;
+    private final DiscordIngredientLookupWorkflow ingredientLookupWorkflow;
     private final Executor executor;
 
     DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow, Executor executor) {
+        this(properties, workflow, null, executor);
+    }
+
+    DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow,
+                       DiscordIngredientLookupWorkflow ingredientLookupWorkflow, Executor executor) {
         this.properties = properties;
         this.workflow = workflow;
+        this.ingredientLookupWorkflow = ingredientLookupWorkflow;
         this.executor = executor;
     }
 
@@ -42,6 +53,10 @@ final class DiscordJdaListener extends ListenerAdapter {
         }
         guild.upsertCommand(challengeCommand())
                 .queue(null, failure -> log.warn("Discord slash command registration failed", failure));
+        if (ingredientLookupWorkflow != null) {
+            guild.upsertCommand(ingredientCommand())
+                    .queue(null, failure -> log.warn("Discord ingredient lookup command registration failed", failure));
+        }
     }
 
     static SlashCommandData challengeCommand() {
@@ -54,8 +69,17 @@ final class DiscordJdaListener extends ListenerAdapter {
                         .addChoice("erzwingen", RestrictionMode.REQUIRED.name()));
     }
 
+    static SlashCommandData ingredientCommand() {
+        return Commands.slash("zutat", "Aktive Zutat im Katalog nachschlagen")
+                .addOption(OptionType.STRING, "suche", "Name der Zutat", true);
+    }
+
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        if ("zutat".equals(event.getName())) {
+            ingredientSlash(event);
+            return;
+        }
         if (!"challenge".equals(event.getName())) {
             return;
         }
@@ -82,6 +106,26 @@ final class DiscordJdaListener extends ListenerAdapter {
                 failure -> log.warn("Discord slash acknowledgement failed", failure));
     }
 
+    private void ingredientSlash(SlashCommandInteractionEvent event) {
+        if (ingredientLookupWorkflow == null) {
+            return;
+        }
+        if (!ingredientLookupWorkflow.accepts(event.getGuild() == null ? 0 : event.getGuild().getIdLong(), event.getUser().getId())) {
+            event.reply("Dieser Command ist nur für die konfigurierte Challenge-Gilde und ihre Teilnehmer verfügbar.")
+                    .setEphemeral(true).queue();
+            return;
+        }
+        OptionMapping option = event.getOption("suche");
+        String searchText = option == null ? "" : option.getAsString();
+        if (searchText.strip().isEmpty()) {
+            event.reply("`suche` darf nicht leer sein.").setEphemeral(true).queue();
+            return;
+        }
+        event.deferReply().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.search(searchText, event.getUser().getId(),
+                new HookIngredientDelivery(hook, executor), new HookIngredientFeedback(hook))),
+                failure -> log.warn("Discord ingredient lookup acknowledgement failed", failure));
+    }
+
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
         if (!event.getComponentId().startsWith("med:")) {
@@ -95,6 +139,23 @@ final class DiscordJdaListener extends ListenerAdapter {
         event.deferEdit().queue(hook -> executor.execute(() -> workflow.component(event.getComponentId(), event.getUser().getId(),
                 memberNames(guild), new HookDelivery(hook, executor), new HookFeedback(hook))),
                 failure -> log.warn("Discord component acknowledgement failed", failure));
+    }
+
+    @Override
+    public void onStringSelectInteraction(StringSelectInteractionEvent event) {
+        if (!event.getComponentId().startsWith("med:v1:ingredient:")) {
+            return;
+        }
+        if (ingredientLookupWorkflow == null) {
+            return;
+        }
+        if (!ingredientLookupWorkflow.accepts(event.getGuild() == null ? 0 : event.getGuild().getIdLong(), event.getUser().getId())) {
+            event.reply("Diese Zutaten-Auswahl ist hier nicht erlaubt.").setEphemeral(true).queue();
+            return;
+        }
+        event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.component(event.getComponentId(), event.getValues(),
+                event.getUser().getId(), new HookIngredientDelivery(hook, executor), new HookIngredientFeedback(hook))),
+                failure -> log.warn("Discord ingredient selection acknowledgement failed", failure));
     }
 
     private boolean accepts(long guildId, String userId) {
@@ -134,6 +195,22 @@ final class DiscordJdaListener extends ListenerAdapter {
         }
     }
 
+    private static final class HookIngredientDelivery implements DiscordIngredientLookupWorkflow.Delivery {
+        private final net.dv8tion.jda.api.interactions.InteractionHook hook;
+        private final Executor executor;
+
+        private HookIngredientDelivery(net.dv8tion.jda.api.interactions.InteractionHook hook, Executor executor) {
+            this.hook = hook;
+            this.executor = executor;
+        }
+
+        @Override
+        public void replace(DiscordIngredientLookupRenderer.RenderedResponse response, Runnable delivered,
+                            java.util.function.Consumer<Throwable> failed) {
+            hook.editOriginal(ingredientMessage(response)).queue(ignored -> executor.execute(delivered), failed);
+        }
+    }
+
     private static final class HookFeedback implements DiscordChallengeWorkflow.Feedback {
         private final net.dv8tion.jda.api.interactions.InteractionHook hook;
 
@@ -159,11 +236,55 @@ final class DiscordJdaListener extends ListenerAdapter {
         }
     }
 
+    private static final class HookIngredientFeedback implements DiscordIngredientLookupWorkflow.Feedback {
+        private final net.dv8tion.jda.api.interactions.InteractionHook hook;
+
+        private HookIngredientFeedback(net.dv8tion.jda.api.interactions.InteractionHook hook) {
+            this.hook = hook;
+        }
+
+        @Override
+        public void staleOrRejected(String message) {
+            hook.sendMessage(message).setEphemeral(true).queue();
+        }
+
+        @Override
+        public void technicalFailure(Throwable exception) {
+            log.error("Discord ingredient lookup interaction failed", exception);
+            hook.sendMessage("Die Zutatenabfrage konnte technisch nicht verarbeitet werden. Bitte später erneut versuchen.")
+                    .setEphemeral(true).queue();
+        }
+    }
+
     private static List<ActionRow> rows(List<DiscordChallengeRenderer.Component> components) {
         if (components.isEmpty()) {
             return List.of();
         }
         return List.of(ActionRow.of(components.stream()
                 .map(component -> Button.primary(component.customId(), component.label())).toList()));
+    }
+
+    static net.dv8tion.jda.api.utils.messages.MessageEditData ingredientMessage(
+            DiscordIngredientLookupRenderer.RenderedResponse response) {
+        MessageEditBuilder builder = new MessageEditBuilder().setAllowedMentions(List.of());
+        if (response instanceof DiscordIngredientLookupRenderer.RenderedText text) {
+            return builder.setContent(text.content()).setEmbeds(List.of()).setComponents(List.of()).build();
+        }
+        if (response instanceof DiscordIngredientLookupRenderer.RenderedSelection selection) {
+            StringSelectMenu menu = StringSelectMenu.create(selection.customId())
+                    .setPlaceholder("Zutat auswählen")
+                    .setRequiredRange(1, 1)
+                    .addOptions(selection.options().stream().map(option -> {
+                        SelectOption selectOption = SelectOption.of(option.label(), option.value());
+                        return option.description() == null ? selectOption : selectOption.withDescription(option.description());
+                    }).toList())
+                    .build();
+            return builder.setContent(selection.content()).setEmbeds(List.of())
+                    .setComponents(List.of(ActionRow.of(menu))).build();
+        }
+        DiscordIngredientLookupRenderer.RenderedEmbed embed = (DiscordIngredientLookupRenderer.RenderedEmbed) response;
+        EmbedBuilder embedBuilder = new EmbedBuilder().setTitle(embed.title());
+        embed.fields().forEach(field -> embedBuilder.addField(field.name(), field.value(), false));
+        return builder.setContent("").setEmbeds(List.of(embedBuilder.build())).setComponents(List.of()).build();
     }
 }

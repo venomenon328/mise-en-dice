@@ -555,6 +555,16 @@ Issue #97 reduziert den Generator auf die aktuelle 1.2-Architektur:
 Erst danach ergänzt Issue #94 Command-Option, Darstellung und dünne Discord-Adapterintegration. Dieser Schritt ist
 nicht Teil von Issue #97.
 
+### Phase 12D.5: Lesende Discord-Zutatenabfrage (Issue #108)
+
+Vor dem privaten Produktionspilot ergänzt Issue #108 den zusätzlichen Guild-Command `/zutat suche:<Suchtext>` als
+rein lesenden, invokergebundenen Discord-Ablauf. Die kleine öffentliche `catalog :: api`-Projektion durchsucht nur
+aktive sichtbare Namen literaler, case-insensitiver Teilstringsuche und liefert ausschließlich die freigegebenen
+aktuellen Profildaten mit direkten aktiven Beziehungen. Exakte Treffer und einzelne Teilstringtreffer werden sofort
+als kompaktes Embed angezeigt; sonst bleiben höchstens 25 priorisierte Optionen in einem stateless String-Select
+öffentlich sichtbar. Weder der bestehende `/challenge`-Flow noch Generator, Kurator, Voting, Audit, Persistenz oder
+OpenAI werden dadurch berührt.
+
 ### Phase 12B–12E: Manuelle Inbetriebnahme, Abnahme und Pilot (Issues #87–#90)
 
 Die folgenden Pakete führen erst nach der isolierten 12A-Basis manuelle Discord-/OpenAI-Smokes, die vollständigen

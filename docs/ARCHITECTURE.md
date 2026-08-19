@@ -158,7 +158,7 @@ Das Discord-Modul übersetzt Discord-Interaktionen in Application-Commands und s
 
 Der bestehende Gridwords-Bot wird nicht wiederverwendet. Mise en Dice erhält einen eigenständigen Discord-Bot-Adapter.
 
-Der Adapter ist standardmäßig deaktiviert. Bei Aktivierung kapselt er JDA, Gateway-Lifecycle, Guild-Command-Registrierung, Interaktions-Acknowledgements und Renderer vollständig im `discord`-Modul; es verwendet ausschließlich `challenge :: api`. Vor der sichtbaren Vote-Aktivierung meldet er die erfolgreiche Auslieferung an den Phase-11B-Presentation-Handshake zurück. Discord-IDs bleiben opake externe Subjects, nicht Teil des Challenge-Modells.
+Der Adapter ist standardmäßig deaktiviert. Bei Aktivierung kapselt er JDA, Gateway-Lifecycle, Guild-Command-Registrierung, Interaktions-Acknowledgements und Renderer vollständig im `discord`-Modul. Für den Challenge-Lifecycle verwendet er ausschließlich `challenge :: api`; die rein lesende Zutatenabfrage verwendet zusätzlich die schmale `catalog :: api`-Projektion `IngredientLookupQueries`. Sie liefert nur aktive Namenssuche und freigegebene aktuelle Profildaten, niemals Administrationsdetails oder Schreibzugriffe. Vor der sichtbaren Vote-Aktivierung meldet der Challenge-Pfad die erfolgreiche Auslieferung an den Phase-11B-Presentation-Handshake zurück. Discord-IDs bleiben opake externe Subjects, nicht Teil des Challenge-Modells.
 
 ### 4.5 `bootstrap`
 
@@ -169,7 +169,7 @@ Das Bootstrap-Paket enthält den Anwendungseinstieg und technische Konfiguration
 Folgende Regeln werden durch Struktur, Sichtbarkeit und Spring-Modulith-Tests abgesichert:
 
 1. Adapter verwenden öffentliche Application-APIs und keine internen Persistence-Klassen.
-2. Das Challenge-Modul darf die öffentliche Katalog-API verwenden; das Katalogmodul kennt das Challenge-Modul nicht.
+2. Das Challenge-Modul und die lesende Discord-Zutatenabfrage dürfen die jeweils passende öffentliche Katalog-API verwenden; das Katalogmodul kennt weder Challenge noch Discord.
 3. Fachlogik kennt weder HTTP-, Discord- noch OpenAI-spezifische Transportobjekte.
 4. Domain- und Application-Code hängt nicht von Thymeleaf, JDA oder konkreten API-Clients ab.
 5. Ausgehende Netzwerkaufrufe erfolgen nicht innerhalb offener Datenbanktransaktionen.

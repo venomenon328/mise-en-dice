@@ -1,0 +1,102 @@
+package io.github.venomenon328.miseendice.catalog.api;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+
+/**
+ * Public, read-only projection for the private Discord ingredient lookup.
+ *
+ * <p>This deliberately exposes neither catalog administration details nor write operations.
+ * All returned relationships are direct, current catalog values.</p>
+ */
+public interface IngredientLookupQueries {
+
+    IngredientLookupSearchResult searchActiveByDisplayName(String searchText, int limit);
+
+    Optional<IngredientLookupProfile> findActiveProfile(long conceptId);
+
+    record IngredientLookupSearchResult(String searchText, List<IngredientLookupMatch> matches, long totalMatches) {
+
+        public IngredientLookupSearchResult {
+            searchText = normalize(searchText);
+            matches = List.copyOf(matches);
+            if (totalMatches < matches.size()) {
+                throw new IllegalArgumentException("totalMatches must include every returned match");
+            }
+        }
+
+        public boolean hasMoreMatches() {
+            return totalMatches > matches.size();
+        }
+    }
+
+    record IngredientLookupMatch(long conceptId, String displayName, List<String> activeDirectParents) {
+
+        public IngredientLookupMatch {
+            positiveId(conceptId);
+            displayName = required(displayName, "displayName");
+            activeDirectParents = List.copyOf(activeDirectParents);
+        }
+    }
+
+    record IngredientLookupProfile(
+            long conceptId,
+            String displayName,
+            boolean randomDrawEnabled,
+            BigDecimal baseDrawWeight,
+            Integer noveltyLevel,
+            List<String> activeDirectParents,
+            List<String> activeDirectChildren,
+            List<String> functionalRoles,
+            List<String> culinaryFlags,
+            List<IngredientLookupDimension> culinaryDimensions,
+            String curatorNote
+    ) {
+
+        public IngredientLookupProfile {
+            positiveId(conceptId);
+            displayName = required(displayName, "displayName");
+            if (baseDrawWeight == null) {
+                throw new IllegalArgumentException("baseDrawWeight is required");
+            }
+            if (noveltyLevel != null && (noveltyLevel < 1 || noveltyLevel > 5)) {
+                throw new IllegalArgumentException("noveltyLevel must be between 1 and 5");
+            }
+            activeDirectParents = List.copyOf(activeDirectParents);
+            activeDirectChildren = List.copyOf(activeDirectChildren);
+            functionalRoles = List.copyOf(functionalRoles);
+            culinaryFlags = List.copyOf(culinaryFlags);
+            culinaryDimensions = List.copyOf(culinaryDimensions);
+        }
+    }
+
+    record IngredientLookupDimension(String code, String displayName, int level) {
+
+        public IngredientLookupDimension {
+            code = required(code, "code");
+            displayName = required(displayName, "displayName");
+            if (level < 1 || level > 5) {
+                throw new IllegalArgumentException("level must be between 1 and 5");
+            }
+        }
+    }
+
+    static String normalize(String value) {
+        return value == null ? "" : value.strip().toLowerCase(Locale.ROOT);
+    }
+
+    private static String required(String value, String name) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(name + " is required");
+        }
+        return value;
+    }
+
+    private static void positiveId(long value) {
+        if (value <= 0) {
+            throw new IllegalArgumentException("conceptId must be positive");
+        }
+    }
+}

@@ -40,4 +40,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Die produktionsnahe Live-Abnahme aus Phase 12A bis 12D ist abgeschlossen. Vor dem privaten Produktionspilot aus Phase 12E / Issue #90 folgt als bewusst kleines Zwischenpaket Issue #108: eine rein lesende Discord-Zutatenabfrage über eine schmale `catalog :: api`-Projektion. Entwicklung und automatisierte Tests bleiben vollständig ohne echte Discord- oder OpenAI-Verbindungen.
+Die produktionsnahe Live-Abnahme aus Phase 12A bis 12D und die lesende Discord-Zutatenabfrage aus Issue #108 sind abgeschlossen. Als Nächstes folgt Phase 12E / Issue #90 mit dem privaten Produktionspilot und der dokumentierten Go/No-Go-Entscheidung. Entwicklung und automatisierte Tests bleiben weiterhin vollständig ohne echte Discord- oder OpenAI-Verbindungen.

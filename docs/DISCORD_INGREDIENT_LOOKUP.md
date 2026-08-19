@@ -180,6 +180,7 @@ Die verbale Bezeichnung bleibt zusätzlich zur Symbolskala sichtbar. Emoji sind 
 - Bitterkeit: `☕`
 - Fettigkeit: `🧈`
 - Schärfe: `🌶️`
+- Salzigkeit: `🧂`
 - Umami: `🍄`
 - unbesetzte Position: ein einheitliches zurückhaltendes leeres Symbol, bevorzugt `▫`
 
