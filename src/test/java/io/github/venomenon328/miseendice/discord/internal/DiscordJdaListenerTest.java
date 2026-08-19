@@ -204,7 +204,7 @@ class DiscordJdaListenerTest {
             var option = mock(OptionMapping.class);
             acknowledgement(event);
             when(event.getOption("angebote")).thenReturn(option);
-            when(option.getAsInt()).thenReturn(offerCount);
+            when(offers.getAsInt()).thenReturn(offerCount);
 
             listener(workflow).onSlashCommandInteraction(event);
 
@@ -297,7 +297,7 @@ class DiscordJdaListenerTest {
         listener(workflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event).reply(any(String.class));
-        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any(), any(), any());
+        org.mockito.Mockito.verify(workflow, never()).start(org.mockito.ArgumentMatchers.anyInt(), any(), any(), any(), any());
     }
 
     @Test
@@ -311,7 +311,7 @@ class DiscordJdaListenerTest {
         listener(workflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event).reply(any(String.class));
-        org.mockito.Mockito.verify(workflow, never()).start(any(Integer.class), any(), any(), any(), any());
+        org.mockito.Mockito.verify(workflow, never()).start(org.mockito.ArgumentMatchers.anyInt(), any(), any(), any(), any());
     }
 
     @Test
