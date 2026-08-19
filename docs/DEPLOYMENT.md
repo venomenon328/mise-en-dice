@@ -1,6 +1,6 @@
 # Deployment und Branch-Previews
 
-Stand: 18. August 2026
+Stand: 19. August 2026
 
 Dieses Dokument beschreibt den Betrieb von Mise en Dice auf einem einzelnen Debian-/Docker-VPS. Der bestehende Gridwords-Stack bleibt ein vollständig getrenntes Compose-Projekt. Mise en Dice kennt weder dessen Dateien noch Container, Netzwerke oder Volumes.
 
@@ -263,10 +263,13 @@ Produktionsinstanz übernommen, niemals in Acceptance, Previews oder den Produkt
 mise-en-dice.discord.enabled=true
 mise-en-dice.discord.token=BOT_TOKEN_AUSSERHALB_DES_REPOSITORIES
 mise-en-dice.discord.guild-id=DEINE_PRIVATE_GUILD_ID
+mise-en-dice.discord.challenge-operator-role-id=CHALLENGE_OPERATOR_ROLE_ID
 mise-en-dice.discord.effective-date-zone=Europe/Berlin
 mise-en-dice.discord.participant-user-ids.GEORGIA=DISCORD_USER_ID
 mise-en-dice.discord.participant-user-ids.TOBIAS=DISCORD_USER_ID
 ```
+
+`challenge-operator-role-id` ist die ID einer normalen Discord-Rolle, deren Mitglieder `/challenge` starten dürfen. Sie benötigt keine Discord-`Administrator`-Berechtigung und ist fachlich unabhängig von `participant-user-ids`: Ein gemappter Challenge-Teilnehmer darf den Command ohne diese Rolle nicht starten; ein Rollenmitglied muss umgekehrt nicht selbst zum Electorate gehören. Für den privaten Pilot kann die Rolle daher problemlos nur Tobias zugewiesen werden. `/zutat` bleibt für jedes Mitglied der konfigurierten Guild nutzbar.
 
 Zusätzlich kann `/opt/mise-en-dice/runtime/openai.properties` angelegt werden (`chmod 0600`):
 
@@ -278,9 +281,11 @@ mise-en-dice.curation.openai.reasoning-effort=medium
 ```
 
 Die Dateien sind optional; vorhandene Installationen benötigen weder eine neue Datei noch `init --force`. Ohne sie
-bleiben die jeweiligen Adapter deaktiviert. Aktiviert `openai.properties` den Kurator, setzt der Operator das
-`production`-Profil explizit. `acceptance.properties` wird nie in Produktion übernommen. Tokens, API-Keys und IDs
-gehören weder in `.env`, Commit, Statusausgabe noch Logs.
+bleiben die jeweiligen Adapter deaktiviert. Sobald `discord.properties` Discord aktiviert, sind Token, Guild-ID,
+Challenge-Operator-Rollen-ID sowie die derzeit benötigten Georgia-/Tobias-Participant-Mappings vollständig zu setzen.
+Aktiviert `openai.properties` den Kurator, setzt der Operator das `production`-Profil explizit.
+`acceptance.properties` wird nie in Produktion übernommen. Tokens, API-Keys und IDs gehören weder in `.env`, Commit,
+Statusausgabe noch Logs.
 
 Vor dem eigentlichen Umschalten führt der Operator einen vollständigen Smoke-Test des gebauten Images mit einer frischen temporären PostgreSQL-Datenbank aus. Existiert bereits eine Produktion, wird danach automatisch ein validiertes Backup erzeugt. Erst dann wird das feste Projekt `med-production` aktualisiert.
 
@@ -312,6 +317,7 @@ Die Datei `/opt/mise-en-dice/runtime/acceptance.properties` ist verpflichtend, r
 mise-en-dice.discord.enabled=true
 mise-en-dice.discord.token=ACCEPTANCE_TESTBOT_TOKEN
 mise-en-dice.discord.guild-id=ACCEPTANCE_GUILD_ID
+mise-en-dice.discord.challenge-operator-role-id=ACCEPTANCE_CHALLENGE_OPERATOR_ROLE_ID
 mise-en-dice.discord.effective-date-zone=Europe/Berlin
 mise-en-dice.discord.participant-user-ids.GEORGIA=ACCEPTANCE_GEORGIA_ID
 mise-en-dice.discord.participant-user-ids.TOBIAS=ACCEPTANCE_TOBIAS_ID
@@ -322,7 +328,7 @@ mise-en-dice.curation.openai.model=gpt-5.6-terra
 mise-en-dice.curation.openai.reasoning-effort=medium
 ```
 
-Die Discord-Guild-/User-IDs müssen positiv sein; die IDs von `GEORGIA` und `TOBIAS` müssen verschieden sein. Für
+Die Discord-Guild-, Rollen- und User-IDs müssen positiv sein; die IDs von `GEORGIA` und `TOBIAS` müssen verschieden sein. Die Operator-Rolle steuert ausschließlich den Start von `/challenge`, nicht das Electorate. Für
 einen rein technischen, providerfreien Betriebscheck können beide Adapter explizit deaktiviert werden; Token und
 API-Key dürfen dann nicht in der Datei stehen:
 
@@ -332,7 +338,7 @@ mise-en-dice.curation.openai.enabled=false
 ```
 
 Vor jedem Live-Deployment führt der Operator die secretfreie Prüfung aus. Sie lehnt unsichere Dateien, unvollständige
-Aktivierung, ungültige IDs, Portkollisionen und gleiche Acceptance-/Produktions-Token beziehungsweise API-Keys ab,
+Aktivierung, ungültige Guild-/Rollen-/User-IDs, Portkollisionen und gleiche Acceptance-/Produktions-Token beziehungsweise API-Keys ab,
 bevor Docker gestartet wird:
 
 ```bash
