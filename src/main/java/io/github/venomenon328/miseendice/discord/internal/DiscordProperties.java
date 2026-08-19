@@ -9,9 +9,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /** External, optional Discord transport configuration. */
 @ConfigurationProperties(prefix = "mise-en-dice.discord")
-record DiscordProperties(boolean enabled, String token, long guildId, ZoneId effectiveDateZone,
-                         Map<String, String> participantUserIds) {
+record DiscordProperties(boolean enabled, String token, long guildId, long challengeOperatorRoleId,
+                         ZoneId effectiveDateZone, Map<String, String> participantUserIds) {
     static final String PROVIDER = "discord";
+
+    DiscordProperties(boolean enabled, String token, long guildId, ZoneId effectiveDateZone,
+                      Map<String, String> participantUserIds) {
+        this(enabled, token, guildId, 0, effectiveDateZone, participantUserIds);
+    }
 
     DiscordProperties {
         effectiveDateZone = effectiveDateZone == null ? ZoneId.of("Europe/Berlin") : effectiveDateZone;
@@ -27,6 +32,9 @@ record DiscordProperties(boolean enabled, String token, long guildId, ZoneId eff
         }
         if (guildId <= 0) {
             throw new IllegalStateException("mise-en-dice.discord.guild-id is required when Discord is enabled");
+        }
+        if (challengeOperatorRoleId <= 0) {
+            throw new IllegalStateException("mise-en-dice.discord.challenge-operator-role-id is required when Discord is enabled");
         }
         for (String code : java.util.List.of("GEORGIA", "TOBIAS")) {
             String userId = participantUserIds.get(code);
