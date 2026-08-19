@@ -128,10 +128,6 @@ final class DiscordJdaListener extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
-        if (DiscordIngredientComponentId.isNavigationButton(event.getComponentId())) {
-            ingredientNavigationButton(event);
-            return;
-        }
         if (!event.getComponentId().startsWith("med:")) {
             return;
         }
@@ -143,19 +139,6 @@ final class DiscordJdaListener extends ListenerAdapter {
         event.deferEdit().queue(hook -> executor.execute(() -> workflow.component(event.getComponentId(), event.getUser().getId(),
                 memberNames(guild), new HookDelivery(hook, executor), new HookFeedback(hook))),
                 failure -> log.warn("Discord component acknowledgement failed", failure));
-    }
-
-    private void ingredientNavigationButton(ButtonInteractionEvent event) {
-        if (ingredientLookupWorkflow == null) {
-            return;
-        }
-        if (!ingredientLookupWorkflow.accepts(event.getGuild() == null ? 0 : event.getGuild().getIdLong(), event.getUser().getId())) {
-            event.reply("Diese Zutaten-Navigation ist hier nicht erlaubt.").setEphemeral(true).queue();
-            return;
-        }
-        event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.navigateButton(event.getComponentId(),
-                new HookIngredientDelivery(hook, executor), new HookIngredientFeedback(hook))),
-                failure -> log.warn("Discord ingredient navigation acknowledgement failed", failure));
     }
 
     @Override
@@ -311,10 +294,6 @@ final class DiscordJdaListener extends ListenerAdapter {
 
     private static List<ActionRow> ingredientRows(List<DiscordIngredientLookupRenderer.NavigationRow> rows) {
         return rows.stream().map(row -> {
-            if (row instanceof DiscordIngredientLookupRenderer.NavigationButtonRow buttons) {
-                return ActionRow.of(buttons.buttons().stream()
-                        .map(button -> Button.secondary(button.customId(), button.label())).toList());
-            }
             DiscordIngredientLookupRenderer.NavigationSelectRow select =
                     (DiscordIngredientLookupRenderer.NavigationSelectRow) row;
             return ActionRow.of(selectMenu(select.customId(), select.placeholder(), select.options()));

@@ -2,7 +2,7 @@
 
 Stand: 19. August 2026
 
-Dieses Dokument beschreibt den verbindlichen Fach- und Adaptervertrag der mit Issue #108 eingeführten Discord-Zutatenabfrage einschließlich des UX-Follow-ups aus Issue #111.
+Dieses Dokument beschreibt den verbindlichen Fach- und Adaptervertrag der mit Issue #108 eingeführten Discord-Zutatenabfrage einschließlich der UX-Follow-ups aus Issues #111 und #113.
 
 ## 1. Ziel und Grundsatz
 
@@ -124,7 +124,7 @@ Das fertige Profil ist ein kompaktes Discord-Embed mit einer festen zurückhalte
 5. optional `💡 Hinweis aus dem Zutatenkatalog`,
 6. `⬆️ Allgemeinere Begriffe`,
 7. `⬇️ Bekannte Konkretisierungen`,
-8. direkt unter dem Embed die Navigationselemente für vorhandene direkte Beziehungen.
+8. direkt unter dem Embed die String-Select-Navigation für vorhandene direkte Beziehungen.
 
 Die beiden Inline-Felder werden nicht durch Leerzeichen oder Tabulatoren als Texttabelle simuliert. Lange Werte im linken Feld verschieben daher die rechte Spalte nicht. Mehrere Werte stehen innerhalb ihres Feldes untereinander; leere Listen erscheinen als `keine`. Auf schmalen Clients darf Discord die Felder untereinander stapeln.
 
@@ -190,20 +190,27 @@ Es gibt ausdrücklich:
 - keine neue Persistenz, Session oder Message-State-Tabelle,
 - keine technische ID im sichtbaren Discord-Text.
 
-Ein Klick ersetzt dieselbe öffentliche Nachricht durch die aktuelle Card des Zielkonzepts. Wurde das Ziel inzwischen deaktiviert oder entfernt, wird die bestehende sichere Stale-Antwort angezeigt.
+Eine Auswahl ersetzt dieselbe öffentliche Nachricht durch die aktuelle Card des Zielkonzepts. Wurde das Ziel inzwischen deaktiviert oder entfernt, wird die bestehende sichere Stale-Antwort angezeigt.
 
 Die Navigation ist nicht an den ursprünglichen `/zutat`-Aufrufer gebunden. Jeder konfigurierte Teilnehmer derselben Guild darf eine sichtbare Zutaten-Card weiter navigieren. Die Invoker-Bindung der initialen Mehrdeutigkeitsauswahl bleibt davon unberührt.
 
-### Komponentenwahl
+### Einheitliche Komponentenwahl
 
-Die Navigation wird für Eltern und Kinder getrennt gerendert:
+Die Navigation wird für Eltern und Kinder getrennt und ausschließlich als String Select gerendert:
 
-- 1 bis 4 Ziele: neutrale/sekundäre Buttons,
-- ab 5 Zielen: ein String Select für diese Richtung,
+- mindestens 1 Ziel: genau ein String Select für diese Richtung,
 - keine Beziehung: kein Navigationselement,
-- maximal 25 Selectoptionen.
+- maximal 25 Optionen pro Select,
+- auch genau ein Ziel wird bewusst als einoptioniges Select dargestellt.
 
-Bei mehr als 25 direkten Zielen werden die ersten 25 der stabilen alphabetischen Reihenfolge angeboten. Die Card nennt die exakte Restanzahl und verweist für weitere Ziele auf `/zutat`. Lange Anzeigenamen werden innerhalb der Discord-Grenzen sichtbar mit Ellipse gekürzt; der interne Wert bleibt die Konzept-ID.
+Verbindliche Platzhalter:
+
+```text
+⬆️ Allgemeineren Begriff öffnen …
+⬇️ Konkretisierung öffnen …
+```
+
+Bei mehr als 25 direkten Zielen werden die ersten 25 der stabilen alphabetischen Reihenfolge angeboten. Die Card nennt die exakte Restanzahl und verweist für weitere Ziele auf `/zutat`. Lange Anzeigenamen werden innerhalb der Discord-Grenzen sichtbar mit Ellipse gekürzt; bei nach der Kürzung identischen Labels werden sichtbare Ordinal-Suffixe ergänzt. Der interne Option-Value bleibt die Konzept-ID.
 
 Component-IDs und Values bleiben versioniert, strikt parsebar und vollständig stateless. Vorhandene Navigation funktioniert damit nach einem App-Restart weiter, sofern das Ziel weiterhin aktiv ist.
 
@@ -213,7 +220,7 @@ Discord-Grenzen werden vor dem Senden deterministisch eingehalten. Eine überlan
 
 - Lange Listen werden an semantischen Grenzen gekürzt.
 - Jede Kürzung nennt sichtbar die Restmenge beziehungsweise Zeichenmenge.
-- Navigation wird auf die dokumentierten Button-/Select-Grenzen beschränkt.
+- Navigation wird auf maximal 25 Optionen je Richtung beschränkt.
 - Die Hierarchiefelder bleiben auch bei langen Kuratornotizen erhalten.
 - Die gesamte Card bleibt innerhalb der Embed-, Field-, Component-, Label- und `custom_id`-Grenzen.
 
@@ -226,7 +233,7 @@ Discord-Grenzen werden vor dem Senden deterministisch eingehalten. Eine überlan
 - Keine Schreibtransaktion und kein Katalogaudit durch Suche, Detailanzeige oder Navigation.
 - Der bestehende `/challenge`-Flow bleibt unverändert.
 
-`DiscordIngredientLookupRenderer` besitzt ein transportneutrales Render-Modell für Embed-Description, Inline-Felder und Navigation. Erst `DiscordJdaListener` mappt dieses Modell auf JDA-Embeds, sekundäre Buttons und String Selects.
+`DiscordIngredientLookupRenderer` besitzt ein transportneutrales Render-Modell für Embed-Description, Inline-Felder und String-Select-Navigation. Erst `DiscordJdaListener` mappt dieses Modell auf JDA-Embeds und native String Selects. Zutaten-Navigationsbuttons existieren nicht.
 
 ## 12. Fehlerdarstellung und Verifikation
 
@@ -240,11 +247,12 @@ Automatisierte Tests decken mindestens ab:
 - native Inline-Felder mit langen linken Inhalten,
 - verbale Stufen, `○`-Leersymbol und exakt fünf Skalenpositionen,
 - Kuratornotiz- und Längenbegrenzung,
-- 1..4 Beziehungen als Buttons, ab 5 als Select, mehr als 25 mit sichtbarer Restanzahl,
+- 1 bis 25 Beziehungen als Select, leere Richtungen ohne Navigation, mehr als 25 mit sichtbarer Restanzahl,
+- getrennte Eltern-/Kind-Selects mit den verbindlichen Platzhaltern,
 - direkte Navigation per Konzept-ID ohne Namenssuche,
 - Stale-Verhalten nach Deaktivierung,
 - stateless Component-Parsing,
-- JDA-Routing der Zutaten-Navigation vor dem generischen Challenge-Buttonpfad,
+- JDA-Routing der Zutaten-Navigation als String Select,
 - bestehende `/zutat`-Suche und `/challenge`-Regressionen.
 
 Verpflichtendes Gate:
@@ -262,6 +270,7 @@ Automatisierte Tests und Entwicklung öffnen weder eine echte Discord-Verbindung
 - Autocomplete oder freie Filter,
 - transitive Hierarchienavigation,
 - Vor-/Zurück-History innerhalb Discord,
+- Navigation in neuen Discord-Nachrichten,
 - Pagination großer Hierarchien,
 - Saison- oder Beschaffbarkeitsauskunft,
 - Rollen- oder Eigenschaftsvererbung,
@@ -269,4 +278,4 @@ Automatisierte Tests und Entwicklung öffnen weder eine echte Discord-Verbindung
 - Änderung des bestehenden Challenge-Lifecycles,
 - Vorziehen persönlicher Konkretisierungen, Zusatz-Zutaten, Kochpläne, Fotos oder Ergebnisdokumentation.
 
-Nach vollständiger Umsetzung und Live-Abnahme von #111 kann Phase 12E / #90 mit dem privaten Produktionspilot beginnen.
+Nach vollständiger Umsetzung und Live-Abnahme von #113 kann Phase 12E / #90 mit dem privaten Produktionspilot beginnen.

@@ -85,20 +85,16 @@ class DiscordIngredientLookupWorkflowTest {
     @Test
     void hierarchyNavigationLoadsTheConceptIdDirectlyWithoutAnyNameSearchOrInvokerBinding() {
         var queries = new FakeQueries();
-        queries.profiles.put(8L, profile(8, "Sojaprodukt"));
+        queries.profiles.put(9L, profile(9, "Tempeh"));
         var workflow = workflow(queries);
         var delivery = new CapturingDelivery();
         var feedback = new CapturingFeedback();
 
-        workflow.navigateButton(DiscordIngredientComponentId.navigationButton(8), delivery, feedback);
-        assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedEmbed.class);
-        assertThat(queries.profileLookups).containsExactly(8L);
-        assertThat(queries.searchCalls).isZero();
-
-        queries.profiles.put(9L, profile(9, "Tempeh"));
         workflow.navigateSelect(DiscordIngredientComponentId.navigationSelect("child"),
                 List.of(DiscordIngredientComponentId.conceptValue(9)), delivery, feedback);
-        assertThat(queries.profileLookups).containsExactly(8L, 9L);
+
+        assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedEmbed.class);
+        assertThat(queries.profileLookups).containsExactly(9L);
         assertThat(queries.searchCalls).isZero();
         assertThat(feedback.messages).isEmpty();
     }
@@ -110,7 +106,8 @@ class DiscordIngredientLookupWorkflowTest {
         var delivery = new CapturingDelivery();
         var feedback = new CapturingFeedback();
 
-        workflow.navigateButton(DiscordIngredientComponentId.navigationButton(77), delivery, feedback);
+        workflow.navigateSelect(DiscordIngredientComponentId.navigationSelect("parent"),
+                List.of(DiscordIngredientComponentId.conceptValue(77)), delivery, feedback);
         assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedText.class);
         assertThat(((DiscordIngredientLookupRenderer.RenderedText) delivery.response).content()).contains("nicht mehr aktuell");
 
