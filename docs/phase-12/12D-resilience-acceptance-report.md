@@ -36,6 +36,13 @@ Unmittelbar vor dem Idle-Restart war Acceptance nach acht Minuten Laufzeit `runn
 
 Aus 12C ist bewusst noch genau eine wartende fachliche Runde vorhanden: `selection_voting_round.id=5`, Session `4`, Runde `2`, Offer-Set `5`, Status `OPEN`, Apply-State `PENDING`, ohne Ergebnis. Das ist die in 12C dokumentierte nicht mehr abgeschlossene Session-D-Runde. Sie ist ein persistierter, auf Nutzereingabe wartender Zustand und kein laufender Generator-/Providerprozess. 12D-01 wird deshalb als **prozess-idler Restart mit transparent dokumentiertem dormant User-State** ausgeführt. Der streng sichtbare Open-Round-Restart aus 12D-02 wird separat mit einer neuen Session getestet, da die alte Discord-Nachricht aus Session D nicht mehr zur Verfügung steht.
 
+### Beobachtung 12D-01 – Stop/Start
+
+- Nach `acceptance stop` ging der Acceptance-Bot wie erwartet offline.
+- Nach `acceptance start` kam der Bot wieder online.
+- Beobachtete Zeit von `start` bis Discord wieder online: grob **12 Sekunden**.
+- Persistenz-, Provider- und Production-Nachprüfung ist noch offen; 12D-01 bleibt bis dahin `IN PROGRESS`.
+
 ## Optimierte Szenarioreihenfolge
 
 Die Pflichtfälle aus #89 sollen mit höchstens drei erfolgreichen kostenpflichtigen Generation Sessions auskommen. Fehler-Sessions mit absichtlich ungültigem Key oder lokalem Transportziel erzeugen keine normalen kostenpflichtigen Providerläufe.
@@ -54,7 +61,7 @@ Die Pflichtfälle aus #89 sollen mit höchstens drei erfolgreichen kostenpflicht
 
 | Szenario | Session | Zustand vorher | Eingriff | Requests | Ergebnis | Befund / Folgeissue |
 | --- | --- | --- | --- | ---: | --- | --- |
-| 12D-01 Idle-Restart | – | healthy; 7/7 Curation-Runden COMPLETED; eine dormant offene 12C-Runde | | 0 erwartet | NOT RUN | |
+| 12D-01 Idle-Restart | – | healthy; 7/7 Curation-Runden COMPLETED; eine dormant offene 12C-Runde | `acceptance stop/start`; Bot offline und nach ~12 s wieder online | 0 erwartet | IN PROGRESS | Persistenz-/Production-Nachprüfung offen |
 | 12D-02 offene Runde ohne Vote | R1 | | | | NOT RUN | |
 | 12D-03 Restart/Redeploy nach einem Vote | R1 | | | 0 zusätzlich | NOT RUN | |
 | 12D-04 REROLL-/Resume-Restart | R2 | | | | NOT RUN | |
