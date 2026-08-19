@@ -47,6 +47,40 @@ Aus 12C ist bewusst noch genau eine wartende fachliche Runde vorhanden: `selecti
 
 **12D-01: PASS.** Der App-/Discord-Restart erhält PostgreSQL-Zustand und erzeugt keine Providerarbeit.
 
+### Session R1 – 12D-02/03/08
+
+Für die Restart-/Redeploy-Szenarien wurde genau eine neue Zwei-Offer-Session erzeugt:
+
+- Session `6`, `requested_offer_count=2`, Restriction-Mode `AUTO`
+- Voting-Runde `7`, Runde `1`, Offer-Set `8`, zunächst `OPEN|PENDING`
+- Providerpersistenz stieg exakt von `COMPLETED|7` auf `COMPLETED|8`; damit genau ein neuer erfolgreicher Curation-Request
+- Discord zeigte beide Offers vollständig und zunächst beide Teilnehmer als `noch offen`
+
+#### Ergebnis 12D-02 – Restart ohne Vote
+
+Vor dem Restart waren für Runde `7` exakt **0 Votes** persistiert. Acceptance wurde gestoppt und wieder gestartet; danach blieb die bereits vorhandene Discord-Nachricht mit ihren alten Buttons verwendbar. Die erste Stimme wurde über genau diese Nachricht erfolgreich abgegeben.
+
+Beobachtung danach:
+
+- öffentlich nur `Testsklave: abgestimmt` und `venomenon: noch offen`, keine konkrete Wahl offengelegt
+- DB: exakt eine Stimme `7|2|OFFER|14`
+- Providerpersistenz unverändert `COMPLETED|8`
+- kein neuer Curation-/Providerrequest durch Restart oder Nutzung des vorhandenen Buttons
+
+**12D-02: PASS.** Die offene erste Runde bleibt über Restart hinweg bedienbar; keine Regenerierung oder Duplizierung.
+
+#### Zwischenstand 12D-03 – Restart nach genau einer Stimme
+
+Mit exakt der einen persistierten Stimme `7|2|OFFER|14` wurde Acceptance erneut gestoppt und gestartet. Nach dem Restart war dieselbe Stimme weiterhin unverändert persistiert. Anschließend konnte derselbe Teilnehmer seine Stimme über die vorhandene Discord-Nachricht regelkonform ändern:
+
+- vor Änderung nach Restart: `7|2|OFFER|14`
+- nach Änderung: `7|2|OFFER|13`
+- öffentlich weiterhin nur `Testsklave: abgestimmt` und `venomenon: noch offen`; die konkrete Wahl blieb geheim
+- ephemere Bestätigung: `Deine Stimme wurde gespeichert.`
+- Providerpersistenz weiterhin `COMPLETED|8`
+
+Damit sind Persistenz, Geheimhaltung und Vote-Änderung nach Restart nachgewiesen. Die zweite Stimme wird bewusst noch zurückgehalten, damit derselbe Ein-Vote-Zustand unmittelbar für 12D-08 (Redeploy mit offener Session) verwendet werden kann. 12D-03 bleibt bis zum anschließenden regulären Abschluss der Runde `IN PROGRESS`.
+
 ## Optimierte Szenarioreihenfolge
 
 Die Pflichtfälle aus #89 sollen mit höchstens drei erfolgreichen kostenpflichtigen Generation Sessions auskommen. Fehler-Sessions mit absichtlich ungültigem Key oder lokalem Transportziel erzeugen keine normalen kostenpflichtigen Providerläufe.
@@ -66,13 +100,13 @@ Die Pflichtfälle aus #89 sollen mit höchstens drei erfolgreichen kostenpflicht
 | Szenario | Session | Zustand vorher | Eingriff | Requests | Ergebnis | Befund / Folgeissue |
 | --- | --- | --- | --- | ---: | --- | --- |
 | 12D-01 Idle-Restart | – | healthy; 7/7 Curation-Runden COMPLETED; eine dormant offene 12C-Runde | `acceptance stop/start`; Bot offline und nach ~12 s wieder online | 0 | PASS | Providerzustand und dormant Runde unverändert; Production unverändert |
-| 12D-02 offene Runde ohne Vote | R1 | | | | NOT RUN | |
-| 12D-03 Restart/Redeploy nach einem Vote | R1 | | | 0 zusätzlich | NOT RUN | |
+| 12D-02 offene Runde ohne Vote | R1 / Session 6 / Round 7 | 2 Offers sichtbar, 0 Votes, `OPEN|PENDING` | Stop/Start, danach vorhandenen Vote-Button verwendet | 0 zusätzlich | PASS | alte Buttons funktionsfähig; eine Stimme persistiert; Provider blieb bei 8 |
+| 12D-03 Restart/Redeploy nach einem Vote | R1 / Session 6 / Round 7 | eine Stimme `OFFER|14` | Stop/Start; Stimme danach auf `OFFER|13` geändert | 0 zusätzlich | IN PROGRESS | Persistenz/Änderung/Geheimhaltung PASS; Abschluss nach 12D-08 |
 | 12D-04 REROLL-/Resume-Restart | R2 | | | | NOT RUN | |
 | 12D-05 ungültiger Acceptance-Key | Fehler-Session | | | | NOT RUN | |
 | 12D-06 lokaler Transportfehler | Fehler-Session | | | 0 extern | NOT RUN | |
 | 12D-07 Discord-Reconnect | R1/R2 | | | 0 zusätzlich | NOT RUN | |
-| 12D-08 Redeploy mit offener Session | R1 | | | 0 zusätzlich | NOT RUN | |
+| 12D-08 Redeploy mit offener Session | R1 / Session 6 / Round 7 | eine geänderte Stimme `OFFER|13`, zweite Stimme offen | | 0 zusätzlich | NOT RUN | |
 | 12D-09 Backup in Preview | – | | | 0 | NOT RUN | |
 | 12D-10 Reset / Neuaufbau | – | | | 0 | NOT RUN | |
 
@@ -101,7 +135,8 @@ Sofort abbrechen und eigenes P0/P1-Issue anlegen bei:
 ## Gate
 
 - [x] Idle-Restart funktioniert
-- [ ] offene-Runde- und Ein-Vote-Restarts funktionieren
+- [x] offene-Runde-Restart funktioniert
+- [ ] Ein-Vote-Restart vollständig abgeschlossen (Persistenz und Vote-Änderung bereits PASS)
 - [ ] REROLL-/Resume-Pfad restartfest oder Mikrofenster sauber als nicht injizierbar begründet
 - [ ] Auth- und Transportfehler bleiben begrenzt und technisch korrekt
 - [ ] Discord verbindet sich sauber neu
