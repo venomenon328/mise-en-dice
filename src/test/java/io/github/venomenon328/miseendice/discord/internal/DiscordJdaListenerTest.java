@@ -146,7 +146,7 @@ class DiscordJdaListenerTest {
             assertThat(row.getComponents()).singleElement().isInstanceOf(StringSelectMenu.class);
             var select = (StringSelectMenu) row.getComponents().getFirst();
             assertThat(select.getPlaceholder()).isEqualTo("⬆️ Allgemeineren Begriff öffnen …");
-            assertThat(select.getId()).isEqualTo(DiscordIngredientComponentId.navigationSelect("parent", "10001"));
+            assertThat(select.getCustomId()).isEqualTo(DiscordIngredientComponentId.navigationSelect("parent", "10001"));
             assertThat(select.getOptions()).singleElement().satisfies(option -> {
                 assertThat(option.getLabel()).isEqualTo("Sojaprodukt");
                 assertThat(option.getValue()).isEqualTo(DiscordIngredientComponentId.conceptValue(42));
