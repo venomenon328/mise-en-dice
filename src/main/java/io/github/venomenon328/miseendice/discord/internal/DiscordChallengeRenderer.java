@@ -13,7 +13,8 @@ final class DiscordChallengeRenderer {
     RenderedMessage offers(OfferDecisionQueries.OfferSetView set) {
         StringBuilder text = new StringBuilder("**Mise en Dice – Challenge-Angebote**\n");
         for (OfferDecisionQueries.OfferView offer : set.offers()) {
-            text.append("\n**Vorschlag ").append(offer.position()).append("**\n");
+            text.append("\n").append(offerMarker(offer.position())).append(" **Vorschlag ")
+                    .append(offer.position()).append("**\n");
             offer.requirements().stream().sorted(java.util.Comparator.comparingInt(value -> value.position()))
                     .forEach(requirement -> text.append(requirement.position()).append(". ")
                             .append(requirement.displayTextSnapshot()).append("\n"));
@@ -59,7 +60,7 @@ final class DiscordChallengeRenderer {
         SelectionVotingQueries.VotingRoundView round = selection.currentRound();
         List<Component> buttons = new ArrayList<>();
         if (round != null) {
-            text.append("**Abstimmung – Runde ").append(round.roundNumber()).append("**\n");
+            text.append("🗳️ **Abstimmung – Runde ").append(round.roundNumber()).append("**\n");
             for (SelectionVotingQueries.VoteStatusView vote : round.votes()) {
                 text.append(displayNames.resolve(vote.participantId(), vote.displayName())).append(": ")
                         .append(vote.hasVoted() ? "abgestimmt" : "noch offen").append("\n");
@@ -70,9 +71,9 @@ final class DiscordChallengeRenderer {
             }
         } else if (!selection.completedRounds().isEmpty()) {
             SelectionVotingQueries.VotingRoundView completed = selection.completedRounds().getLast();
-            text.append("**Abstimmung abgeschlossen**\n");
+            text.append("🗳️ **Abstimmung abgeschlossen**\n");
             if (completed.result() != null) {
-                text.append("**Gewinner: ").append(choice(completed.result().winningChoice(), selection.currentOfferSet()))
+                text.append("🏆 **Gewinner: ").append(choice(completed.result().winningChoice(), selection.currentOfferSet()))
                         .append("**");
                 if (completed.result().tieBreakUsed()) {
                     text.append(" *(Gleichstand \u2013 per Los entschieden)*");
@@ -95,6 +96,15 @@ final class DiscordChallengeRenderer {
             appendConfirmedChallenge(text, selection.currentOfferSet(), selection.confirmedChallenge());
         }
         return new RenderedMessage(text.toString().strip(), List.copyOf(buttons));
+    }
+
+    private static String offerMarker(int position) {
+        return switch (position) {
+            case 1 -> "1️⃣";
+            case 2 -> "2️⃣";
+            case 3 -> "3️⃣";
+            default -> "•";
+        };
     }
 
     private static String label(SelectionVotingQueries.AllowedOptionView option,
@@ -134,7 +144,7 @@ final class DiscordChallengeRenderer {
             throw new IllegalStateException("Confirmed challenge is missing from the authoritative offer snapshot");
         }
         OfferDecisionQueries.OfferView offer = offer(offerSet, confirmed.offerId());
-        text.append("\n**Challenge bestätigt: Vorschlag ").append(offer.position()).append("**\n");
+        text.append("\n✅ **Challenge bestätigt: Vorschlag ").append(offer.position()).append("**\n");
         offer.requirements().stream().sorted(java.util.Comparator.comparingInt(value -> value.position()))
                 .forEach(requirement -> text.append(requirement.position()).append(". ")
                         .append(requirement.displayTextSnapshot()).append("\n"));
