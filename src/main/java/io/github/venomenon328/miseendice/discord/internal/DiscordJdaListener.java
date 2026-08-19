@@ -122,7 +122,7 @@ final class DiscordJdaListener extends ListenerAdapter {
             return;
         }
         event.deferReply().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.search(searchText, event.getUser().getId(),
-                new HookIngredientDelivery(hook, executor), new HookFeedback(hook))),
+                new HookIngredientDelivery(hook, executor), new HookIngredientFeedback(hook))),
                 failure -> log.warn("Discord ingredient lookup acknowledgement failed", failure));
     }
 
@@ -154,7 +154,7 @@ final class DiscordJdaListener extends ListenerAdapter {
             return;
         }
         event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.component(event.getComponentId(), event.getValues(),
-                event.getUser().getId(), new HookIngredientDelivery(hook, executor), new HookFeedback(hook))),
+                event.getUser().getId(), new HookIngredientDelivery(hook, executor), new HookIngredientFeedback(hook))),
                 failure -> log.warn("Discord ingredient selection acknowledgement failed", failure));
     }
 
@@ -211,7 +211,7 @@ final class DiscordJdaListener extends ListenerAdapter {
         }
     }
 
-    private static final class HookFeedback implements DiscordChallengeWorkflow.Feedback, DiscordIngredientLookupWorkflow.Feedback {
+    private static final class HookFeedback implements DiscordChallengeWorkflow.Feedback {
         private final net.dv8tion.jda.api.interactions.InteractionHook hook;
 
         private HookFeedback(net.dv8tion.jda.api.interactions.InteractionHook hook) {
@@ -236,6 +236,26 @@ final class DiscordJdaListener extends ListenerAdapter {
         }
     }
 
+    private static final class HookIngredientFeedback implements DiscordIngredientLookupWorkflow.Feedback {
+        private final net.dv8tion.jda.api.interactions.InteractionHook hook;
+
+        private HookIngredientFeedback(net.dv8tion.jda.api.interactions.InteractionHook hook) {
+            this.hook = hook;
+        }
+
+        @Override
+        public void staleOrRejected(String message) {
+            hook.sendMessage(message).setEphemeral(true).queue();
+        }
+
+        @Override
+        public void technicalFailure(Throwable exception) {
+            log.error("Discord ingredient lookup interaction failed", exception);
+            hook.sendMessage("Die Zutatenabfrage konnte technisch nicht verarbeitet werden. Bitte später erneut versuchen.")
+                    .setEphemeral(true).queue();
+        }
+    }
+
     private static List<ActionRow> rows(List<DiscordChallengeRenderer.Component> components) {
         if (components.isEmpty()) {
             return List.of();
@@ -244,7 +264,7 @@ final class DiscordJdaListener extends ListenerAdapter {
                 .map(component -> Button.primary(component.customId(), component.label())).toList()));
     }
 
-    private static net.dv8tion.jda.api.utils.messages.MessageEditData ingredientMessage(
+    static net.dv8tion.jda.api.utils.messages.MessageEditData ingredientMessage(
             DiscordIngredientLookupRenderer.RenderedResponse response) {
         MessageEditBuilder builder = new MessageEditBuilder().setAllowedMentions(List.of());
         if (response instanceof DiscordIngredientLookupRenderer.RenderedText text) {

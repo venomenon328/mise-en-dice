@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import net.dv8tion.jda.api.entities.Guild;
@@ -18,13 +19,14 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
+import net.dv8tion.jda.api.requests.restaction.CacheRestAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.InteractionCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
-import net.dv8tion.jda.api.requests.restaction.CacheRestAction;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
@@ -59,6 +61,66 @@ class DiscordJdaListenerTest {
         org.mockito.Mockito.verify(event).reply(any(String.class));
         org.mockito.Mockito.verify(lookupWorkflow, never()).search(any(), any(), any(), any());
         org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
+    }
+
+    @Test
+    void defersIngredientSlashBeforeDelegatingTheRequiredSearchString() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var lookupWorkflow = mock(DiscordIngredientLookupWorkflow.class);
+        var event = slashEvent();
+        var option = mock(OptionMapping.class);
+        var acknowledgement = acknowledgement(event);
+        when(event.getName()).thenReturn("zutat");
+        when(event.getOption("suche")).thenReturn(option);
+        when(option.getAsString()).thenReturn("  Tempeh  ");
+        when(lookupWorkflow.accepts(99, "10001")).thenReturn(true);
+
+        ingredientListener(challengeWorkflow, lookupWorkflow).onSlashCommandInteraction(event);
+
+        InOrder order = inOrder(event, lookupWorkflow);
+        order.verify(event).deferReply();
+        order.verify(lookupWorkflow).search(eq("  Tempeh  "), eq("10001"), any(), any());
+        org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
+        org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
+    }
+
+    @Test
+    void defersIngredientSelectionBeforeDelegatingItsStatelessValues() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var lookupWorkflow = mock(DiscordIngredientLookupWorkflow.class);
+        var event = mock(StringSelectInteractionEvent.class);
+        var guild = mock(Guild.class);
+        var user = mock(User.class);
+        String componentId = DiscordIngredientComponentId.selection("10001");
+        List<String> values = List.of(DiscordIngredientComponentId.conceptValue(42));
+        when(event.getComponentId()).thenReturn(componentId);
+        when(event.getValues()).thenReturn(values);
+        when(event.getGuild()).thenReturn(guild);
+        when(guild.getIdLong()).thenReturn(99L);
+        when(event.getUser()).thenReturn(user);
+        when(user.getId()).thenReturn("10001");
+        when(lookupWorkflow.accepts(99, "10001")).thenReturn(true);
+        MessageEditCallbackAction acknowledgement = mock(MessageEditCallbackAction.class);
+        when(event.deferEdit()).thenReturn(acknowledgement);
+        invokeAcknowledgement(acknowledgement, mock(InteractionHook.class));
+
+        ingredientListener(challengeWorkflow, lookupWorkflow).onStringSelectInteraction(event);
+
+        InOrder order = inOrder(event, lookupWorkflow);
+        order.verify(event).deferEdit();
+        order.verify(lookupWorkflow).component(eq(componentId), eq(values), eq("10001"), any(), any());
+        org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
+    }
+
+    @Test
+    void ingredientProfileMessageRemovesTheSelectionMenu() {
+        var response = new DiscordIngredientLookupRenderer.RenderedEmbed("Zutat: Tempeh",
+                List.of(new DiscordIngredientLookupRenderer.EmbedField("Basisdaten", "Gewichtung  1,0")));
+
+        var message = DiscordJdaListener.ingredientMessage(response);
+
+        assertThat(message.getComponents()).isEmpty();
+        assertThat(message.getEmbeds()).hasSize(1);
     }
 
     @Test
