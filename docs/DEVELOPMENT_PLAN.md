@@ -1,6 +1,6 @@
 # Entwicklungsplan
 
-Stand: 16. August 2026
+Stand: 19. August 2026
 
 Dieses Dokument beschreibt die aktuelle Umsetzungsreihenfolge. Die [`VISION.md`](VISION.md) beschreibt das gewünschte Produkt; dieser Plan legt fest, in welcher technischen Reihenfolge die dafür notwendigen Bausteine entstehen. Die konkrete Webspezifikation steht in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md).
 
@@ -564,6 +564,16 @@ aktuellen Profildaten mit direkten aktiven Beziehungen. Exakte Treffer und einze
 als kompaktes Embed angezeigt; sonst bleiben höchstens 25 priorisierte Optionen in einem stateless String-Select
 öffentlich sichtbar. Weder der bestehende `/challenge`-Flow noch Generator, Kurator, Voting, Audit, Persistenz oder
 OpenAI werden dadurch berührt.
+
+### Phase 12D.5.1: Zutaten-Card und Hierarchienavigation (Issue #111)
+
+Nach der Live-Abnahme von #108 verdichtet Issue #111 die Zutaten-Card vor dem privaten Pilot: Basisdaten stehen kompakt
+unter dem Titel, Funktion und besondere Eigenschaften verwenden native Inline-Embed-Felder und die direkte Hierarchie
+steht erst am Ende der Card. Aktive direkte Eltern und Kinder tragen in derselben read-only `catalog :: api`-Projektion
+stabile Konzept-IDs und sind über stateless sekundäre Buttons beziehungsweise String-Selects direkt navigierbar. Die
+Navigation lädt das Zielprofil frisch per ID und führt keine Namenssuche aus. Suchsemantik, Challenge-Lifecycle,
+Persistenz, Generator, Kurator und Providerzugriffe bleiben unverändert. Nach Live-Abnahme dieses UX-Follow-ups folgt
+Phase 12E / #90.
 
 ### Phase 12B–12E: Manuelle Inbetriebnahme, Abnahme und Pilot (Issues #87–#90)
 
