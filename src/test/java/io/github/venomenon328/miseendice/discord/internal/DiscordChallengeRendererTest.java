@@ -24,7 +24,8 @@ class DiscordChallengeRendererTest {
         }
 
         assertThat(renderer.offers(offerSet(3)).content())
-                .contains("Einschränkung: Keine", "Einschränkung: Kein Kochalkohol", "Einschränkung: Keine Rohkost");
+                .contains("1️⃣ **Vorschlag 1**", "2️⃣ **Vorschlag 2**", "3️⃣ **Vorschlag 3**",
+                        "Einschränkung: Keine", "Einschränkung: Kein Kochalkohol", "Einschränkung: Keine Rohkost");
     }
 
     @Test
@@ -43,7 +44,7 @@ class DiscordChallengeRendererTest {
 
         var rendered = renderer.selection(selection);
 
-        assertThat(rendered.content()).contains("Georgia: abgestimmt", "Tobias: noch offen")
+        assertThat(rendered.content()).contains("🗳️ **Abstimmung – Runde 1**", "Georgia: abgestimmt", "Tobias: noch offen")
                 .doesNotContain("Georgia: Annehmen", "Georgia: Neu würfeln");
         assertThat(rendered.components()).extracting(DiscordChallengeRenderer.Component::label)
                 .containsExactly("Annehmen", "Neu würfeln");
@@ -66,8 +67,9 @@ class DiscordChallengeRendererTest {
         var rendered = renderer.selection(new SelectionVotingQueries.SelectionView(1, electorate(), offerSet, null,
                 List.of(completed), null, challenge));
 
-        assertThat(rendered.content()).contains("**Gewinner: Vorschlag 2**", "**Einzelstimmen**", "- Georgia: Vorschlag 2",
-                "Tobias: Vorschlag 1", "Challenge bestätigt: Vorschlag 2");
+        assertThat(rendered.content()).contains("🗳️ **Abstimmung abgeschlossen**", "🏆 **Gewinner: Vorschlag 2**",
+                "**Einzelstimmen**", "- Georgia: Vorschlag 2", "Tobias: Vorschlag 1",
+                "✅ **Challenge bestätigt: Vorschlag 2**");
         String confirmedChallenge = rendered.content().substring(rendered.content().indexOf("**Challenge bestätigt"));
         assertThat(confirmedChallenge).contains("Snapshot 2.1", "Snapshot 2.4", "Einschränkung: Kein Kochalkohol")
                 .doesNotContain("Snapshot 1.1", "Einschränkung: Keine\n");
@@ -85,7 +87,7 @@ class DiscordChallengeRendererTest {
         var rendered = renderer.selection(new SelectionVotingQueries.SelectionView(1, electorate(), offerSet, null,
                 List.of(completed), null, null));
 
-        assertThat(rendered.content()).contains("Gewinner: Neu würfeln", "keine neuen Angebote");
+        assertThat(rendered.content()).contains("🏆 **Gewinner: Neu würfeln**", "keine neuen Angebote");
         assertThat(rendered.components()).isEmpty();
     }
 
