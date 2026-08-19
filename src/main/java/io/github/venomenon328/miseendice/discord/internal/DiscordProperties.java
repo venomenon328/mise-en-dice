@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 /** External, optional Discord transport configuration. */
 @ConfigurationProperties(prefix = "mise-en-dice.discord")
@@ -18,6 +19,7 @@ record DiscordProperties(boolean enabled, String token, long guildId, long chall
         this(enabled, token, guildId, 0, effectiveDateZone, participantUserIds);
     }
 
+    @ConstructorBinding
     DiscordProperties {
         effectiveDateZone = effectiveDateZone == null ? ZoneId.of("Europe/Berlin") : effectiveDateZone;
         participantUserIds = canonicalParticipantUserIds(participantUserIds);
