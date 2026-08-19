@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupMatch;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupProfile;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupRelation;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupSearchResult;
 import java.math.BigDecimal;
 import java.time.ZoneId;
@@ -58,7 +59,7 @@ class DiscordIngredientLookupWorkflowTest {
     }
 
     @Test
-    void permitsOnlyTheInvokerAndRechecksActiveProfileWhenAStatelessSelectionIsUsed() {
+    void permitsOnlyTheInvokerForTheInitialSelectionAndRechecksItsActiveProfile() {
         var queries = new FakeQueries();
         queries.profiles.put(7L, profile(7, "Sellerie"));
         var workflow = workflow(queries);
@@ -79,9 +80,43 @@ class DiscordIngredientLookupWorkflowTest {
         workflow.component(component, List.of(DiscordIngredientComponentId.conceptValue(7)), "10001", delivery, feedback);
         assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedText.class);
         assertThat(((DiscordIngredientLookupRenderer.RenderedText) delivery.response).content()).contains("nicht mehr aktuell");
+    }
 
-        workflow.component("med:v1:ingredient:select:malformed", List.of("wrong"), "10001", delivery, feedback);
-        assertThat(feedback.messages).last().satisfies(message -> assertThat(message).contains("ungültig"));
+    @Test
+    void hierarchyNavigationLoadsTheConceptIdDirectlyWithoutAnyNameSearchOrInvokerBinding() {
+        var queries = new FakeQueries();
+        queries.profiles.put(8L, profile(8, "Sojaprodukt"));
+        var workflow = workflow(queries);
+        var delivery = new CapturingDelivery();
+        var feedback = new CapturingFeedback();
+
+        workflow.navigateButton(DiscordIngredientComponentId.navigationButton(8), delivery, feedback);
+        assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedEmbed.class);
+        assertThat(queries.profileLookups).containsExactly(8L);
+        assertThat(queries.searchCalls).isZero();
+
+        queries.profiles.put(9L, profile(9, "Tempeh"));
+        workflow.navigateSelect(DiscordIngredientComponentId.navigationSelect("child"),
+                List.of(DiscordIngredientComponentId.conceptValue(9)), delivery, feedback);
+        assertThat(queries.profileLookups).containsExactly(8L, 9L);
+        assertThat(queries.searchCalls).isZero();
+        assertThat(feedback.messages).isEmpty();
+    }
+
+    @Test
+    void staleAndMalformedHierarchyNavigationNeverShowsAnInactiveProfile() {
+        var queries = new FakeQueries();
+        var workflow = workflow(queries);
+        var delivery = new CapturingDelivery();
+        var feedback = new CapturingFeedback();
+
+        workflow.navigateButton(DiscordIngredientComponentId.navigationButton(77), delivery, feedback);
+        assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedText.class);
+        assertThat(((DiscordIngredientLookupRenderer.RenderedText) delivery.response).content()).contains("nicht mehr aktuell");
+
+        workflow.navigateSelect("med:v1:ingredient:navigate-select:sideways",
+                List.of(DiscordIngredientComponentId.conceptValue(77)), delivery, feedback);
+        assertThat(feedback.messages).singleElement().satisfies(message -> assertThat(message).contains("Navigation", "ungültig"));
     }
 
     @Test
@@ -90,6 +125,7 @@ class DiscordIngredientLookupWorkflowTest {
         var workflow = workflow(queries);
 
         assertThat(workflow.accepts(99, "10001")).isTrue();
+        assertThat(workflow.accepts(99, "10002")).isTrue();
         assertThat(workflow.accepts(99, "99999")).isFalse();
         assertThat(workflow.accepts(98, "10001")).isFalse();
         assertThat(queries.profileLookups).isEmpty();
@@ -121,7 +157,7 @@ class DiscordIngredientLookupWorkflowTest {
 
     private static IngredientLookupProfile profile(long id, String displayName) {
         return new IngredientLookupProfile(id, displayName, true, new BigDecimal("1.0000"), null,
-                List.of(), List.of(), List.of(), List.of(), List.of(), null);
+                List.<IngredientLookupRelation>of(), List.<IngredientLookupRelation>of(), List.of(), List.of(), List.of(), null);
     }
 
     private static final class FakeQueries implements IngredientLookupQueries {

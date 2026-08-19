@@ -87,14 +87,18 @@ class IngredientLookupQueriesIntegrationTest {
 
     @Test
     void projectsOnlyTheAllowedCurrentDirectFieldsAndNeverWritesAuditData() {
-        long activeParent = insertConcept("PARENT_ACTIVE", "Lookup Oberbegriff aktiv", true, false, 1, null);
+        long activeParentB = insertConcept("PARENT_ACTIVE_B", "Lookup Oberbegriff Beta", true, false, 1, null);
+        long activeParentA = insertConcept("PARENT_ACTIVE_A", "Lookup Oberbegriff Alpha", true, false, 1, null);
         long inactiveParent = insertConcept("PARENT_INACTIVE", "Lookup Oberbegriff inaktiv", false, false, 1, null);
         long selected = insertConcept("SELECTED", "Lookup Profil", true, true, 4, "  Kurator @here *Hinweis*  ");
-        long activeChild = insertConcept("CHILD_ACTIVE", "Lookup Konkretisierung aktiv", true, true, 2, null);
+        long activeChildB = insertConcept("CHILD_ACTIVE_B", "Lookup Konkretisierung Beta", true, true, 2, null);
+        long activeChildA = insertConcept("CHILD_ACTIVE_A", "Lookup Konkretisierung Alpha", true, true, 2, null);
         long inactiveChild = insertConcept("CHILD_INACTIVE", "Lookup Konkretisierung inaktiv", false, true, 2, null);
-        jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", activeParent, selected);
+        jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", activeParentB, selected);
+        jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", activeParentA, selected);
         jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", inactiveParent, selected);
-        jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", selected, activeChild);
+        jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", selected, activeChildB);
+        jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", selected, activeChildA);
         jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", selected, inactiveChild);
         assignRole(selected, "VEGETABLE");
         assignFlag(selected, "FERMENTED");
@@ -107,13 +111,17 @@ class IngredientLookupQueriesIntegrationTest {
         long auditAfter = jdbcTemplate.queryForObject("select count(*) from catalog_audit_entry", Long.class);
 
         assertThat(search.matches()).singleElement().extracting(match -> match.activeDirectParents())
-                .isEqualTo(List.of("Lookup Oberbegriff aktiv"));
+                .isEqualTo(List.of("Lookup Oberbegriff Alpha", "Lookup Oberbegriff Beta"));
         assertThat(profile.displayName()).isEqualTo("Lookup Profil");
         assertThat(profile.randomDrawEnabled()).isTrue();
         assertThat(profile.baseDrawWeight()).isEqualByComparingTo(BigDecimal.ONE);
         assertThat(profile.noveltyLevel()).isEqualTo(4);
-        assertThat(profile.activeDirectParents()).containsExactly("Lookup Oberbegriff aktiv");
-        assertThat(profile.activeDirectChildren()).containsExactly("Lookup Konkretisierung aktiv");
+        assertThat(profile.activeDirectParents())
+                .extracting(relation -> relation.conceptId() + ":" + relation.displayName())
+                .containsExactly(activeParentA + ":Lookup Oberbegriff Alpha", activeParentB + ":Lookup Oberbegriff Beta");
+        assertThat(profile.activeDirectChildren())
+                .extracting(relation -> relation.conceptId() + ":" + relation.displayName())
+                .containsExactly(activeChildA + ":Lookup Konkretisierung Alpha", activeChildB + ":Lookup Konkretisierung Beta");
         assertThat(profile.functionalRoles()).containsExactly("Gemüse");
         assertThat(profile.culinaryFlags()).containsExactly("fermentiert");
         assertThat(profile.culinaryDimensions()).extracting(dimension -> dimension.code(), dimension -> dimension.level())

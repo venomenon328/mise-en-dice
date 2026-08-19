@@ -4,6 +4,7 @@ import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupDimension;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupMatch;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupProfile;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupRelation;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupSearchResult;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -50,7 +51,7 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
                          lower(display_name), id
                 limit ?
                 """, this::mapSearchRow, normalized, normalized, limit);
-        Map<Long, List<String>> parents = findActiveDirectParents(rows.stream().map(SearchRow::conceptId).toList());
+        Map<Long, List<String>> parents = findActiveDirectParentNames(rows.stream().map(SearchRow::conceptId).toList());
         return new IngredientLookupSearchResult(normalized, rows.stream()
                 .map(row -> new IngredientLookupMatch(row.conceptId(), row.displayName(),
                         parents.getOrDefault(row.conceptId(), List.of())))
@@ -73,7 +74,7 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
         ProfileRow row = rows.getFirst();
         return Optional.of(new IngredientLookupProfile(
                 row.conceptId(), row.displayName(), row.randomDrawEnabled(), row.baseDrawWeight(), row.noveltyLevel(),
-                findActiveDirectParents(List.of(conceptId)).getOrDefault(conceptId, List.of()),
+                findActiveDirectParents(conceptId),
                 findActiveDirectChildren(conceptId),
                 findNames("""
                         select fr.display_name
@@ -101,7 +102,7 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
         ));
     }
 
-    private Map<Long, List<String>> findActiveDirectParents(List<Long> conceptIds) {
+    private Map<Long, List<String>> findActiveDirectParentNames(List<Long> conceptIds) {
         if (conceptIds.isEmpty()) {
             return Map.of();
         }
@@ -119,14 +120,26 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
                 Map.Entry::getKey, entry -> List.copyOf(entry.getValue())));
     }
 
-    private List<String> findActiveDirectChildren(long conceptId) {
-        return jdbcTemplate.queryForList("""
-                select child.display_name
+    private List<IngredientLookupRelation> findActiveDirectParents(long conceptId) {
+        return jdbcTemplate.query("""
+                select parent.id, parent.display_name
+                from ingredient_refinement ir
+                join ingredient_concept parent on parent.id = ir.parent_concept_id and parent.active
+                where ir.child_concept_id = ?
+                order by lower(parent.display_name), parent.id
+                """, (resultSet, rowNumber) -> new IngredientLookupRelation(
+                resultSet.getLong("id"), resultSet.getString("display_name")), conceptId);
+    }
+
+    private List<IngredientLookupRelation> findActiveDirectChildren(long conceptId) {
+        return jdbcTemplate.query("""
+                select child.id, child.display_name
                 from ingredient_refinement ir
                 join ingredient_concept child on child.id = ir.child_concept_id and child.active
                 where ir.parent_concept_id = ?
                 order by lower(child.display_name), child.id
-                """, String.class, conceptId);
+                """, (resultSet, rowNumber) -> new IngredientLookupRelation(
+                resultSet.getLong("id"), resultSet.getString("display_name")), conceptId);
     }
 
     private List<String> findNames(String query, long conceptId) {

@@ -41,14 +41,22 @@ public interface IngredientLookupQueries {
         }
     }
 
+    record IngredientLookupRelation(long conceptId, String displayName) {
+
+        public IngredientLookupRelation {
+            positiveId(conceptId);
+            displayName = required(displayName, "displayName");
+        }
+    }
+
     record IngredientLookupProfile(
             long conceptId,
             String displayName,
             boolean randomDrawEnabled,
             BigDecimal baseDrawWeight,
             Integer noveltyLevel,
-            List<String> activeDirectParents,
-            List<String> activeDirectChildren,
+            List<IngredientLookupRelation> activeDirectParents,
+            List<IngredientLookupRelation> activeDirectChildren,
             List<String> functionalRoles,
             List<String> culinaryFlags,
             List<IngredientLookupDimension> culinaryDimensions,

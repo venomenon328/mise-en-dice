@@ -56,16 +56,40 @@ final class DiscordIngredientLookupWorkflow {
                 feedback.staleOrRejected("Diese Zutaten-Auswahl gehört zu einem anderen Nutzer.");
                 return;
             }
-            if (values == null || values.size() != 1) {
-                feedback.staleOrRejected("Diese Zutaten-Auswahl ist ungültig oder nicht mehr aktuell.");
-                return;
-            }
-            renderCurrentProfile(DiscordIngredientComponentId.parseConceptValue(values.getFirst()), delivery, feedback);
+            renderSingleValue(values, delivery, feedback);
         } catch (IllegalArgumentException exception) {
             feedback.staleOrRejected("Diese Zutaten-Auswahl ist ungültig oder nicht mehr aktuell.");
         } catch (RuntimeException exception) {
             feedback.technicalFailure(exception);
         }
+    }
+
+    void navigateButton(String customId, Delivery delivery, Feedback feedback) {
+        try {
+            renderCurrentProfile(DiscordIngredientComponentId.parseNavigationButton(customId), delivery, feedback);
+        } catch (IllegalArgumentException exception) {
+            feedback.staleOrRejected("Diese Zutaten-Navigation ist ungültig oder nicht mehr aktuell.");
+        } catch (RuntimeException exception) {
+            feedback.technicalFailure(exception);
+        }
+    }
+
+    void navigateSelect(String customId, List<String> values, Delivery delivery, Feedback feedback) {
+        try {
+            DiscordIngredientComponentId.validateNavigationSelect(customId);
+            renderSingleValue(values, delivery, feedback);
+        } catch (IllegalArgumentException exception) {
+            feedback.staleOrRejected("Diese Zutaten-Navigation ist ungültig oder nicht mehr aktuell.");
+        } catch (RuntimeException exception) {
+            feedback.technicalFailure(exception);
+        }
+    }
+
+    private void renderSingleValue(List<String> values, Delivery delivery, Feedback feedback) {
+        if (values == null || values.size() != 1) {
+            throw new IllegalArgumentException("Ingredient selection requires exactly one value");
+        }
+        renderCurrentProfile(DiscordIngredientComponentId.parseConceptValue(values.getFirst()), delivery, feedback);
     }
 
     private void renderCurrentProfile(long conceptId, Delivery delivery, Feedback feedback) {

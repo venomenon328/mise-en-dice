@@ -128,6 +128,10 @@ final class DiscordJdaListener extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
+        if (DiscordIngredientComponentId.isNavigationButton(event.getComponentId())) {
+            ingredientNavigationButton(event);
+            return;
+        }
         if (!event.getComponentId().startsWith("med:")) {
             return;
         }
@@ -141,19 +145,40 @@ final class DiscordJdaListener extends ListenerAdapter {
                 failure -> log.warn("Discord component acknowledgement failed", failure));
     }
 
-    @Override
-    public void onStringSelectInteraction(StringSelectInteractionEvent event) {
-        if (!event.getComponentId().startsWith("med:v1:ingredient:")) {
+    private void ingredientNavigationButton(ButtonInteractionEvent event) {
+        if (ingredientLookupWorkflow == null) {
             return;
         }
+        if (!ingredientLookupWorkflow.accepts(event.getGuild() == null ? 0 : event.getGuild().getIdLong(), event.getUser().getId())) {
+            event.reply("Diese Zutaten-Navigation ist hier nicht erlaubt.").setEphemeral(true).queue();
+            return;
+        }
+        event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.navigateButton(event.getComponentId(),
+                new HookIngredientDelivery(hook, executor), new HookIngredientFeedback(hook))),
+                failure -> log.warn("Discord ingredient navigation acknowledgement failed", failure));
+    }
+
+    @Override
+    public void onStringSelectInteraction(StringSelectInteractionEvent event) {
         if (ingredientLookupWorkflow == null) {
+            return;
+        }
+        String componentId = event.getComponentId();
+        if (!DiscordIngredientComponentId.isSelection(componentId)
+                && !DiscordIngredientComponentId.isNavigationSelect(componentId)) {
             return;
         }
         if (!ingredientLookupWorkflow.accepts(event.getGuild() == null ? 0 : event.getGuild().getIdLong(), event.getUser().getId())) {
             event.reply("Diese Zutaten-Auswahl ist hier nicht erlaubt.").setEphemeral(true).queue();
             return;
         }
-        event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.component(event.getComponentId(), event.getValues(),
+        if (DiscordIngredientComponentId.isNavigationSelect(componentId)) {
+            event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.navigateSelect(componentId, event.getValues(),
+                    new HookIngredientDelivery(hook, executor), new HookIngredientFeedback(hook))),
+                    failure -> log.warn("Discord ingredient navigation acknowledgement failed", failure));
+            return;
+        }
+        event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.component(componentId, event.getValues(),
                 event.getUser().getId(), new HookIngredientDelivery(hook, executor), new HookIngredientFeedback(hook))),
                 failure -> log.warn("Discord ingredient selection acknowledgement failed", failure));
     }
@@ -271,20 +296,40 @@ final class DiscordJdaListener extends ListenerAdapter {
             return builder.setContent(text.content()).setEmbeds(List.of()).setComponents(List.of()).build();
         }
         if (response instanceof DiscordIngredientLookupRenderer.RenderedSelection selection) {
-            StringSelectMenu menu = StringSelectMenu.create(selection.customId())
-                    .setPlaceholder("Zutat auswählen")
-                    .setRequiredRange(1, 1)
-                    .addOptions(selection.options().stream().map(option -> {
-                        SelectOption selectOption = SelectOption.of(option.label(), option.value());
-                        return option.description() == null ? selectOption : selectOption.withDescription(option.description());
-                    }).toList())
-                    .build();
             return builder.setContent(selection.content()).setEmbeds(List.of())
-                    .setComponents(List.of(ActionRow.of(menu))).build();
+                    .setComponents(List.of(ActionRow.of(selectMenu(selection.customId(), "Zutat auswählen", selection.options())))).build();
         }
         DiscordIngredientLookupRenderer.RenderedEmbed embed = (DiscordIngredientLookupRenderer.RenderedEmbed) response;
-        EmbedBuilder embedBuilder = new EmbedBuilder().setTitle(embed.title());
-        embed.fields().forEach(field -> embedBuilder.addField(field.name(), field.value(), false));
-        return builder.setContent("").setEmbeds(List.of(embedBuilder.build())).setComponents(List.of()).build();
+        EmbedBuilder embedBuilder = new EmbedBuilder()
+                .setTitle(embed.title())
+                .setDescription(embed.description())
+                .setColor(embed.color());
+        embed.fields().forEach(field -> embedBuilder.addField(field.name(), field.value(), field.inline()));
+        return builder.setContent("").setEmbeds(List.of(embedBuilder.build()))
+                .setComponents(ingredientRows(embed.navigationRows())).build();
+    }
+
+    private static List<ActionRow> ingredientRows(List<DiscordIngredientLookupRenderer.NavigationRow> rows) {
+        return rows.stream().map(row -> {
+            if (row instanceof DiscordIngredientLookupRenderer.NavigationButtonRow buttons) {
+                return ActionRow.of(buttons.buttons().stream()
+                        .map(button -> Button.secondary(button.customId(), button.label())).toList());
+            }
+            DiscordIngredientLookupRenderer.NavigationSelectRow select =
+                    (DiscordIngredientLookupRenderer.NavigationSelectRow) row;
+            return ActionRow.of(selectMenu(select.customId(), select.placeholder(), select.options()));
+        }).toList();
+    }
+
+    private static StringSelectMenu selectMenu(String customId, String placeholder,
+                                                List<DiscordIngredientLookupRenderer.SelectionOption> options) {
+        return StringSelectMenu.create(customId)
+                .setPlaceholder(placeholder)
+                .setRequiredRange(1, 1)
+                .addOptions(options.stream().map(option -> {
+                    SelectOption selectOption = SelectOption.of(option.label(), option.value());
+                    return option.description() == null ? selectOption : selectOption.withDescription(option.description());
+                }).toList())
+                .build();
     }
 }
