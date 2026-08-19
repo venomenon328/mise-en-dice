@@ -25,7 +25,7 @@ final class DiscordIngredientLookupRenderer {
     private static final int LIST_VALUE_LIMIT = 620;
     private static final int SELECT_RELATION_LIMIT = 25;
     private static final int MAX_CURATOR_NOTE_FIELDS = 2;
-    private static final String EMPTY_SCALE = "○";
+    private static final String EMPTY_SCALE = "▫️";
     private static final Map<String, String> DIMENSION_SYMBOLS = Map.of(
             "DOMINANCE", "📣",
             "SWEETNESS", "🍯",
