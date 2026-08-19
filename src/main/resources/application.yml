@@ -17,6 +17,7 @@ mise-en-dice:
     enabled: ${MISE_EN_DICE_DISCORD_ENABLED:false}
     token: ${MISE_EN_DICE_DISCORD_TOKEN:}
     guild-id: ${MISE_EN_DICE_DISCORD_GUILD_ID:0}
+    challenge-operator-role-id: ${MISE_EN_DICE_DISCORD_CHALLENGE_OPERATOR_ROLE_ID:0}
     effective-date-zone: ${MISE_EN_DICE_DISCORD_EFFECTIVE_DATE_ZONE:Europe/Berlin}
   curation:
     openai:
