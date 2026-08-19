@@ -20,7 +20,7 @@ class DiscordIngredientLookupRendererTest {
                 List.of(), List.of(), List.of(), List.of()));
 
         assertThat(drawable.title()).isEqualTo("🥢 Testzutat");
-        assertThat(drawable.description()).contains("Gewichtung        0,85", "Ungewöhnlichkeit  hoch", "✨✨✨✨○");
+        assertThat(drawable.description()).contains("Gewichtung        0,85", "Ungewöhnlichkeit  hoch", "✨✨✨✨▫️");
         assertThat(drawable.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
                 .doesNotContain("Basisdaten")
                 .endsWith("⬆️ Allgemeinere Begriffe", "⬇️ Bekannte Konkretisierungen");
@@ -65,8 +65,9 @@ class DiscordIngredientLookupRendererTest {
                 List.of(), List.of(), List.of(), List.of())), "🍽️ Geschmacksprofil");
         List<String> lines = profile.lines().filter(line -> !line.equals("```") && !line.isBlank()).toList();
 
-        assertThat(profile).contains("📣○○○○", "🍯🍯○○○", "🍋🍋🍋○○", "☕☕☕☕○", "🧈🧈🧈🧈🧈",
-                "🌶️○○○○", "🍄🍄○○○", "🧂🧂🧂○○");
+        assertThat(profile).contains("📣▫️▫️▫️▫️", "🍯🍯▫️▫️▫️", "🍋🍋🍋▫️▫️", "☕☕☕☕▫️", "🧈🧈🧈🧈🧈",
+                "🌶️▫️▫️▫️▫️", "🍄🍄▫️▫️▫️", "🧂🧂🧂▫️▫️");
+        assertThat(profile).doesNotContain("○");
         assertThat(lines.stream().map(DiscordIngredientLookupRendererTest::emojiColumn).distinct()).hasSize(1);
     }
 
