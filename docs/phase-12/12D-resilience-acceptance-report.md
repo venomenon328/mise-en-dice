@@ -69,7 +69,7 @@ Beobachtung danach:
 
 **12D-02: PASS.** Die offene erste Runde bleibt über Restart hinweg bedienbar; keine Regenerierung oder Duplizierung.
 
-#### Zwischenstand 12D-03 – Restart nach genau einer Stimme
+#### Ergebnis 12D-03 – Restart nach genau einer Stimme
 
 Mit exakt der einen persistierten Stimme `7|2|OFFER|14` wurde Acceptance erneut gestoppt und gestartet. Nach dem Restart war dieselbe Stimme weiterhin unverändert persistiert. Anschließend konnte derselbe Teilnehmer seine Stimme über die vorhandene Discord-Nachricht regelkonform ändern:
 
@@ -79,11 +79,19 @@ Mit exakt der einen persistierten Stimme `7|2|OFFER|14` wurde Acceptance erneut 
 - ephemere Bestätigung: `Deine Stimme wurde gespeichert.`
 - Providerpersistenz weiterhin `COMPLETED|8`
 
-Damit sind Persistenz, Geheimhaltung und Vote-Änderung nach Restart nachgewiesen. Die zweite Stimme wird bewusst noch zurückgehalten, damit derselbe Ein-Vote-Zustand unmittelbar für 12D-08 (Redeploy mit offener Session) verwendet werden kann. 12D-03 bleibt bis zum anschließenden regulären Abschluss der Runde `IN PROGRESS`.
+Nach dem anschließenden Redeploy aus 12D-08 nahm dieselbe bereits vorher vorhandene Discord-Nachricht auch die zweite Stimme an. Beide Teilnehmer wählten schließlich Vorschlag 1; Runde `7` wurde eindeutig und ohne Tie-Break abgeschlossen:
 
-#### Zwischenstand 12D-08 – Redeploy mit offener Session
+- Runde: `7|COMPLETED|OFFER|13|false|CONFIRMED`
+- Votes: `7|1|OFFER|13` und `7|2|OFFER|13`
+- Challenge: exakt eine passende Challenge `5|13`
+- Discord: klarer Gewinner `Vorschlag 1`, getrennte Einzelstimmen und bestätigte Challenge aus exakt Vorschlag 1
+- Providerpersistenz weiterhin `COMPLETED|8`
 
-Mit Session `6` / Runde `7` im Zustand `OPEN|PENDING`, exakt einer persistierten Stimme `7|2|OFFER|13` und weiterhin einer offenen Stimme wurde `acceptance deploy main` ausgeführt. Die Nachprüfung nach dem Redeploy zeigt:
+**12D-03: PASS.** Stimme, Geheimhaltung und Vote-Änderung über Restart hinweg funktionieren; der Flow lässt sich danach regulär und ohne zusätzliche Providerarbeit abschließen.
+
+#### Ergebnis 12D-08 – Redeploy mit offener Session
+
+Mit Session `6` / Runde `7` im Zustand `OPEN|PENDING`, exakt einer persistierten Stimme `7|2|OFFER|13` und weiterhin einer offenen Stimme wurde `acceptance deploy main` ausgeführt. Die Nachprüfung nach dem Redeploy zeigte:
 
 - Acceptance wieder `running/healthy`
 - Source weiterhin exakt `325996dc0704bdc8139c63fcb04d4ff5322fc7d0`
@@ -91,7 +99,13 @@ Mit Session `6` / Runde `7` im Zustand `OPEN|PENDING`, exakt einer persistierten
 - einzige Stimme unverändert `7|2|OFFER|13`
 - Providerpersistenz weiterhin `COMPLETED|8`
 
-Damit ist die DB-/Provider-Persistenz über den Redeploy nachgewiesen. Für den vollständigen PASS von 12D-08 fehlt nur noch der praktische Nachweis, dass die bereits vor dem Redeploy vorhandene Discord-Nachricht weiterhin einen gültigen zweiten Vote annimmt und die Runde regulär abschließt.
+Anschließend wurde auf der bereits **vor dem Redeploy vorhandenen Discord-Nachricht** die zweite Stimme erfolgreich abgegeben. Die Runde schloss regulär auf Vorschlag 1; Challenge `5` wurde genau einmal aus Offer `13` materialisiert. Production blieb unverändert `running/healthy` auf `3ffc239fc357a8b8579aeb77b1de637e6f6562db` mit deaktiviertem Discord/OpenAI.
+
+**12D-08: PASS.** Redeploy erhält DB, offene Runde, bestehende Stimme und die Verwendbarkeit der alten Discord-Komponenten; es entsteht kein zusätzlicher Providerrequest.
+
+### Provider-/Kostenstand nach R1
+
+Der OpenAI-Dashboard-Snapshot nach Abschluss von R1 zeigt kumulativ **9 Requests** und **0,67 USD** Spend im Acceptance-Projekt. Gegenüber der 12B+12C-Baseline von 8 Requests / 0,59 USD entspricht R1 damit exakt **einem** zusätzlichen Request und rund **0,08 USD** zusätzlichen Kosten. Für den 19. August zeigt das Dashboard dazu **22,988K Input**, **1,829K Output** und **24,817K Gesamt-Tokens**. Das passt zur DB-Evidenz: in der nach 12B neu aufgebauten Acceptance-DB stieg die Zahl persistierter erfolgreicher 12C/12D-Curation-Runden von 7 auf 8.
 
 ## Optimierte Szenarioreihenfolge
 
@@ -113,12 +127,12 @@ Die Pflichtfälle aus #89 sollen mit höchstens drei erfolgreichen kostenpflicht
 | --- | --- | --- | --- | ---: | --- | --- |
 | 12D-01 Idle-Restart | – | healthy; 7/7 Curation-Runden COMPLETED; eine dormant offene 12C-Runde | `acceptance stop/start`; Bot offline und nach ~12 s wieder online | 0 | PASS | Providerzustand und dormant Runde unverändert; Production unverändert |
 | 12D-02 offene Runde ohne Vote | R1 / Session 6 / Round 7 | 2 Offers sichtbar, 0 Votes, `OPEN|PENDING` | Stop/Start, danach vorhandenen Vote-Button verwendet | 0 zusätzlich | PASS | alte Buttons funktionsfähig; eine Stimme persistiert; Provider blieb bei 8 |
-| 12D-03 Restart/Redeploy nach einem Vote | R1 / Session 6 / Round 7 | eine Stimme `OFFER|14` | Stop/Start; Stimme danach auf `OFFER|13` geändert | 0 zusätzlich | IN PROGRESS | Persistenz/Änderung/Geheimhaltung PASS; Abschluss nach 12D-08 |
+| 12D-03 Restart nach einem Vote | R1 / Session 6 / Round 7 | eine Stimme `OFFER|14` | Stop/Start; Stimme danach auf `OFFER|13` geändert; nach 12D-08 regulär abgeschlossen | 0 zusätzlich | PASS | Persistenz, Änderung, Geheimhaltung und Abschluss sauber |
 | 12D-04 REROLL-/Resume-Restart | R2 | | | | NOT RUN | |
 | 12D-05 ungültiger Acceptance-Key | Fehler-Session | | | | NOT RUN | |
 | 12D-06 lokaler Transportfehler | Fehler-Session | | | 0 extern | NOT RUN | |
-| 12D-07 Discord-Reconnect | R1/R2 | | | 0 zusätzlich | NOT RUN | |
-| 12D-08 Redeploy mit offener Session | R1 / Session 6 / Round 7 | eine geänderte Stimme `OFFER|13`, zweite Stimme offen | `acceptance deploy main`; DB/Providerzustand unverändert | 0 zusätzlich | IN PROGRESS | Redeploy-Persistenz PASS; alter Discord-Button noch praktisch zu prüfen |
+| 12D-07 Discord-Reconnect | R1/R2 | mehrere Stop/Start/Redeploys | Bot ging jeweils offline und kam wieder online; stale Button noch offen | 0 zusätzlich | IN PROGRESS | Reconnect selbst mehrfach PASS; stale-Komponente noch prüfen |
+| 12D-08 Redeploy mit offener Session | R1 / Session 6 / Round 7 | eine geänderte Stimme `OFFER|13`, zweite Stimme offen | `acceptance deploy main`; danach alten Discord-Button verwendet | 0 zusätzlich | PASS | DB/Providerzustand unverändert; Runde anschließend normal bestätigt |
 | 12D-09 Backup in Preview | – | | | 0 | NOT RUN | |
 | 12D-10 Reset / Neuaufbau | – | | | 0 | NOT RUN | |
 
@@ -148,11 +162,11 @@ Sofort abbrechen und eigenes P0/P1-Issue anlegen bei:
 
 - [x] Idle-Restart funktioniert
 - [x] offene-Runde-Restart funktioniert
-- [ ] Ein-Vote-Restart vollständig abgeschlossen (Persistenz und Vote-Änderung bereits PASS)
+- [x] Ein-Vote-Restart funktioniert
 - [ ] REROLL-/Resume-Pfad restartfest oder Mikrofenster sauber als nicht injizierbar begründet
 - [ ] Auth- und Transportfehler bleiben begrenzt und technisch korrekt
-- [ ] Discord verbindet sich sauber neu
-- [ ] Redeploy erhält persistierte offene Sessions (DB/Provider-Persistenz bereits PASS, Discord-Button noch offen)
+- [ ] Discord-Reconnect vollständig abgeschlossen (Reconnect selbst PASS, stale-Komponente noch offen)
+- [x] Redeploy erhält persistierte offene Sessions
 - [ ] Acceptance-Backup lässt sich secretfrei in Preview restaurieren
 - [ ] Reset betrifft ausschließlich Acceptance
 - [ ] Requestbudget bleibt eingehalten
