@@ -81,6 +81,18 @@ Mit exakt der einen persistierten Stimme `7|2|OFFER|14` wurde Acceptance erneut 
 
 Damit sind Persistenz, Geheimhaltung und Vote-Änderung nach Restart nachgewiesen. Die zweite Stimme wird bewusst noch zurückgehalten, damit derselbe Ein-Vote-Zustand unmittelbar für 12D-08 (Redeploy mit offener Session) verwendet werden kann. 12D-03 bleibt bis zum anschließenden regulären Abschluss der Runde `IN PROGRESS`.
 
+#### Zwischenstand 12D-08 – Redeploy mit offener Session
+
+Mit Session `6` / Runde `7` im Zustand `OPEN|PENDING`, exakt einer persistierten Stimme `7|2|OFFER|13` und weiterhin einer offenen Stimme wurde `acceptance deploy main` ausgeführt. Die Nachprüfung nach dem Redeploy zeigt:
+
+- Acceptance wieder `running/healthy`
+- Source weiterhin exakt `325996dc0704bdc8139c63fcb04d4ff5322fc7d0`
+- Runde `7` unverändert `OPEN|PENDING`
+- einzige Stimme unverändert `7|2|OFFER|13`
+- Providerpersistenz weiterhin `COMPLETED|8`
+
+Damit ist die DB-/Provider-Persistenz über den Redeploy nachgewiesen. Für den vollständigen PASS von 12D-08 fehlt nur noch der praktische Nachweis, dass die bereits vor dem Redeploy vorhandene Discord-Nachricht weiterhin einen gültigen zweiten Vote annimmt und die Runde regulär abschließt.
+
 ## Optimierte Szenarioreihenfolge
 
 Die Pflichtfälle aus #89 sollen mit höchstens drei erfolgreichen kostenpflichtigen Generation Sessions auskommen. Fehler-Sessions mit absichtlich ungültigem Key oder lokalem Transportziel erzeugen keine normalen kostenpflichtigen Providerläufe.
@@ -106,7 +118,7 @@ Die Pflichtfälle aus #89 sollen mit höchstens drei erfolgreichen kostenpflicht
 | 12D-05 ungültiger Acceptance-Key | Fehler-Session | | | | NOT RUN | |
 | 12D-06 lokaler Transportfehler | Fehler-Session | | | 0 extern | NOT RUN | |
 | 12D-07 Discord-Reconnect | R1/R2 | | | 0 zusätzlich | NOT RUN | |
-| 12D-08 Redeploy mit offener Session | R1 / Session 6 / Round 7 | eine geänderte Stimme `OFFER|13`, zweite Stimme offen | | 0 zusätzlich | NOT RUN | |
+| 12D-08 Redeploy mit offener Session | R1 / Session 6 / Round 7 | eine geänderte Stimme `OFFER|13`, zweite Stimme offen | `acceptance deploy main`; DB/Providerzustand unverändert | 0 zusätzlich | IN PROGRESS | Redeploy-Persistenz PASS; alter Discord-Button noch praktisch zu prüfen |
 | 12D-09 Backup in Preview | – | | | 0 | NOT RUN | |
 | 12D-10 Reset / Neuaufbau | – | | | 0 | NOT RUN | |
 
@@ -140,7 +152,7 @@ Sofort abbrechen und eigenes P0/P1-Issue anlegen bei:
 - [ ] REROLL-/Resume-Pfad restartfest oder Mikrofenster sauber als nicht injizierbar begründet
 - [ ] Auth- und Transportfehler bleiben begrenzt und technisch korrekt
 - [ ] Discord verbindet sich sauber neu
-- [ ] Redeploy erhält persistierte offene Sessions
+- [ ] Redeploy erhält persistierte offene Sessions (DB/Provider-Persistenz bereits PASS, Discord-Button noch offen)
 - [ ] Acceptance-Backup lässt sich secretfrei in Preview restaurieren
 - [ ] Reset betrifft ausschließlich Acceptance
 - [ ] Requestbudget bleibt eingehalten
