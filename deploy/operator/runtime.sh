@@ -499,6 +499,14 @@ prepare_instance_files() {
     chmod 0640 "$instance_dir/application.properties"
 }
 
+recreate_app_container() {
+    local instance_dir=$1
+    # application.properties is atomically replaced on every deployment. Docker file bind mounts keep pointing at
+    # the previously mounted inode if Compose reuses the existing container, so always recreate only the app after
+    # the broad reconciliation. PostgreSQL remains untouched unless its own Compose configuration actually changed.
+    compose_instance "$instance_dir" up -d --remove-orphans --no-deps --force-recreate app
+}
+
 rollback_instance_files() {
     local instance_dir=$1
     local had_previous=$2
@@ -508,7 +516,8 @@ rollback_instance_files() {
         if [[ -f $instance_dir/metadata.previous ]]; then
             mv -f "$instance_dir/metadata.previous" "$instance_dir/metadata"
         fi
-        if ! compose_instance "$instance_dir" up -d --remove-orphans >/dev/null; then
+        if ! compose_instance "$instance_dir" up -d --remove-orphans >/dev/null \
+            || ! recreate_app_container "$instance_dir" >/dev/null; then
             med_warn 'Der vorherige Anwendungsstand konnte nicht erneut gestartet werden. Logs und Datenbankzustand prüfen.'
             return 0
         fi
@@ -556,7 +565,8 @@ activate_instance() {
         "$requested_ref" "$sha" "$image" "$port"
 
     med_note "Starte Compose-Projekt $project_name ..."
-    if ! compose_instance "$instance_dir" up -d --remove-orphans; then
+    if ! compose_instance "$instance_dir" up -d --remove-orphans \
+        || ! recreate_app_container "$instance_dir"; then
         med_warn 'Compose konnte die Instanz nicht starten.'
         rollback_instance_files "$instance_dir" "$had_previous"
         return 1
