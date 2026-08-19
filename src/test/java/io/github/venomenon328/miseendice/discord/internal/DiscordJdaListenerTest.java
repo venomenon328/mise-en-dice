@@ -204,7 +204,7 @@ class DiscordJdaListenerTest {
             var option = mock(OptionMapping.class);
             acknowledgement(event);
             when(event.getOption("angebote")).thenReturn(option);
-            when(offers.getAsInt()).thenReturn(offerCount);
+            when(option.getAsInt()).thenReturn(offerCount);
 
             listener(workflow).onSlashCommandInteraction(event);
 
