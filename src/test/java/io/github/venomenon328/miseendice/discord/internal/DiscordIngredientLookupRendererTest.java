@@ -71,56 +71,49 @@ class DiscordIngredientLookupRendererTest {
     }
 
     @Test
-    void usesButtonsForUpToFourRelationsAndSelectsFromFiveRelations() {
-        var buttonEmbed = renderer.profile(profile(true, 2, List.of(), null,
-                List.of(relation(1, "Eltern A"), relation(2, "Eltern B")),
-                List.of(relation(3, "Kind A"), relation(4, "Kind B"), relation(5, "Kind C"), relation(6, "Kind D")),
-                List.of(), List.of()));
+    void alwaysUsesOneSelectPerNonEmptyRelationDirectionIncludingSingleTargets() {
+        var oneParent = renderer.profile(profile(true, 2, List.of(), null,
+                List.of(relation(1, "Eltern A")), List.of(), List.of(), List.of()));
 
-        assertThat(buttonEmbed.navigationRows()).hasSize(2).allSatisfy(row ->
-                assertThat(row).isInstanceOf(DiscordIngredientLookupRenderer.NavigationButtonRow.class));
-        var parentButtons = (DiscordIngredientLookupRenderer.NavigationButtonRow) buttonEmbed.navigationRows().getFirst();
-        assertThat(parentButtons.buttons()).extracting(DiscordIngredientLookupRenderer.NavigationButton::label)
-                .containsExactly("⬆ Eltern A", "⬆ Eltern B");
-        assertThat(parentButtons.buttons()).extracting(DiscordIngredientLookupRenderer.NavigationButton::customId)
-                .containsExactly(DiscordIngredientComponentId.navigationButton(1), DiscordIngredientComponentId.navigationButton(2));
-
-        List<IngredientLookupRelation> children = java.util.stream.LongStream.rangeClosed(10, 14)
-                .mapToObj(id -> relation(id, "Kind " + id)).toList();
-        var selectEmbed = renderer.profile(profile(true, 2, List.of(), null, List.of(), children, List.of(), List.of()));
-        assertThat(selectEmbed.navigationRows()).singleElement()
+        assertThat(oneParent.navigationRows()).singleElement()
                 .isInstanceOf(DiscordIngredientLookupRenderer.NavigationSelectRow.class);
-        var select = (DiscordIngredientLookupRenderer.NavigationSelectRow) selectEmbed.navigationRows().getFirst();
-        assertThat(select.customId()).isEqualTo(DiscordIngredientComponentId.navigationSelect("child"));
-        assertThat(select.options()).hasSize(5);
+        var parentSelect = (DiscordIngredientLookupRenderer.NavigationSelectRow) oneParent.navigationRows().getFirst();
+        assertThat(parentSelect.customId()).isEqualTo(DiscordIngredientComponentId.navigationSelect("parent"));
+        assertThat(parentSelect.placeholder()).isEqualTo("⬆️ Allgemeineren Begriff öffnen …");
+        assertThat(parentSelect.options()).singleElement().satisfies(option -> {
+            assertThat(option.label()).isEqualTo("Eltern A");
+            assertThat(option.value()).isEqualTo(DiscordIngredientComponentId.conceptValue(1));
+        });
+
+        var bothDirections = renderer.profile(profile(true, 2, List.of(), null,
+                List.of(relation(2, "Eltern B"), relation(3, "Eltern C")),
+                List.of(relation(4, "Kind A"), relation(5, "Kind B"), relation(6, "Kind C"), relation(7, "Kind D")),
+                List.of(), List.of()));
+        assertThat(bothDirections.navigationRows()).hasSize(2)
+                .allSatisfy(row -> assertThat(row).isInstanceOf(DiscordIngredientLookupRenderer.NavigationSelectRow.class));
+        var childSelect = (DiscordIngredientLookupRenderer.NavigationSelectRow) bothDirections.navigationRows().get(1);
+        assertThat(childSelect.customId()).isEqualTo(DiscordIngredientComponentId.navigationSelect("child"));
+        assertThat(childSelect.placeholder()).isEqualTo("⬇️ Konkretisierung öffnen …");
+        assertThat(childSelect.options()).hasSize(4);
+
+        var noRelations = renderer.profile(profile(true, 2, List.of(), null,
+                List.of(), List.of(), List.of(), List.of()));
+        assertThat(noRelations.navigationRows()).isEmpty();
     }
 
     @Test
-    void keepsTruncatedNavigationLabelsVisiblyDistinctWithoutExposingConceptIds() {
+    void keepsTruncatedNavigationOptionLabelsVisiblyDistinctWithoutExposingConceptIds() {
         String shared = "Sehr langer Beziehungsname mit absichtlich identischem Anfang ".repeat(3);
-        var buttonEmbed = renderer.profile(profile(true, 2, List.of(), null,
+        var embed = renderer.profile(profile(true, 2, List.of(), null,
                 List.of(relation(701, shared + "Alpha"), relation(702, shared + "Beta")),
                 List.of(), List.of(), List.of()));
-        var buttons = (DiscordIngredientLookupRenderer.NavigationButtonRow) buttonEmbed.navigationRows().getFirst();
-        List<String> buttonLabels = buttons.buttons().stream().map(DiscordIngredientLookupRenderer.NavigationButton::label).toList();
-
-        assertThat(buttonLabels).hasSize(2).doesNotHaveDuplicates();
-        assertThat(buttonLabels).allSatisfy(label -> {
-            assertThat(label).hasSizeLessThanOrEqualTo(80).contains("… · ");
-            assertThat(label).doesNotContain("701", "702");
-        });
-
-        List<IngredientLookupRelation> children = List.of(
-                relation(801, shared + "Eins"), relation(802, shared + "Zwei"), relation(803, shared + "Drei"),
-                relation(804, shared + "Vier"), relation(805, shared + "Fünf"));
-        var selectEmbed = renderer.profile(profile(true, 2, List.of(), null, List.of(), children, List.of(), List.of()));
-        var select = (DiscordIngredientLookupRenderer.NavigationSelectRow) selectEmbed.navigationRows().getFirst();
+        var select = (DiscordIngredientLookupRenderer.NavigationSelectRow) embed.navigationRows().getFirst();
         List<String> optionLabels = select.options().stream().map(DiscordIngredientLookupRenderer.SelectionOption::label).toList();
 
-        assertThat(optionLabels).hasSize(5).doesNotHaveDuplicates();
+        assertThat(optionLabels).hasSize(2).doesNotHaveDuplicates();
         assertThat(optionLabels).allSatisfy(label -> {
             assertThat(label).hasSizeLessThanOrEqualTo(100).contains("… · ");
-            assertThat(label).doesNotContain("801", "802", "803", "804", "805");
+            assertThat(label).doesNotContain("701", "702");
         });
     }
 

@@ -14,6 +14,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
@@ -101,20 +102,6 @@ class DiscordJdaListenerTest {
     }
 
     @Test
-    void routesIngredientNavigationButtonBeforeTheGenericChallengeComponentPath() {
-        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
-        var lookupWorkflow = mock(DiscordIngredientLookupWorkflow.class);
-        var event = buttonEvent(DiscordIngredientComponentId.navigationButton(42), lookupWorkflow);
-
-        ingredientListener(challengeWorkflow, lookupWorkflow).onButtonInteraction(event);
-
-        InOrder order = inOrder(event, lookupWorkflow);
-        order.verify(event).deferEdit();
-        order.verify(lookupWorkflow).navigateButton(eq(DiscordIngredientComponentId.navigationButton(42)), any(), any());
-        org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
-    }
-
-    @Test
     void routesIngredientNavigationSelectWithoutInvokerBinding() {
         var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
         var lookupWorkflow = mock(DiscordIngredientLookupWorkflow.class);
@@ -131,7 +118,7 @@ class DiscordJdaListenerTest {
     }
 
     @Test
-    void ingredientProfileMessageMapsDescriptionInlineFieldsColorAndNavigationComponents() {
+    void ingredientProfileMessageMapsDescriptionInlineFieldsColorAndSingleOptionNavigationSelect() {
         var response = new DiscordIngredientLookupRenderer.RenderedEmbed(
                 "🥢 Tempeh",
                 "```\nGewichtung  1,0\n```",
@@ -139,9 +126,11 @@ class DiscordJdaListenerTest {
                 List.of(
                         new DiscordIngredientLookupRenderer.EmbedField("Funktion im Gericht", "pflanzliches Protein", true),
                         new DiscordIngredientLookupRenderer.EmbedField("Besondere Eigenschaften", "fermentiert", true)),
-                List.of(new DiscordIngredientLookupRenderer.NavigationButtonRow(List.of(
-                        new DiscordIngredientLookupRenderer.NavigationButton("⬆ Sojaprodukt",
-                                DiscordIngredientComponentId.navigationButton(42))))));
+                List.of(new DiscordIngredientLookupRenderer.NavigationSelectRow(
+                        DiscordIngredientComponentId.navigationSelect("parent"),
+                        "⬆️ Allgemeineren Begriff öffnen …",
+                        List.of(new DiscordIngredientLookupRenderer.SelectionOption(
+                                "Sojaprodukt", DiscordIngredientComponentId.conceptValue(42), null)))));
 
         var message = DiscordJdaListener.ingredientMessage(response);
 
@@ -151,7 +140,16 @@ class DiscordJdaListenerTest {
             assertThat(embed.getColorRaw()).isEqualTo(DiscordIngredientLookupRenderer.CARD_COLOR);
             assertThat(embed.getFields()).hasSize(2).allSatisfy(field -> assertThat(field.isInline()).isTrue());
         });
-        assertThat(message.getComponents()).hasSize(1);
+        assertThat(message.getComponents()).singleElement().satisfies(union -> {
+            var row = union.asActionRow();
+            assertThat(row.getComponents()).singleElement().isInstanceOf(StringSelectMenu.class);
+            var select = (StringSelectMenu) row.getComponents().getFirst();
+            assertThat(select.getPlaceholder()).isEqualTo("⬆️ Allgemeineren Begriff öffnen …");
+            assertThat(select.getOptions()).singleElement().satisfies(option -> {
+                assertThat(option.getLabel()).isEqualTo("Sojaprodukt");
+                assertThat(option.getValue()).isEqualTo(DiscordIngredientComponentId.conceptValue(42));
+            });
+        });
     }
 
     @Test
@@ -342,22 +340,6 @@ class DiscordJdaListenerTest {
         when(guild.getIdLong()).thenReturn(99L);
         when(event.getUser()).thenReturn(user);
         when(user.getId()).thenReturn(userId);
-        return event;
-    }
-
-    private static ButtonInteractionEvent buttonEvent(String componentId, DiscordIngredientLookupWorkflow lookupWorkflow) {
-        var event = mock(ButtonInteractionEvent.class);
-        var guild = mock(Guild.class);
-        var user = mock(User.class);
-        when(event.getComponentId()).thenReturn(componentId);
-        when(event.getGuild()).thenReturn(guild);
-        when(guild.getIdLong()).thenReturn(99L);
-        when(event.getUser()).thenReturn(user);
-        when(user.getId()).thenReturn("10002");
-        when(lookupWorkflow.accepts(99, "10002")).thenReturn(true);
-        MessageEditCallbackAction acknowledgement = mock(MessageEditCallbackAction.class);
-        when(event.deferEdit()).thenReturn(acknowledgement);
-        invokeAcknowledgement(acknowledgement, mock(InteractionHook.class));
         return event;
     }
 

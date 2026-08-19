@@ -4,7 +4,6 @@ package io.github.venomenon328.miseendice.discord.internal;
 final class DiscordIngredientComponentId {
     private static final String PREFIX = "med:v1:ingredient:";
     private static final String SEARCH_SELECTION_PREFIX = PREFIX + "select:";
-    private static final String NAVIGATION_PREFIX = PREFIX + "navigate:";
     private static final String NAVIGATION_SELECT_PREFIX = PREFIX + "navigate-select:";
 
     private DiscordIngredientComponentId() {
@@ -19,14 +18,6 @@ final class DiscordIngredientComponentId {
 
     static boolean isSelection(String customId) {
         return customId != null && customId.startsWith(SEARCH_SELECTION_PREFIX);
-    }
-
-    static String navigationButton(long conceptId) {
-        return NAVIGATION_PREFIX + positiveConceptId(conceptId);
-    }
-
-    static boolean isNavigationButton(String customId) {
-        return customId != null && customId.startsWith(NAVIGATION_PREFIX);
     }
 
     static String navigationSelect(String direction) {
@@ -54,13 +45,6 @@ final class DiscordIngredientComponentId {
             throw new IllegalArgumentException("Malformed ingredient component");
         }
         return new Selection(userId);
-    }
-
-    static long parseNavigationButton(String customId) {
-        if (!isNavigationButton(customId)) {
-            throw new IllegalArgumentException("Unknown ingredient navigation component");
-        }
-        return parsePositiveLong(customId.substring(NAVIGATION_PREFIX.length()), "ingredient navigation component");
     }
 
     static void validateNavigationSelect(String customId) {

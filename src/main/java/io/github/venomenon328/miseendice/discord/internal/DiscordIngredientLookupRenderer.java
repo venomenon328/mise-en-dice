@@ -23,9 +23,7 @@ final class DiscordIngredientLookupRenderer {
     private static final int FIELD_VALUE_LIMIT = 1_024;
     private static final int MAX_FIELDS = 25;
     private static final int LIST_VALUE_LIMIT = 620;
-    private static final int BUTTON_RELATION_LIMIT = 4;
     private static final int SELECT_RELATION_LIMIT = 25;
-    private static final int BUTTON_LABEL_LIMIT = 80;
     private static final int MAX_CURATOR_NOTE_FIELDS = 2;
     private static final String EMPTY_SCALE = "○";
     private static final Map<String, String> DIMENSION_SYMBOLS = Map.of(
@@ -137,25 +135,15 @@ final class DiscordIngredientLookupRenderer {
     private static List<NavigationRow> navigationRows(List<IngredientLookupRelation> parents,
                                                        List<IngredientLookupRelation> children) {
         List<NavigationRow> rows = new ArrayList<>(2);
-        navigationRow("parent", "⬆", "⬆️ Allgemeineren Begriff öffnen …", parents).ifPresent(rows::add);
-        navigationRow("child", "⬇", "⬇️ Konkretisierung öffnen …", children).ifPresent(rows::add);
+        navigationRow("parent", "⬆️ Allgemeineren Begriff öffnen …", parents).ifPresent(rows::add);
+        navigationRow("child", "⬇️ Konkretisierung öffnen …", children).ifPresent(rows::add);
         return List.copyOf(rows);
     }
 
-    private static java.util.Optional<NavigationRow> navigationRow(String direction, String symbol, String placeholder,
+    private static java.util.Optional<NavigationRow> navigationRow(String direction, String placeholder,
                                                                     List<IngredientLookupRelation> relations) {
         if (relations.isEmpty()) {
             return java.util.Optional.empty();
-        }
-        if (relations.size() <= BUTTON_RELATION_LIMIT) {
-            List<String> labels = uniqueComponentLabels(relations.stream()
-                    .map(relation -> symbol + " " + relation.displayName()).toList(), BUTTON_LABEL_LIMIT);
-            List<NavigationButton> buttons = new ArrayList<>(relations.size());
-            for (int index = 0; index < relations.size(); index++) {
-                buttons.add(new NavigationButton(labels.get(index),
-                        DiscordIngredientComponentId.navigationButton(relations.get(index).conceptId())));
-            }
-            return java.util.Optional.of(new NavigationButtonRow(buttons));
         }
         List<IngredientLookupRelation> visible = relations.stream().limit(SELECT_RELATION_LIMIT).toList();
         List<String> labels = uniqueComponentLabels(visible.stream().map(IngredientLookupRelation::displayName).toList(), 100);
@@ -293,32 +281,14 @@ final class DiscordIngredientLookupRenderer {
         }
     }
 
-    sealed interface NavigationRow permits NavigationButtonRow, NavigationSelectRow {
-    }
-
-    record NavigationButtonRow(List<NavigationButton> buttons) implements NavigationRow {
-        NavigationButtonRow {
-            buttons = List.copyOf(buttons);
-            if (buttons.isEmpty() || buttons.size() > BUTTON_RELATION_LIMIT) {
-                throw new IllegalArgumentException("Invalid ingredient navigation button row");
-            }
-        }
-    }
-
-    record NavigationButton(String label, String customId) {
-        NavigationButton {
-            if (label == null || label.isBlank() || label.length() > BUTTON_LABEL_LIMIT || customId == null || customId.isBlank()
-                    || customId.length() > 100) {
-                throw new IllegalArgumentException("Invalid ingredient navigation button");
-            }
-        }
+    sealed interface NavigationRow permits NavigationSelectRow {
     }
 
     record NavigationSelectRow(String customId, String placeholder, List<SelectionOption> options) implements NavigationRow {
         NavigationSelectRow {
             options = List.copyOf(options);
             if (customId == null || customId.isBlank() || customId.length() > 100 || placeholder == null || placeholder.isBlank()
-                    || placeholder.length() > 150 || options.size() < 5 || options.size() > SELECT_RELATION_LIMIT) {
+                    || placeholder.length() > 150 || options.isEmpty() || options.size() > SELECT_RELATION_LIMIT) {
                 throw new IllegalArgumentException("Invalid ingredient navigation select row");
             }
         }

@@ -570,10 +570,18 @@ OpenAI werden dadurch berührt.
 Nach der Live-Abnahme von #108 verdichtet Issue #111 die Zutaten-Card vor dem privaten Pilot: Basisdaten stehen kompakt
 unter dem Titel, Funktion und besondere Eigenschaften verwenden native Inline-Embed-Felder und die direkte Hierarchie
 steht erst am Ende der Card. Aktive direkte Eltern und Kinder tragen in derselben read-only `catalog :: api`-Projektion
-stabile Konzept-IDs und sind über stateless sekundäre Buttons beziehungsweise String-Selects direkt navigierbar. Die
-Navigation lädt das Zielprofil frisch per ID und führt keine Namenssuche aus. Suchsemantik, Challenge-Lifecycle,
-Persistenz, Generator, Kurator und Providerzugriffe bleiben unverändert. Nach Live-Abnahme dieses UX-Follow-ups folgt
-Phase 12E / #90.
+stabile Konzept-IDs und sind stateless direkt navigierbar. Die Navigation lädt das Zielprofil frisch per ID und führt
+keine Namenssuche aus. Suchsemantik, Challenge-Lifecycle, Persistenz, Generator, Kurator und Providerzugriffe bleiben
+unverändert. Die Acceptance-Abnahme bestätigt Card-Aufbau, Inline-Felder und die ID-basierte In-place-Navigation.
+
+### Phase 12D.5.2: Einheitliche Hierarchie-Dropdowns (Issue #113)
+
+Issue #113 vereinheitlicht die in #111 eingeführte Hierarchienavigation: Jede nicht leere Beziehungsrichtung verwendet
+unabhängig von der Zahl der Ziele genau ein String-Select, auch bei nur einem Ziel. Eltern und Kinder bleiben getrennte
+Dropdowns; bei leeren Beziehungen erscheint kein Navigationselement. Die Auswahl ersetzt weiterhin dieselbe Discord-
+Nachricht, verwendet unmittelbar die stabile Konzept-ID und bleibt auf höchstens 25 sichtbare Ziele je Richtung
+begrenzt. Der nicht mehr benötigte Zutaten-Navigationsbutton-Pfad entfällt; Challenge-Buttons und sämtliche Katalog-,
+Such-, Persistenz-, Generator-, Kurator- und Providersemantik bleiben unverändert. Danach folgt Phase 12E / #90.
 
 ### Phase 12B–12E: Manuelle Inbetriebnahme, Abnahme und Pilot (Issues #87–#90)
 
