@@ -4,7 +4,7 @@ Dieses Verzeichnis ist die verbindliche, versionierte Arbeitsgrundlage für die 
 
 Die Karten werden bewusst **nicht durch den Discord-Bot erzeugt**. Sie entstehen außerhalb von Discord direkt mit ChatGPT auf Basis der hier abgelegten Spezifikation, Templates, Referenzen und freigegebenen Bildassets. GitHub ist die Source of Truth; die ChatGPT File Library wird nicht benötigt.
 
-Maßgeblich sind die abgeschlossenen Issues [#122](https://github.com/venomenon328/mise-en-dice/issues/122) und [#124](https://github.com/venomenon328/mise-en-dice/issues/124).
+Maßgeblich sind die abgeschlossenen Issues #122, #124 und #126 sowie die dazugehörigen gemergten Pull Requests.
 
 ## Abgrenzung zum Anwendungsbuild
 
@@ -21,39 +21,31 @@ design/challenge-cards/
 ├── DESIGN_SPEC.md
 ├── WORKFLOW.md
 ├── references/
-│   ├── README.md
-│   └── discord-bot-banner-reference.jpg
 ├── wireframes/
-│   ├── README.md
-│   ├── GEOMETRY.md
-│   ├── generate_wireframes.py
-│   └── *.svg
 ├── style-studies/
+├── typography-studies/
 │   ├── README.md
-│   ├── VISUAL_FOUNDATIONS.md
-│   ├── generate_style_studies.py
-│   ├── style-study-*.svg
+│   ├── TYPOGRAPHY_STUDIES.md
+│   ├── generate_typography_studies.py
+│   ├── typography-study-a.svg
+│   ├── typography-study-b.svg
+│   ├── typography-study-c.svg
 │   └── renders/
 │       └── compact/
 ├── packages/
-│   ├── README.md
-│   └── challenge-card-visual-foundations-v1.zip
 ├── templates/
-│   └── README.md
 ├── assets/
-│   ├── README.md
 │   ├── ingredients/
 │   └── open-concepts/
 └── examples/
-    └── README.md
 ```
 
 ## Verbindlichkeit
 
-- [`DESIGN_SPEC.md`](DESIGN_SPEC.md) trennt beschlossene Regeln von offenen Folgeentscheidungen.
+- [`DESIGN_SPEC.md`](DESIGN_SPEC.md) enthält den freigegebenen Gesamtstand und trennt ihn von offenen Folgeentscheidungen.
 - Freigegebene Templates und Assets werden nicht bei jeder Challenge neu interpretiert oder ersetzt.
 - Eine komplette Karte wird nicht frei durch ein Bildmodell komponiert. Layout, Logo, Texte und Abstände folgen einem festen Template.
-- Neue Zutaten- oder Konzeptillustrationen werden bei Bedarf erzeugt, geprüft, hier versioniert und anschließend wiederverwendet.
+- Neue Zutaten- oder Konzeptillustrationen werden bei Bedarf erzeugt, geprüft, versioniert und anschließend wiederverwendet.
 - Der sichtbare Name einer Vorgabe bleibt verbindlich; die Illustration unterstützt ihn nur.
 
 ## Aktueller Stand
@@ -61,13 +53,8 @@ design/challenge-cards/
 - Die Geometrie für zwei, drei und vier Vorgaben ist freigegeben.
 - Ohne Zusatzregel bleibt die Regelzone bestehen und zeigt ausschließlich ein neutrales Ornament.
 - Als visuelle Richtung ist **Style Study A – Helles Honigbrett** freigegeben.
-- Style Study B bleibt als verworfene Kontrollvariante nachvollziehbar erhalten.
-- Farbrollen, Board-, Slot-, Schatten-, Dekorations- und Regelzonenregeln sind dokumentiert.
+- Als Typografierichtung ist **Typography Study A – Kitchen Editorial** freigegeben.
+- Vorgabennamen werden aus normal geschriebenen Quelldaten als **Small Caps** gerendert.
+- Typography Study B und C bleiben als verworfene Gegenproben nachvollziehbar erhalten.
 
-Der nächste Schritt ist ein eigenes Paket für **Typografie und das feste Wortlogo `Mise en Dice`**. Danach folgen der Illustrationsstandard und das finale Mastertemplate.
-
-## Direkter Zugriff auf das Paket
-
-Das vollständige Visual-Foundations-Paket kann direkt aus dem Repository geladen werden:
-
-[`packages/challenge-card-visual-foundations-v1.zip`](packages/challenge-card-visual-foundations-v1.zip)
+Der nächste größere Schritt ist der **Illustrationsstandard für konkrete Zutaten und offene Konzepte**. Danach wird das finale Mastertemplate aus den bereits eingefrorenen Bausteinen zusammengesetzt.
