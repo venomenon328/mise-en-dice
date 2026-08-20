@@ -117,7 +117,8 @@ def main() -> int:
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     spec = load_spec(args.spec.resolve(), output)
-    output.write_text(svg(spec, output), encoding="utf-8")
+    document = svg(spec, output).replace('data-card-kind="end-to-end reference card"', 'data-card-kind="challenge card"', 1)
+    output.write_text(document, encoding="utf-8")
     errors = validate_svg(output, spec)
     if errors:
         for error in errors:
