@@ -2,17 +2,20 @@
 
 ## 1. Grundsatz
 
-Die Kartenproduktion erfolgt außerhalb des Discord-Bots direkt mit ChatGPT. Das Repository stellt die verbindlichen Designquellen bereit.
+Die Kartenproduktion erfolgt außerhalb des Discord-Bots direkt mit ChatGPT. Das Repository stellt dafür die verbindlichen Designquellen bereit.
 
 ## 2. Normale Kartenerstellung
 
 1. Challenge-Daten und Nummer bestimmen.
 2. Freigegebenes Mastertemplate laden.
-3. Für jede Vorgabe zuerst ein exaktes Asset aus `assets/` suchen.
-4. Fehlende Assets on demand gemäß `illustration-system/` erzeugen und prüfen.
-5. Freigegebene Assets in die festen Slots einsetzen.
-6. Namen, `OFFEN`-Badge und optionale Regel aus dem Template rendern.
-7. Ausgabe bei voller Größe und im Kleinformat prüfen.
+3. Wortmarke aus `assets/brand/mise-en-dice-wordmark-master.png` gemäß Template proportional platzieren.
+4. Für jede Vorgabe zuerst ein exaktes Asset aus `assets/` suchen.
+5. Fehlende Assets on demand gemäß `illustration-system/` erzeugen und prüfen.
+6. Freigegebene Assets in die festen Slots einsetzen.
+7. `Challenge #NNN`, Namen, `OFFEN`-Badge und optionale Regel mit der freigegebenen Nutztypografie rendern.
+8. Ausgabe bei voller Größe und im Kleinformat prüfen.
+
+Die Wortmarke wird nicht als Text neu gesetzt und nicht als SVG rekonstruiert.
 
 ## 3. Neue Illustrationen
 
@@ -28,7 +31,13 @@ Die Kartenproduktion erfolgt außerhalb des Discord-Bots direkt mit ChatGPT. Das
 
 Der Katalog mit 600+ Konzepten wird nicht vorab vollständig bebildert.
 
-## 4. Designänderungen
+## 4. Wortmarken-Workflow
+
+Die Wortmarke unter `assets/brand/` ist ein eingefrorenes Rasterasset. Sie wird nicht neu generiert, vektorisiert, farblich verändert oder in Einzelbestandteile zerlegt. Zulässig sind proportionale Skalierung, Positionierung und technisch unsichtbare Optimierung.
+
+Eine sichtbare Änderung der Wortmarke wäre eine neue Brand-Version und muss bewusst beschlossen und versioniert werden.
+
+## 5. Designänderungen
 
 1. Entscheidung im Gespräch treffen.
 2. Entscheidung in den maßgeblichen Designdokumenten festhalten.
@@ -38,10 +47,10 @@ Der Katalog mit 600+ Konzepten wird nicht vorab vollständig bebildert.
 
 Designentscheidungen dürfen nicht nur im Chatverlauf verbleiben.
 
-## 5. Fertige Karten
+## 6. Fertige Karten
 
 Fertige Challenge-Cards sind Ergebnisse und nicht automatisch Bestandteile des Designsystems. Unter `examples/` werden nur solche Karten abgelegt, die als verbindliche Referenz für Layout oder Sonderfälle dienen.
 
-## 6. Reproduzierbarkeit
+## 7. Reproduzierbarkeit
 
-Eine Karte soll mindestens auf Challenge-Daten, Template-Version, Asset-Versionen und den Stand der Designspezifikation zurückgeführt werden können. Bestehende freigegebene Assets werden nicht still ersetzt.
+Eine Karte soll mindestens auf Challenge-Daten, Template-Version, Wortmarkenasset, Zutaten-/Konzept-Assetversionen und den Stand der Designspezifikation zurückgeführt werden können. Bestehende freigegebene Assets werden nicht still ersetzt.
