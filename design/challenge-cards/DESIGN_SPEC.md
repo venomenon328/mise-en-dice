@@ -1,7 +1,7 @@
 # Designspezifikation für Challenge-Cards
 
 Stand: 20. August 2026  
-Status: Geometrie, visuelle Grundlagen, Nutztypografie und Illustrationssystem sind freigegeben; die Wortmarke befindet sich nach Issue #130 erneut in Review.
+Status: Challenge-Card-Designsystem v1 ist als Mastertemplate umgesetzt; die visuelle Abnahme von Issue #135 steht noch aus.
 
 ## 1. Ziel
 
@@ -31,6 +31,8 @@ Eine Challenge-Card stellt eine konkrete Mise-en-Dice-Challenge schnell erfassba
 
 Die vollständigen Maße stehen unter `wireframes/GEOMETRY.md`.
 
+Die finale Slotkontur besteht aus einer weichen äußeren Kontur mit `2,4 px` und einer **durchgezogenen** inneren Kontur mit `1,5 px` bei `13 px` Innenversatz. Sie ersetzt die gestrichelte Wireframe-Hilfe und darf nicht als hartes UI-Panel wirken.
+
 ## 4. Verbindliche visuelle Richtung
 
 Freigegeben ist **Style Study A – Helles Honigbrett**.
@@ -45,7 +47,7 @@ Freigegeben ist **Style Study A – Helles Honigbrett**.
 
 Die vollständigen Tokens stehen unter `style-studies/VISUAL_FOUNDATIONS.md`.
 
-## 5. Verbindliche Nutztypografie und Wortmarkenstatus
+## 5. Verbindliche Nutztypografie und Wortmarke
 
 Freigegeben ist **Typography Study A – Kitchen Editorial**.
 
@@ -53,9 +55,11 @@ Freigegeben ist **Typography Study A – Kitchen Editorial**.
 - Vorgabennamen: normal geschriebene Quelldaten, typografisch als **echte Small Caps** gerendert.
 - `Go Smallcaps` ist die reproduzierbare Small-Caps-Referenz.
 
-Die vorherige, rein typografische Wortmarkenrichtung ist für das Wortlogo **nicht** mehr die Zielrichtung. Issue #130 vergleicht stattdessen eigenständige, expressive SVG-Wortmarken mit integriertem Würfel unter [`wordmark-studies/`](wordmark-studies/). Die Nutztypografie bleibt davon getrennt und unverändert.
+Die finale Wortmarke ist ausschließlich [`assets/brand/mise-en-dice-wordmark-master.png`](assets/brand/mise-en-dice-wordmark-master.png). Sie wird unverändert als RGBA-Rasterasset eingebunden; weder SVG-Rekonstruktion noch Vektorisierung oder Neugenerierung sind zulässig.
 
-Bis zur inhaltlichen Auswahl existiert bewusst kein Produktionsasset unter `assets/brand/` und kein eingefrorenes Mastertemplate-Logo.
+Im `1200 × 1200 px`-Template liegt sie bei `X = 330`, `Y = 24` mit `540 × 126 px`; `Challenge #NNN` steht zentriert mit Basislinie `Y = 195` und `28 px`.
+
+Die Wortmarke wird bewusst nicht mit den Nutzschriften substituiert. Die früheren Studien unter `wordmark-studies/` bleiben historisches Reviewmaterial.
 
 ## 6. Verbindliches Illustrationssystem
 
@@ -112,13 +116,13 @@ Die Methode und der erste Pasten-/Saucen-Stresstest stehen unter `illustration-s
 - `assets/references/anchor-style-study.jpg`: freigegebene Stilkalibrierung.
 - `assets/references/confusables-example-study.jpg`: exemplarischer Ähnlichkeits-Stresstest.
 
-## 9. Noch offene Entscheidungen
+## 9. Finales Mastertemplate und Referenzprüfung
 
-- Auswahl einer expressiven Wortmarkenstudie und deren Ausarbeitung als eigenes, pfadbasiertes SVG-Asset,
-- endgültige Feinheit der inneren Slotkontur im Mastertemplate,
-- finales Mastertemplate aus den eingefrorenen Bausteinen,
-- möglicher zusätzlicher Export für Querformat oder andere Plattformen.
+- Die editierbaren Varianten liegen unter [`templates/`](templates/) für zwei, drei und vier Vorgaben.
+- Der Generator fixiert Geometrie, Wortmarkenhash, Slotkontur, Regelzustand und Assetreferenzen; er erzeugt daraus zusätzlich vier End-to-End-Referenzkarten unter [`examples/`](examples/).
+- Ohne Zusatzregel zeigt die Regelzone ausschließlich das neutrale Würfel-/Linienornament, niemals einen erklärenden Ersatztext.
+- Review-PNGs entstehen reproduzierbar bei `1200 × 1200` und aus genau diesem Vollformat bei `320 × 320 px`.
 
-## 10. Nächster Schritt
+## 10. Offene Entscheidungen
 
-Nach inhaltlicher Freigabe einer Studie folgt ein eigenes Finalisierungspaket: Die gewählte Wortmarke wird dann in reine Füllpfade überführt, als Produktionsasset eingefroren und erst danach in das finale Mastertemplate übernommen. Weitere Zutatenassets entstehen danach nur noch on demand gemäß dem Illustration Guide.
+Die festgelegten Designparameter dieses Pakets haben keine offene Alternativvariante mehr. Ausstehend ist allein die visuelle Abnahme der erzeugten Referenzkarten; bis dahin bleibt der zugehörige PR ein Draft. Querformat und weitere Plattformformate sind nicht Bestandteil von v1.

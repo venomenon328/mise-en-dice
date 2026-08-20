@@ -1,1 +1,6 @@
 concept_key,display_name,asset_path,asset_kind,status,notes
+tofu,Tofu,assets/ingredients/tofu.png,ingredient,approved,Issue #135 reference asset; 1024px RGBA; on-demand illustration QA documented in review/issue-135-illustration-qa.md
+mango,Mango,assets/ingredients/mango.png,ingredient,approved,Issue #135 reference asset; 1024px RGBA; on-demand illustration QA documented in review/issue-135-illustration-qa.md
+miso,Miso,assets/ingredients/miso.png,ingredient,approved,Issue #135 reference asset; 1024px RGBA; ochre matte paste in neutral bowl; on-demand illustration QA documented in review/issue-135-illustration-qa.md
+blattgemuese,Blattgemüse,assets/open-concepts/blattgemuese.png,open-concept,approved,Issue #135 reference asset; 1024px RGBA; Pak Choi spinach and cabbage group; on-demand illustration QA documented in review/issue-135-illustration-qa.md
+pflanzliches-proteinprodukt,Pflanzliches Proteinprodukt,assets/open-concepts/pflanzliches-proteinprodukt.png,open-concept,approved,Issue #135 reference asset; 1024px RGBA; tofu tempeh and seitan group; on-demand illustration QA documented in review/issue-135-illustration-qa.md

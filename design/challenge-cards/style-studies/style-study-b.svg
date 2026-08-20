@@ -91,7 +91,6 @@
           <path d="M-8 -68 C -22 -100, 4 -102, -2 -62" fill="none" stroke="#A68A62" stroke-width="5" stroke-linecap="round"/>
           <ellipse cx="84" cy="80" rx="52" ry="16" fill="rgba(0,0,0,0.10)"/>
         </g>
-      
       <text x="360.0" y="548" class="name">KNOBLAUCH</text>
     </g>
 
@@ -106,7 +105,6 @@
           <path d="M-80 -28 c26 -12 56 -18 112 -14" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="6" stroke-linecap="round"/>
           <ellipse cx="72" cy="78" rx="72" ry="14" fill="rgba(0,0,0,0.12)"/>
         </g>
-      
       <text x="840.0" y="548" class="name">AUBERGINE</text>
     </g>
 
@@ -115,11 +113,11 @@
       <rect x="164" y="660" width="392" height="262" rx="28" class="slot-dash"/>
       
         <g aria-label="offenes Konzept" transform="translate(360.0,764)">
-          <path d="M-108 44 C -176 -64, -78 -148, -10 -34 C -28 2 -50 28 -108 44z" fill="#4F8A2B" stroke="#285118" stroke-width="4"/>
-          <path d="M-22 48 C -72 -42, 2 -124, 62 -40 C 42 0 20 30 -22 48z" fill="#74AD34" stroke="#2D5C1B" stroke-width="4"/>
-          <path d="M88 44 C 34 -40, 96 -120, 168 -36 C 154 2 124 30 88 44z" fill="#86C24A" stroke="#3A6D1F" stroke-width="4"/>
-          <path d="M-103 40 C -78 4 -52 -26 -16 -34" fill="none" stroke="#DDF4B8" stroke-width="4" opacity="0.65"/>
-          <path d="M-14 44 C 8 8 22 -18 48 -34" fill="none" stroke="#E7F8C8" stroke-width="4" opacity="0.65"/>
+          <path d="M-108 44 C -176 -64, -78 -148, -10 -34 C -28 2, -50 28, -108 44z" fill="#4F8A2B" stroke="#285118" stroke-width="4"/>
+          <path d="M-22 48 C -72 -42, 2 -124, 62 -40 C 42 0, 20 30, -22 48z" fill="#74AD34" stroke="#2D5D1B" stroke-width="4"/>
+          <path d="M81 44 C 34 -40, 96 -120, 168 -36 C 154 2, 124 30, 88 44z" fill="#86C24A" stroke="#3A6D1F" stroke-width="4"/>
+          <path d="M-103 40 C -78 4, -52 -26, -16 -34" fill="none" stroke="#DDF4B8" stroke-width="4" opacity="0.65"/>
+          <path d="M-14 44 C 8 8, 22 -18 48 -34" fill="none" stroke="#E7F8C8" stroke-width="4" opacity="0.65"/>
           <path d="M90 42 C 106 8 120 -10 146 -28" fill="none" stroke="#F3FFD6" stroke-width="4" opacity="0.7"/>
           <ellipse cx="0" cy="84" rx="118" ry="16" fill="rgba(0,0,0,0.10)"/>
         </g>
@@ -141,9 +139,8 @@
           <rect x="-92" y="-8" width="184" height="24" rx="12" fill="#E9D8CB"/>
           <rect x="-92" y="26" width="184" height="14" rx="7" fill="#C76469" opacity="0.80"/>
           <path d="M-86 -30 C -50 -6, -4 -2, 38 -18 C 74 -30, 86 -28, 96 -24" fill="none" stroke="rgba(255,255,255,0.32)" stroke-width="6"/>
-          <ellipse cx="0" cy="78" rx="108" ry="14" fill="rgba(0,0,0,0,0.10)"/>
+          <ellipse cx="0" cy="78" rx="108" ry="14" fill="rgba(0,0,0,0.10)"/>
         </g>
-     
       <text x="840.0" y="888" class="name">SCHWEINEBAUCH</text>
     </g>
   

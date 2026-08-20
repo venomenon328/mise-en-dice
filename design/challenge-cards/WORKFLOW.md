@@ -7,12 +7,13 @@ Die Kartenproduktion erfolgt außerhalb des Discord-Bots direkt mit ChatGPT. Das
 ## 2. Normale Kartenerstellung
 
 1. Challenge-Daten und Nummer bestimmen.
-2. Freigegebenes Mastertemplate laden.
+2. Freigegebenes Mastertemplate und den Generator unter `templates/` laden.
 3. Für jede Vorgabe zuerst ein exaktes Asset aus `assets/` suchen.
 4. Fehlende Assets on demand gemäß `illustration-system/` erzeugen und prüfen.
-5. Freigegebene Assets in die festen Slots einsetzen.
+5. Freigegebene Assets in die feste `CardSpec` des Generators einsetzen; keine SVG-Ausgabe direkt nachbearbeiten.
 6. Namen, `OFFEN`-Badge und optionale Regel aus dem Template rendern.
-7. Ausgabe bei voller Größe und im Kleinformat prüfen.
+7. `python design/challenge-cards/templates/generate_challenge_card_templates.py --render` ausführen.
+8. Mit `--check` und `--render-check` bei voller Größe und im Kleinformat prüfen.
 
 ## 3. Neue Illustrationen
 
@@ -45,3 +46,5 @@ Fertige Challenge-Cards sind Ergebnisse und nicht automatisch Bestandteile des D
 ## 6. Reproduzierbarkeit
 
 Eine Karte soll mindestens auf Challenge-Daten, Template-Version, Asset-Versionen und den Stand der Designspezifikation zurückgeführt werden können. Bestehende freigegebene Assets werden nicht still ersetzt.
+
+Das finale Template verwendet den unveränderlichen PNG-Hash der Raster-Wortmarke als zusätzliche Sperre. Der PNG-Reviewweg benötigt einen lokalen Chrome- oder Edge-Browser im Headless-Modus; bei einer abweichenden Installation wird dessen Pfad über `CHALLENGE_CARD_BROWSER` gesetzt. Die `320 × 320 px`-Prüfdatei ist immer ein deterministischer LANCZOS-Downscale des gerenderten `1200 × 1200 px`-Bilds, nie ein abgeschnittener Browser-Viewport.

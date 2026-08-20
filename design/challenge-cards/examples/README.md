@@ -1,10 +1,12 @@
-# Freigegebene Beispiele
+# Freigegebene Referenzfälle
 
-Hier werden nur solche fertigen Karten abgelegt, die als verbindliche Referenz für das Designsystem dienen, beispielsweise:
+Diese Karten prüfen das finale Template end-to-end. Sie sind verbindliche Layout- und Assetreferenzen, kein Challenge-Archiv und keine Laufzeitausgabe.
 
-- ein freigegebenes Standardbeispiel,
-- ein bestätigter Grenzfall mit langem Namen,
-- eine bestätigte Mischung aus konkreten Zutaten und offenem Konzept,
-- eine bestätigte lange Einschränkung.
+| SVG | Abgedeckter Fall | Regelzustand |
+|---|---|---|
+| `reference-2-rule.svg` | 2 konkrete Vorgaben: Tofu, Mango | `Keine Kokosmilch` |
+| `reference-3-no-rule.svg` | 3 Vorgaben inklusive offenem Konzept Blattgemüse | nur neutrales Ornament |
+| `reference-4-rule.svg` | 4 Vorgaben, konkrete und offene Konzepte | `Keine fermentierten Saucen` |
+| `reference-long-open-rule.svg` | lange, zweizeilige offene Bezeichnung `Pflanzliches Proteinprodukt` | zweizeilig: `Keine Kokosmilch` / `oder Kokoscreme` |
 
-Dieses Verzeichnis ist zunächst kein vollständiges Challenge-Archiv.
+Für jeden Fall liegen die deterministischen Review-Renderings unter `renders/1200/` und `renders/320/`. Beide Größen sind bei Änderungen mit dem Generator unter [`../templates/`](../templates/) neu zu erzeugen und per `--render-check` zu vergleichen.

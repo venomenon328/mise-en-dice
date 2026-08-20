@@ -4,7 +4,7 @@ Dieses Verzeichnis ist die verbindliche, versionierte Arbeitsgrundlage für die 
 
 Die Karten werden bewusst **nicht durch den Discord-Bot erzeugt**. Sie entstehen außerhalb von Discord direkt mit ChatGPT auf Basis der hier abgelegten Spezifikation, Templates, Referenzen und freigegebenen Bildassets. GitHub ist die Source of Truth.
 
-Maßgeblich sind die abgeschlossenen Designpakete zu Geometrie, visuellen Grundlagen und Typografie sowie Issue #128 für das Illustrationssystem.
+Maßgeblich sind die abgeschlossenen Designpakete zu Geometrie, visuellen Grundlagen und Typografie, Issue #128 für das Illustrationssystem sowie Issue #135 für das Mastertemplate.
 
 ## Abgrenzung zum Anwendungsbuild
 
@@ -43,9 +43,9 @@ design/challenge-cards/
 - Geometrie für zwei, drei und vier Vorgaben: freigegeben.
 - Visuelle Richtung: **Style Study A – Helles Honigbrett**.
 - Nutztypografie: **Typography Study A – Kitchen Editorial**; Vorgabennamen werden als echte Small Caps gerendert.
-- Wortmarke: drei expressive, fontunabhängige SVG-Studien aus Issue #130 stehen unter [`wordmark-studies/`](wordmark-studies/) zur Review; noch keine ist Produktionslogo.
+- Wortmarke: die finale Produktionswortmarke ist das unveränderliche Rasterasset [`assets/brand/mise-en-dice-wordmark-master.png`](assets/brand/mise-en-dice-wordmark-master.png). Die SVG-Studien aus Issue #130 bleiben ausschließlich Reviewhistorie.
 - Illustrationsstil: durch `ILLUSTRATION_GUIDE.md` und die Anchor-Referenz definiert.
 - Visuell ähnliche Konzepte: allgemeine Nachbarschaftsprüfung gemäß `CONFUSABLES.md`; die zuerst getesteten Pasten und Saucen sind nur Beispielmaterial.
 - Assetstrategie: **on demand** statt Vollbebilderung des 600+ Konzepte umfassenden Katalogs.
 
-Nach der inhaltlichen Freigabe einer Wortmarkenstudie folgt deren pfadbasierte Finalisierung als Asset; erst danach kann das finale Mastertemplate zusammengesetzt werden.
+Die deterministischen Mastertemplates, Referenzfälle und PNG-Reviewchecks liegen unter [`templates/`](templates/) beziehungsweise [`examples/`](examples/). Eine Bot- oder Laufzeitintegration gehört weiterhin nicht zum Designsystem.
