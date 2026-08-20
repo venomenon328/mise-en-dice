@@ -178,7 +178,7 @@ def slot(style, rect, item):
     name_y=y+246
     badge_y=y+206
     line_gap=34
-    badge_part=f'\n      {badge(style, art_cx, badge_y)}' if item.open_concept else ''
+    badge_part=badge(style, art_cx, badge_y) if item.open_concept else ''
     if len(item.name)==1:
         name = f'<text x="{art_cx}" y="{name_y}" class="name">{esc(item.name[0])}</text>'
     else:
@@ -190,7 +190,8 @@ def slot(style, rect, item):
     <g class="slot-group">
       <rect x="{x}" y="{y}" width="{w}" height="{h}" rx="34" class="slot-fill"/>
       <rect x="{x+20}" y="{y+18}" width="{w-40}" height="{h-38}" rx="28" class="slot-dash"/>
-      {art(style,item,art_cx,art_cy)}{badge_part}
+      {art(style,item,art_cx,art_cy)}
+      {badge_part}
       {name}
     </g>'''
 
