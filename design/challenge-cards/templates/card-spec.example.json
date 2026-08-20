@@ -1,9 +1,15 @@
 {
   "challenge_number": 139,
+  "description": "Beispiel für eine konkrete Challenge außerhalb der eingecheckten Referenzfälle.",
   "requirements": [
     {
       "display_name": "Tofu",
       "asset": "assets/ingredients/tofu.png"
+    },
+    {
+      "display_name": "Mango",
+      "asset": "assets/ingredients/mango.png",
+      "visual_scale": 1.05
     },
     {
       "display_name": "Blattgemüse",
@@ -11,8 +17,5 @@
       "open_concept": true
     }
   ],
-  "rule_lines": [
-    "Keine Kokosmilch"
-  ],
-  "description": "Beispiel für eine externe Challenge-Card-Spezifikation."
+  "rule_lines": ["Keine Kokosmilch"]
 }
