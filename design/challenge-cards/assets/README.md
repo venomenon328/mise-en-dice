@@ -1,14 +1,17 @@
 # Wiederverwendbare Challenge-Card-Assets
 
-Dieses Verzeichnis enthält freigegebene Produktionsassets, das feste Brand-Asset sowie ausdrücklich getrennte Stil- und Methodikreferenzen.
+Dieses Verzeichnis enthält freigegebene Zutaten-/Konzeptillustrationen sowie die festen Rasterassets für Brand und Background.
 
-Für Zutaten- und Konzeptillustrationen ist der [`Illustration Guide`](../illustration-system/ILLUSTRATION_GUIDE.md) verbindlich. Für die Wortmarke gelten die Regeln unter [`brand/README.md`](brand/README.md).
+Für Zutaten- und Konzeptillustrationen ist der [`Illustration Guide`](../illustration-system/ILLUSTRATION_GUIDE.md) verbindlich. Für die Wortmarke gelten die Regeln unter [`brand/README.md`](brand/README.md), für den Kartenhintergrund die Regeln unter [`background/README.md`](background/README.md).
 
 ## Struktur
 
 ```text
 assets/
 ├── ASSET_INDEX.csv
+├── background/
+│   ├── README.md
+│   └── mise-en-dice-background-master.png
 ├── brand/
 │   ├── README.md
 │   ├── mise-en-dice-wordmark-master.png
@@ -20,11 +23,12 @@ assets/
 └── review/
 ```
 
-## Brand-Asset
+## Feste Rasterassets
 
-Die finale `Mise en Dice`-Wortmarke ist bewusst ein festes **PNG-Rasterasset**. Das Master-PNG wird nicht vektorisiert, nachgezeichnet oder pro Karte neu generiert. Zulässig sind nur proportionale Skalierung, Platzierung und technisch unsichtbare Optimierung.
-
-Brand-Dateien werden **nicht** in `ASSET_INDEX.csv` geführt.
+- Die finale `Mise en Dice`-Wortmarke ist ein unveränderliches PNG-Brand-Asset.
+- `background/mise-en-dice-background-master.png` ist der unveränderliche `1200 × 1200 px` Kartenhintergrund mit Verlauf, Küchengeräte-Silhouetten, Holzboard und leerem Regelbalken.
+- Beide werden nicht pro Challenge neu generiert oder gestalterisch verändert.
+- Brand- und Background-Dateien werden **nicht** in `ASSET_INDEX.csv` geführt.
 
 ## Illustrationsassets
 
@@ -36,4 +40,4 @@ Brand-Dateien werden **nicht** in `ASSET_INDEX.csv` geführt.
 - neue Assets werden erst nach Stil-, Kleinformat- und Nachbarschaftsprüfung freigegeben,
 - der Katalog mit 600+ Konzepten wird **nicht** vollständig vorab bebildert.
 
-`ASSET_INDEX.csv` enthält ausschließlich freigegebene Zutaten- und Konzept-Produktionsassets. Brand-Dateien und Referenzmontagen gehören nicht hinein.
+`ASSET_INDEX.csv` enthält ausschließlich freigegebene Zutaten- und Konzept-Produktionsassets. Brand-, Background- und Referenzdateien gehören nicht hinein.
