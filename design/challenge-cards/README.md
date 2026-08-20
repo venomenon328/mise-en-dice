@@ -4,7 +4,7 @@ Dieses Verzeichnis ist die verbindliche, versionierte Arbeitsgrundlage für die 
 
 Die Karten werden bewusst **nicht durch den Discord-Bot erzeugt**. Sie entstehen außerhalb von Discord direkt mit ChatGPT auf Basis der hier abgelegten Spezifikation, Templates, Referenzen und freigegebenen Bildassets. GitHub ist die Source of Truth.
 
-Maßgeblich sind die abgeschlossenen Designpakete zu Geometrie, visuellen Grundlagen und Typografie, Issue #128 für das Illustrationssystem sowie Issue #135 für das Mastertemplate.
+Maßgeblich sind die abgeschlossenen Designpakete zu Geometrie, visuellen Grundlagen und Nutztypografie, Issue #128 für das Illustrationssystem, Issue #130 für die feste Raster-Wortmarke sowie Issue #135 für das Mastertemplate.
 
 ## Abgrenzung zum Anwendungsbuild
 
@@ -22,13 +22,13 @@ design/challenge-cards/
 ├── wireframes/
 ├── style-studies/
 ├── typography-studies/
-├── wordmark-studies/
 ├── illustration-system/
 │   ├── ILLUSTRATION_GUIDE.md
 │   ├── CONFUSABLES.md
 │   └── PROMPT_TEMPLATES.md
 ├── assets/
 │   ├── ASSET_INDEX.csv
+│   ├── brand/
 │   ├── ingredients/
 │   ├── open-concepts/
 │   ├── references/
@@ -42,10 +42,11 @@ design/challenge-cards/
 
 - Geometrie für zwei, drei und vier Vorgaben: freigegeben.
 - Visuelle Richtung: **Style Study A – Helles Honigbrett**.
-- Nutztypografie: **Typography Study A – Kitchen Editorial**; Vorgabennamen werden als echte Small Caps gerendert.
-- Wortmarke: die finale Produktionswortmarke ist das unveränderliche Rasterasset [`assets/brand/mise-en-dice-wordmark-master.png`](assets/brand/mise-en-dice-wordmark-master.png). Die SVG-Studien aus Issue #130 bleiben ausschließlich Reviewhistorie.
+- Nutztypografie: **Typography Study A – Kitchen Editorial**; Vorgabennamen werden als Small Caps gerendert.
+- Wortmarke: die finale Produktionswortmarke ist ausschließlich das unveränderliche Rasterasset [`assets/brand/mise-en-dice-wordmark-master.png`](assets/brand/mise-en-dice-wordmark-master.png). Frühere SVG-/Vektorisierungsansätze wurden verworfen und werden nicht in das Designsystem übernommen.
 - Illustrationsstil: durch `ILLUSTRATION_GUIDE.md` und die Anchor-Referenz definiert.
 - Visuell ähnliche Konzepte: allgemeine Nachbarschaftsprüfung gemäß `CONFUSABLES.md`; die zuerst getesteten Pasten und Saucen sind nur Beispielmaterial.
 - Assetstrategie: **on demand** statt Vollbebilderung des 600+ Konzepte umfassenden Katalogs.
+- Mastertemplate: generatorverwaltete 2-/3-/4-Vorgaben-Varianten plus End-to-End-Referenzkarten.
 
-Die deterministischen Mastertemplates, Referenzfälle und PNG-Reviewchecks liegen unter [`templates/`](templates/) beziehungsweise [`examples/`](examples/). Eine Bot- oder Laufzeitintegration gehört weiterhin nicht zum Designsystem.
+Für konkrete neue Challenges werden die Kartendaten als externe JSON-`CardSpec` an den Renderer unter [`templates/`](templates/) übergeben; der eingecheckte Generator wird dafür nicht verändert. Eine Bot- oder Laufzeitintegration gehört weiterhin nicht zum Designsystem.
