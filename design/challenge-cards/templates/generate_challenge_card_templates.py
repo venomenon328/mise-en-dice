@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Generate and verify the final Mise en Dice Challenge-Card master templates.
 
-The checked-in SVGs are editable review sources.  The generator is the source of
-truth for their geometry and for the end-to-end reference cards.  PNG renderings
-are deliberately a separate, reproducible review artifact; they are not a
-runtime integration.
+The checked-in SVGs are generated review sources. The generator is the source of
+truth for geometry and end-to-end reference cards. PNG renderings are separate,
+reproducible review artifacts; they are not runtime integration.
 """
 
 from __future__ import annotations
@@ -22,25 +21,26 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATES = ROOT / "templates"
 EXAMPLES = ROOT / "examples"
 ASSETS = ROOT / "assets"
 CANVAS = 1200
-TEMPLATE_VERSION = "1.0.0"
+TEMPLATE_VERSION = "1.1.0"
 WORDMARK = ASSETS / "brand" / "mise-en-dice-wordmark-master.png"
-# The final raster asset from Issue #130.  This guard prevents an accidental
-# redraw, re-export, vectorisation, or silent asset replacement.
-WORDMARK_SHA256 = "639a9867b7b4849a1b80d202a2921e202f0997a9a968f5c76b4997de887ae364"
+BACKGROUND = ASSETS / "background" / "mise-en-dice-background-master.png"
 
-BOARD = (72, 222, 1056, 918)
-RULE = (120, 974, 960, 116)
+WORDMARK_SHA256 = "639a9867b7b4849a1b80d202a2921e202f0997a9a968f5c76b4997de887ae364"
+BACKGROUND_GIT_BLOB_SHA1 = "50dee2f75e392dd323ed51c4d1377e4f4d87a1b0"
+
+BOARD_VISUAL_BOUNDS = (69, 368, 1058, 682)
+RULE_VISUAL_BOUNDS = (115, 930, 970, 90)
 LAYOUTS: dict[int, tuple[tuple[int, int, int, int], ...]] = {
-    2: ((120, 278, 456, 640), (624, 278, 456, 640)),
-    3: ((144, 278, 432, 300), (624, 278, 432, 300), (384, 618, 432, 300)),
-    4: ((144, 278, 432, 300), (624, 278, 432, 300), (144, 618, 432, 300), (624, 618, 432, 300)),
+    2: ((130, 400, 440, 500), (630, 400, 440, 500)),
+    3: ((140, 400, 430, 238), (630, 400, 430, 238), (385, 665, 430, 238)),
+    4: ((140, 400, 430, 238), (630, 400, 430, 238), (140, 665, 430, 238), (630, 665, 430, 238)),
 }
+SMALL_SLOT_BASE_SCALE = 1.18
 
 
 @dataclass(frozen=True)
@@ -49,6 +49,7 @@ class Requirement:
     asset: str
     open_concept: bool = False
     lines: tuple[str, ...] = ()
+    visual_scale: float = 1.0
 
     @property
     def rendered_lines(self) -> tuple[str, ...]:
@@ -106,66 +107,61 @@ def text(value: str, x: float, y: float, css_class: str, anchor: str = "middle")
     return f'<text class="{css_class}" x="{x:g}" y="{y:g}" text-anchor="{anchor}">{esc(value)}</text>'
 
 
-def background() -> str:
-    """Keep the Style-A kitchen scenery quiet: no decorative food silhouettes."""
-    return """<g id="background-scenery" aria-hidden="true">
-  <g fill="#7C4517" opacity=".18">
-    <path d="M76 94h212v12H76z M156 106h13v94h-13z M913 104h211v12H913z M1031 116h13v91h-13z"/>
-    <path d="M389 52h422v9H389z M443 61h11v60h-11z M748 61h11v60h-11z"/>
-    <path d="M455 70c-21 18-21 54 0 72 21-18 21-54 0-72zm0 10v52m-14-26h28" fill="none" stroke="#7C4517" stroke-width="8" stroke-linecap="round"/>
-    <path d="M735 70v71m-22-48h44m-37 17h30" fill="none" stroke="#7C4517" stroke-width="8" stroke-linecap="round"/>
-  </g>
-  <g fill="none" stroke="#7C4517" stroke-linecap="round" opacity=".13">
-    <path d="M49 516c39-68 73-74 105-21 28 46 51 49 83 1" stroke-width="14"/>
-    <path d="M963 527c34-60 69-63 102-14 26 38 47 40 76 3" stroke-width="14"/>
-  </g>
-</g>"""
+def art_zone(rect: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+    x, y, width, height = rect
+    if height > 300:
+        return (x + 42, y + 28, width - 84, 330)
+    return (x + 26, y + 6, width - 52, 176)
 
 
-def defs(spec: CardSpec, output: Path) -> str:
+def defs(spec: CardSpec) -> str:
     clips: list[str] = []
     for index, rect in enumerate(LAYOUTS[len(spec.requirements)], start=1):
-        x, y, width, height = rect
-        art_x, art_y, art_w, art_h = art_zone(x, y, width, height)
-        clips.append(f'<clipPath id="slot-{index}-clip"><rect x="{art_x}" y="{art_y}" width="{art_w}" height="{art_h}" rx="24"/></clipPath>')
+        art_x, art_y, art_w, art_h = art_zone(rect)
+        clips.append(f'<clipPath id="slot-{index}-clip"><rect x="{art_x}" y="{art_y}" width="{art_w}" height="{art_h}" rx="22"/></clipPath>')
     return """<defs>
-  <linearGradient id="background-gradient" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#F8B327"/><stop offset=".52" stop-color="#F6A51A"/><stop offset="1" stop-color="#C77115"/>
-  </linearGradient>
-  <radialGradient id="background-glow" cx="50%" cy="22%" r="76%">
-    <stop offset="0" stop-color="#FFF5C8" stop-opacity=".76"/><stop offset=".5" stop-color="#FFF0BC" stop-opacity=".18"/><stop offset="1" stop-color="#772D0E" stop-opacity=".5"/>
-  </radialGradient>
-  <linearGradient id="board-gradient" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#F7E0A8"/><stop offset="1" stop-color="#F1CE83"/>
-  </linearGradient>
-  <linearGradient id="board-edge-gradient" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#E6B66B"/><stop offset="1" stop-color="#D59D56"/>
-  </linearGradient>
-  <filter id="board-shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="13" stdDeviation="15" flood-color="#29140B" flood-opacity=".22"/></filter>
-  <filter id="asset-shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#4D2A15" flood-opacity=".22"/></filter>
-  {''.join(clips)}
-</defs>"""
+  <filter id="asset-shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#4D2A15" flood-opacity=".20"/></filter>
+  {clips}
+</defs>""".replace("{clips}", "".join(clips))
 
 
-def art_zone(x: int, y: int, width: int, height: int) -> tuple[int, int, int, int]:
-    if height > 400:
-        return (x + 48, y + 48, width - 96, 390)
-    return (x + 48, y + 28, width - 96, 154)
+def image_box(requirement: Requirement, rect: tuple[int, int, int, int]) -> tuple[float, float, float, float]:
+    art_x, art_y, art_w, art_h = art_zone(rect)
+    _, _, _, slot_h = rect
+    base = 1.0 if slot_h > 300 else SMALL_SLOT_BASE_SCALE
+    scale = base * requirement.visual_scale
+    width = art_w * scale
+    height = art_h * scale
+    x = art_x - (width - art_w) / 2
+    y = art_y - (height - art_h) / 2
+    return x, y, width, height
 
 
 def slot(index: int, requirement: Requirement, rect: tuple[int, int, int, int], output: Path) -> str:
     x, y, width, height = rect
-    art_x, art_y, art_w, art_h = art_zone(x, y, width, height)
-    large = height > 400
+    large = height > 300
     center = x + width / 2
-    if large:
-        badge_y, name_y, two_line_y, name_class = y + 454, y + 558, (y + 540, y + 576), "requirement requirement-large"
-    else:
-        badge_y, name_y, two_line_y, name_class = y + 188, y + 264, (y + 246, y + 278), "requirement"
     asset = relative_href(output, ROOT / requirement.asset)
+    image_x, image_y, image_w, image_h = image_box(requirement, rect)
+
+    if large:
+        badge_y = y + 366
+        name_y = y + 442
+        two_line_y = (y + 425, y + 459)
+        name_class = "requirement requirement-large"
+    else:
+        badge_y = y + 157
+        name_y = y + 216
+        two_line_y = (y + 202, y + 225)
+        name_class = "requirement"
+
     badge = ""
     if requirement.open_concept:
-        badge = f'<g id="slot-{index}-open-badge"><rect class="open-badge" x="{center - 58:g}" y="{badge_y}" width="116" height="32" rx="16"/>{text("OFFEN", center, badge_y + 23, "open-badge-text")}</g>'
+        badge = (
+            f'<g id="slot-{index}-open-badge"><rect class="open-badge" x="{center - 52:g}" y="{badge_y}" width="104" height="27" rx="13.5"/>'
+            f'{text("OFFEN", center, badge_y + 20, "open-badge-text")}</g>'
+        )
+
     lines = requirement.rendered_lines
     if len(lines) == 1:
         label = text(lines[0], center, name_y, name_class)
@@ -173,46 +169,46 @@ def slot(index: int, requirement: Requirement, rect: tuple[int, int, int, int], 
         label = "\n".join(text(line, center, baseline, f"{name_class} requirement-two-line") for line, baseline in zip(lines, two_line_y))
     else:
         raise ValueError(f"{requirement.display_name}: only one or two label lines are supported")
+
     return f"""<g id="slot-{index}" class="slot-group" data-slot-index="{index}" data-concept-kind="{'open' if requirement.open_concept else 'concrete'}">
-  <rect id="slot-{index}-surface" class="slot-surface" x="{x}" y="{y}" width="{width}" height="{height}" rx="34"/>
-  <rect id="slot-{index}-inner-contour" class="slot-inner-contour" x="{x + 13}" y="{y + 13}" width="{width - 26}" height="{height - 26}" rx="27"/>
-  <image id="slot-{index}-image" class="slot-image" href="{esc(asset)}" data-asset="{esc(requirement.asset)}" x="{art_x}" y="{art_y}" width="{art_w}" height="{art_h}" preserveAspectRatio="xMidYMid meet" clip-path="url(#slot-{index}-clip)"/>
+  <rect id="slot-{index}-surface" class="slot-surface" x="{x}" y="{y}" width="{width}" height="{height}" rx="28"/>
+  <image id="slot-{index}-image" class="slot-image" href="{esc(asset)}" data-asset="{esc(requirement.asset)}" data-visual-scale="{requirement.visual_scale:g}" x="{image_x:g}" y="{image_y:g}" width="{image_w:g}" height="{image_h:g}" preserveAspectRatio="xMidYMid meet" clip-path="url(#slot-{index}-clip)"/>
   {badge}
   <g id="slot-{index}-label" aria-label="{esc(requirement.display_name)}">{label}</g>
 </g>"""
 
 
 def die_ornament(center_x: int, center_y: int) -> str:
-    pips = "".join(f'<circle class="ornament-pip" cx="{center_x + dx}" cy="{center_y + dy}" r="4"/>' for dx, dy in ((-12, -12), (0, 0), (12, 12)))
+    pips = "".join(f'<circle class="ornament-pip" cx="{center_x + dx}" cy="{center_y + dy}" r="3.5"/>' for dx, dy in ((-10, -10), (0, 0), (10, 10)))
     return f"""<g id="neutral-ornament" aria-label="Neutrales Würfel- und Linienornament">
-  <path class="ornament-line" d="M{center_x - 174} {center_y}h118M{center_x + 56} {center_y}h118"/>
-  <rect class="ornament-die" x="{center_x - 28}" y="{center_y - 28}" width="56" height="56" rx="12"/>{pips}
+  <path class="ornament-line" d="M{center_x - 168} {center_y}h112M{center_x + 56} {center_y}h112"/>
+  <rect class="ornament-die" x="{center_x - 25}" y="{center_y - 25}" width="50" height="50" rx="10"/>{pips}
 </g>"""
 
 
 def rule_zone(spec: CardSpec) -> str:
-    x, y, width, height = RULE
+    x, y, width, height = RULE_VISUAL_BOUNDS
     center_y = y + height // 2
-    base = f'<rect id="rule-zone" class="rule-zone" x="{x}" y="{y}" width="{width}" height="{height}" rx="28"/>'
     if not spec.has_rule:
-        return f'<g id="rule" data-rule-state="none">{base}{die_ornament(x + width // 2, center_y)}</g>'
-    icon = f"""<g id="rule-icon" transform="translate(182 {center_y})">
-  <circle class="rule-icon-ring" r="30"/><path class="rule-icon-slash" d="M-19 19L19 -19"/>
+        return f'<g id="rule" data-rule-state="none">{die_ornament(x + width // 2, center_y)}</g>'
+
+    icon = f"""<g id="rule-icon" transform="translate(177 {center_y})">
+  <circle class="rule-icon-ring" r="25"/><path class="rule-icon-slash" d="M-16 16L16 -16"/>
 </g>"""
     if len(spec.rule_lines) == 1:
-        copy = text(spec.rule_lines[0], 238, center_y + 12, "rule-text", "start")
+        copy = text(spec.rule_lines[0], 225, center_y + 11, "rule-text", "start")
     elif len(spec.rule_lines) == 2:
-        copy = "\n".join((text(spec.rule_lines[0], 238, center_y - 4, "rule-text rule-text-two-line", "start"), text(spec.rule_lines[1], 238, center_y + 31, "rule-text rule-text-two-line", "start")))
+        copy = "\n".join((text(spec.rule_lines[0], 225, center_y - 3, "rule-text rule-text-two-line", "start"), text(spec.rule_lines[1], 225, center_y + 27, "rule-text rule-text-two-line", "start")))
     else:
         raise ValueError("Rules support at most two lines")
-    return f'<g id="rule" data-rule-state="rule">{base}{icon}<g id="rule-copy">{copy}</g></g>'
+    return f'<g id="rule" data-rule-state="rule">{icon}<g id="rule-copy">{copy}</g></g>'
 
 
 def svg(spec: CardSpec, output: Path) -> str:
     if len(spec.requirements) not in LAYOUTS:
         raise ValueError(f"Unsupported requirement count: {len(spec.requirements)}")
-    bx, by, bw, bh = BOARD
     wordmark_href = relative_href(output, WORDMARK)
+    background_href = relative_href(output, BACKGROUND)
     slots = "\n".join(slot(index, requirement, rect, output) for index, (requirement, rect) in enumerate(zip(spec.requirements, LAYOUTS[len(spec.requirements)]), start=1))
     kind = "master template" if spec.master else "end-to-end reference card"
     title = f"Mise en Dice – Challenge #{spec.challenge_number:03d}"
@@ -222,29 +218,30 @@ def svg(spec: CardSpec, output: Path) -> str:
      role="img" aria-labelledby="svg-title svg-desc" data-template-version="{TEMPLATE_VERSION}" data-card-kind="{kind}">
   <title id="svg-title">{esc(title)}</title>
   <desc id="svg-desc">{esc(spec.description)}</desc>
-  {defs(spec, output)}
+  {defs(spec)}
   <style>
     .challenge {{ font-family: Inter, "Segoe UI", "DejaVu Sans", sans-serif; font-size: 28px; font-weight: 800; letter-spacing: .15em; fill: #6E4620; }}
-    .slot-surface {{ fill: rgba(255,248,233,.44); stroke: rgba(104,63,22,.34); stroke-width: 2.4; }}
-    .slot-inner-contour {{ fill: none; stroke: rgba(104,63,22,.24); stroke-width: 1.5; }}
+    .slot-surface {{ fill: rgba(255,248,233,.07); stroke: rgba(104,63,22,.18); stroke-width: 1.4; }}
     .slot-image {{ filter: url(#asset-shadow); }}
-    .requirement {{ font-family: "Go Smallcaps", "DejaVu Sans", sans-serif; font-size: 34px; font-weight: 700; font-variant: small-caps; letter-spacing: .052em; fill: #2A140B; }}
-    .requirement-large {{ font-size: 40px; }} .requirement-two-line {{ font-size: 29px; letter-spacing: .035em; }} .requirement-large.requirement-two-line {{ font-size: 32px; }}
-    .open-badge {{ fill: #FFF0C7; stroke: #8A5B27; stroke-width: 2; }} .open-badge-text {{ font-family: Inter, "Segoe UI", sans-serif; font-size: 20px; font-weight: 800; letter-spacing: .13em; fill: #5C3114; }}
-    .rule-zone {{ fill: #5F2B18; stroke: #7C4517; stroke-width: 3; }} .rule-icon-ring {{ fill: none; stroke: #FFF5DE; stroke-width: 4; }} .rule-icon-slash {{ fill: none; stroke: #FFF5DE; stroke-width: 5; stroke-linecap: round; }}
-    .rule-text {{ font-family: Inter, "Segoe UI", "DejaVu Sans", sans-serif; font-size: 32px; font-weight: 750; letter-spacing: .06em; fill: #FFF5DE; }} .rule-text-two-line {{ font-size: 28px; letter-spacing: .045em; }}
-    .ornament-line {{ fill: none; stroke: #EBC88C; stroke-width: 3; stroke-linecap: round; }} .ornament-die {{ fill: none; stroke: #EBC88C; stroke-width: 3; }} .ornament-pip {{ fill: #EBC88C; }}
+    .requirement {{ font-family: "Go Smallcaps", "DejaVu Sans", sans-serif; font-size: 32px; font-weight: 700; font-variant: small-caps; letter-spacing: .045em; fill: #2A140B; }}
+    .requirement-large {{ font-size: 38px; }}
+    .requirement-two-line {{ font-size: 27px; letter-spacing: .028em; }}
+    .requirement-large.requirement-two-line {{ font-size: 31px; }}
+    .open-badge {{ fill: rgba(255,240,199,.86); stroke: rgba(138,91,39,.82); stroke-width: 1.5; }}
+    .open-badge-text {{ font-family: Inter, "Segoe UI", sans-serif; font-size: 17px; font-weight: 800; letter-spacing: .13em; fill: #5C3114; }}
+    .rule-icon-ring {{ fill: none; stroke: #FFF5DE; stroke-width: 4; }}
+    .rule-icon-slash {{ fill: none; stroke: #FFF5DE; stroke-width: 4.5; stroke-linecap: round; }}
+    .rule-text {{ font-family: Inter, "Segoe UI", "DejaVu Sans", sans-serif; font-size: 30px; font-weight: 750; letter-spacing: .055em; fill: #FFF5DE; }}
+    .rule-text-two-line {{ font-size: 25px; letter-spacing: .04em; }}
+    .ornament-line {{ fill: none; stroke: #EBC88C; stroke-width: 2.5; stroke-linecap: round; }}
+    .ornament-die {{ fill: none; stroke: #EBC88C; stroke-width: 2.5; }}
+    .ornament-pip {{ fill: #EBC88C; }}
   </style>
-  <rect id="canvas" x="0" y="0" width="1200" height="1200" fill="url(#background-gradient)"/>
-  <rect id="background-glow-layer" x="0" y="0" width="1200" height="1200" fill="url(#background-glow)"/>
-  {background()}
+  <image id="background-master" href="{esc(background_href)}" data-asset="assets/background/mise-en-dice-background-master.png" x="0" y="0" width="1200" height="1200" preserveAspectRatio="none"/>
   <g id="header">
     <image id="wordmark" href="{esc(wordmark_href)}" data-asset="assets/brand/mise-en-dice-wordmark-master.png" x="330" y="24" width="540" height="126" preserveAspectRatio="xMidYMid meet"/>
     {text(f"Challenge #{spec.challenge_number:03d}", 600, 195, "challenge")}
   </g>
-  <g id="board-shadow"><rect x="{bx}" y="{by}" width="{bw}" height="{bh}" rx="44" fill="url(#board-edge-gradient)" filter="url(#board-shadow)"/></g>
-  <rect id="board" x="{bx}" y="{by}" width="{bw}" height="{bh}" rx="44" fill="url(#board-gradient)" stroke="#8A5B27" stroke-width="3"/>
-  <path id="board-grain" d="M111 303C307 277 495 328 693 301s289-26 395 10M109 943c178-28 327 21 494-4s309-26 489 3" fill="none" stroke="#FFF4D4" stroke-opacity=".38" stroke-width="6" stroke-linecap="round"/>
   <g id="slots">{slots}</g>
   {rule_zone(spec)}
 </svg>
@@ -268,8 +265,15 @@ def png_size(path: Path) -> tuple[int, int, int]:
     return width, height, colour_type
 
 
+def git_blob_sha1(path: Path) -> str:
+    payload = path.read_bytes()
+    header = f"blob {len(payload)}\0".encode("ascii")
+    return hashlib.sha1(header + payload).hexdigest()
+
+
 def expected_assets() -> Iterable[Path]:
     yield WORDMARK
+    yield BACKGROUND
     seen: set[str] = set()
     for spec in (*MASTER_TEMPLATES, *REFERENCE_CASES):
         for requirement in spec.requirements:
@@ -284,7 +288,23 @@ def validate_assets() -> list[str]:
         errors.append(f"missing final wordmark: {WORDMARK}")
     elif hashlib.sha256(WORDMARK.read_bytes()).hexdigest() != WORDMARK_SHA256:
         errors.append("final wordmark SHA-256 differs from the approved Issue #130 raster asset")
+
+    if not BACKGROUND.exists():
+        errors.append(f"missing background master: {BACKGROUND}")
+    else:
+        try:
+            width, height, colour_type = png_size(BACKGROUND)
+        except ValueError as error:
+            errors.append(str(error))
+        else:
+            if (width, height) != (1200, 1200) or colour_type not in (2, 6):
+                errors.append("background master must remain a 1200x1200 RGB/RGBA PNG")
+        if git_blob_sha1(BACKGROUND) != BACKGROUND_GIT_BLOB_SHA1:
+            errors.append("background master differs from the approved Issue #135 raster asset")
+
     for asset in expected_assets():
+        if asset in (WORDMARK, BACKGROUND):
+            continue
         if not asset.exists():
             errors.append(f"missing referenced asset: {asset.relative_to(ROOT)}")
             continue
@@ -293,11 +313,17 @@ def validate_assets() -> list[str]:
         except ValueError as error:
             errors.append(str(error))
             continue
-        if asset == WORDMARK:
+        if (width, height, colour_type) != (1024, 1024, 6):
+            errors.append(f"{asset.relative_to(ROOT)} must be a 1024x1024 RGBA production PNG")
+
+    if WORDMARK.exists():
+        try:
+            width, height, colour_type = png_size(WORDMARK)
+        except ValueError as error:
+            errors.append(str(error))
+        else:
             if (width, height, colour_type) != (2064, 482, 6):
-                errors.append("wordmark master must remain the approved 2064×482 RGBA PNG")
-        elif (width, height, colour_type) != (1024, 1024, 6):
-            errors.append(f"{asset.relative_to(ROOT)} must be a 1024×1024 RGBA production PNG")
+                errors.append("wordmark master must remain the approved 2064x482 RGBA PNG")
     return errors
 
 
@@ -312,26 +338,39 @@ def validate_svg(path: Path, spec: CardSpec) -> list[str]:
     if root.tag != f"{ns}svg":
         errors.append(f"{path}: root is not SVG")
     if root.attrib.get("width") != "1200" or root.attrib.get("height") != "1200" or root.attrib.get("viewBox") != "0 0 1200 1200":
-        errors.append(f"{path}: expected 1200×1200 viewBox")
+        errors.append(f"{path}: expected 1200x1200 viewBox")
     if root.attrib.get("data-template-version") != TEMPLATE_VERSION:
         errors.append(f"{path}: unexpected template version")
+
     ids = {element.attrib["id"] for element in root.iter() if "id" in element.attrib}
-    required = {"canvas", "header", "wordmark", "board", "slots", "rule", "rule-zone"}
+    required = {"background-master", "header", "wordmark", "slots", "rule"}
     missing = required - ids
     if missing:
         errors.append(f"{path}: missing ids {sorted(missing)}")
+    if "board" in ids or "board-grain" in ids or "slot-1-inner-contour" in ids:
+        errors.append(f"{path}: old synthetic board/grain/inner-contour elements must not be present")
+
     for index in range(1, len(spec.requirements) + 1):
-        for suffix in ("", "-surface", "-inner-contour", "-image", "-label"):
+        for suffix in ("", "-surface", "-image", "-label"):
             if f"slot-{index}{suffix}" not in ids:
                 errors.append(f"{path}: missing slot-{index}{suffix}")
+
     images = [element for element in root.iter(f"{ns}image")]
-    if len(images) != len(spec.requirements) + 1:
-        errors.append(f"{path}: expected one wordmark and one image per requirement")
+    if len(images) != len(spec.requirements) + 2:
+        errors.append(f"{path}: expected background, wordmark and one image per requirement")
+
+    background = next((image for image in images if image.attrib.get("id") == "background-master"), None)
+    if background is None or background.attrib.get("data-asset") != "assets/background/mise-en-dice-background-master.png":
+        errors.append(f"{path}: background master reference missing")
+    elif (background.attrib.get("x"), background.attrib.get("y"), background.attrib.get("width"), background.attrib.get("height")) != ("0", "0", "1200", "1200"):
+        errors.append(f"{path}: background placement must be 0,0 / 1200x1200")
+
     wordmark = next((image for image in images if image.attrib.get("id") == "wordmark"), None)
     if wordmark is None or wordmark.attrib.get("data-asset") != "assets/brand/mise-en-dice-wordmark-master.png":
         errors.append(f"{path}: final raster wordmark reference missing")
     elif (wordmark.attrib.get("x"), wordmark.attrib.get("y"), wordmark.attrib.get("width"), wordmark.attrib.get("height")) != ("330", "24", "540", "126"):
-        errors.append(f"{path}: wordmark placement must be 330,24 / 540×126")
+        errors.append(f"{path}: wordmark placement must be 330,24 / 540x126")
+
     expected_rule_state = "rule" if spec.has_rule else "none"
     rule = next((element for element in root.iter() if element.attrib.get("id") == "rule"), None)
     if rule is None or rule.attrib.get("data-rule-state") != expected_rule_state:
@@ -454,7 +493,7 @@ def check_renderings(compare_bytes: bool) -> list[str]:
                 errors.append(str(error))
                 continue
             if (width, height) != (size, size):
-                errors.append(f"{path.relative_to(ROOT)}: expected {size}×{size}")
+                errors.append(f"{path.relative_to(ROOT)}: expected {size}x{size}")
     return errors
 
 
@@ -470,8 +509,8 @@ def report(errors: list[str]) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="validate generated SVG/XML, geometry, assets, and committed review-render dimensions")
-    parser.add_argument("--render", action="store_true", help="write 1200×1200 and 320×320 PNG review renderings for all reference cards")
-    parser.add_argument("--render-check", action="store_true", help="re-render every review PNG and compare it byte-for-byte with the committed artifact")
+    parser.add_argument("--render", action="store_true", help="write 1200x1200 and 320x320 PNG review renderings for all reference cards")
+    parser.add_argument("--render-check", action="store_true", help="re-render review PNGs and compare them byte-for-byte within the current rendering environment")
     args = parser.parse_args(argv)
     if not args.check and not args.render and not args.render_check:
         write_documents()
