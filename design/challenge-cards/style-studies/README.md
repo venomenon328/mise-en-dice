@@ -17,7 +17,9 @@ Sie verbindet die warme goldorange Küchenatmosphäre des Discord-Banners mit ei
 - `VISUAL_FOUNDATIONS.md`: Design-Tokens, Materialien und verbindliche Anwendungsregeln,
 - `generate_style_studies.py`: deterministische Erzeugung und Validierung der vier SVGs,
 - die vier SVG-Dateien selbst als verlustfreie `1200 × 1200 px`-Exporte,
-- `renders/compact/`: vier explizite SVG-Exporte und eine gemeinsame GitHub-Vergleichsansicht bei `320 × 320 px`.
+- `renders/compact/README.md`: gemeinsame GitHub-Vergleichsansicht mit einer Darstellungsbreite von `320 px`.
+
+Das ZIP-Paket unter `../packages/` enthält zusätzlich explizite `320 × 320 px`-SVG-Exporte.
 
 Die gezeigten Motive testen lediglich helle, dunkle und mittlere Zutaten sowie ein offenes Konzept. Sie sind **keine finalen Zutatenillustrationen**. Ebenso sind die verwendeten Systemschriften nur Platzhalter für das spätere Typografiepaket.
 
