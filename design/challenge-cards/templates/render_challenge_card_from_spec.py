@@ -49,6 +49,17 @@ def string_tuple(value: object, field: str, max_items: int) -> tuple[str, ...]:
     return tuple(item.strip() for item in value)
 
 
+def visual_scale(value: object, field: str) -> float:
+    if value is None:
+        return 1.0
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field} must be a number")
+    scale = float(value)
+    if scale < 0.75 or scale > 1.50:
+        raise ValueError(f"{field} must be between 0.75 and 1.50")
+    return scale
+
+
 def requirement_from_json(raw: object, index: int, approved_assets: dict[str, tuple[str, str]]) -> Requirement:
     if not isinstance(raw, dict):
         raise ValueError(f"requirements[{index}] must be an object")
@@ -63,6 +74,7 @@ def requirement_from_json(raw: object, index: int, approved_assets: dict[str, tu
     if not isinstance(open_concept, bool):
         raise ValueError(f"requirements[{index}].open_concept must be boolean")
     lines = string_tuple(raw.get("lines"), f"requirements[{index}].lines", 2)
+    scale = visual_scale(raw.get("visual_scale"), f"requirements[{index}].visual_scale")
     path = safe_asset_path(asset)
     if asset not in approved_assets:
         raise ValueError(f"requirements[{index}].asset is not approved in ASSET_INDEX.csv: {asset}")
@@ -77,7 +89,7 @@ def requirement_from_json(raw: object, index: int, approved_assets: dict[str, tu
     width, height, colour_type = png_size(path)
     if (width, height, colour_type) != (1024, 1024, 6):
         raise ValueError(f"requirements[{index}].asset must be a 1024x1024 RGBA PNG: {asset}")
-    return Requirement(display_name.strip(), asset, open_concept=open_concept, lines=lines)
+    return Requirement(display_name.strip(), asset, open_concept=open_concept, lines=lines, visual_scale=scale)
 
 
 def load_spec(path: Path, output: Path) -> CardSpec:
