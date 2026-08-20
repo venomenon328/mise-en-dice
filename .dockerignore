@@ -13,3 +13,4 @@ target
 *.sha256
 runtime
 .deploy
+design
