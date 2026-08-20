@@ -1,0 +1,18 @@
+{
+  "challenge_number": 139,
+  "requirements": [
+    {
+      "display_name": "Tofu",
+      "asset": "assets/ingredients/tofu.png"
+    },
+    {
+      "display_name": "Blattgemüse",
+      "asset": "assets/open-concepts/blattgemuese.png",
+      "open_concept": true
+    }
+  ],
+  "rule_lines": [
+    "Keine Kokosmilch"
+  ],
+  "description": "Beispiel für eine externe Challenge-Card-Spezifikation."
+}
