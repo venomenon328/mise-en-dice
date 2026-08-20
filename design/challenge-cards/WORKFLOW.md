@@ -2,71 +2,46 @@
 
 ## 1. Grundsatz
 
-Die eigentliche Kartenproduktion erfolgt außerhalb des Discord-Bots direkt mit ChatGPT. Das Repository stellt dafür die verbindlichen Eingaben bereit.
+Die Kartenproduktion erfolgt außerhalb des Discord-Bots direkt mit ChatGPT. Das Repository stellt die verbindlichen Designquellen bereit.
 
-Der normale spätere Auftrag soll möglichst knapp sein, beispielsweise:
+## 2. Normale Kartenerstellung
 
-```text
-Erstelle Challenge #023 mit Schweinebauch, Birne und dem offenen Konzept Blattgemüse.
-Ausschluss: keine Kokosmilch.
-Verwende die aktuelle Challenge-Card-Spezifikation und die freigegebenen Assets aus dem Repository.
-```
+1. Challenge-Daten und Nummer bestimmen.
+2. Freigegebenes Mastertemplate laden.
+3. Für jede Vorgabe zuerst ein exaktes Asset aus `assets/` suchen.
+4. Fehlende Assets on demand gemäß `illustration-system/` erzeugen und prüfen.
+5. Freigegebene Assets in die festen Slots einsetzen.
+6. Namen, `OFFEN`-Badge und optionale Regel aus dem Template rendern.
+7. Ausgabe bei voller Größe und im Kleinformat prüfen.
 
-## 2. Aufgabenverteilung
+## 3. Neue Illustrationen
 
-### ChatGPT übernimmt
+1. Exaktes bestehendes Asset suchen.
+2. Visuell ähnliche vorhandene Assets bestimmen.
+3. Anchor-Referenz und relevante Nachbarassets verwenden.
+4. Passendes Prompt-Template aus [`illustration-system/PROMPT_TEMPLATES.md`](illustration-system/PROMPT_TEMPLATES.md) wählen.
+5. Kandidat erzeugen.
+6. QA nach [`illustration-system/ILLUSTRATION_GUIDE.md`](illustration-system/ILLUSTRATION_GUIDE.md) durchführen.
+7. Bei Confusables gezielt über mindestens zwei primäre Dimensionen differenzieren; bei Bedarf zusätzlich die neutrale Behälterform variieren.
+8. Nach Freigabe Asset versionieren und in `assets/ASSET_INDEX.csv` aufnehmen.
+9. Zukünftig exakt dieses Asset wiederverwenden.
 
-- Lesen der aktuellen Spezifikation und Templates,
-- Zuordnung der Challenge-Daten zu den festen Slots,
-- Wiederverwendung vorhandener Illustrationen,
-- Erzeugung eines fehlenden Zutaten- oder Konzeptassets nach den verbindlichen Stilregeln,
-- Zusammensetzen und Rendern der Karte,
-- Einhaltung von Text-, Abstands- und Größenregeln,
-- Vorbereitung sinnvoller Repository-Änderungen für neue freigegebene Assets.
+Der Katalog mit 600+ Konzepten wird nicht vorab vollständig bebildert.
 
-### Der Nutzer entscheidet
+## 4. Designänderungen
 
-- Freigabe grundlegender Designänderungen,
-- Freigabe neuer oder ungewöhnlicher Illustrationen,
-- Entscheidung bei inhaltlich mehrdeutigen offenen Konzepten,
-- endgültige Auswahl, ob eine Karte beziehungsweise ein neues Asset verbindlich archiviert wird.
-
-Ein externes Grafikprogramm soll für den normalen Ablauf nicht nötig sein.
-
-## 3. Entwicklung des Designsystems
-
-1. Designentscheidung im Gespräch treffen.
-2. Entscheidung in [`DESIGN_SPEC.md`](DESIGN_SPEC.md) als beschlossen oder offen einordnen.
-3. Betroffene Wireframes, Templates oder Assetregeln aktualisieren.
-4. Änderung im Repository versionieren und prüfen.
+1. Entscheidung im Gespräch treffen.
+2. Entscheidung in den maßgeblichen Designdokumenten festhalten.
+3. Betroffene Referenzen, Templates oder Assetregeln aktualisieren.
+4. Änderung versionieren und prüfen.
 5. Erst danach auf neue Karten anwenden.
 
-Designentscheidungen dürfen nicht nur in einem Chatverlauf verbleiben.
-
-## 4. Neue Illustrationen
-
-1. Zuerst nach einem bereits freigegebenen exakten Asset suchen.
-2. Falls keines vorhanden ist, einen geeigneten übergeordneten oder generischen Fallback prüfen.
-3. Nur bei Bedarf ein neues Motiv erzeugen.
-4. Motiv gegen die Stilreferenzen und die technische Assetspezifikation prüfen.
-5. Nach Freigabe unter `assets/ingredients/` oder `assets/open-concepts/` versionieren.
-6. Zukünftig exakt dieses Asset wiederverwenden.
-
-Es findet keine spontane Laufzeitgenerierung durch den Bot statt.
+Designentscheidungen dürfen nicht nur im Chatverlauf verbleiben.
 
 ## 5. Fertige Karten
 
-Fertige Challenge-Cards sind zunächst Ergebnisse, nicht automatisch Bestandteile des Designsystems. Sie werden nur dann unter `examples/` abgelegt, wenn sie als freigegebene Referenz für Layout, Typografie oder Sonderfälle dienen.
+Fertige Challenge-Cards sind Ergebnisse und nicht automatisch Bestandteile des Designsystems. Unter `examples/` werden nur solche Karten abgelegt, die als verbindliche Referenz für Layout oder Sonderfälle dienen.
 
-Ein vollständiges Kartenarchiv kann später bewusst beschlossen werden. Es soll nicht beiläufig entstehen und das Repository mit nahezu identischen Binärdateien füllen.
+## 6. Reproduzierbarkeit
 
-## 6. Versionierung und Reproduzierbarkeit
-
-Eine Karte sollte mindestens auf folgende Quellen zurückgeführt werden können:
-
-- Challenge-Nummer und Challenge-Daten,
-- verwendete Template-Version,
-- verwendete Asset-Versionen,
-- Stand der Designspezifikation.
-
-Bestehende Assets werden nicht still ersetzt. Wesentliche Änderungen erhalten eine neue Version oder einen nachvollziehbaren Commit.
+Eine Karte soll mindestens auf Challenge-Daten, Template-Version, Asset-Versionen und den Stand der Designspezifikation zurückgeführt werden können. Bestehende freigegebene Assets werden nicht still ersetzt.
