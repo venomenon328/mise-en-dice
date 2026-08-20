@@ -11,7 +11,7 @@ The studies intentionally move beyond purely typographic treatments. They explor
 - `wordmark-study-c.svg` — Refined Game Accent
 - `WORDMARK_STUDIES.md` — design rationale and first-pass assessment
 - `validate_wordmark_studies.py` — structural validation
-- `renders/wordmark-review.svg` — comparison montage including 1200-header and native 320-card header checks
+- `renders/wordmark-review.jpg` — comparison montage including 1200-header and native 320-card header checks
 
 ## Status
 
