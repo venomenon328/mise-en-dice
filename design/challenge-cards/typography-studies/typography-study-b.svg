@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" role="img" aria-label="Typography Study B">
+<defs>
+  <linearGradient id="bgGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F8B327"/><stop offset="52%" stop-color="#F6A51A"/><stop offset="100%" stop-color="#C77115"/></linearGradient>
+  <radialGradient id="heroGlow" cx="50%" cy="28%" r="66%"><stop offset="0%" stop-color="#FFF5C8" stop-opacity="0.82"/><stop offset="42%" stop-color="#FFF0BC" stop-opacity="0.28"/><stop offset="100%" stop-color="#772D0E" stop-opacity="0"/></radialGradient>
+  <linearGradient id="boardGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F7E0A8"/><stop offset="100%" stop-color="#F1CE83"/></linearGradient>
+  <style>
+    .brand { font-family:'Trebuchet MS', 'DejaVu Sans', 'Segoe UI', sans-serif; font-size:52px; font-weight:800; letter-spacing:0.07em; font-style:normal; fill:#2A140B; text-anchor:middle; }
+    .challenge { font-family:'Trebuchet MS', 'DejaVu Sans', 'Segoe UI', sans-serif; font-size:27px; font-weight:800; letter-spacing:0.15em; fill:#6E4620; text-anchor:middle; }
+    .study-label { font-family:Inter,'DejaVu Sans','Segoe UI',sans-serif; font-size:16px; font-weight:700; letter-spacing:0.18em; fill:#6E4620; text-anchor:middle; }
+    .slot-fill { fill:rgba(255,248,233,0.44); stroke:rgba(104,63,22,0.34); stroke-width:2.4; } .slot-dash { fill:transparent; stroke:rgba(104,63,22,0.24); stroke-width:2.4; stroke-dasharray:8 8; }
+    .name { font-family:'Go Smallcaps','DejaVu Sans',sans-serif; font-size:28px; font-weight:800; letter-spacing:0.10em; fill:#2A140B; text-anchor:middle; }
+    .badge-text { font-family:'Trebuchet MS', 'DejaVu Sans', 'Segoe UI', sans-serif; font-size:16px; font-weight:800; letter-spacing:0.14em; fill:#5C3114; text-anchor:middle; }
+    .rule-text { font-family:'Trebuchet MS', 'DejaVu Sans', 'Segoe UI', sans-serif; font-size:28px; font-weight:800; letter-spacing:0.08em; fill:#FFF5DE; } .rule-text.small { font-size:24px; }
+  </style>
+</defs>
+<rect width="1200" height="1200" fill="url(#bgGradient)"/><rect width="1200" height="1200" fill="url(#heroGlow)"/>
+<g id="background-scenery" opacity="0.78">
+  <rect x="78" y="92" width="228" height="12" rx="6" fill="#7C4517" opacity="0.38"/>
+  <rect x="915" y="118" width="205" height="12" rx="6" fill="#7C4517" opacity="0.36"/>
+  <rect x="200" y="102" width="14" height="96" rx="7" fill="#7C4517" opacity="0.25"/>
+  <rect x="1032" y="128" width="14" height="88" rx="7" fill="#7C4517" opacity="0.25"/>
+  <g transform="translate(510,82)" fill="#7C4517" opacity="0.28">
+    <rect x="-145" y="0" width="290" height="10" rx="5"/><rect x="-120" y="8" width="10" height="72" rx="5"/>
+    <rect x="-40" y="8" width="10" height="84" rx="5"/><rect x="40" y="8" width="10" height="74" rx="5"/>
+    <rect x="120" y="8" width="10" height="62" rx="5"/><path d="M-115 78 h20 v44 a22 22 0 0 1 -20 0z"/>
+    <path d="M-37 92 h4 v42 h-4z M-55 92 h40 v14 h-40z M-55 114 h40 v14 h-40z"/>
+    <path d="M45 82 c-18 18 -18 54 0 72 c18 -18 18 -54 0 -72z"/><circle cx="125" cy="106" r="22"/>
+  </g>
+  <g fill="#7C4517" opacity="0.22"><ellipse cx="88" cy="264" rx="40" ry="62"/><ellipse cx="118" cy="236" rx="26" ry="48"/>
+    <ellipse cx="1110" cy="240" rx="36" ry="54"/><ellipse cx="1088" cy="272" rx="28" ry="44"/></g>
+  <g fill="#FFF4C4" opacity="0.45"><circle cx="374" cy="186" r="5"/><circle cx="850" cy="198" r="4"/>
+    <path d="M254 170 l9 18 l18 9 l-18 9 l-9 18 l-9 -18 l-18 -9 l18 -9z" opacity="0.48"/>
+    <path d="M942 168 l7 14 l14 7 l-14 7 l-7 14 l-7 -14 l-14 -7 l14 -7z" opacity="0.42"/></g>
+</g>
+<g id="header"><text x="600" y="92" class="brand">Mise en Dice</text><text x="600" y="146" class="challenge">Challenge #012</text><text x="600" y="186" class="study-label">TYPOGRAPHY STUDY B · ROUNDED PANTRY</text></g>
+<g id="board">
+  <filter id="boardShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000" flood-opacity="0.18"/></filter>
+  <rect x="82" y="240" width="1056" height="918" rx="58" fill="rgba(41,20,11,0.18)" opacity="0.45"/>
+  <rect x="72" y="222" width="1056" height="918" rx="56" fill="url(#boardGradient)" stroke="#8A5B27" stroke-width="4" filter="url(#boardShadow)"/>
+  <path d="M94 308 C292 288 514 334 720 314 S1008 294 1094 330" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M106 436 C292 460 492 410 674 438 S988 470 1092 438" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M90 894 C312 934 522 868 782 910 S948 932 1110 896" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="5" stroke-linecap="round"/>
+</g>
+<g class="slot-group"><rect x="144" y="302" width="432" height="300" rx="34" class="slot-fill"/>
+  <rect x="164" y="320" width="392" height="262" rx="28" class="slot-dash"/>
+  <g transform="translate(360.0,424)"><ellipse cx="-24" cy="6" rx="56" ry="74" fill="#FFF4DB" stroke="#A68A62" stroke-width="4"/>
+  <ellipse cx="26" cy="0" rx="62" ry="82" fill="#FFF8E7" stroke="#A68A62" stroke-width="4"/>
+  <path d="M18 -78 C4 -118 32 -118 22 -72" fill="none" stroke="#A68A62" stroke-width="6" stroke-linecap="round"/>
+  <path d="M-8 -68 C-22 -100 4 -102 -2 -62" fill="none" stroke="#A68A62" stroke-width="5" stroke-linecap="round"/></g><text x="360.0" y="548" class="name">Knoblauch</text></g>
+<g class="slot-group"><rect x="624" y="302" width="432" height="300" rx="34" class="slot-fill"/>
+  <rect x="644" y="320" width="392" height="262" rx="28" class="slot-dash"/>
+  <g transform="translate(840.0,424) rotate(-7)"><ellipse cx="0" cy="0" rx="112" ry="56" fill="#5B2B6B" stroke="#2F1438" stroke-width="5"/>
+  <ellipse cx="34" cy="0" rx="104" ry="50" fill="#7A3D91" opacity="0.88"/>
+  <path d="M-116 0 c-34 -24 -34 -56 18 -70 c38 -10 64 4 72 24 c-28 6 -46 16 -62 46z" fill="#4A7B33" stroke="#27501D" stroke-width="4"/></g><text x="840.0" y="548" class="name">Aubergine</text></g>
+<g class="slot-group"><rect x="144" y="642" width="432" height="300" rx="34" class="slot-fill"/>
+  <rect x="164" y="660" width="392" height="262" rx="28" class="slot-dash"/>
+  <g transform="translate(360.0,764)"><path d="M-108 44 C-176 -64 -78 -148 -10 -34 C-28 2 -50 28 -108 44z" fill="#4F8A2B" stroke="#285118" stroke-width="4"/>
+  <path d="M-22 48 C-72 -42 2 -124 62 -40 C42 0 20 30 -22 48z" fill="#74AD34" stroke="#2D5C1B" stroke-width="4"/>
+  <path d="M88 44 C34 -40 96 -120 168 -36 C154 2 124 30 88 44z" fill="#86C24A" stroke="#3A6D1F" stroke-width="4"/></g><g transform="translate(360.0,848)"><rect x="-54" y="-16" width="108" height="32" rx="16" fill="#FFF0C7" stroke="#8A5B27" stroke-width="2"/>
+  <text x="0" y="6" class="badge-text">OFFEN</text></g><text x="360.0" y="888" class="name">Blattgemüse</text></g>
+<g class="slot-group"><rect x="624" y="642" width="432" height="300" rx="34" class="slot-fill"/>
+  <rect x="644" y="660" width="392" height="262" rx="28" class="slot-dash"/>
+  <g transform="translate(840.0,764)"><rect x="-96" y="-56" width="192" height="112" rx="16" fill="#F6F0E7" stroke="#A68A62" stroke-width="4"/>
+  <path d="M-96 8 C-40 -18 18 -10 96 -32" fill="none" stroke="rgba(255,255,255,0.34)" stroke-width="6"/>
+  <path d="M-96 40 C-42 18 8 28 96 4" fill="none" stroke="rgba(0,0,0,0.10)" stroke-width="5"/></g><text x="840.0" y="874" class="name">Pflanzliches</text><text x="840.0" y="906" class="name">Proteinprodukt</text></g>
+<g id="rule-zone"><rect x="120" y="974" width="960" height="116" rx="28" fill="#5F2B18" stroke="#7C4517" stroke-width="3"/>
+  <g transform="translate(170,1032)"><circle r="20" fill="none" stroke="#FFF5DE" stroke-width="4"/><line x1="-16" y1="16" x2="16" y2="-16" stroke="#FFF5DE" stroke-width="4" stroke-linecap="round"/></g>
+  <text x="216" y="1026" class="rule-text" text-anchor="start">AUSSCHLUSS · KEINE KOKOSMILCH</text>
+  <text x="216" y="1060" class="rule-text small" text-anchor="start">ODER KOKOSCREME</text></g>
+</svg>
