@@ -1,7 +1,7 @@
 # Designspezifikation für Challenge-Cards
 
 Stand: 20. August 2026  
-Status: Geometrie, visuelle Grundlagen, Typografie und Illustrationssystem sind freigegeben
+Status: Geometrie, visuelle Grundlagen, Nutztypografie, Wortmarke und Illustrationssystem sind freigegeben
 
 ## 1. Ziel
 
@@ -10,7 +10,7 @@ Eine Challenge-Card stellt eine konkrete Mise-en-Dice-Challenge schnell erfassba
 ## 2. Verbindliche Informationsarchitektur
 
 - Masterformat: **1200 × 1200 px**.
-- Feste Kopfzone mit `Mise en Dice` und `Challenge #NNN`.
+- Feste Kopfzone mit der `Mise en Dice`-Wortmarke und `Challenge #NNN`.
 - Zwei Vorgaben: zwei große gleichwertige Slots nebeneinander.
 - Drei Vorgaben: zwei Slots oben, ein gleich großer Slot unten mittig.
 - Vier Vorgaben: gleichmäßiges `2 × 2`-Raster.
@@ -45,20 +45,45 @@ Freigegeben ist **Style Study A – Helles Honigbrett**.
 
 Die vollständigen Tokens stehen unter `style-studies/VISUAL_FOUNDATIONS.md`.
 
-## 5. Verbindliche Typografie
+## 5. Verbindliche Nutztypografie
 
-Freigegeben ist **Typography Study A – Kitchen Editorial**.
+Freigegeben ist **Typography Study A – Kitchen Editorial** für die dynamischen Textbestandteile der Karte.
 
-- `Mise en Dice`: warme, leicht editoriale Serif-Anmutung; später als festes SVG-Wortlogo einzufrieren.
 - `Challenge #NNN`, Badge und Regeltext: robuste Sans.
 - Vorgabennamen: normal geschriebene Quelldaten, typografisch als **echte Small Caps** gerendert.
 - `Go Smallcaps` ist die reproduzierbare Small-Caps-Referenz.
+- Zweizeilige Namen behalten ihre Hierarchie und werden nicht beliebig verkleinert.
 
-## 6. Verbindliches Illustrationssystem
+Die Markenwortmarke ist **kein dynamisch gesetzter Text** mehr und wird separat als festes Rasterasset behandelt.
+
+## 6. Verbindliche Wortmarke
+
+Die finale `Mise en Dice`-Wortmarke liegt unter [`assets/brand/`](assets/brand/) als festes PNG-Asset vor.
+
+### 6.1 Dateien
+
+- `mise-en-dice-wordmark-master.png`: **2064 × 482 px**, alleinige gestalterische Source of Truth.
+- `mise-en-dice-wordmark-preview-1200.png`: **1200 × 280 px**, proportionale Referenzableitung.
+- `mise-en-dice-wordmark-preview-320.png`: **320 × 75 px**, Kleinformat-Referenz.
+
+### 6.2 Nutzungsregeln
+
+- keine Vektorisierung, kein Nachzeichnen und keine SVG-Rekonstruktion,
+- keine KI-Neugenerierung pro Karte,
+- keine Farbänderung oder unabhängige Bearbeitung einzelner Bestandteile,
+- keine Änderung des Seitenverhältnisses,
+- ausschließlich proportionale Skalierung, deterministische Platzierung und technisch unsichtbare Datei-/Alphaoptimierung sind zulässig,
+- `Challenge #NNN` bleibt separate Nutztypografie und ist nicht Teil des Bildassets.
+
+Das spätere Mastertemplate legt Größe und Position der Wortmarke verbindlich fest. Eine sichtbare Änderung an der Wortmarke wäre eine bewusste neue Brand-Version und kein stilles Ersetzen des Masters.
+
+Frühere SVG-/Vektorisierungsstudien sind verworfen und nicht Bestandteil des Designsystems.
+
+## 7. Verbindliches Illustrationssystem
 
 Maßgeblich ist [`illustration-system/ILLUSTRATION_GUIDE.md`](illustration-system/ILLUSTRATION_GUIDE.md).
 
-### 6.1 Produktionsassets
+### 7.1 Produktionsassets
 
 - PNG, `1024 × 1024 px`, transparenter Hintergrund.
 - Ungefähr 8 % Safe Area.
@@ -69,13 +94,13 @@ Maßgeblich ist [`illustration-system/ILLUSTRATION_GUIDE.md`](illustration-syste
 - kein Text, Badge, Kartenrahmen oder eingebrannter Bodenschatten.
 - neutrale unmarkierte Behälter nur wenn sachlich sinnvoll.
 
-### 6.2 Offene Konzepte
+### 7.2 Offene Konzepte
 
 - normalerweise zwei bis drei repräsentative Konkretisierungen als Gruppe,
 - keine abschließende Auswahl suggerieren,
 - `OFFEN` bleibt Teil des Kartentemplates.
 
-### 6.3 Confusables und visuelle Nachbarschaft
+### 7.3 Confusables und visuelle Nachbarschaft
 
 Die Ähnlichkeitsprüfung gilt **für jedes neue Asset** und ist nicht auf bestimmte Beispielzutaten beschränkt. Bei über 600 Konzepten werden weitere Cluster erwartet.
 
@@ -85,36 +110,38 @@ Eine andere neutrale Behälterform ist als sekundäre Differenzierung erlaubt, w
 
 Die Methode und der erste Pasten-/Saucen-Stresstest stehen unter `illustration-system/CONFUSABLES.md`.
 
-### 6.4 Assetstrategie
+### 7.4 Assetstrategie
 
 - Assets entstehen **on demand**.
 - Keine Vollbebilderung des 600+ Konzepte umfassenden Katalogs.
 - Bestehende freigegebene Assets werden wiederverwendet und nicht pro Challenge neu generiert.
-- `assets/ASSET_INDEX.csv` enthält nur tatsächlich freigegebene Produktionsassets.
+- `assets/ASSET_INDEX.csv` enthält nur tatsächlich freigegebene Zutaten- und Konzept-Produktionsassets; Brand-Dateien gehören nicht hinein.
 
-## 7. Konsistenzregeln
+## 8. Konsistenzregeln
 
-- Wortlogo, Geometrie, Farben, Typografierollen und Illustrationsregeln werden versioniert.
+- Wortmarke, Geometrie, Farben, Typografierollen und Illustrationsregeln werden versioniert.
 - Gleiche Challenge-Daten, gleiche Template-Version und gleiche Asset-Versionen sollen dasselbe Ergebnis liefern.
 - Der sichtbare Vorgabenname bleibt die fachlich verbindliche Aussage; die Illustration unterstützt ihn.
 - Die Bildgenerierung erfolgt bewusst außerhalb des Discord-Bots.
+- Das Mastertemplate darf die Wortmarke nur als unverändertes Rasterasset einbinden.
 
-## 8. Referenzen
+## 9. Referenzen
 
 - `wireframes/`: Geometrie.
 - `style-studies/`: visuelle Grundlagen.
-- `typography-studies/`: Typografie.
+- `typography-studies/`: Nutztypografie.
+- `assets/brand/`: finale Wortmarke.
 - `illustration-system/`: Illustrationsregeln und Prompt-Templates.
 - `assets/references/anchor-style-study.jpg`: freigegebene Stilkalibrierung.
 - `assets/references/confusables-example-study.jpg`: exemplarischer Ähnlichkeits-Stresstest.
 
-## 9. Noch offene Entscheidungen
+## 10. Noch offene Entscheidungen
 
-- finale Ausarbeitung und Einfrieren des Wortlogos als eigenes SVG-Asset,
 - endgültige Feinheit der inneren Slotkontur im Mastertemplate,
 - finales Mastertemplate aus den eingefrorenen Bausteinen,
+- verbindliche Wortmarkenposition und -größe innerhalb der Kopfzone,
 - möglicher zusätzlicher Export für Querformat oder andere Plattformen.
 
-## 10. Nächster Schritt
+## 11. Nächster Schritt
 
-Als nächstes wird die freigegebene Wortmarkenrichtung als festes SVG-Asset eingefroren und anschließend das finale Mastertemplate zusammengesetzt. Weitere Zutatenassets entstehen danach nur noch on demand gemäß dem Illustration Guide.
+Issue #135 setzt Geometrie, Style A, Nutztypografie, die finale Raster-Wortmarke und das Illustrationssystem zu einem deterministischen Mastertemplate zusammen. Dabei werden 2-/3-/4-Vorgaben-Fälle, Regel/no-rule sowie Kleinformat- und Grenzfälle end-to-end geprüft. Weitere Zutatenassets entstehen weiterhin nur on demand gemäß dem Illustration Guide.
