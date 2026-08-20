@@ -8,23 +8,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class DeploymentDiscordSecretIsolationTest {
 
     Path temporaryDirectory;
-    String bashExecutable;
 
     @BeforeEach
     void createTemporaryDirectory() throws IOException {
-        bashExecutable = findUsableBash().orElse(null);
-        Assumptions.assumeTrue(bashExecutable != null,
-                "requires a usable POSIX bash; install Git Bash when running this shell-script test on Windows");
         temporaryDirectory = Files.createTempDirectory("mise-en-dice-provider-isolation-");
     }
 
@@ -92,8 +86,8 @@ class DeploymentDiscordSecretIsolationTest {
                 .doesNotContain("production-bot-token", "production-openai-key", "acceptance-bot-token", "acceptance-openai-key");
     }
 
-    private void writeProperties(Path admin, Path discord, Path openai, Path acceptance, Path destination,
-                                 boolean secureCookie, String providerSource)
+    private static void writeProperties(Path admin, Path discord, Path openai, Path acceptance, Path destination,
+                                        boolean secureCookie, String providerSource)
             throws IOException, InterruptedException {
         String script = "set -euo pipefail\n"
                 + "source \"$1\"\n"
@@ -102,7 +96,7 @@ class DeploymentDiscordSecretIsolationTest {
                 + "OPENAI_PROPERTIES=\"$4\"\n"
                 + "ACCEPTANCE_PROPERTIES=\"$5\"\n"
                 + "write_instance_application_properties \"$6\" \"$7\" \"$8\"\n";
-        Process process = new ProcessBuilder(bashExecutable, "-c", script, "bash",
+        Process process = new ProcessBuilder(bashExecutable(), "-c", script, "bash",
                 Path.of("deploy/operator/runtime.sh").toAbsolutePath().toString(), admin.toString(), discord.toString(),
                 openai.toString(), acceptance.toString(), destination.toString(), Boolean.toString(secureCookie), providerSource)
                 .redirectErrorStream(true).start();
@@ -113,28 +107,8 @@ class DeploymentDiscordSecretIsolationTest {
                 "acceptance-openai-key", "accidental-admin-token", "accidental-admin-key");
     }
 
-    private static Optional<String> findUsableBash() {
+    private static String bashExecutable() {
         Path gitBash = Path.of(System.getenv().getOrDefault("ProgramFiles", "C:/Program Files"), "Git", "bin", "bash.exe");
-        if (isWindows()) {
-            return isUsableBash(gitBash.toString()) ? Optional.of(gitBash.toString()) : Optional.empty();
-        }
-        return isUsableBash("bash") ? Optional.of("bash") : Optional.empty();
-    }
-
-    private static boolean isWindows() {
-        return System.getProperty("os.name", "").toLowerCase().contains("win");
-    }
-
-    private static boolean isUsableBash(String executable) {
-        try {
-            Process process = new ProcessBuilder(executable, "--version").redirectErrorStream(true).start();
-            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-            return process.waitFor() == 0 && output.contains("GNU bash");
-        } catch (InterruptedException ignored) {
-            Thread.currentThread().interrupt();
-            return false;
-        } catch (IOException ignored) {
-            return false;
-        }
+        return Files.isExecutable(gitBash) ? gitBash.toString() : "bash";
     }
 }
