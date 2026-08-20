@@ -8,20 +8,34 @@ renderer instead of modifying checked-in generator data for every new card.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from pathlib import Path
 
-from generate_challenge_card_templates import CardSpec, Requirement, ROOT, downsample, png_size, render_to, svg, validate_svg
+from generate_challenge_card_templates import ASSETS, CardSpec, Requirement, ROOT, downsample, png_size, render_to, svg, validate_svg
+
+APPROVED_ASSET_INDEX = ASSETS / "ASSET_INDEX.csv"
+
+
+def approved_asset_paths() -> set[str]:
+    with APPROVED_ASSET_INDEX.open(encoding="utf-8", newline="") as handle:
+        return {
+            row["asset_path"].strip()
+            for row in csv.DictReader(handle)
+            if row.get("status", "").strip().lower() == "approved" and row.get("asset_path", "").strip()
+        }
 
 
 def safe_asset_path(asset: str) -> Path:
     if not asset or Path(asset).is_absolute():
         raise ValueError(f"asset must be a repository-relative path: {asset!r}")
+    if not (asset.startswith("assets/ingredients/") or asset.startswith("assets/open-concepts/")):
+        raise ValueError(f"asset must be a production ingredient/open-concept asset: {asset}")
     resolved = (ROOT / asset).resolve()
     try:
-        resolved.relative_to(ROOT.resolve())
+        resolved.relative_to(ASSETS.resolve())
     except ValueError as error:
-        raise ValueError(f"asset escapes design root: {asset}") from error
+        raise ValueError(f"asset escapes assets directory: {asset}") from error
     return resolved
 
 
@@ -35,7 +49,7 @@ def string_tuple(value: object, field: str, max_items: int) -> tuple[str, ...]:
     return tuple(item.strip() for item in value)
 
 
-def requirement_from_json(raw: object, index: int) -> Requirement:
+def requirement_from_json(raw: object, index: int, approved_assets: set[str]) -> Requirement:
     if not isinstance(raw, dict):
         raise ValueError(f"requirements[{index}] must be an object")
     display_name = raw.get("display_name")
@@ -44,17 +58,20 @@ def requirement_from_json(raw: object, index: int) -> Requirement:
         raise ValueError(f"requirements[{index}].display_name must be a non-empty string")
     if not isinstance(asset, str) or not asset.strip():
         raise ValueError(f"requirements[{index}].asset must be a non-empty string")
+    asset = asset.strip()
     open_concept = raw.get("open_concept", False)
     if not isinstance(open_concept, bool):
         raise ValueError(f"requirements[{index}].open_concept must be boolean")
     lines = string_tuple(raw.get("lines"), f"requirements[{index}].lines", 2)
-    path = safe_asset_path(asset.strip())
+    path = safe_asset_path(asset)
+    if asset not in approved_assets:
+        raise ValueError(f"requirements[{index}].asset is not approved in ASSET_INDEX.csv: {asset}")
     if not path.exists():
         raise ValueError(f"requirements[{index}].asset does not exist: {asset}")
     width, height, colour_type = png_size(path)
     if (width, height, colour_type) != (1024, 1024, 6):
         raise ValueError(f"requirements[{index}].asset must be a 1024x1024 RGBA PNG: {asset}")
-    return Requirement(display_name.strip(), asset.strip(), open_concept=open_concept, lines=lines)
+    return Requirement(display_name.strip(), asset, open_concept=open_concept, lines=lines)
 
 
 def load_spec(path: Path, output: Path) -> CardSpec:
@@ -67,7 +84,8 @@ def load_spec(path: Path, output: Path) -> CardSpec:
     requirements_raw = raw.get("requirements")
     if not isinstance(requirements_raw, list) or len(requirements_raw) not in (2, 3, 4):
         raise ValueError("requirements must contain exactly 2, 3, or 4 entries")
-    requirements = tuple(requirement_from_json(item, index) for index, item in enumerate(requirements_raw))
+    approved_assets = approved_asset_paths()
+    requirements = tuple(requirement_from_json(item, index, approved_assets) for index, item in enumerate(requirements_raw))
     rule_lines = string_tuple(raw.get("rule_lines"), "rule_lines", 2)
     description = raw.get("description", "")
     if not isinstance(description, str):
