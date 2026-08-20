@@ -1,14 +1,28 @@
-# Wiederverwendbare Assets
+# Wiederverwendbare Illustrationsassets
 
-Dieses Verzeichnis enthält später ausschließlich freigegebene, wiederverwendbare Illustrationen und feste Designelemente.
+Dieses Verzeichnis enthält freigegebene Produktionsassets sowie ausdrücklich getrennte Stil- und Methodikreferenzen.
 
-Grundregeln:
+Verbindlich ist der [`Illustration Guide`](../illustration-system/ILLUSTRATION_GUIDE.md).
+
+## Struktur
+
+```text
+assets/
+├── ASSET_INDEX.csv
+├── ingredients/
+├── open-concepts/
+├── references/
+└── review/
+```
+
+## Grundregeln
 
 - keine einmaligen Komplettkarten,
-- keine Beschriftung innerhalb der Zutatenillustration,
-- kein individueller Kartenhintergrund,
-- transparente Arbeitsfläche für freigestellte Motive,
-- vorhandene Assets werden wiederverwendet statt neu erzeugt,
-- neue Assets werden erst nach Prüfung als verbindlich aufgenommen.
+- PNG mit transparentem Hintergrund für Produktionsassets,
+- kein Text, Badge oder Kartenhintergrund innerhalb der Illustration,
+- vorhandene freigegebene Assets werden wiederverwendet,
+- unterschiedliche Konzepte teilen niemals absichtlich dasselbe Asset,
+- neue Assets werden erst nach Stil-, Kleinformat- und Nachbarschaftsprüfung freigegeben,
+- der Katalog mit 600+ Konzepten wird **nicht** vollständig vorab bebildert.
 
-Die konkrete technische Assetspezifikation wird nach den Wireframes und der Festlegung des Illustrationsstils ergänzt.
+`ASSET_INDEX.csv` enthält ausschließlich freigegebene Produktionsassets. Referenzmontagen gehören nicht hinein.

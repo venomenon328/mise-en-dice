@@ -1,10 +1,12 @@
 # Offene Konzepte
 
-Hier liegen später Illustrationen allgemeiner Vorgaben, beispielsweise Blattgemüse, Pilze oder Fisch.
+Hier liegen ausschließlich **freigegebene Produktionsassets** allgemeiner beziehungsweise offener Vorgaben.
 
-Nach Möglichkeit zeigt ein Asset zwei bis drei repräsentative Motive als Gruppe. Die Beispiele veranschaulichen das Konzept, dürfen aber keine abschließende Auswahl suggerieren. Der Karten-Slot kann zusätzlich den Badge `OFFEN` tragen.
+Nach Möglichkeit zeigt ein Asset zwei bis drei repräsentative Konkretisierungen als kompakte Gruppe. Die Beispiele veranschaulichen das Konzept, dürfen aber keine abschließende Auswahl suggerieren. Der Badge `OFFEN` bleibt Bestandteil des Kartentemplates und wird nicht in das Asset gerendert.
 
-Dateinamen sollen stabil, kleingeschrieben und mit Bindestrichen gebildet werden, beispielsweise:
+Vor Aufnahme sind der [`Illustration Guide`](../../illustration-system/ILLUSTRATION_GUIDE.md) und die Nachbarschaftsprüfung aus [`CONFUSABLES.md`](../../illustration-system/CONFUSABLES.md) anzuwenden.
+
+Dateinamen werden stabil, kleingeschrieben und mit Bindestrichen gebildet, beispielsweise:
 
 ```text
 blattgemuese.png
