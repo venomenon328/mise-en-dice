@@ -49,17 +49,17 @@ Die vollständigen Tokens stehen unter `style-studies/VISUAL_FOUNDATIONS.md`.
 
 ## 5. Verbindliche Nutztypografie und Wortmarke
 
-Freigegeben ist **Typography Study A – Kitchen Editorial**.
+Für die Nutztypografie ist **Typography Study A – Kitchen Editorial** verbindlich.
 
 - `Challenge #NNN`, Badge und Regeltext: robuste Sans.
-- Vorgabennamen: normal geschriebene Quelldaten, typografisch als **echte Small Caps** gerendert.
-- `Go Smallcaps` ist die reproduzierbare Small-Caps-Referenz.
+- Vorgabennamen: normal geschriebene Quelldaten, typografisch als Small Caps gerendert.
+- `Go Smallcaps` ist die freigegebene Small-Caps-Referenz.
 
 Die finale Wortmarke ist ausschließlich [`assets/brand/mise-en-dice-wordmark-master.png`](assets/brand/mise-en-dice-wordmark-master.png). Sie wird unverändert als RGBA-Rasterasset eingebunden; weder SVG-Rekonstruktion noch Vektorisierung oder Neugenerierung sind zulässig.
 
 Im `1200 × 1200 px`-Template liegt sie bei `X = 330`, `Y = 24` mit `540 × 126 px`; `Challenge #NNN` steht zentriert mit Basislinie `Y = 195` und `28 px`.
 
-Die Wortmarke wird bewusst nicht mit den Nutzschriften substituiert. Die früheren Studien unter `wordmark-studies/` bleiben historisches Reviewmaterial.
+Frühere SVG-/Vektorisierungsstudien der Wortmarke sind verworfen und gehören nicht zum Designsystem v1.
 
 ## 6. Verbindliches Illustrationssystem
 
@@ -99,29 +99,33 @@ Die Methode und der erste Pasten-/Saucen-Stresstest stehen unter `illustration-s
 - Bestehende freigegebene Assets werden wiederverwendet und nicht pro Challenge neu generiert.
 - `assets/ASSET_INDEX.csv` enthält nur tatsächlich freigegebene Produktionsassets.
 
-## 7. Konsistenzregeln
+## 7. Konsistenz- und Reproduzierbarkeitsregeln
 
-- Wortlogo, Geometrie, Farben, Typografierollen und Illustrationsregeln werden versioniert.
-- Gleiche Challenge-Daten, gleiche Template-Version und gleiche Asset-Versionen sollen dasselbe Ergebnis liefern.
+- Wortmarke, Geometrie, Farben, Typografierollen und Illustrationsregeln werden versioniert.
+- Gleiche Challenge-Daten, gleiche Template-Version und gleiche Asset-Versionen erzeugen dasselbe SVG-Dokument.
 - Der sichtbare Vorgabenname bleibt die fachlich verbindliche Aussage; die Illustration unterstützt ihn.
 - Die Bildgenerierung erfolgt bewusst außerhalb des Discord-Bots.
+- Die Wortmarke wird per SHA-256 gegen stillen Austausch abgesichert.
+- PNG-Renderings hängen zusätzlich von Browser, Betriebssystem und verfügbarer Fontumgebung ab. Ein bytegenauer `--render-check` ist deshalb ein **Regressionstest innerhalb derselben Rendering-Umgebung**, keine plattformübergreifende Byte-Garantie.
+- Für visuelle Abnahmen sind die eingecheckten 1200er Referenzrenderings maßgeblich; die 320er Dateien sind LANCZOS-Downscales genau dieser Vollformatbilder.
 
 ## 8. Referenzen
 
 - `wireframes/`: Geometrie.
 - `style-studies/`: visuelle Grundlagen.
-- `typography-studies/`: Typografie.
-- `wordmark-studies/`: expressive Wortmarkenstudien und Review-Renderings zu Issue #130.
+- `typography-studies/`: Nutztypografie und historische Typografie-Studien.
 - `illustration-system/`: Illustrationsregeln und Prompt-Templates.
+- `assets/brand/`: finale Raster-Wortmarke.
 - `assets/references/anchor-style-study.jpg`: freigegebene Stilkalibrierung.
 - `assets/references/confusables-example-study.jpg`: exemplarischer Ähnlichkeits-Stresstest.
 
 ## 9. Finales Mastertemplate und Referenzprüfung
 
-- Die editierbaren Varianten liegen unter [`templates/`](templates/) für zwei, drei und vier Vorgaben.
-- Der Generator fixiert Geometrie, Wortmarkenhash, Slotkontur, Regelzustand und Assetreferenzen; er erzeugt daraus zusätzlich vier End-to-End-Referenzkarten unter [`examples/`](examples/).
+- Die generatorverwalteten Varianten liegen unter [`templates/`](templates/) für zwei, drei und vier Vorgaben.
+- `generate_challenge_card_templates.py` fixiert Geometrie, Wortmarkenhash, Slotkontur und die vier eingecheckten Referenzfälle.
+- Für neue konkrete Challenges wird **nicht** der Generator geändert. Ihre Daten werden als externe JSON-`CardSpec` über `render_challenge_card_from_spec.py` eingespeist.
 - Ohne Zusatzregel zeigt die Regelzone ausschließlich das neutrale Würfel-/Linienornament, niemals einen erklärenden Ersatztext.
-- Review-PNGs entstehen reproduzierbar bei `1200 × 1200` und aus genau diesem Vollformat bei `320 × 320 px`.
+- Review-PNGs entstehen bei `1200 × 1200`; die `320 × 320`-Prüfung wird aus dem 1200er Render heruntergerechnet.
 
 ## 10. Offene Entscheidungen
 
