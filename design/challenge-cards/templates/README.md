@@ -8,9 +8,21 @@ Die SVGs sind generatorverwaltete Mastertemplates für das feste quadratische Fo
 | `challenge-card-master-3.svg` | 3 | neutrales Ornament |
 | `challenge-card-master-4.svg` | 4 | Regel |
 
-Sie verwenden dieselbe Kopf- und Regelzone, die freigegebene Style-A-Palette und die Wireframe-Geometrie. Die SVGs referenzieren die finale Wortmarke ausschließlich als `../assets/brand/mise-en-dice-wordmark-master.png`; das Rasterasset darf nicht ersetzt oder in SVG-Pfade übertragen werden.
+## Hintergrund und Geometrie
 
-`generate_challenge_card_templates.py` ist die Quelle der drei Master-SVGs und der vier eingecheckten End-to-End-Referenzkarten. Die `CardSpec`-Eingaben enthalten normal geschriebene fachliche Anzeigetexte; die Ausgabe rendert die Vorgabennamen gemäß der freigegebenen Small-Caps-Rolle. Jede Slotgruppe besitzt einen festen Bildbereich, den optionalen `OFFEN`-Badge und eine Namenszone. Die abschließende, durchgezogene innere Kontur liegt `13 px` innerhalb der weichen äußeren Kontur.
+Die Templates legen keine künstliche Boardfläche mehr über das Bild. Stattdessen wird [`../assets/background/mise-en-dice-background-master.png`](../assets/background/mise-en-dice-background-master.png) unverändert als `1200 × 1200 px` Background-Master eingebunden. Er enthält Verlauf, Küchenutensilien, Holzboard und leeren Regelbalken.
+
+Die Slotgeometrie ist auf dieses Rasterasset kalibriert:
+
+- zwei Slots: `130/630 × 400`, jeweils `440 × 500 px`,
+- drei/vier Slots oben: `140/630 × 400`, jeweils `430 × 238 px`,
+- untere Reihe: `Y = 665`; beim Dreierlayout zentriert bei `X = 385`, beim Viererlayout bei `X = 140/630`.
+
+Slots bestehen nur noch aus einer sehr leichten hellen Fläche (`7 %`) und einer einzelnen warmen Kontur (`18 %`, `1,4 px`). Die frühere zweite innere Kontur entfällt vollständig.
+
+Die kleinen Drei-/Vierer-Slots rendern die Illustrationen standardmäßig um `18 %` größer innerhalb der Motivzone. Eine externe CardSpec kann zusätzlich pro Vorgabe `visual_scale` von `0.75` bis `1.50` setzen, um das optische Gewicht unterschiedlicher freigegebener Assets auszugleichen.
+
+Der dunkle Regelbalken ist Bestandteil des Background-Masters; dynamisch gerendert werden nur Regeltext/Symbol oder das neutrale No-Rule-Ornament.
 
 ## Mastertemplates und Referenzkarten erzeugen und prüfen
 
@@ -23,7 +35,7 @@ python design/challenge-cards/templates/generate_challenge_card_templates.py --r
 
 `--render` erzeugt die Review-PNGs zu den vier Referenzfällen. Es verwendet Chrome oder Edge im Headless-Modus für den 1200er SVG-Render und erzeugt die 320er Prüfung per LANCZOS-Downscale. Falls der Browser nicht im Standardpfad liegt, zeigt `CHALLENGE_CARD_BROWSER` auf die ausführbare Datei.
 
-`--render-check` rendert die Referenzkarten in der **aktuellen lokalen Rendering-Umgebung** erneut und vergleicht sie bytegenau mit den eingecheckten PNGs. Das ist ein lokaler Regressionstest. Browser-, Betriebssystem- und Fontversionen gehören zur Rendering-Umgebung; zwischen unterschiedlichen Umgebungen wird keine Byteidentität behauptet.
+`--render-check` rendert in der **aktuellen Rendering-Umgebung** erneut und vergleicht bytegenau mit den eingecheckten PNGs. Browser-, Betriebssystem- und Fontversionen gehören zu dieser Umgebung; plattformübergreifende Byteidentität wird nicht behauptet.
 
 ## Konkrete Challenge aus externer CardSpec rendern
 
@@ -36,8 +48,6 @@ python design/challenge-cards/templates/render_challenge_card_from_spec.py \
   --render
 ```
 
-Mit `--render` entstehen neben dem SVG automatisch `challenge-139-1200.png` und `challenge-139-320.png`.
-
 Eine CardSpec enthält:
 
 - `challenge_number`: Ganzzahl von `0` bis `999`,
@@ -45,9 +55,10 @@ Eine CardSpec enthält:
 - je Vorgabe `display_name` und repository-relativer `asset`-Pfad,
 - optional `open_concept: true`,
 - optional `lines` mit maximal zwei kuratierten Anzeigezeilen,
+- optional `visual_scale` zwischen `0.75` und `1.50`,
 - optional `rule_lines` mit maximal zwei Zeilen,
 - optional `description`.
 
-Der Renderer akzeptiert nur in `assets/ASSET_INDEX.csv` als `approved` geführte Produktionsassets unter `assets/ingredients/` beziehungsweise `assets/open-concepts/`. `display_name` und `open_concept` müssen zur dort freigegebenen Asset-Metadatenzeile passen; zusätzlich werden Existenz und `1024 × 1024 px`-RGBA-Format geprüft. Fehlende Assets werden vorher gemäß Illustration Guide erzeugt und freigegeben.
+Der Renderer akzeptiert nur in `assets/ASSET_INDEX.csv` als `approved` geführte Produktionsassets unter `assets/ingredients/` beziehungsweise `assets/open-concepts/`. `display_name` und `open_concept` müssen zur dort freigegebenen Asset-Metadatenzeile passen.
 
 Die Templates und Renderer gehören nur zum versionierten Designsystem. Sie sind keine Bot-, Web- oder Laufzeitintegration.
