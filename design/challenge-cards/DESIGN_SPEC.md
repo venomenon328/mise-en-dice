@@ -1,7 +1,7 @@
 # Designspezifikation für Challenge-Cards
 
 Stand: 20. August 2026  
-Status: Geometrie und visuelle Grundlagen sind freigegeben
+Status: Geometrie, visuelle Grundlagen und Typografierichtung sind freigegeben
 
 ## 1. Ziel
 
@@ -12,7 +12,8 @@ Das Design verbindet:
 - die klare Informationshierarchie eines Küchenplakats,
 - die warme illustrative Küchenatmosphäre des Discord-Banners,
 - eine helle Board- beziehungsweise Schneidebrettfläche,
-- ein deterministisches Layout, das nicht bei jeder Challenge neu erfunden wird.
+- ein deterministisches Layout,
+- eine feste typografische Hierarchie, die nicht bei jeder Challenge neu interpretiert wird.
 
 Die Karten entstehen außerhalb des Discord-Bots direkt mit ChatGPT auf Basis der versionierten Dateien in diesem Verzeichnis.
 
@@ -25,7 +26,7 @@ Die Karten entstehen außerhalb des Discord-Bots direkt mit ChatGPT auf Basis de
 - dreistellige Challenge-Nummer, beispielsweise `Challenge #001`,
 - zentraler Bereich für zwei bis vier Challenge-Vorgaben,
 - feste untere Regelzone für eine optionale Einschränkung oder einen Ausschluss,
-- keine weiteren Metadaten ohne einen ausdrücklich beschlossenen Nutzen.
+- keine weiteren Metadaten ohne ausdrücklich beschlossenen Nutzen.
 
 ### 2.2 Gesamtkomposition
 
@@ -40,58 +41,27 @@ Die Bereiche werden über Materialität, Licht, Flächenwechsel und Schatten get
 
 ### 2.3 Layout nach Anzahl der Vorgaben
 
-#### Zwei Vorgaben
+- **Zwei Vorgaben:** zwei große gleichwertige Slots nebeneinander.
+- **Drei Vorgaben:** zwei gleichwertige Slots oben und ein gleich großer Slot unten mittig.
+- **Vier Vorgaben:** gleichmäßiges `2 × 2`-Raster.
 
-Zwei große gleichwertige Slots nebeneinander.
-
-```text
-[ Vorgabe 1 ]  [ Vorgabe 2 ]
-```
-
-#### Drei Vorgaben
-
-Zwei gleichwertige Slots oben und ein gleich großer Slot unten mittig.
-
-```text
-[ Vorgabe 1 ]  [ Vorgabe 2 ]
-       [ Vorgabe 3 ]
-```
-
-Die untere Position erzeugt keine fachliche Rangfolge. Größe, Kontur und typografische Behandlung bleiben gleichwertig.
-
-#### Vier Vorgaben
-
-Ein gleichmäßiges `2 × 2`-Raster.
-
-```text
-[ Vorgabe 1 ]  [ Vorgabe 2 ]
-[ Vorgabe 3 ]  [ Vorgabe 4 ]
-```
+Die Position eines Slots erzeugt keine fachliche Rangfolge.
 
 ### 2.4 Inhalt eines Slots
 
 Ein Slot enthält:
 
 1. eine große Illustration,
-2. darunter den sichtbaren Namen der Vorgabe in Small Caps,
+2. darunter den sichtbaren Namen der Vorgabe in **Small Caps**,
 3. nur bei einem offenen Konzept gegebenenfalls den Badge **`OFFEN`**.
 
 Es gibt keine allgemeinen Badges wie `PFLICHT`, `KATEGORIE` oder `STÖRENFRIED`.
 
 ### 2.5 Konkrete Zutaten und offene Konzepte
 
-#### Konkrete Zutat
-
-- ein einzelnes eindeutig erkennbares Motiv,
-- keine zusätzliche Rollenkennzeichnung.
-
-#### Offenes Konzept
-
-- nach Möglichkeit ein gruppiertes Motiv aus zwei bis drei repräsentativen Beispielen,
-- ein dezenter Badge `OFFEN`,
-- der Text benennt weiterhin das offene Konzept und nicht die gezeigten Stellvertreter.
-
-Beispiel: Für `Blattgemüse` dürfen Pak Choi, Spinat und ein Kohlblatt gemeinsam erscheinen. Die Illustration darf nicht suggerieren, ausschließlich diese Konkretisierungen seien zulässig.
+- Eine konkrete Zutat erhält ein einzelnes eindeutig erkennbares Motiv.
+- Ein offenes Konzept erhält nach Möglichkeit ein gruppiertes Motiv aus zwei bis drei repräsentativen Beispielen und einen dezenten Badge `OFFEN`.
+- Der Text benennt immer das Konzept selbst und nicht die gezeigten Stellvertreter.
 
 ## 3. Verbindliche Geometrie
 
@@ -108,43 +78,38 @@ Die maßhaltigen Ausgangsdateien liegen unter [`wireframes/`](wireframes/). Verb
 
 [`wireframes/GEOMETRY.md`](wireframes/GEOMETRY.md) dokumentiert die vollständigen Koordinaten, Innenabstände und Textbereiche.
 
-Die Geometrie wurde in Originalgröße und bei `320 × 320 px` geprüft. Zweizeilige Grenzfälle liegen bei der kleinen Ausgabe bereits am unteren sinnvollen Rand; spätere Typografie darf deshalb nicht beliebig verkleinert werden.
+Die Geometrie wurde in Originalgröße und bei `320 × 320 px` geprüft. Zweizeilige Grenzfälle liegen bei der kleinen Ausgabe bereits am unteren sinnvollen Rand; Texte dürfen deshalb nicht beliebig weiter verkleinert werden.
 
 ## 4. Verbindliche visuelle Richtung
 
 Freigegeben ist **Style Study A – Helles Honigbrett**. Die vollständigen Design-Tokens und Anwendungsregeln stehen unter [`style-studies/VISUAL_FOUNDATIONS.md`](style-studies/VISUAL_FOUNDATIONS.md).
 
-### 4.1 Hintergrund
+### 4.1 Hintergrund und Board
 
 - warmes Goldorange mit hellem Fokus in der Bildmitte,
 - gebrannte Orange- und Rotbrauntöne zu den Rändern,
 - dunkle Küchenutensilien und Pflanzenformen als zurückhaltende Silhouetten,
+- helle honigfarbene Ahorn-/Schneidebrettwirkung,
+- ruhige illustrative Maserung statt Fototextur,
 - keine vollfarbigen dekorativen Lebensmittel im Vorgabenbereich.
 
-### 4.2 Board
-
-- helle honigfarbene Ahorn- beziehungsweise Schneidebrettwirkung,
-- ruhige illustrative Maserung statt Fototextur,
-- dunklere Kante, schlanke Kontur und weicher Außenschatten,
-- das Board bleibt die ruhige Hauptbühne für die Challenge-Vorgaben.
-
-### 4.3 Slots
+### 4.2 Slots
 
 - feste Positionen aus der freigegebenen Geometrie,
 - weiche semitransparente Aufhellung,
-- zurückhaltende warme Außenkontur und sehr dezente innere Kontur,
-- keine harten App-Panels und keine sichtbaren technischen Hilfslinien.
+- zurückhaltende warme Außenkontur,
+- keine harten App-Panels und keine sichtbaren technischen Hilfslinien im finalen Zustand.
 
-### 4.4 Regelzone
+### 4.3 Regelzone
 
 - feste Größe und Position unabhängig vom Vorhandensein einer Regel,
 - dunkles Espresso-/Rotbraun mit hellem Text bei einer Einschränkung oder einem Ausschluss,
 - kleines eindeutiges Symbol bei einer tatsächlichen Regel,
-- ohne Zusatzregel **kein Text** wie `KEINE ZUSATZREGEL`, sondern ausschließlich ein neutrales Würfel-/Linienornament.
+- ohne Zusatzregel ausschließlich ein neutrales Würfel-/Linienornament und **kein Text** wie `KEINE ZUSATZREGEL`.
 
-### 4.5 Kontrollvariante
+### 4.4 Kontrollvariante
 
-Style Study B – Dunkles Gewürzbrett bleibt versioniert, ist aber verworfen. Das dunkle Board erzeugt zu viel visuelles Gewicht und benötigt stärkere helle Slotinseln. Seine Werte sind keine Tokens des späteren Mastertemplates.
+Style Study B – Dunkles Gewürzbrett bleibt als verworfene Kontrollvariante versioniert.
 
 ## 5. Farbrollen der freigegebenen Richtung
 
@@ -182,53 +147,58 @@ Style Study B – Dunkles Gewürzbrett bleibt versioniert, ist aber verworfen. D
 - `rule-text`: `#FFF5DE`
 - `neutral-ornament`: `#EBC88C`
 
-## 6. Typografische Hierarchie
+## 6. Verbindliche Typografierichtung
 
-- `Mise en Dice` ist die primäre Markenüberschrift.
-- `Challenge #NNN` erklärt das Format und trägt die laufende Nummer.
-- Vorgabennamen werden in Small Caps gesetzt.
-- Der Regeltext ist klar lesbar und gegenüber den Vorgaben nachgeordnet, aber nicht versteckt.
-- Dynamische Texte dürfen nicht bis zur Unlesbarkeit verkleinert werden.
+Freigegeben ist **Typography Study A – Kitchen Editorial**. Die Studien und Begründung liegen unter [`typography-studies/`](typography-studies/).
 
-Die Style-Studies verwenden noch Systemschriften. Schriftfamilien, echtes Small-Caps-Verhalten, Laufweiten, Zeilenhöhen und das feste Wortlogo werden in einem eigenen Folgepaket festgelegt.
+### 6.1 Wortmarke
+
+- `Mise en Dice` erhält eine warme, leicht editoriale Serif-Anmutung.
+- Die Wortmarke ist das charakterstärkste typografische Element und darf sich bewusst von den Nutztexten unterscheiden.
+- Die aktuelle Study verwendet eine verfügbare Serif-Referenzschrift; das spätere feste Wortlogo wird als eigenes SVG-Asset eingefroren und nicht pro Karte neu gesetzt.
+
+### 6.2 Nutzschrift
+
+`Challenge #NNN`, Badge und Regeltext verwenden eine kräftige, robuste Sans mit hoher Kleinformat-Lesbarkeit.
+
+### 6.3 Vorgabennamen in Small Caps
+
+- Vorgabennamen werden **nicht als Vollversalien gespeichert**.
+- Die Quelldaten bleiben normal geschrieben, beispielsweise `Knoblauch`, `Blattgemüse` oder `Pflanzliches Proteinprodukt`.
+- In der Karte werden sie typografisch als **Small Caps** gerendert.
+- Die freigegebene Studie verwendet `Go Smallcaps` als reproduzierbare Small-Caps-Referenz mit Sans-Charakter.
+- Zweizeilige Namen behalten die gleiche Zeilenhöhe und Hierarchie; sie werden nicht durch beliebige weitere Verkleinerung passend gemacht.
+
+### 6.4 Verworfene Gegenproben
+
+- **Typography Study B – Rounded Pantry:** sympathisch, aber zu verspielt und zu nah an einem niedlichen Markenlook.
+- **Typography Study C – Confident Brand:** sehr robust und klar, aber weniger warm und charaktervoll als Study A.
 
 ## 7. Konsistenzregeln
 
-- Das Wortlogo wird einmal gestaltet und anschließend als versioniertes Asset verwendet.
+- Wortlogo, Geometrie, Farben und Typografierollen werden versioniert und wiederverwendet.
 - Layout und Typografie werden nicht durch ein Bildmodell pro Challenge neu erzeugt.
 - Gleiche Challenge-Daten, gleiche Template-Version und gleiche Asset-Version sollen dasselbe Ergebnis liefern.
 - Vorhandene Zutaten- und Konzeptillustrationen werden wiederverwendet.
 - Neue Illustrationen werden einzeln erstellt, geprüft und erst danach in die Bibliothek aufgenommen.
 - Illustrationen enthalten keinen eigenen Text und keinen individuellen Kartenhintergrund.
 - Der sichtbare Vorgabenname bleibt die verbindliche Aussage; die Illustration unterstützt ihn nur.
-- Das Bild ersetzt nicht die textuelle Challenge-Darstellung.
 
-## 8. Referenz- und Style-Study-Pakete
+## 8. Referenzpakete
 
-### Wireframes
+- [`wireframes/`](wireframes/): freigegebene Geometrie.
+- [`style-studies/`](style-studies/): visuelle Grundlagen und verworfene Kontrollvariante.
+- [`typography-studies/`](typography-studies/): Typografievergleich und freigegebene Richtung A.
 
-Unter [`wireframes/`](wireframes/) liegen Varianten für zwei, drei und vier Vorgaben sowie die früher geprüften Zustände ohne Zusatzregel. Der ornamentale Zustand ist inzwischen verbindlich.
-
-### Visuelle Grundlagen
-
-Unter [`style-studies/`](style-studies/) liegen:
-
-- die freigegebene Richtung A mit und ohne Regel,
-- die Kontrollvariante B mit und ohne Regel,
-- SVG-Exporte bei `1200 × 1200 px` und explizite SVG-Prüfexporte bei `320 × 320 px`,
-- der deterministische Generator,
-- die vollständigen visuellen Tokens.
-
-Ein herunterladbares Paket liegt unter [`packages/challenge-card-visual-foundations-v1.zip`](packages/challenge-card-visual-foundations-v1.zip).
+Das Visual-Foundations-Paket liegt weiterhin unter [`packages/challenge-card-visual-foundations-v1.zip`](packages/challenge-card-visual-foundations-v1.zip).
 
 ## 9. Noch offene Entscheidungen
 
-- finale Schriftfamilien und Wortlogo,
-- verbindliche Regeln für sehr lange Namen und Regeltexte in der finalen Schrift,
-- finaler Illustrationsstandard für konkrete Zutaten und offene Konzepte,
+- finale Ausarbeitung und Einfrieren des Wortlogos als eigenes SVG-Asset,
+- verbindlicher Illustrationsstandard für konkrete Zutaten und offene Konzepte,
 - endgültige Feinheit der inneren Slotkontur im Mastertemplate,
 - möglicher zusätzlicher Export für Querformat oder andere Plattformen.
 
 ## 10. Nächster Schritt
 
-Als nächstes werden Typografie und das feste Wortlogo `Mise en Dice` entwickelt. Erst danach folgt der verbindliche Illustrationsstandard und anschließend das finale Mastertemplate.
+Als nächstes wird der **Illustrationsstandard für konkrete Zutaten und offene Konzepte** entwickelt. Parallel beziehungsweise unmittelbar davor kann die freigegebene Wortmarkenrichtung als festes SVG-Logoasset eingefroren werden. Danach wird das finale Mastertemplate zusammengesetzt.
