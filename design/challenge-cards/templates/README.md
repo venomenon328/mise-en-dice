@@ -48,6 +48,6 @@ Eine CardSpec enthält:
 - optional `rule_lines` mit maximal zwei Zeilen,
 - optional `description`.
 
-Der Renderer akzeptiert nur vorhandene `1024 × 1024 px`-RGBA-Produktionsassets innerhalb des Designverzeichnisses und validiert die erzeugte SVG-Struktur. Fehlende Assets werden vorher gemäß Illustration Guide erzeugt und freigegeben.
+Der Renderer akzeptiert nur in `assets/ASSET_INDEX.csv` als `approved` geführte Produktionsassets unter `assets/ingredients/` beziehungsweise `assets/open-concepts/`. `display_name` und `open_concept` müssen zur dort freigegebenen Asset-Metadatenzeile passen; zusätzlich werden Existenz und `1024 × 1024 px`-RGBA-Format geprüft. Fehlende Assets werden vorher gemäß Illustration Guide erzeugt und freigegeben.
 
 Die Templates und Renderer gehören nur zum versionierten Designsystem. Sie sind keine Bot-, Web- oder Laufzeitintegration.
