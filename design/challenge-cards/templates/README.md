@@ -1,6 +1,6 @@
 # Finale Challenge-Card-Mastertemplates
 
-Die SVGs sind editierbare, generatorverwaltete Mastertemplates für das feste quadratische Format `1200 × 1200 px`:
+Die SVGs sind generatorverwaltete Mastertemplates für das feste quadratische Format `1200 × 1200 px`:
 
 | Datei | Vorgaben | Regelzustand des Musters |
 |---|---:|---|
@@ -10,9 +10,9 @@ Die SVGs sind editierbare, generatorverwaltete Mastertemplates für das feste qu
 
 Sie verwenden dieselbe Kopf- und Regelzone, die freigegebene Style-A-Palette und die Wireframe-Geometrie. Die SVGs referenzieren die finale Wortmarke ausschließlich als `../assets/brand/mise-en-dice-wordmark-master.png`; das Rasterasset darf nicht ersetzt oder in SVG-Pfade übertragen werden.
 
-`generate_challenge_card_templates.py` ist die Quelle der drei SVGs und der End-to-End-Referenzkarten. Die `CardSpec`-Eingaben enthalten bewusst normal geschriebene fachliche Anzeigetexte; die Ausgabe rendert sie über `Go Smallcaps` als Small Caps. Jede Slotgruppe besitzt eine feste Bildreferenz, einen Bildbereich, den optionalen `OFFEN`-Badge und eine Namenszone. Die abschließende, durchgezogene innere Kontur liegt `13 px` innerhalb der weichen äußeren Kontur.
+`generate_challenge_card_templates.py` ist die Quelle der drei Master-SVGs und der vier eingecheckten End-to-End-Referenzkarten. Die `CardSpec`-Eingaben enthalten normal geschriebene fachliche Anzeigetexte; die Ausgabe rendert die Vorgabennamen gemäß der freigegebenen Small-Caps-Rolle. Jede Slotgruppe besitzt einen festen Bildbereich, den optionalen `OFFEN`-Badge und eine Namenszone. Die abschließende, durchgezogene innere Kontur liegt `13 px` innerhalb der weichen äußeren Kontur.
 
-## Erzeugen und prüfen
+## Mastertemplates und Referenzkarten erzeugen und prüfen
 
 ```bash
 python design/challenge-cards/templates/generate_challenge_card_templates.py
@@ -21,6 +21,33 @@ python design/challenge-cards/templates/generate_challenge_card_templates.py --c
 python design/challenge-cards/templates/generate_challenge_card_templates.py --render-check
 ```
 
-`--render` erzeugt die Review-PNGs zu den vier Referenzfällen. Es verwendet Chrome oder Edge im Headless-Modus für den verlustfreien 1200er SVG-Render und erzeugt den verpflichtenden 320er Review per LANCZOS-Downscale. Falls der Browser nicht im Standardpfad liegt, zeigt `CHALLENGE_CARD_BROWSER` auf die ausführbare Datei. `--render-check` rendert frisch und vergleicht die PNGs bytegenau.
+`--render` erzeugt die Review-PNGs zu den vier Referenzfällen. Es verwendet Chrome oder Edge im Headless-Modus für den 1200er SVG-Render und erzeugt die 320er Prüfung per LANCZOS-Downscale. Falls der Browser nicht im Standardpfad liegt, zeigt `CHALLENGE_CARD_BROWSER` auf die ausführbare Datei.
 
-Die Templates und dieser Generator gehören nur zum versionierten Designsystem. Sie sind keine Bot-, Web- oder Laufzeitintegration.
+`--render-check` rendert die Referenzkarten in der **aktuellen lokalen Rendering-Umgebung** erneut und vergleicht sie bytegenau mit den eingecheckten PNGs. Das ist ein lokaler Regressionstest. Browser-, Betriebssystem- und Fontversionen gehören zur Rendering-Umgebung; zwischen unterschiedlichen Umgebungen wird keine Byteidentität behauptet.
+
+## Konkrete Challenge aus externer CardSpec rendern
+
+Für eine normale neue Challenge wird **nicht** `generate_challenge_card_templates.py` bearbeitet. Stattdessen wird eine externe JSON-Datei verwendet. [`card-spec.example.json`](card-spec.example.json) zeigt das Format.
+
+```bash
+python design/challenge-cards/templates/render_challenge_card_from_spec.py \
+  --spec card.json \
+  --output challenge-139.svg \
+  --render
+```
+
+Mit `--render` entstehen neben dem SVG automatisch `challenge-139-1200.png` und `challenge-139-320.png`.
+
+Eine CardSpec enthält:
+
+- `challenge_number`: Ganzzahl von `0` bis `999`,
+- `requirements`: exakt zwei, drei oder vier Einträge,
+- je Vorgabe `display_name` und repository-relativer `asset`-Pfad,
+- optional `open_concept: true`,
+- optional `lines` mit maximal zwei kuratierten Anzeigezeilen,
+- optional `rule_lines` mit maximal zwei Zeilen,
+- optional `description`.
+
+Der Renderer akzeptiert nur vorhandene `1024 × 1024 px`-RGBA-Produktionsassets innerhalb des Designverzeichnisses und validiert die erzeugte SVG-Struktur. Fehlende Assets werden vorher gemäß Illustration Guide erzeugt und freigegeben.
+
+Die Templates und Renderer gehören nur zum versionierten Designsystem. Sie sind keine Bot-, Web- oder Laufzeitintegration.
