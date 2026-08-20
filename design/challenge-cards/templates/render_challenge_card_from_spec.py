@@ -17,10 +17,10 @@ from generate_challenge_card_templates import ASSETS, CardSpec, Requirement, ROO
 APPROVED_ASSET_INDEX = ASSETS / "ASSET_INDEX.csv"
 
 
-def approved_asset_paths() -> set[str]:
+def approved_asset_metadata() -> dict[str, tuple[str, str]]:
     with APPROVED_ASSET_INDEX.open(encoding="utf-8", newline="") as handle:
         return {
-            row["asset_path"].strip()
+            row["asset_path"].strip(): (row.get("display_name", "").strip(), row.get("asset_kind", "").strip())
             for row in csv.DictReader(handle)
             if row.get("status", "").strip().lower() == "approved" and row.get("asset_path", "").strip()
         }
@@ -49,7 +49,7 @@ def string_tuple(value: object, field: str, max_items: int) -> tuple[str, ...]:
     return tuple(item.strip() for item in value)
 
 
-def requirement_from_json(raw: object, index: int, approved_assets: set[str]) -> Requirement:
+def requirement_from_json(raw: object, index: int, approved_assets: dict[str, tuple[str, str]]) -> Requirement:
     if not isinstance(raw, dict):
         raise ValueError(f"requirements[{index}] must be an object")
     display_name = raw.get("display_name")
@@ -66,6 +66,12 @@ def requirement_from_json(raw: object, index: int, approved_assets: set[str]) ->
     path = safe_asset_path(asset)
     if asset not in approved_assets:
         raise ValueError(f"requirements[{index}].asset is not approved in ASSET_INDEX.csv: {asset}")
+    approved_name, approved_kind = approved_assets[asset]
+    expected_kind = "open-concept" if open_concept else "ingredient"
+    if approved_kind != expected_kind:
+        raise ValueError(f"requirements[{index}] open_concept does not match ASSET_INDEX.csv kind {approved_kind!r}")
+    if approved_name and approved_name != display_name.strip():
+        raise ValueError(f"requirements[{index}].display_name must match approved asset name {approved_name!r}")
     if not path.exists():
         raise ValueError(f"requirements[{index}].asset does not exist: {asset}")
     width, height, colour_type = png_size(path)
@@ -84,7 +90,7 @@ def load_spec(path: Path, output: Path) -> CardSpec:
     requirements_raw = raw.get("requirements")
     if not isinstance(requirements_raw, list) or len(requirements_raw) not in (2, 3, 4):
         raise ValueError("requirements must contain exactly 2, 3, or 4 entries")
-    approved_assets = approved_asset_paths()
+    approved_assets = approved_asset_metadata()
     requirements = tuple(requirement_from_json(item, index, approved_assets) for index, item in enumerate(requirements_raw))
     rule_lines = string_tuple(raw.get("rule_lines"), "rule_lines", 2)
     description = raw.get("description", "")
