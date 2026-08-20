@@ -66,18 +66,20 @@ Alle Studien verwenden identische Inhalte, damit sich die Beurteilung nicht mit 
 
 ## Entscheidung
 
-**Freigegeben ist Study A – Kitchen Editorial.**
+**Statusänderung durch Issue #130:** Die hier dokumentierte Entscheidung bleibt für die Nutztypografie verbindlich. Die Aussage, dass Study A die finale Wortmarke als reine Serifenausführung bestimmt, ist dagegen abgelöst. Für das Wortlogo sind die expressiven, fontunabhängigen SVG-Studien unter [`../wordmark-studies/`](../wordmark-studies/) maßgeblich, bis eine davon in einem getrennten Paket finalisiert wird.
 
-- Das Wortlogo übernimmt den warmen, leicht editorialen Serif-Charakter aus Study A.
+**Für die Nutztypografie freigegeben ist Study A – Kitchen Editorial.**
+
 - `Challenge #NNN`, `OFFEN` und Regeltext bleiben robuste Sans-Nutzschrift.
 - Vorgabennamen werden mit normal geschriebenen Quelldaten über die Small-Caps-Nutzschrift `Go Smallcaps` gesetzt.
-- Study B und Study C bleiben als verworfene Gegenproben nachvollziehbar erhalten.
+- Für das Wortlogo gilt die frühere Serif-Anmutung nicht mehr als Auswahl; die neue Auswahl bleibt bis zur Finalisierung im Review.
+- Study B und Study C bleiben als verworfene Gegenproben der **Nutztypografie** nachvollziehbar erhalten.
 
 ## Nächster Schritt
 
 Auf Basis der freigegebenen Study A werden:
 
-1. das feste Wortlogo `Mise en Dice` finalisiert,
+1. eine expressive Wortmarkenstudie aus [`../wordmark-studies/`](../wordmark-studies/) in einem getrennten Paket finalisiert,
 2. die verbindlichen Schriftrollen für `Challenge #NNN`, Vorgabennamen, Badge und Regeltext festgelegt,
 3. Grenzfälle für Laufweite, Zeilenumbrüche und Größen eingefroren,
 4. erst danach der Illustrationsstandard für Zutaten und offene Konzepte entwickelt.

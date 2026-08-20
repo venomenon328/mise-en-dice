@@ -1,7 +1,7 @@
 # Designspezifikation für Challenge-Cards
 
 Stand: 20. August 2026  
-Status: Geometrie, visuelle Grundlagen, Typografie und Illustrationssystem sind freigegeben
+Status: Geometrie, visuelle Grundlagen, Nutztypografie und Illustrationssystem sind freigegeben; die Wortmarke befindet sich nach Issue #130 erneut in Review.
 
 ## 1. Ziel
 
@@ -45,14 +45,17 @@ Freigegeben ist **Style Study A – Helles Honigbrett**.
 
 Die vollständigen Tokens stehen unter `style-studies/VISUAL_FOUNDATIONS.md`.
 
-## 5. Verbindliche Typografie
+## 5. Verbindliche Nutztypografie und Wortmarkenstatus
 
 Freigegeben ist **Typography Study A – Kitchen Editorial**.
 
-- `Mise en Dice`: warme, leicht editoriale Serif-Anmutung; später als festes SVG-Wortlogo einzufrieren.
 - `Challenge #NNN`, Badge und Regeltext: robuste Sans.
 - Vorgabennamen: normal geschriebene Quelldaten, typografisch als **echte Small Caps** gerendert.
 - `Go Smallcaps` ist die reproduzierbare Small-Caps-Referenz.
+
+Die vorherige, rein typografische Wortmarkenrichtung ist für das Wortlogo **nicht** mehr die Zielrichtung. Issue #130 vergleicht stattdessen eigenständige, expressive SVG-Wortmarken mit integriertem Würfel unter [`wordmark-studies/`](wordmark-studies/). Die Nutztypografie bleibt davon getrennt und unverändert.
+
+Bis zur inhaltlichen Auswahl existiert bewusst kein Produktionsasset unter `assets/brand/` und kein eingefrorenes Mastertemplate-Logo.
 
 ## 6. Verbindliches Illustrationssystem
 
@@ -104,17 +107,18 @@ Die Methode und der erste Pasten-/Saucen-Stresstest stehen unter `illustration-s
 - `wireframes/`: Geometrie.
 - `style-studies/`: visuelle Grundlagen.
 - `typography-studies/`: Typografie.
+- `wordmark-studies/`: expressive Wortmarkenstudien und Review-Renderings zu Issue #130.
 - `illustration-system/`: Illustrationsregeln und Prompt-Templates.
 - `assets/references/anchor-style-study.jpg`: freigegebene Stilkalibrierung.
 - `assets/references/confusables-example-study.jpg`: exemplarischer Ähnlichkeits-Stresstest.
 
 ## 9. Noch offene Entscheidungen
 
-- finale Ausarbeitung und Einfrieren des Wortlogos als eigenes SVG-Asset,
+- Auswahl einer expressiven Wortmarkenstudie und deren Ausarbeitung als eigenes, pfadbasiertes SVG-Asset,
 - endgültige Feinheit der inneren Slotkontur im Mastertemplate,
 - finales Mastertemplate aus den eingefrorenen Bausteinen,
 - möglicher zusätzlicher Export für Querformat oder andere Plattformen.
 
 ## 10. Nächster Schritt
 
-Als nächstes wird die freigegebene Wortmarkenrichtung als festes SVG-Asset eingefroren und anschließend das finale Mastertemplate zusammengesetzt. Weitere Zutatenassets entstehen danach nur noch on demand gemäß dem Illustration Guide.
+Nach inhaltlicher Freigabe einer Studie folgt ein eigenes Finalisierungspaket: Die gewählte Wortmarke wird dann in reine Füllpfade überführt, als Produktionsasset eingefroren und erst danach in das finale Mastertemplate übernommen. Weitere Zutatenassets entstehen danach nur noch on demand gemäß dem Illustration Guide.

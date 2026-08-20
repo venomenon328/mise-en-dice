@@ -2,6 +2,8 @@
 
 Dieses Verzeichnis enthält kontrollierte Typografie- und Wortlogo-Studien auf Basis der freigegebenen visuellen Grundlagen (**Style Study A – Helles Honigbrett**).
 
+Die damaligen Wortlogo-Ansätze waren bewusst rein typografisch. Sie bleiben als nachvollziehbarer Entscheidungsstand erhalten, sind aber durch die expressive Wortmarkenexploration aus Issue #130 nicht mehr die Zielrichtung. Die aktuellen Wortmarkenstudien stehen unter [`../wordmark-studies/`](../wordmark-studies/); die hier festgelegten Rollen für Nutztexte bleiben gültig.
+
 ## Ziel
 
 Verglichen werden mehrere feste Typografierichtungen für:

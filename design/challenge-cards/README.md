@@ -22,6 +22,7 @@ design/challenge-cards/
 ├── wireframes/
 ├── style-studies/
 ├── typography-studies/
+├── wordmark-studies/
 ├── illustration-system/
 │   ├── ILLUSTRATION_GUIDE.md
 │   ├── CONFUSABLES.md
@@ -41,9 +42,10 @@ design/challenge-cards/
 
 - Geometrie für zwei, drei und vier Vorgaben: freigegeben.
 - Visuelle Richtung: **Style Study A – Helles Honigbrett**.
-- Typografie: **Typography Study A – Kitchen Editorial**; Vorgabennamen werden als echte Small Caps gerendert.
+- Nutztypografie: **Typography Study A – Kitchen Editorial**; Vorgabennamen werden als echte Small Caps gerendert.
+- Wortmarke: drei expressive, fontunabhängige SVG-Studien aus Issue #130 stehen unter [`wordmark-studies/`](wordmark-studies/) zur Review; noch keine ist Produktionslogo.
 - Illustrationsstil: durch `ILLUSTRATION_GUIDE.md` und die Anchor-Referenz definiert.
 - Visuell ähnliche Konzepte: allgemeine Nachbarschaftsprüfung gemäß `CONFUSABLES.md`; die zuerst getesteten Pasten und Saucen sind nur Beispielmaterial.
 - Assetstrategie: **on demand** statt Vollbebilderung des 600+ Konzepte umfassenden Katalogs.
 
-Der nächste Schritt nach Abnahme des Illustrationssystems ist das feste Wortlogo als Asset und anschließend das finale Mastertemplate.
+Nach der inhaltlichen Freigabe einer Wortmarkenstudie folgt deren pfadbasierte Finalisierung als Asset; erst danach kann das finale Mastertemplate zusammengesetzt werden.
