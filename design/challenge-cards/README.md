@@ -26,7 +26,14 @@ design/challenge-cards/
 ├── templates/
 │   └── README.md
 ├── wireframes/
-│   └── README.md
+│   ├── README.md
+│   ├── GEOMETRY.md
+│   ├── generate_wireframes.py
+│   ├── challenge-card-2.svg
+│   ├── challenge-card-3.svg
+│   ├── challenge-card-4.svg
+│   ├── challenge-card-no-rule-text.svg
+│   └── challenge-card-no-rule-ornament.svg
 ├── assets/
 │   ├── README.md
 │   ├── ingredients/
@@ -47,4 +54,6 @@ design/challenge-cards/
 
 ## Aktueller Stand
 
-Das Grundsystem und die bisher abgestimmten Entscheidungen sind dokumentiert. Der nächste Schritt ist ein maßhaltiges Low-Fidelity-Wireframe-Paket für zwei, drei und vier Vorgaben sowie die Regelzone. Farben, finale Typografie und Zutatenillustrationen werden erst danach festgelegt.
+Das Grundsystem ist dokumentiert und ein vollständiges Low-Fidelity-Wireframe-Paket für zwei, drei und vier Vorgaben liegt vor. Es enthält außerdem einen offenen Konzeptslot, lange Textgrenzfälle und zwei konkurrierende Varianten für Challenges ohne Zusatzregel.
+
+Der nächste Schritt ist die visuelle Freigabe der Geometrie und die Auswahl der Variante ohne Zusatzregel. Erst danach folgen Farbpalette, Materialität, finale Typografie, Logo und Zutatenillustrationen.

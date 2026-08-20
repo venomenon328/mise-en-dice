@@ -1,7 +1,7 @@
 # Designspezifikation für Challenge-Cards
 
 Stand: 20. August 2026  
-Status: Arbeitsstand nach Freigabe der grundlegenden Komposition
+Status: Low-Fidelity-Wireframes liegen zur visuellen Freigabe vor
 
 ## 1. Ziel
 
@@ -46,7 +46,7 @@ Die Vorgaben werden weder frei über die Fläche verteilt noch in sterile UI-Pan
 - einen sanften Schatten,
 - eine kleine Bodenellipse oder einen ruhigen Etikettbereich.
 
-Die genaue Ausformung wird erst nach den Low-Fidelity-Wireframes festgelegt.
+Die gestrichelten Grenzen der Low-Fidelity-Wireframes markieren ausschließlich die reservierte Geometrie. Sie sind kein Vorschlag für sichtbare technische Kartenrahmen.
 
 ### 2.4 Layout nach Anzahl der Vorgaben
 
@@ -107,6 +107,8 @@ Es gibt keine allgemeinen Badges wie `PFLICHT`, `KATEGORIE` oder `STÖRENFRIED`:
 
 Beispiel: Bei `Blattgemüse` dürfen Pak Choi, Spinat und ein Kohlblatt als Stellvertreter erscheinen. Die Illustration darf nicht den Eindruck erwecken, ausschließlich diese Konkretisierungen seien zulässig.
 
+Im aktuellen Wireframe sitzt der Badge horizontal zentriert unmittelbar oberhalb der Namenszone. Diese Position ist ein konkreter Prüfgegenstand und noch keine endgültige visuelle Ausformung.
+
 ### 2.7 Typografische Hierarchie
 
 - `Mise en Dice` ist die primäre Markenüberschrift.
@@ -115,7 +117,7 @@ Beispiel: Bei `Blattgemüse` dürfen Pak Choi, Spinat und ein Kohlblatt als Stel
 - Der Regeltext ist klar lesbar und gegenüber den Vorgaben nachgeordnet, aber nicht versteckt.
 - Dynamische Texte dürfen nicht bis zur Unlesbarkeit verkleinert werden.
 
-Die konkrete Schriftfamilie, Schriftgröße, Zeilenhöhe und die Behandlung sehr langer Bezeichnungen sind noch offen.
+Die Wireframes verwenden neutrale Systemschriften und angenäherte Versalien. Konkrete Schriftfamilie, echtes Small-Caps-Verhalten, Zeilenhöhe und Laufweite folgen erst in der Typografiephase.
 
 ### 2.8 Regelzone
 
@@ -125,7 +127,12 @@ Die Regelzone ist ein fester, geometrisch stabiler Bereich am unteren Kartenrand
 KEINE KOKOSMILCH
 ```
 
-Die Darstellung darf durch ein kleines Symbol und eine zurückhaltende Akzentfarbe unterstützt werden. Die Regelzone bleibt formal Teil des Templates; ihr Verhalten bei einer Challenge ohne Zusatzregel ist noch festzulegen.
+Die Darstellung darf durch ein kleines Symbol und eine zurückhaltende Akzentfarbe unterstützt werden. Die Zone wird auch ohne Zusatzregel nicht zusammengeklappt, damit die Zutatenkomposition zwischen Challenges nicht springt.
+
+Für den Zustand ohne Zusatzregel liegen zwei Wireframe-Varianten zur Auswahl vor:
+
+- neutrale Bestätigung `KEINE ZUSATZREGEL`,
+- rein dekoratives Würfelornament ohne Text.
 
 ## 3. Visuelle Richtung aus dem Discord-Banner
 
@@ -158,39 +165,63 @@ Auf der finalen Karte sollten möglichst nur die tatsächlichen Challenge-Vorgab
 - Illustrationen enthalten keinen eigenen Text und keinen individuellen Kartenhintergrund.
 - Die Karte bleibt zusätzlich durch Text beziehungsweise ein Discord-Embed beschreibbar; das Bild ist nicht die einzige fachliche Quelle.
 
-## 5. Zielwerte für die Wireframe-Phase
+## 5. Low-Fidelity-Wireframe-Paket
 
-Die bislang diskutierten Proportionen dienen als Ausgangspunkt, sind aber noch nicht eingefroren:
+Die maßhaltigen Vorschläge liegen unter [`wireframes/`](wireframes/):
 
-- Kopfzone ungefähr `18–20 %` der Kartenhöhe,
-- Board- und Vorgabenbereich ungefähr `65–68 %`,
-- Regelzone ungefähr `12–15 %`.
+- `challenge-card-2.svg`,
+- `challenge-card-3.svg`,
+- `challenge-card-4.svg`,
+- `challenge-card-no-rule-text.svg`,
+- `challenge-card-no-rule-ornament.svg`.
 
-Die Wireframes müssen diese Werte gegen reale Extremfälle prüfen und gegebenenfalls korrigieren.
+[`wireframes/GEOMETRY.md`](wireframes/GEOMETRY.md) dokumentiert alle Pixelkoordinaten, Abstände, Textbereiche und die Skalierungsprüfung bei `320 × 320 px`.
+
+Die SVGs werden deterministisch durch [`wireframes/generate_wireframes.py`](wireframes/generate_wireframes.py) erzeugt und validiert. Das verhindert, dass die Varianten bei späteren Korrekturen unbemerkt auseinanderlaufen.
+
+### 5.1 Geometrischer Vorschlag
+
+- sichtbare Kopfzone bis `Y = 222`,
+- Boardfläche `X = 72`, `Y = 222`, `1056 × 918 px`,
+- Regelzone `X = 120`, `Y = 974`, `960 × 116 px`,
+- Slotabstände von `48 px` horizontal und `40 px` vertikal,
+- zwei große Slots mit `456 × 640 px`,
+- drei beziehungsweise vier Slots mit `432 × 300 px`.
+
+Diese Maße sind nun präzise prüfbar, aber erst nach visueller Zustimmung verbindlich für das Mastertemplate.
+
+### 5.2 Abgedeckte Grenzfälle
+
+- ein offenes Konzept mit gruppiertem Motiv und `OFFEN`-Badge,
+- breiter Name `SCHWEINEBAUCH`,
+- zweizeiliger Name `PFLANZLICHES PROTEINPRODUKT`,
+- zweizeilige Regel `KEINE KOKOSMILCH ODER KOKOSCREME`,
+- zwei alternative Zustände ohne Zusatzregel,
+- Rasterung in Originalgröße und bei `320 × 320 px`.
+
+Die kleinsten zweizeiligen Texte liegen bei `320 × 320 px` bereits am unteren akzeptablen Rand. Spätere Typografie darf deshalb nicht durch beliebiges weiteres Verkleinern passend gemacht werden.
 
 ## 6. Noch offene Entscheidungen
 
-- genaue Pixelkoordinaten, Außenränder und Abstände,
+- visuelle Freigabe oder Korrektur der vorgeschlagenen Pixelgeometrie,
+- Auswahl der Text- oder Ornamentvariante ohne Zusatzregel,
 - exakte Form und Materialität der Boardfläche,
 - konkrete weiche Slotbegrenzung,
-- Position und Form des optionalen `OFFEN`-Badges,
-- Verhalten der Regelzone ohne Einschränkung oder Ausschluss,
 - finale Schriftfamilien und Logoausführung,
 - verbindliche Farbwerte,
-- Regeln für sehr lange Namen und Regeltexte,
+- endgültige Position, Form und Farbe des `OFFEN`-Badges,
+- verbindliche Regeln für sehr lange Namen und Regeltexte in der finalen Schrift,
 - konkrete Stilvorgaben für Zutaten- und Konzeptillustrationen,
 - möglicher zusätzlicher Export für Querformat oder andere Plattformen.
 
 ## 7. Nächster Schritt
 
-Als nächstes entstehen maßhaltige Low-Fidelity-Wireframes für:
+Nach visueller Freigabe der Wireframes werden:
 
-1. zwei konkrete Zutaten,
-2. drei gleichwertige Vorgaben,
-3. vier Vorgaben im `2 × 2`-Raster,
-4. eine Mischung aus konkreter Zutat und offenem Konzept,
-5. eine lange Bezeichnung,
-6. eine lange Einschränkung beziehungsweise einen Ausschluss,
-7. die noch zu entscheidende Variante ohne Zusatzregel.
+1. die Geometriemaße eingefroren oder gezielt korrigiert,
+2. die Variante ohne Zusatzregel festgelegt,
+3. Farbpalette und Materialität entwickelt,
+4. Typografie und fester `Mise en Dice`-Schriftzug ausgewählt,
+5. anschließend die genaue Slot-Optik und der Illustrationsstandard definiert.
 
-Erst nach Freigabe dieser Geometrie folgen Farbpalette, Typografie, Logo und Illustrationsstil.
+Erst danach entsteht die erste vollständig gestaltete Testkarte.
