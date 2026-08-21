@@ -11,6 +11,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md): verbindliche Regeln für Gewichtung, harte Kandidatengültigkeit, Scores, Diversität, Determinismus, Replay und Simulation
 - [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md): verbindlicher Vertrag für 1–3 kuratierte Angebote, maximal zwei externe Kuratoraufrufe, Carry-over, Nutzerbestätigung und Historienwirkung
 - [`CHALLENGE_VOTING_AND_PARTICIPATION.md`](CHALLENGE_VOTING_AND_PARTICIPATION.md): verbindliche Mehrnutzer-Semantik für Electorate-Snapshots, geheime Abstimmung, Tie-Break, einmaligen Reroll und von der Stimmberechtigung getrennte Challenge-Teilnahme
+- [`CHALLENGE_ARCHIVE_AND_CARDS.md`](CHALLENGE_ARCHIVE_AND_CARDS.md): verbindliche Semantik für öffentliche Challenge-Nummern, aktuelle Challenge, bestätigte Historie und operatorverwaltete Challenge-Cards aus Phase 13
 - [`DISCORD_INGREDIENT_LOOKUP.md`](DISCORD_INGREDIENT_LOOKUP.md): verbindliche Such-, Auswahl-, Darstellungs- und Modulgrenzen für die rein lesende Discord-Zutatenabfrage aus Issue #108
 - [`CANDIDATE_GENERATOR_DATA_READINESS.md`](CANDIDATE_GENERATOR_DATA_READINESS.md): gemessene Metadatenabdeckung und Gate für den Generatorstart
 - [`analysis/candidate-generator-data-readiness.sql`](analysis/candidate-generator-data-readiness.sql): reproduzierbare PostgreSQL-Auswertung des aktiven Ziehpools
@@ -40,4 +41,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Die produktionsnahe Live-Abnahme aus Phase 12A bis 12D und die lesende Discord-Zutatenabfrage aus Issue #108 sind abgeschlossen. Als Nächstes folgt Phase 12E / Issue #90 mit dem privaten Produktionspilot und der dokumentierten Go/No-Go-Entscheidung. Entwicklung und automatisierte Tests bleiben weiterhin vollständig ohne echte Discord- oder OpenAI-Verbindungen.
+Phase 12E / Issue #90 führt weiterhin den privaten Produktionspilot und die dokumentierte Go/No-Go-Entscheidung für `v0.1.0` durch. Erst danach folgt Phase 13: #140 ergänzt den transportneutralen Challenge-Archiv-/Card-Core, #141 anschließend die guild-weiten Discord-Lesecommands und die operatorgebundene Card-Verwaltung. Entwicklung und automatisierte Tests bleiben weiterhin vollständig ohne echte Discord- oder OpenAI-Verbindungen.

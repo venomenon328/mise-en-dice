@@ -1,6 +1,6 @@
 # Produktvision: Mise en Dice
 
-Stand: 16. August 2026
+Stand: 21. August 2026
 
 ## 1. Zweck
 
@@ -297,26 +297,35 @@ Discord ist vorgesehen für:
 - Challenge-Angebote ziehen und anzeigen,
 - genau eine angebotene Candidate-ID auswählen und ausdrücklich als Challenge bestätigen,
 - alternativ vor der Bestätigung den gemeinsamen einmaligen Reroll des gesamten sichtbaren Offer Sets auslösen und bestätigen,
+- aktive Zutatenkonzepte aus dem Katalog lesend nachschlagen,
+- die zuletzt bestätigte Challenge und die Historie bestätigter Challenges öffentlich erneut anzeigen,
+- einer bestätigten Challenge optional eine außerhalb des Bots erzeugte Challenge-Card zuordnen,
 - später persönliche Konkretisierungen und drei Zusatz-Zutaten verdeckt erfassen,
 - Entscheidungen beider Personen gleichzeitig offenlegen,
 - später gegebenenfalls Ergebnisse und Bewertungen dokumentieren.
 
 Im normalen Auswahlweg wird nur die ausdrücklich bestätigte Option zur operativen Challenge und beeinflusst Cooldown und Neuigkeitskadenz. Nicht gewählte Angebote bleiben für Audit und Replay nachvollziehbar, sind für den Generator aber so zu behandeln, als wären sie nie angeboten worden. Nur wenn das **gesamte** sichtbare Offer Set stattdessen rerollt wird, erzeugen seine exakten Katalogkonzepte die in Abschnitt 6 definierte Cooldown-only-Exposition.
 
+Die öffentliche Challenge-Historie zeigt ausschließlich die bestätigten Fakten und niemals Abstimmungs-, Offer-, Reroll-, Kurator- oder Providerdetails. Die zuletzt bestätigte Challenge gilt im ersten Stand als aktuell. Eine optionale Challenge-Card ist lediglich ein Darstellungsartefakt; die persistierten Requirement- und Restriction-Snapshots bleiben Autorität. Die vollständige Spezifikation steht in [`CHALLENGE_ARCHIVE_AND_CARDS.md`](CHALLENGE_ARCHIVE_AND_CARDS.md).
+
 Discord-Bot und Verwaltungsoberfläche verwenden dieselbe fachliche Logik und dieselbe persistente Datenbasis. Eine unnötig verteilte Architektur ist für zwei Benutzer nicht das Ziel.
 
 ## 9. Nachgelagerter Challenge-Ablauf
 
-Später kann das System den gesamten Ablauf begleiten:
+Die erste nachgelagerte Stufe bleibt bewusst klein:
 
 1. Ein bis drei kuratierte Optionen werden angezeigt; anschließend wird entweder einmalig das gesamte Offer Set rerollt oder genau eine Option ausdrücklich bestätigt.
 2. Nach Bestätigung werden ihre vier Vorgaben zur operativen Challenge veröffentlicht.
-3. Beide konkretisieren allgemeine Vorgaben unabhängig voneinander.
-4. Beide wählen unabhängig ihre drei zusätzlichen Zutaten.
-5. Optional wird jeweils ein sehr kurzer Grundplan hinterlegt.
-6. Erst wenn beide festgelegt haben, werden die Entscheidungen gegenseitig sichtbar.
-7. Beide kochen unabhängig.
-8. Nachher werden Gericht, Foto und Fazit dokumentiert.
+3. Die Challenge erhält eine stabile öffentliche Nummer, ist als aktuelle beziehungsweise historische Challenge erneut abrufbar und kann optional mit einer außerhalb des Bots erzeugten Challenge-Card dargestellt werden.
+
+Erst in späteren Paketen kann das System den persönlichen Ablauf begleiten:
+
+4. Beide konkretisieren allgemeine Vorgaben unabhängig voneinander.
+5. Beide wählen unabhängig ihre drei zusätzlichen Zutaten.
+6. Optional wird jeweils ein sehr kurzer Grundplan hinterlegt.
+7. Erst wenn beide festgelegt haben, werden die Entscheidungen gegenseitig sichtbar.
+8. Beide kochen unabhängig.
+9. Nachher werden Gericht, Foto und Fazit dokumentiert.
 
 Ein klassischer Gesamtsieger ist nicht zwingend sinnvoll, insbesondere wenn beide die Gerichte des anderen nicht probieren können. Interessanter sind Vergleich und Reflexion über Auswahlentscheidungen, gelungene Verbindungen und Fehlentscheidungen.
 
@@ -331,6 +340,8 @@ Denkbar sind beispielsweise:
 - Bilder der fertigen Gerichte,
 - kurzes gemeinsames Fazit,
 - Rückblick darauf, welche Entscheidung besonders gut oder besonders fatal war.
+
+Die Challenge-Cards werden bewusst außerhalb des Bots aus den versionierten Designquellen erzeugt. Der Bot kann eine fertige Card später dauerhaft einer bestätigten Challenge zuordnen und gemeinsam mit deren autoritativen Textdaten anzeigen; er erzeugt oder interpretiert das Bild nicht selbst.
 
 Ein bisher diskutierter Formatname ist **„Umami oder Unfall“**. Dieser ist nicht zwingend identisch mit dem technischen Projektnamen `Mise en Dice` und gilt derzeit nicht als endgültige Produktentscheidung.
 
@@ -361,12 +372,17 @@ Bereits abgeschlossen sind:
 6. persistente Generator-, Replay-, Konkurrenz- und Kalibrierungsgrundlage,
 7. strukturierter Kuratorvertrag, begrenzte produktive Orchestrierung und Multi-Offer-Lifecycle,
 8. transportneutraler Offer-Decision-/Reroll-Lifecycle für Auswahl von `1..3` Angeboten und Bestätigung genau einer Challenge,
-9. transportneutraler Teilnehmer-, Electorate- und Voting-Core mit persistenter Teilnahme.
+9. transportneutraler Teilnehmer-, Electorate- und Voting-Core mit persistenter Teilnahme,
+10. dünner Discord-Adapter für Challenge-Start, Darstellung, Interaktion, Abstimmung, Reroll und externe Identitätsauflösung,
+11. produktionsnahe Live-Abnahme einschließlich Restart, Recovery, Backup/Restore und Zugriffskontrolle,
+12. lesende Discord-Zutatenabfrage und das externe Challenge-Card-Designsystem.
 
 Als nächste Schritte folgen:
 
-10. ein dünner Discord-Adapter für Darstellung, Interaktion und externe Identitätsauflösung ohne eigene Fachlogik,
-11. später: persönliche Auswahl, Historie und Ergebnisdokumentation.
+13. Abschluss des privaten Produktionspiloten und Release `v0.1.0`,
+14. transportneutrale öffentliche Challenge-Nummer, aktuelle Challenge, Historie und Challenge-Card-Persistenz,
+15. dünner Discord-Adapter für guild-weite Archivabfragen und operatorgebundene Card-Verwaltung,
+16. später: persönliche Auswahl, Reveal, Planung und Ergebnisdokumentation.
 
 ## 13. Leitprinzip in einem Satz
 
