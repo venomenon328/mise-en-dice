@@ -1,4 +1,4 @@
-name: Temporary Challenge 328 Design Export
+name: Temporary Challenge 328 Render
 
 on:
   push:
@@ -12,16 +12,53 @@ permissions:
   contents: read
 
 jobs:
-  export-design:
+  render-challenge:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-      - name: Upload Challenge Card design sources
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install image dependency
+        run: python -m pip install --disable-pip-version-check Pillow
+      - name: Build missing Challenge 328 assets and CardSpec
+        run: python .github/scripts/tmp-build-challenge-328-assets.py
+      - name: Render with checked-in Challenge Card renderer
+        shell: bash
+        run: |
+          BROWSER="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$BROWSER"
+          export CHALLENGE_CARD_BROWSER="$BROWSER"
+          python design/challenge-cards/templates/render_challenge_card_from_spec.py \
+            --spec tmp/challenge-328.json \
+            --output tmp/challenge-328.svg \
+            --render
+      - name: Verify outputs
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          for name, expected in (("challenge-328-1200.png", (1200, 1200)), ("challenge-328-320.png", (320, 320))):
+              path = Path("tmp") / name
+              if not path.exists():
+                  raise SystemExit(f"missing render: {path}")
+              with Image.open(path) as image:
+                  if image.size != expected:
+                      raise SystemExit(f"wrong size for {path}: {image.size}")
+          print("Challenge #328 render dimensions verified")
+          PY
+      - name: Upload final Challenge 328 render
         uses: actions/upload-artifact@v4
         with:
-          name: challenge-card-design-328
-          path: design/challenge-cards
+          name: challenge-328-final
+          path: |
+            tmp/challenge-328-1200.png
+            tmp/challenge-328-320.png
+            tmp/challenge-328.svg
+            tmp/challenge-328.json
           if-no-files-found: error
           retention-days: 1
-          include-hidden-files: true
