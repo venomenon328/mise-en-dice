@@ -18,14 +18,22 @@ Zusatzregel: <Text oder keine>
 Erzwungene Asset-Neugenerierung: <Liste oder keine>
 ```
 
-- Eine nicht markierte Vorgabe ist immer eine konkrete Zutat (`ingredient`).
+- Eine nicht markierte Vorgabe ist ohne Rückfrage immer eine konkrete Zutat
+  (`ingredient`). `(konkret)` ist dafür nur die gleichbedeutende, optionale
+  Steuerannotation.
 - `(offen)` bedeutet immer `open-concept`.
+- `(offen)` und `(konkret)` steuern nur die Assetart. Sie werden weder in den
+  Card-`display_name` noch in den `display_name` des Produktionsindex
+  übernommen: `Brokkoli (offen)` wird beispielsweise als `Brokkoli` mit
+  `asset_kind=open-concept` verarbeitet.
+- Fehlt die Zeile `Zusatzregel`, bedeutet das `keine`. Fehlt die Zeile
+  `Erzwungene Asset-Neugenerierung`, bedeutet das ebenfalls `keine`.
 - Eine erzwungene Neugenerierung nennt dieselbe exakte Variante, etwa
   `Mayonnaise (konkret)` oder `Brokkoli (offen)`; sie ersetzt niemals die
   andere Variante desselben Konzeptschlüssels.
-- Die Art wird weder aus einem vorhandenen Dateinamen noch aus einer
-  Katalogbeziehung abgeleitet oder geraten. Fehlt eine Angabe, muss der Auftrag
-  präzisiert werden, bevor ein Asset ausgewählt wird.
+- Die Art wird ausschließlich durch diese Annotation oder die konkrete
+  Standardannahme bestimmt, niemals aus einem vorhandenen Dateinamen oder einer
+  Katalogbeziehung geraten.
 
 ## Verbindlicher Ablauf für ChatGPT oder Codex
 

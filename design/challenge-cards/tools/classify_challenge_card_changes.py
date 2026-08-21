@@ -46,7 +46,7 @@ def asset_validation_required(changes: Sequence[Change]) -> bool:
 def classify_changes(changes: Sequence[Change]) -> Classification:
     validation_required = asset_validation_required(changes)
     if not changes:
-        return Classification(False, False, "no changed paths; using the full path")
+        return Classification(False, True, "no changed paths; using the full path")
 
     index_changed = False
     production_png_changed = False
@@ -57,13 +57,13 @@ def classify_changes(changes: Sequence[Change]) -> Classification:
         if change.status not in {"A", "M"}:
             return Classification(
                 False,
-                validation_required,
+                True,
                 f"unsupported diff status {change.status!r}; using the full path",
             )
         if len(change.paths) != 1:
             return Classification(
                 False,
-                validation_required,
+                True,
                 "ambiguous diff path record; using the full path",
             )
         path = change.paths[0]
@@ -167,7 +167,35 @@ def classify_git_diff(
         )
         return classify_changes(parse_name_status(payload))
     except (OSError, subprocess.SubprocessError, UnicodeError, ValueError) as error:
-        return Classification(False, False, f"cannot classify Git diff ({error}); using the full path")
+        return Classification(False, True, f"cannot classify Git diff ({error}); using the full path")
+
+
+def classify_event(
+    *,
+    event_name: str,
+    ref: str,
+    before: str,
+    current_sha: str,
+    pull_request_base_sha: str,
+    pull_request_head_sha: str,
+    repository: Path,
+    runner: GitRunner = run_git,
+) -> Classification:
+    sha_range = select_diff_range(
+        event_name=event_name,
+        ref=ref,
+        before=before,
+        current_sha=current_sha,
+        pull_request_base_sha=pull_request_base_sha,
+        pull_request_head_sha=pull_request_head_sha,
+    )
+    if sha_range is None:
+        return Classification(
+            False,
+            True,
+            "unsupported or incomplete event SHA range; using the full path",
+        )
+    return classify_git_diff(repository, *sha_range, runner)
 
 
 def write_github_output(path: Path, classification: Classification) -> None:
@@ -193,18 +221,15 @@ def main() -> int:
     parser.add_argument("--github-output", type=Path)
     args = parser.parse_args()
 
-    sha_range = select_diff_range(
+    classification = classify_event(
         event_name=args.event_name,
         ref=args.ref,
         before=args.before,
         current_sha=args.current_sha,
         pull_request_base_sha=args.pull_request_base_sha,
         pull_request_head_sha=args.pull_request_head_sha,
+        repository=args.repository.resolve(),
     )
-    if sha_range is None:
-        classification = Classification(False, False, "unsupported or incomplete event SHA range; using the full path")
-    else:
-        classification = classify_git_diff(args.repository.resolve(), *sha_range)
 
     if args.github_output:
         write_github_output(args.github_output, classification)

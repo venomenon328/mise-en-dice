@@ -11,6 +11,8 @@ sys.path.insert(0, str(TOOLS))
 from classify_challenge_card_changes import (
     ASSET_INDEX,
     Change,
+    Classification,
+    classify_event,
     classify_changes,
     classify_git_diff,
     parse_name_status,
@@ -31,6 +33,10 @@ class ChallengeCardChangeClassificationTest(unittest.TestCase):
     def assert_full_path(self, *changes: Change) -> None:
         classification = classify_changes(changes)
         self.assertFalse(classification.asset_only, classification.reason)
+
+    def assert_fail_closed(self, classification: Classification) -> None:
+        self.assertFalse(classification.asset_only, classification.reason)
+        self.assertTrue(classification.asset_validation_required, classification.reason)
 
     def test_index_plus_added_production_png_is_asset_only(self) -> None:
         self.assert_asset_only(Change("M", (ASSET_INDEX,)), Change("A", (INGREDIENT,)))
@@ -116,6 +122,35 @@ class ChallengeCardChangeClassificationTest(unittest.TestCase):
         self.assertEqual(base, seen[0][-3])
         self.assertEqual(merge_commit, seen[0][-2])
         self.assertEqual("--", seen[0][-1])
+
+    def test_unclassifiable_or_unclear_diffs_require_validator_and_full_path(self) -> None:
+        self.assert_fail_closed(classify_changes(()))
+        self.assert_fail_closed(classify_changes((Change("X", ("README.md",)),)))
+
+        def malformed_runner(command: tuple[str, ...], repository: Path) -> bytes:
+            return b"R100\0design/challenge-cards/assets/ingredients/mayonnaise.png\0"
+
+        self.assert_fail_closed(
+            classify_git_diff(Path.cwd(), "a" * 40, "b" * 40, malformed_runner)
+        )
+
+        def failing_runner(command: tuple[str, ...], repository: Path) -> bytes:
+            raise OSError("Git diff is unavailable")
+
+        self.assert_fail_closed(
+            classify_git_diff(Path.cwd(), "a" * 40, "b" * 40, failing_runner)
+        )
+        self.assert_fail_closed(
+            classify_event(
+                event_name="push",
+                ref="refs/heads/main",
+                before="0" * 40,
+                current_sha="c" * 40,
+                pull_request_base_sha="",
+                pull_request_head_sha="",
+                repository=Path.cwd(),
+            )
+        )
 
 
 if __name__ == "__main__":

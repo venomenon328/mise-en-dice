@@ -93,7 +93,7 @@ class AssetCatalogValidationTest(unittest.TestCase):
                 root,
                 [
                     self.row("brokkoli", "Brokkoli", ingredient),
-                    self.row("brokkoli", "Brokkoli (offen)", open_concept, "open-concept"),
+                    self.row("brokkoli", "Brokkoli", open_concept, "open-concept"),
                 ],
             )
             self.assertEqual([], catalog.validate_asset_catalog(root))

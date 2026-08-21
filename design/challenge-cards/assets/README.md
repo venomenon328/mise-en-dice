@@ -51,8 +51,10 @@ sind `concept_key`, `display_name`, `asset_path`, `asset_kind`, `status` und
 Die logische Assetidentität ist verbindlich `(concept_key, asset_kind)`.
 `asset_kind` ist ausschließlich `ingredient` oder `open-concept`. Derselbe
 `concept_key` darf daher genau einmal je Art vorkommen: etwa kann ein konkretes
-`Brokkoli`-Asset neben `Brokkoli (offen)` existieren. Beide sind getrennte
-Motive und niemals gegenseitige Treffer oder Fallbacks.
+neben einem offenen `Brokkoli`-Asset existieren. Beide Indexzeilen verwenden
+den `display_name` `Brokkoli`; `(offen)` ist ausschließlich eine
+Auftrags-Steuerannotation, kein Teil eines Index- oder Kartennamens. Die Motive
+sind getrennt und niemals gegenseitige Treffer oder Fallbacks.
 
 `concept_key` ist ein stabiler kleingeschriebener Bindestrich-Slug. Die
 Produktionspfade sind exakt `assets/ingredients/<concept_key>.png` für
