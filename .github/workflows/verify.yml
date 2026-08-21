@@ -18,10 +18,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Classify Challenge-Card asset change
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BEFORE: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+          PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -Eeuo pipefail
+          python design/challenge-cards/tools/classify_challenge_card_changes.py \
+            --event-name "$EVENT_NAME" \
+            --ref "$REF" \
+            --before "$BEFORE" \
+            --current-sha "$CURRENT_SHA" \
+            --pull-request-base-sha "$PULL_REQUEST_BASE_SHA" \
+            --pull-request-head-sha "$PULL_REQUEST_HEAD_SHA" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Validate Challenge-Card asset catalog
+        if: ${{ steps.classify.outputs.asset_validation_required == 'true' }}
+        run: python design/challenge-cards/tools/validate_asset_catalog.py
+
+      - name: Asset-only verification
+        if: ${{ steps.classify.outputs.asset_only == 'true' }}
+        run: echo 'Challenge-Card production asset-only change verified; the full Maven Verify is not applicable.'
+
       - uses: actions/setup-java@v5
+        if: ${{ steps.classify.outputs.asset_only != 'true' }}
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
       - name: Verify
+        if: ${{ steps.classify.outputs.asset_only != 'true' }}
         run: ./mvnw -DforkCount=2 clean verify

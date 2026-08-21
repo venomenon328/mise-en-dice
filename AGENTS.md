@@ -59,6 +59,14 @@ Das aktuelle Issue und konkrete Review-Anforderungen bestimmen den Lieferumfang.
 - Entwicklungsumgebungen und automatisierte Tests dürfen niemals echte Requests an die OpenAI API senden. Echter OpenAI-Zugriff ist ausschließlich im explizit aktivierten Produktivbetrieb zulässig; verbindlich ist [`ADR 0008`](docs/adr/0008-production-only-openai-access.md).
 - Kurator- und OpenAI-Adaptertests verwenden deterministische Fakes, Fixtures beziehungsweise lokale HTTP-Stubs. CI und normale Entwicklungsprofile benötigen keinen `OPENAI_API_KEY`; ein zufällig vorhandener Key darf keinen Live-Zugriff aktivieren.
 - Führe nach Vorhandensein des Maven Wrappers mindestens `./mvnw verify` aus.
+- Eng begrenzte Ausnahme: Für eine von
+  `design/challenge-cards/tools/classify_challenge_card_changes.py` eindeutig
+  als `challenge-card-assets-only` klassifizierte Änderung sind der vollständige
+  Maven- und Deployment-Verify-Lauf nicht anwendbar; stattdessen ist der
+  Assetkatalogvalidator verbindlich. Das gilt ausschließlich für
+  `ASSET_INDEX.csv` allein oder zusammen mit hinzugefügten oder geänderten
+  Produktions-PNGs. Jede andere Datei, jede Löschung oder Umbenennung und jede
+  unklare Diff-Situation bleibt beim vollständigen Prüfpfad.
 - Prüfe bei Änderungen an Compose zusätzlich `docker compose config`.
 - Änderungen an Migrationen müssen den vollständigen Aufbau einer leeren Datenbank testen.
 - Fehlerhafte Tests werden behoben und nicht deaktiviert oder durch schwächere Behauptungen ersetzt.
