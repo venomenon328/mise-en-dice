@@ -1,6 +1,6 @@
 # Entwicklungsplan
 
-Stand: 19. August 2026
+Stand: 21. August 2026
 
 Dieses Dokument beschreibt die aktuelle Umsetzungsreihenfolge. Die [`VISION.md`](VISION.md) beschreibt das gewünschte Produkt; dieser Plan legt fest, in welcher technischen Reihenfolge die dafür notwendigen Bausteine entstehen. Die konkrete Webspezifikation steht in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md).
 
@@ -600,6 +600,48 @@ vollständigen Authorization-Header oder unredigierten Runtime-Dateien dokumenti
 
 Persönliche Konkretisierungen, Zusatz-Zutaten, Grundpläne und Ergebnisdokumentation folgen in späteren Paketen.
 
+## Phase 13: Öffentliche Challenge-Historie und Challenge-Cards
+
+Phase 13 beginnt erst nach Abschluss von Phase 12E / #90 und dem Release `v0.1.0`. Verbindliche Fachquelle ist [`CHALLENGE_ARCHIVE_AND_CARDS.md`](CHALLENGE_ARCHIVE_AND_CARDS.md).
+
+Die Phase bleibt bewusst kleiner als der später mögliche persönliche Challenge-Lifecycle. Sie macht ausschließlich bestätigte Challenge-Fakten dauerhaft öffentlich abrufbar und erlaubt die optionale Zuordnung einer außerhalb des Bots erzeugten Challenge-Card.
+
+### Phase 13A: Transportneutraler Archiv-/Card-Core (Issue #140)
+
+- positive, eindeutige und unveränderliche öffentliche `challenge_number`,
+- deterministischer Backfill bestehender Challenges ab `1`,
+- global konkurrenzsichere und transaktionale Nummernvergabe ohne Verbrauch durch Rollbacks,
+- kleine öffentliche Challenge-Archivprojektion für aktuelle Challenge, Detail und paginierte Historie,
+- ausschließlich Requirement-/Restriction-Snapshots; keine Offer-, Voting-, Reroll-, Kurator- oder Providerhistorie,
+- optionale Eins-zu-eins-Challenge-Card als valides `1200 × 1200`-PNG bis `5 MiB`,
+- dauerhafte PostgreSQL-`bytea`-Persistenz mit SHA-256 und Metadaten,
+- ausdrückliches Setzen, Ersetzen und Entfernen über transportneutrale APIs,
+- echte PostgreSQL-Migrations-, Konkurrenz-, Rollback- und Binärdatentests,
+- keine Discord-Typen oder Rollenprüfung.
+
+### Phase 13B: Discord-Archiv und operatorgebundene Card-Verwaltung (Issue #141)
+
+- neuer Root-Command `/challenges` getrennt vom vorhandenen `/challenge`,
+- guild-weite öffentliche Subcommands `aktuell`, `liste` und `anzeigen`,
+- zehn Listeneinträge pro Seite, neueste zuerst und aktuelle Challenge markiert,
+- gemeinsame Detaildarstellung aus Nummer, Bestätigungsdatum, vier Snapshots und Restriction,
+- optionale Auslieferung der persistierten Card als natives Discord-Attachment,
+- `karte-setzen` und `karte-entfernen` ausschließlich für die vorhandene Operatorrolle,
+- Autorisierung vor Attachment-Download und Core-Mutation,
+- keine automatische Erkennung normal geposteter Bilder und keine zusätzlichen privilegierten Intents,
+- dünner Adapter ausschließlich über `challenge :: api`,
+- keine persönliche Planung oder Ergebnisdokumentation.
+
+### Gate
+
+- bestätigte Challenges besitzen stabile öffentliche Nummern,
+- `aktuell` wechselt erst durch eine neue erfolgreich materialisierte Challenge,
+- Liste und Detail zeigen ausschließlich bestätigte Snapshots,
+- Cards bleiben optionale Darstellung und verändern keine Challenge-Fakten,
+- guild-weite Leserechte und operatorgebundene Schreibrechte sind getrennt,
+- Migration, Konkurrenz, Restart und Discord-Grenzen sind automatisiert geprüft,
+- Phase 13 zieht keine persönlichen Konkretisierungen, Zusatz-Zutaten oder Ergebnisse vor.
+
 ## Bewusste Nicht-Ziele der nahen Pakete
 
 - mehrere unabhängig deployte Dienste,
@@ -613,4 +655,6 @@ Persönliche Konkretisierungen, Zusatz-Zutaten, Grundpläne und Ergebnisdokument
 - mehr als drei gleichzeitig angebotene Challenges,
 - unbeschränkte Kurator-/Retry-Schleifen,
 - drei voneinander unabhängige Zwölfer-Generierungen nur deshalb, weil drei Angebote gewünscht wurden,
+- persönliche Konkretisierungen, Zusatz-Zutaten, Kochpläne oder Ergebnisdokumentation in Phase 13,
+- automatische Challenge-Card-Erzeugung oder Bilderkennung im Bot,
 - frühzeitige Implementierung späterer Komfortfunktionen ohne tragfähige Kernabläufe.
