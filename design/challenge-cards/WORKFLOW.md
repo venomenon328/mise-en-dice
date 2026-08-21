@@ -1,71 +1,156 @@
-# Arbeitsablauf für Challenge-Cards
+# Produktionsvertrag für Challenge-Cards
 
-## 1. Grundsatz
+Challenge-Cards entstehen außerhalb des Discord-Bots und ausschließlich aus
+den versionierten Designquellen auf dem aktuellen `main`. Der externe
+CardSpec-Renderer ist der normale Einstiegspunkt. Dieses Dokument erlaubt
+einen kurzen, vollständigen Produktionsauftrag, ohne den Mastergenerator,
+Background, Wortmarke, Templates oder Laufzeitcode anzutasten.
 
-Die Kartenproduktion erfolgt außerhalb des Discord-Bots direkt mit ChatGPT. Das Repository stellt die verbindlichen Designquellen bereit.
+## Kurzer Produktionsauftrag
 
-## 2. Normale Kartenerstellung
-
-1. Challenge-Daten und Nummer bestimmen.
-2. Für jede Vorgabe zuerst ein exaktes Asset aus `assets/` suchen.
-3. Fehlende Assets on demand gemäß `illustration-system/` erzeugen und prüfen.
-4. Eine externe JSON-`CardSpec` nach dem Muster `templates/card-spec.example.json` anlegen. Der eingecheckte Mastergenerator wird für konkrete Challenges **nicht** geändert.
-5. Falls ein freigegebenes Motiv im Slot optisch zu klein oder zu groß wirkt, optional `visual_scale` zwischen `0.75` und `1.50` setzen. Das Produktions-PNG selbst bleibt unverändert.
-6. Die Karte mit `templates/render_challenge_card_from_spec.py` erzeugen; die generierte SVG-Ausgabe nicht manuell nachbearbeiten.
-7. Optional über `--render` gleichzeitig die 1200er und 320er PNG-Prüfausgaben erzeugen.
-8. Ausgabe bei voller Größe und im Kleinformat visuell prüfen.
-
-Beispiel:
-
-```bash
-python design/challenge-cards/templates/render_challenge_card_from_spec.py \
-  --spec card.json \
-  --output challenge-139.svg \
-  --render
+```text
+Challenge #<nummer>
+Vorgaben:
+- <konkrete Zutat>
+- <offenes Konzept> (offen)
+- <weitere Vorgabe>
+Zusatzregel: <Text oder keine>
+Erzwungene Asset-Neugenerierung: <Liste oder keine>
 ```
 
-## 3. Feste Rasterassets
+- Eine nicht markierte Vorgabe ist ohne Rückfrage immer eine konkrete Zutat
+  (`ingredient`). `(konkret)` ist dafür nur die gleichbedeutende, optionale
+  Steuerannotation.
+- `(offen)` bedeutet immer `open-concept`.
+- `(offen)` und `(konkret)` steuern nur die Assetart. Sie werden weder in den
+  Card-`display_name` noch in den `display_name` des Produktionsindex
+  übernommen: `Brokkoli (offen)` wird beispielsweise als `Brokkoli` mit
+  `asset_kind=open-concept` verarbeitet.
+- Fehlt die Zeile `Zusatzregel`, bedeutet das `keine`. Fehlt die Zeile
+  `Erzwungene Asset-Neugenerierung`, bedeutet das ebenfalls `keine`.
+- Eine erzwungene Neugenerierung nennt dieselbe exakte Variante, etwa
+  `Mayonnaise (konkret)` oder `Brokkoli (offen)`; sie ersetzt niemals die
+  andere Variante desselben Konzeptschlüssels.
+- Die Art wird ausschließlich durch diese Annotation oder die konkrete
+  Standardannahme bestimmt, niemals aus einem vorhandenen Dateinamen oder einer
+  Katalogbeziehung geraten.
 
-Die Karte verwendet zwei unveränderliche Rasterquellen:
+## Verbindlicher Ablauf für ChatGPT oder Codex
 
-- `assets/background/mise-en-dice-background-master.png` für Verlauf, Küchenutensilien, Holzboard und leeren Regelbalken,
-- `assets/brand/mise-en-dice-wordmark-master.png` für die Wortmarke.
+### 1. Quellen und Identität prüfen
 
-Beide werden weder pro Challenge neu generiert noch zugeschnitten oder farblich verändert. Die Overlay-Geometrie ist auf den Background-Master kalibriert.
+1. Vom aktuellen `main` ausgehen und `AGENTS.md`, diese Datei,
+   `README.md`, `DESIGN_SPEC.md`, `assets/README.md`,
+   `assets/ASSET_INDEX.csv`, `illustration-system/`, `templates/README.md`
+   sowie `templates/render_challenge_card_from_spec.py` lesen.
+2. Vor dem Rendern den Produktionskatalog ausführen:
 
-## 4. Neue Illustrationen
+   ```bash
+   python design/challenge-cards/tools/validate_asset_catalog.py
+   ```
 
-1. Exaktes bestehendes Asset suchen.
-2. Visuell ähnliche vorhandene Assets bestimmen.
-3. Anchor-Referenz und relevante Nachbarassets verwenden.
-4. Passendes Prompt-Template aus [`illustration-system/PROMPT_TEMPLATES.md`](illustration-system/PROMPT_TEMPLATES.md) wählen.
-5. Kandidat erzeugen.
-6. QA nach [`illustration-system/ILLUSTRATION_GUIDE.md`](illustration-system/ILLUSTRATION_GUIDE.md) durchführen.
-7. Bei Confusables gezielt über mindestens zwei primäre Dimensionen differenzieren; bei Bedarf zusätzlich die neutrale Behälterform variieren.
-8. Nach Freigabe Asset versionieren und in `assets/ASSET_INDEX.csv` aufnehmen.
-9. Zukünftig exakt dieses Asset wiederverwenden.
+3. Die logische Identität eines Illustrationsassets ist ausschließlich
+   `(concept_key, asset_kind)`, mit `asset_kind` `ingredient` oder
+   `open-concept`. Beide Varianten dürfen denselben `concept_key` besitzen,
+   sind jedoch unterschiedliche Assets und niemals gegenseitige Fallbacks.
+4. Die Pfade sind fest:
 
-Der Katalog mit 600+ Konzepten wird nicht vorab vollständig bebildert.
+   ```text
+   assets/ingredients/<concept_key>.png
+   assets/open-concepts/<concept_key>.png
+   ```
 
-## 5. Mastertemplate- und Referenzänderungen
+   `concept_key` und Dateiname sind stabil, kleingeschrieben und mit
+   Bindestrichen gebildet. `ASSET_INDEX.csv` ist das einzige
+   Produktionsinventar; jede Zeile darin ist `approved`.
 
-1. Entscheidung im Gespräch treffen.
-2. Entscheidung in den maßgeblichen Designdokumenten festhalten.
-3. `templates/generate_challenge_card_templates.py` nur ändern, wenn sich das **Designsystem selbst** oder ein verbindlicher Referenzfall ändert.
-4. Betroffene Referenzen, Templates oder Assetregeln aktualisieren.
-5. `--check` und bei Renderänderungen `--render-check` ausführen.
-6. Erst danach auf neue Karten anwenden.
+### 2. Assets bestimmen oder erzeugen
 
-Designentscheidungen dürfen nicht nur im Chatverlauf verbleiben.
+1. Für jede Vorgabe die exakte Kombination aus `concept_key` und
+   `asset_kind` im Index suchen. Anzeigename, Pfad und Art müssen zur
+   CardSpec passen; der Renderer prüft dies nochmals.
+2. Ein vorhandenes exaktes `approved`-Asset unverändert wiederverwenden. Ein
+   generisches Elternmotiv, ein ähnliches Motiv oder das Asset der jeweils
+   anderen Art ist für eine veröffentlichte Karte kein Fallback.
+3. Fehlt die exakte Kombination oder ist genau diese Kombination im Auftrag
+   zur Neugenerierung genannt, das Asset ausschließlich nach
+   [`illustration-system/`](illustration-system/) produzieren:
 
-## 6. Fertige Karten
+   - `1024 × 1024` RGBA-PNG mit transparentem Hintergrund und ungefähr
+     `8 %` Safe Area;
+   - Anchor-Referenz und visuell nahe vorhandene Assets als Referenzen nutzen;
+   - keine Schrift, kein `OFFEN`-Badge, kein Kartenrahmen und kein
+     eingebrannter Bodenschatten;
+   - konkrete Zutaten als klar lesbares Hauptmotiv, offene Konzepte als
+     kompakte Gruppe aus zwei bis drei repräsentativen Konkretisierungen;
+   - Confusables über mindestens zwei primäre visuelle Dimensionen
+     unterscheiden, soweit möglich;
+   - den finalen Kandidaten bei ungefähr `96 px` und innerhalb einer
+     `320 × 320`-Kartenprüfung verständlich abnehmen.
 
-Fertige Challenge-Cards sind Ergebnisse und nicht automatisch Bestandteile des Designsystems. Unter `examples/` werden nur solche Karten abgelegt, die als verbindliche Referenz für Layout oder Sonderfälle dienen.
+4. Bei einer erzwungenen Neugenerierung nur die explizit benannte logische
+   Identität am stabilen Produktionspfad ersetzen und genau deren Indexzeile
+   nachvollziehbar aktualisieren. Es gibt keine Versionssuffixe wie
+   `-v2-final`; die vorherige Version bleibt ausschließlich in Git erhalten.
+   Nicht genannte Varianten bleiben unverändert. Bereits freigegebene Assets
+   werden nie stillschweigend ersetzt.
 
-## 7. Reproduzierbarkeit
+### 3. Produktionsassets zuerst nach `main` bringen
 
-Eine Karte soll mindestens auf Challenge-Daten, Template-Version, Background-Version, Asset-Versionen und den Stand der Designspezifikation zurückgeführt werden können. Bestehende freigegebene Assets werden nicht still ersetzt.
+Wenn alle exakten Assets schon freigegeben sind, entsteht keine
+Repositoryänderung. Andernfalls:
 
-Wortmarke und Background-Master werden gegen stillen Austausch abgesichert. Das generierte SVG ist bei identischen Eingaben deterministisch. PNG-Rendering benötigt einen lokalen Chrome- oder Edge-Browser im Headless-Modus; bei einer abweichenden Installation wird dessen Pfad über `CHALLENGE_CARD_BROWSER` gesetzt.
+1. Einen kurzlebigen Assetbranch vom aktuellen `main` erstellen.
+2. Ausschließlich die final ausgewählten Produktions-PNGs und
+   `design/challenge-cards/assets/ASSET_INDEX.csv` atomar committen. Ein
+   normaler Assetproduktionscommit enthält nur:
 
-Browser-, Betriebssystem- und Fontversionen können die PNG-Bytes beeinflussen. `--render-check` ist deshalb ein Regressionstest **innerhalb derselben Rendering-Umgebung** und keine plattformübergreifende Byte-Garantie. Die `320 × 320 px`-Prüfdatei ist immer ein LANCZOS-Downscale des gerenderten `1200 × 1200 px`-Bilds.
+   ```text
+   design/challenge-cards/assets/ASSET_INDEX.csv
+   design/challenge-cards/assets/ingredients/*.png
+   design/challenge-cards/assets/open-concepts/*.png
+   ```
+
+   Nicht committen: temporäre CardSpecs, erzeugte SVGs, 1200er/320er
+   Prüfrenderings konkreter Challenges, fertige Karten, verworfene Kandidaten,
+   einmalige Generator- oder Transportscripte oder temporäre Workflows.
+3. Den leichten Assetpfad mit dem Katalogvalidator prüfen. Er gilt nur für
+   `ASSET_INDEX.csv` allein oder zusammen mit hinzugefügten oder geänderten
+   Produktions-PNGs. Jede weitere Datei, jede Löschung oder Umbenennung eines
+   Produktionsassets und jeder unklare Diff erzwingen den vollständigen
+   CI-Pfad.
+4. Den Assetbranch im selben Produktionsablauf nach `main` bringen und den
+   temporären Branch beziehungsweise PR anschließend entfernen oder schließen.
+   Erst dann die finale Karte vom aktualisierten `main` erzeugen.
+
+### 4. Karte deterministisch rendern und abnehmen
+
+1. Die temporäre CardSpec außerhalb der versionierten Designquellen anlegen;
+   sie enthält die Challenge-Nummer, zwei bis vier Vorgaben, ihre exakten
+   approved Assetpfade, `open_concept` nur für offene Konzepte und optional
+   die Zusatzregel. `templates/card-spec.example.json` ist das Formatmuster.
+2. Den vorhandenen Renderer unverändert einsetzen und die SVG-Ausgabe nicht
+   manuell nachbearbeiten:
+
+   ```bash
+   python design/challenge-cards/templates/render_challenge_card_from_spec.py \
+     --spec <temporäre-card-spec.json> \
+     --output <arbeitsverzeichnis>/challenge-<nummer>.svg \
+     --render
+   ```
+
+3. Den gerenderten 1200er PNG-Output außerhalb des Repositorys als
+   `challenge-<nummer>.png` ausliefern; die erzeugte 320er Variante bleibt
+   ausschließlich interne QA.
+4. Beide Größen visuell prüfen: Namen, `OFFEN`-Badges, Regeltext, optisches
+   Gewicht, Safe Area und Beschnitt. Vor Auslieferung außerdem PNG-Signatur,
+   `1200 × 1200 px` und eine Größe von höchstens `5 MiB` prüfen.
+
+## Abschluss eines Kartenlaufs
+
+Die Abschlussmeldung nennt kompakt die wiederverwendeten, neu erzeugten und
+ausdrücklich ersetzten Assets, `Merge-Commit auf main` oder `keine
+Repositoryänderung`, die Asset- und Renderprüfungen sowie den finalen
+1200er-PNG-Pfad. Fertige konkrete Karten bleiben außerhalb des
+Designrepositorys, sofern sie nicht ausdrücklich als neue Referenzkarte
+beauftragt wurden.

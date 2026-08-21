@@ -50,3 +50,9 @@ design/challenge-cards/
 - Mastertemplate: generatorverwaltete 2-/3-/4-Vorgaben-Varianten plus End-to-End-Referenzkarten.
 
 Für konkrete neue Challenges werden die Kartendaten als externe JSON-`CardSpec` an den Renderer unter [`templates/`](templates/) übergeben; der eingecheckte Generator wird dafür nicht verändert. Eine Bot- oder Laufzeitintegration gehört weiterhin nicht zum Designsystem.
+
+Der verbindliche kurze Nutzerauftrag und vollständige Produktionsvertrag für
+on-demand Illustrationen, Asset-Merge und finale CardSpec-Renderings stehen in
+[`WORKFLOW.md`](WORKFLOW.md). Das Produktionsinventar und seine strikte
+konkrete/offene Assetidentität sind in [`assets/README.md`](assets/README.md)
+definiert.
