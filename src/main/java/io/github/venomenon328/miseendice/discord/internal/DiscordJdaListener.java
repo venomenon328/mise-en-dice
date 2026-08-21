@@ -1,6 +1,8 @@
 package io.github.venomenon328.miseendice.discord.internal;
 
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.Executor;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -8,6 +10,7 @@ import net.dv8tion.jda.api.components.selections.SelectOption;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message.Attachment;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
@@ -18,9 +21,14 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
+import net.dv8tion.jda.api.utils.FileUpload;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
+import net.dv8tion.jda.api.utils.messages.MessageEditData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,17 +38,25 @@ final class DiscordJdaListener extends ListenerAdapter {
     private final DiscordProperties properties;
     private final DiscordChallengeWorkflow workflow;
     private final DiscordIngredientLookupWorkflow ingredientLookupWorkflow;
+    private final DiscordChallengeArchiveWorkflow archiveWorkflow;
     private final Executor executor;
 
     DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow, Executor executor) {
-        this(properties, workflow, null, executor);
+        this(properties, workflow, null, null, executor);
     }
 
     DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow,
                        DiscordIngredientLookupWorkflow ingredientLookupWorkflow, Executor executor) {
+        this(properties, workflow, ingredientLookupWorkflow, null, executor);
+    }
+
+    DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow,
+                       DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
+                       DiscordChallengeArchiveWorkflow archiveWorkflow, Executor executor) {
         this.properties = properties;
         this.workflow = workflow;
         this.ingredientLookupWorkflow = ingredientLookupWorkflow;
+        this.archiveWorkflow = archiveWorkflow;
         this.executor = executor;
     }
 
@@ -56,6 +72,10 @@ final class DiscordJdaListener extends ListenerAdapter {
         if (ingredientLookupWorkflow != null) {
             guild.upsertCommand(ingredientCommand())
                     .queue(null, failure -> log.warn("Discord ingredient lookup command registration failed", failure));
+        }
+        if (archiveWorkflow != null) {
+            guild.upsertCommand(challengesCommand())
+                    .queue(null, failure -> log.warn("Discord challenge archive command registration failed", failure));
         }
     }
 
@@ -74,10 +94,30 @@ final class DiscordJdaListener extends ListenerAdapter {
                 .addOption(OptionType.STRING, "suche", "Name der Zutat", true);
     }
 
+    static SlashCommandData challengesCommand() {
+        return Commands.slash("challenges", "Bestätigte Challenges und ihre Cards")
+                .addSubcommands(
+                        new SubcommandData("aktuell", "Aktuelle bestätigte Challenge anzeigen"),
+                        new SubcommandData("liste", "Bestätigte Challenges auflisten")
+                                .addOption(OptionType.INTEGER, "seite", "Archivseite ab 1", false),
+                        new SubcommandData("anzeigen", "Eine bestätigte Challenge anzeigen")
+                                .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", true),
+                        new SubcommandData("karte-setzen", "Challenge-Card setzen oder ersetzen")
+                                .addOption(OptionType.ATTACHMENT, "bild", "PNG-Card mit 1200 × 1200 Pixeln", true)
+                                .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", false)
+                                .addOption(OptionType.BOOLEAN, "ersetzen", "Bestehende Card ausdrücklich ersetzen", false),
+                        new SubcommandData("karte-entfernen", "Challenge-Card entfernen")
+                                .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", true));
+    }
+
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         if ("zutat".equals(event.getName())) {
             ingredientSlash(event);
+            return;
+        }
+        if ("challenges".equals(event.getName())) {
+            archiveSlash(event);
             return;
         }
         if (!"challenge".equals(event.getName())) {
@@ -125,6 +165,101 @@ final class DiscordJdaListener extends ListenerAdapter {
         event.deferReply().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.search(searchText, ownerUserId,
                 new HookIngredientDelivery(hook, executor, ownerUserId), new HookIngredientFeedback(hook))),
                 failure -> log.warn("Discord ingredient lookup acknowledgement failed", failure));
+    }
+
+    private void archiveSlash(SlashCommandInteractionEvent event) {
+        if (archiveWorkflow == null) {
+            return;
+        }
+        long guildId = event.getGuild() == null ? 0 : event.getGuild().getIdLong();
+        if (!archiveWorkflow.acceptsGuild(guildId)) {
+            ephemeralReply(event, "Dieser Command ist nur in der konfigurierten Guild verfügbar.");
+            return;
+        }
+        String subcommand = event.getSubcommandName();
+        if ("aktuell".equals(subcommand)) {
+            event.deferReply().queue(hook -> executor.execute(() -> archiveWorkflow.current(
+                    new HookArchiveDelivery(hook, executor), new HookArchiveFeedback(hook))),
+                    failure -> log.warn("Discord challenge archive acknowledgement failed", failure));
+            return;
+        }
+        if ("liste".equals(subcommand)) {
+            int page = event.getOption("seite") == null ? 1 : event.getOption("seite").getAsInt();
+            if (page < 1) {
+                ephemeralReply(event, "`seite` muss mindestens 1 sein.");
+                return;
+            }
+            event.deferReply().queue(hook -> executor.execute(() -> archiveWorkflow.list(page,
+                    new HookArchiveDelivery(hook, executor), new HookArchiveFeedback(hook))),
+                    failure -> log.warn("Discord challenge archive acknowledgement failed", failure));
+            return;
+        }
+        if ("anzeigen".equals(subcommand)) {
+            Long challengeNumber = positiveChallengeNumber(event);
+            if (challengeNumber == null) {
+                ephemeralReply(event, "`nummer` muss positiv sein.");
+                return;
+            }
+            event.deferReply().queue(hook -> executor.execute(() -> archiveWorkflow.show(challengeNumber,
+                    new HookArchiveDelivery(hook, executor), new HookArchiveFeedback(hook))),
+                    failure -> log.warn("Discord challenge archive acknowledgement failed", failure));
+            return;
+        }
+        if (!"karte-setzen".equals(subcommand) && !"karte-entfernen".equals(subcommand)) {
+            ephemeralReply(event, "Dieser Challenge-Archiv-Command ist nicht bekannt.");
+            return;
+        }
+        if (!acceptsChallengeCommand(event.getGuild(), event.getMember())) {
+            ephemeralReply(event, "Dieser Command ist nur für Mitglieder mit der konfigurierten Challenge-Operator-Rolle verfügbar.");
+            return;
+        }
+        if ("karte-entfernen".equals(subcommand)) {
+            Long challengeNumber = positiveChallengeNumber(event);
+            if (challengeNumber == null) {
+                ephemeralReply(event, "`nummer` muss positiv sein.");
+                return;
+            }
+            event.deferReply(true).queue(hook -> executor.execute(() -> archiveWorkflow.removeCard(challengeNumber,
+                    new HookArchiveMutationDelivery(hook, executor))),
+                    failure -> log.warn("Discord challenge Card acknowledgement failed", failure));
+            return;
+        }
+        Attachment attachment = event.getOption("bild") == null ? null : event.getOption("bild").getAsAttachment();
+        if (attachment == null) {
+            ephemeralReply(event, "`bild` ist erforderlich.");
+            return;
+        }
+        if (attachment.getSize() > DiscordChallengeArchiveWorkflow.MAX_CARD_BYTES) {
+            ephemeralReply(event, "Das Bild darf höchstens 5 MiB groß sein.");
+            return;
+        }
+        String contentType = attachment.getContentType();
+        if (contentType != null && !contentType.isBlank() && !"image/png".equalsIgnoreCase(contentType.strip())) {
+            ephemeralReply(event, "Das Bild muss als PNG hochgeladen werden.");
+            return;
+        }
+        OptionMapping numberOption = event.getOption("nummer");
+        Long challengeNumber = numberOption == null ? null : numberOption.getAsLong();
+        if (challengeNumber != null && challengeNumber < 1) {
+            ephemeralReply(event, "`nummer` muss positiv sein.");
+            return;
+        }
+        boolean replaceExisting = event.getOption("ersetzen") != null && event.getOption("ersetzen").getAsBoolean();
+        event.deferReply(true).queue(hook -> executor.execute(() -> archiveWorkflow.setCard(challengeNumber, replaceExisting,
+                new JdaAttachmentSource(attachment), new HookArchiveMutationDelivery(hook, executor))),
+                failure -> log.warn("Discord challenge Card acknowledgement failed", failure));
+    }
+
+    private static Long positiveChallengeNumber(SlashCommandInteractionEvent event) {
+        OptionMapping option = event.getOption("nummer");
+        if (option == null || option.getAsLong() < 1) {
+            return null;
+        }
+        return option.getAsLong();
+    }
+
+    private static void ephemeralReply(SlashCommandInteractionEvent event, String message) {
+        event.reply(message).setEphemeral(true).setAllowedMentions(List.of()).queue();
     }
 
     @Override
@@ -274,6 +409,142 @@ final class DiscordJdaListener extends ListenerAdapter {
             hook.sendMessage("Die Zutatenabfrage konnte technisch nicht verarbeitet werden. Bitte später erneut versuchen.")
                     .setEphemeral(true).queue();
         }
+    }
+
+    private static final class HookArchiveDelivery implements DiscordChallengeArchiveWorkflow.Delivery {
+        private final net.dv8tion.jda.api.interactions.InteractionHook hook;
+        private final Executor executor;
+
+        private HookArchiveDelivery(net.dv8tion.jda.api.interactions.InteractionHook hook, Executor executor) {
+            this.hook = hook;
+            this.executor = executor;
+        }
+
+        @Override
+        public void replace(DiscordChallengeArchiveRenderer.RenderedResponse response, Runnable delivered,
+                            java.util.function.Consumer<Throwable> failed) {
+            hook.editOriginal(archiveEditMessage(response)).queue(ignored -> executor.execute(delivered), failed);
+        }
+    }
+
+    private static final class HookArchiveFeedback implements DiscordChallengeArchiveWorkflow.Feedback {
+        private final net.dv8tion.jda.api.interactions.InteractionHook hook;
+
+        private HookArchiveFeedback(net.dv8tion.jda.api.interactions.InteractionHook hook) {
+            this.hook = hook;
+        }
+
+        @Override
+        public void rejected(String message) {
+            hook.editOriginal(ephemeralEdit(message)).queue();
+        }
+
+        @Override
+        public void technicalFailure(Throwable exception) {
+            log.error("Discord challenge archive interaction failed", exception);
+            hook.editOriginal(ephemeralEdit("Das Challenge-Archiv konnte technisch nicht geladen werden. Bitte später erneut versuchen."))
+                    .queue();
+        }
+    }
+
+    private static final class HookArchiveMutationDelivery implements DiscordChallengeArchiveWorkflow.MutationDelivery {
+        private final net.dv8tion.jda.api.interactions.InteractionHook hook;
+        private final Executor executor;
+
+        private HookArchiveMutationDelivery(net.dv8tion.jda.api.interactions.InteractionHook hook, Executor executor) {
+            this.hook = hook;
+            this.executor = executor;
+        }
+
+        @Override
+        public void rejected(String message) {
+            hook.editOriginal(ephemeralEdit(message)).queue();
+        }
+
+        @Override
+        public void technicalFailure(Throwable exception) {
+            log.error("Discord challenge Card mutation failed", exception);
+            hook.editOriginal(ephemeralEdit("Die Card konnte technisch nicht verarbeitet werden. Bitte später erneut versuchen."))
+                    .queue();
+        }
+
+        @Override
+        public void publish(DiscordChallengeArchiveRenderer.RenderedDetail detail, Runnable delivered,
+                            java.util.function.Consumer<Throwable> failed) {
+            hook.sendMessage(archiveCreateMessage(detail)).setAllowedMentions(List.of())
+                    .queue(ignored -> executor.execute(delivered), failed);
+        }
+
+        @Override
+        public void persistedAndPublished(String message) {
+            hook.editOriginal(ephemeralEdit(message + " Die Detailansicht wurde öffentlich gepostet.")).queue();
+        }
+
+        @Override
+        public void persistedButNotPublished(String message) {
+            hook.editOriginal(ephemeralEdit(message + " Die öffentliche Detailansicht konnte jedoch nicht gesendet werden. "
+                    + "Mit `/challenges anzeigen` ist der gespeicherte Stand weiterhin abrufbar.")).queue();
+        }
+    }
+
+    private static final class JdaAttachmentSource implements DiscordChallengeArchiveWorkflow.CardUploadSource {
+        private final Attachment attachment;
+
+        private JdaAttachmentSource(Attachment attachment) {
+            this.attachment = attachment;
+        }
+
+        @Override
+        public long declaredSize() {
+            return attachment.getSize();
+        }
+
+        @Override
+        public String declaredContentType() {
+            return attachment.getContentType();
+        }
+
+        @Override
+        public String originalFilename() {
+            return attachment.getFileName();
+        }
+
+        @Override
+        public byte[] download() {
+            try (InputStream stream = attachment.getProxy().download().join()) {
+                return stream.readAllBytes();
+            } catch (IOException | RuntimeException exception) {
+                throw new IllegalStateException("Discord attachment download failed", exception);
+            }
+        }
+    }
+
+    static MessageEditData archiveEditMessage(DiscordChallengeArchiveRenderer.RenderedResponse response) {
+        MessageEditBuilder builder = new MessageEditBuilder().setAllowedMentions(List.of());
+        if (response instanceof DiscordChallengeArchiveRenderer.RenderedText text) {
+            return builder.setContent(text.content()).setEmbeds(List.of()).setComponents(List.of()).build();
+        }
+        DiscordChallengeArchiveRenderer.RenderedDetail detail = (DiscordChallengeArchiveRenderer.RenderedDetail) response;
+        EmbedBuilder embed = new EmbedBuilder().setTitle(detail.title()).setDescription(detail.description());
+        if (detail.hasAttachment()) {
+            embed.setImage("attachment://" + detail.attachmentFilename());
+            builder.setAttachments(List.of(FileUpload.fromData(detail.attachmentBytes(), detail.attachmentFilename())));
+        }
+        return builder.setContent("").setEmbeds(List.of(embed.build())).setComponents(List.of()).build();
+    }
+
+    static MessageCreateData archiveCreateMessage(DiscordChallengeArchiveRenderer.RenderedDetail detail) {
+        EmbedBuilder embed = new EmbedBuilder().setTitle(detail.title()).setDescription(detail.description());
+        MessageCreateBuilder builder = new MessageCreateBuilder().setAllowedMentions(List.of()).setContent("");
+        if (detail.hasAttachment()) {
+            embed.setImage("attachment://" + detail.attachmentFilename());
+            builder.setFiles(FileUpload.fromData(detail.attachmentBytes(), detail.attachmentFilename()));
+        }
+        return builder.setEmbeds(List.of(embed.build())).build();
+    }
+
+    private static net.dv8tion.jda.api.utils.messages.MessageEditData ephemeralEdit(String message) {
+        return new MessageEditBuilder().setContent(message).setAllowedMentions(List.of()).build();
     }
 
     private static List<ActionRow> rows(List<DiscordChallengeRenderer.Component> components) {

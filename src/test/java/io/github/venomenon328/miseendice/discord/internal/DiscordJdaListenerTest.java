@@ -327,6 +327,107 @@ class DiscordJdaListenerTest {
         org.mockito.Mockito.verify(workflow, never()).accepts(99, "99999");
     }
 
+    @Test
+    void registersAllArchiveSubcommandsWithTheirRequiredNativeOptions() {
+        var command = DiscordJdaListener.challengesCommand();
+
+        assertThat(command.getName()).isEqualTo("challenges");
+        assertThat(command.getSubcommands()).extracting(subcommand -> subcommand.getName())
+                .containsExactly("aktuell", "liste", "anzeigen", "karte-setzen", "karte-entfernen");
+        assertThat(command.getSubcommands()).filteredOn(subcommand -> subcommand.getName().equals("karte-setzen"))
+                .singleElement().satisfies(subcommand -> assertThat(subcommand.getOptions()).satisfiesExactly(
+                        option -> {
+                            assertThat(option.getName()).isEqualTo("bild");
+                            assertThat(option.getType()).isEqualTo(OptionType.ATTACHMENT);
+                            assertThat(option.isRequired()).isTrue();
+                        },
+                        option -> {
+                            assertThat(option.getName()).isEqualTo("nummer");
+                            assertThat(option.isRequired()).isFalse();
+                        },
+                        option -> {
+                            assertThat(option.getName()).isEqualTo("ersetzen");
+                            assertThat(option.getType()).isEqualTo(OptionType.BOOLEAN);
+                        }));
+        assertThat(command.getSubcommands()).filteredOn(subcommand -> subcommand.getName().equals("anzeigen"))
+                .singleElement().satisfies(subcommand -> assertThat(subcommand.getOptions()).singleElement()
+                        .satisfies(option -> assertThat(option.isRequired()).isTrue()));
+    }
+
+    @Test
+    void permitsGuildWideArchiveReadsWithoutParticipantMapping() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var archiveWorkflow = mock(DiscordChallengeArchiveWorkflow.class);
+        var event = slashEvent("99999", 99, false);
+        when(event.getName()).thenReturn("challenges");
+        when(event.getSubcommandName()).thenReturn("aktuell");
+        when(archiveWorkflow.acceptsGuild(99)).thenReturn(true);
+        ReplyCallbackAction acknowledgement = acknowledgement(event);
+
+        archiveListener(challengeWorkflow, archiveWorkflow).onSlashCommandInteraction(event);
+
+        org.mockito.Mockito.verify(event).deferReply();
+        org.mockito.Mockito.verify(archiveWorkflow).current(any(), any());
+        org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
+        org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
+    }
+
+    @Test
+    void rejectsUnauthorizedCardUploadBeforeReadingItsAttachmentOrCallingTheCore() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var archiveWorkflow = mock(DiscordChallengeArchiveWorkflow.class);
+        var event = slashEvent("10001", 99, false);
+        when(event.getName()).thenReturn("challenges");
+        when(event.getSubcommandName()).thenReturn("karte-setzen");
+        when(archiveWorkflow.acceptsGuild(99)).thenReturn(true);
+        ReplyCallbackAction reply = mock(ReplyCallbackAction.class);
+        when(event.reply(any(String.class))).thenReturn(reply);
+        when(reply.setEphemeral(true)).thenReturn(reply);
+        when(reply.setAllowedMentions(any())).thenReturn(reply);
+
+        archiveListener(challengeWorkflow, archiveWorkflow).onSlashCommandInteraction(event);
+
+        org.mockito.Mockito.verify(event, never()).getOption("bild");
+        org.mockito.Mockito.verify(archiveWorkflow, never()).setCard(any(), eq(false), any(), any());
+    }
+
+    @Test
+    void defersCardMutationEphemerallyAndPassesAnUnresolvedDefaultTargetToTheWorkflow() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var archiveWorkflow = mock(DiscordChallengeArchiveWorkflow.class);
+        var event = slashEvent("99999", 99, true);
+        var imageOption = mock(OptionMapping.class);
+        var attachment = mock(net.dv8tion.jda.api.entities.Message.Attachment.class);
+        when(event.getName()).thenReturn("challenges");
+        when(event.getSubcommandName()).thenReturn("karte-setzen");
+        when(archiveWorkflow.acceptsGuild(99)).thenReturn(true);
+        when(event.getOption("bild")).thenReturn(imageOption);
+        when(imageOption.getAsAttachment()).thenReturn(attachment);
+        when(attachment.getSize()).thenReturn(3);
+        when(attachment.getContentType()).thenReturn("image/png");
+        ReplyCallbackAction acknowledgement = ephemeralAcknowledgement(event);
+
+        archiveListener(challengeWorkflow, archiveWorkflow).onSlashCommandInteraction(event);
+
+        org.mockito.Mockito.verify(event).deferReply(true);
+        org.mockito.Mockito.verify(archiveWorkflow).setCard(org.mockito.ArgumentMatchers.isNull(), eq(false), any(), any());
+        org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
+    }
+
+    @Test
+    void archiveJdaRenderingUsesTheStableLocalAttachmentNameAndDisablesMentions() {
+        var detail = new DiscordChallengeArchiveRenderer.RenderedDetail("Challenge #9", "Bestätigt am 21. August 2026",
+                "challenge-9.png", new byte[] {1, 2, 3});
+
+        var edit = DiscordJdaListener.archiveEditMessage(detail);
+
+        assertThat(edit.getAllowedMentions()).isEmpty();
+        assertThat(edit.getEmbeds()).singleElement().satisfies(embed ->
+                assertThat(embed.getImage().getUrl()).isEqualTo("attachment://challenge-9.png"));
+        assertThat(edit.getAttachments()).singleElement().satisfies(attachment ->
+                assertThat(((net.dv8tion.jda.api.utils.FileUpload) attachment).getName()).isEqualTo("challenge-9.png"));
+    }
+
     private static DiscordJdaListener listener(DiscordChallengeWorkflow workflow) {
         return new DiscordJdaListener(new DiscordProperties(true, "token", 99, 77777, ZoneId.of("Europe/Berlin"),
                 Map.of("GEORGIA", "10001", "TOBIAS", "10002")), workflow, Runnable::run);
@@ -336,6 +437,12 @@ class DiscordJdaListenerTest {
                                                          DiscordIngredientLookupWorkflow lookupWorkflow) {
         return new DiscordJdaListener(new DiscordProperties(true, "token", 99, 77777, ZoneId.of("Europe/Berlin"),
                 Map.of("GEORGIA", "10001", "TOBIAS", "10002")), challengeWorkflow, lookupWorkflow, Runnable::run);
+    }
+
+    private static DiscordJdaListener archiveListener(DiscordChallengeWorkflow challengeWorkflow,
+                                                      DiscordChallengeArchiveWorkflow archiveWorkflow) {
+        return new DiscordJdaListener(new DiscordProperties(true, "token", 99, 77777, ZoneId.of("Europe/Berlin"),
+                Map.of("GEORGIA", "10001", "TOBIAS", "10002")), challengeWorkflow, null, archiveWorkflow, Runnable::run);
     }
 
     private static SlashCommandInteractionEvent slashEvent() {
@@ -386,6 +493,14 @@ class DiscordJdaListenerTest {
         ReplyCallbackAction acknowledgement = mock(ReplyCallbackAction.class);
         InteractionHook hook = mock(InteractionHook.class);
         when(event.deferReply()).thenReturn(acknowledgement);
+        invokeAcknowledgement(acknowledgement, hook);
+        return acknowledgement;
+    }
+
+    private static ReplyCallbackAction ephemeralAcknowledgement(SlashCommandInteractionEvent event) {
+        ReplyCallbackAction acknowledgement = mock(ReplyCallbackAction.class);
+        InteractionHook hook = mock(InteractionHook.class);
+        when(event.deferReply(true)).thenReturn(acknowledgement);
         invokeAcknowledgement(acknowledgement, hook);
         return acknowledgement;
     }

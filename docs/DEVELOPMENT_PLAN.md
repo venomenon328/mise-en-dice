@@ -619,7 +619,7 @@ Die Phase bleibt bewusst kleiner als der später mögliche persönliche Challeng
 - echte PostgreSQL-Migrations-, Konkurrenz-, Rollback- und Binärdatentests,
 - keine Discord-Typen oder Rollenprüfung.
 
-### Nächster Schritt: Phase 13B – Discord-Archiv und operatorgebundene Card-Verwaltung (Issue #141)
+### Phase 13B: Discord-Archiv und operatorgebundene Card-Verwaltung (abgeschlossen mit Issue #141)
 
 - neuer Root-Command `/challenges` getrennt vom vorhandenen `/challenge`,
 - guild-weite öffentliche Subcommands `aktuell`, `liste` und `anzeigen`,

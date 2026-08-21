@@ -11,15 +11,18 @@ final class DiscordJdaLifecycle implements SmartLifecycle {
     private final DiscordProperties properties;
     private final DiscordChallengeWorkflow workflow;
     private final DiscordIngredientLookupWorkflow ingredientLookupWorkflow;
+    private final DiscordChallengeArchiveWorkflow archiveWorkflow;
     private final Executor executor;
     private volatile JDA jda;
     private volatile boolean running;
 
     DiscordJdaLifecycle(DiscordProperties properties, DiscordChallengeWorkflow workflow,
-                        DiscordIngredientLookupWorkflow ingredientLookupWorkflow, Executor executor) {
+                        DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
+                        DiscordChallengeArchiveWorkflow archiveWorkflow, Executor executor) {
         this.properties = properties;
         this.workflow = workflow;
         this.ingredientLookupWorkflow = ingredientLookupWorkflow;
+        this.archiveWorkflow = archiveWorkflow;
         this.executor = executor;
     }
 
@@ -30,7 +33,8 @@ final class DiscordJdaLifecycle implements SmartLifecycle {
         }
         properties.validateEnabledConfiguration();
         jda = JDABuilder.createLight(properties.token(), GatewayIntent.GUILD_MESSAGES)
-                .addEventListeners(new DiscordJdaListener(properties, workflow, ingredientLookupWorkflow, executor)).build();
+                .addEventListeners(new DiscordJdaListener(properties, workflow, ingredientLookupWorkflow, archiveWorkflow,
+                        executor)).build();
         running = true;
     }
 

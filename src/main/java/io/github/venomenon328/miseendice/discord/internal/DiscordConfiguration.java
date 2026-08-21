@@ -1,6 +1,8 @@
 package io.github.venomenon328.miseendice.discord.internal;
 
 import io.github.venomenon328.miseendice.challenge.api.ChallengeOfferPreparationCommands;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeArchiveQueries;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeCardCommands;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingCommands;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingQueries;
@@ -44,9 +46,21 @@ class DiscordConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = "mise-en-dice.discord", name = "enabled", havingValue = "true")
+    DiscordChallengeArchiveWorkflow discordChallengeArchiveWorkflow(DiscordProperties properties,
+                                                                     ChallengeArchiveQueries archiveQueries,
+                                                                     ChallengeCardCommands cardCommands) {
+        properties.validateEnabledConfiguration();
+        return new DiscordChallengeArchiveWorkflow(properties, archiveQueries, cardCommands,
+                new DiscordChallengeArchiveRenderer(properties.effectiveDateZone()));
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "mise-en-dice.discord", name = "enabled", havingValue = "true")
     DiscordJdaLifecycle discordJdaLifecycle(DiscordProperties properties, DiscordChallengeWorkflow workflow,
                                             DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
+                                            DiscordChallengeArchiveWorkflow archiveWorkflow,
                                             ExecutorService discordChallengeExecutor) {
-        return new DiscordJdaLifecycle(properties, workflow, ingredientLookupWorkflow, discordChallengeExecutor);
+        return new DiscordJdaLifecycle(properties, workflow, ingredientLookupWorkflow, archiveWorkflow,
+                discordChallengeExecutor);
     }
 }
