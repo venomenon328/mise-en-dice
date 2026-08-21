@@ -1,0 +1,24 @@
+name: Temporary Challenge 328 Design Export
+
+on:
+  push:
+    branches:
+      - tmp/challenge-328-render
+
+permissions:
+  contents: read
+
+jobs:
+  export-design:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Upload Challenge Card design sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: challenge-card-design-328
+          path: design/challenge-cards
+          if-no-files-found: error
+          retention-days: 1
+          include-hidden-files: true
