@@ -606,7 +606,7 @@ Phase 13 beginnt erst nach Abschluss von Phase 12E / #90 und dem Release `v0.1.0
 
 Die Phase bleibt bewusst kleiner als der später mögliche persönliche Challenge-Lifecycle. Sie macht ausschließlich bestätigte Challenge-Fakten dauerhaft öffentlich abrufbar und erlaubt die optionale Zuordnung einer außerhalb des Bots erzeugten Challenge-Card.
 
-### Phase 13A: Transportneutraler Archiv-/Card-Core (Issue #140)
+### Phase 13A: Transportneutraler Archiv-/Card-Core (abgeschlossen mit Issue #140)
 
 - positive, eindeutige und unveränderliche öffentliche `challenge_number`,
 - deterministischer Backfill bestehender Challenges ab `1`,
@@ -619,7 +619,7 @@ Die Phase bleibt bewusst kleiner als der später mögliche persönliche Challeng
 - echte PostgreSQL-Migrations-, Konkurrenz-, Rollback- und Binärdatentests,
 - keine Discord-Typen oder Rollenprüfung.
 
-### Phase 13B: Discord-Archiv und operatorgebundene Card-Verwaltung (Issue #141)
+### Nächster Schritt: Phase 13B – Discord-Archiv und operatorgebundene Card-Verwaltung (Issue #141)
 
 - neuer Root-Command `/challenges` getrennt vom vorhandenen `/challenge`,
 - guild-weite öffentliche Subcommands `aktuell`, `liste` und `anzeigen`,

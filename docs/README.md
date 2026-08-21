@@ -41,4 +41,4 @@ Ein Issue soll den Lieferumfang und die Abgrenzung festlegen, aber bereits dokum
 
 ## Aktueller nächster Schritt
 
-Der private Produktionspilot aus Phase 12E / Issue #90 ist abgeschlossen. Phase 13A / #140 ergänzt den transportneutralen Challenge-Archiv-/Card-Core; anschließend folgt mit #141 die guild-weite Discord-Leseoberfläche und operatorgebundene Card-Verwaltung. Entwicklung und automatisierte Tests bleiben weiterhin vollständig ohne echte Discord- oder OpenAI-Verbindungen.
+Der private Produktionspilot aus Phase 12E / Issue #90 und Phase 13A / #140 sind abgeschlossen. Nächster Schritt ist Phase 13B / #141 mit der guild-weiten Discord-Leseoberfläche und operatorgebundenen Card-Verwaltung. Entwicklung und automatisierte Tests bleiben weiterhin vollständig ohne echte Discord- oder OpenAI-Verbindungen.

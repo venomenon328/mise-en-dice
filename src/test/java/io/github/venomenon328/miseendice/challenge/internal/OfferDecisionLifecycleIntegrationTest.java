@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doAnswer;
 
 import io.github.venomenon328.miseendice.MiseEnDiceApplication;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeArchivePageOutOfRangeException;
@@ -47,6 +48,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
@@ -84,6 +86,7 @@ class OfferDecisionLifecycleIntegrationTest {
     @Autowired OfferDecisionQueries decisionQueries;
     @Autowired ChallengeArchiveQueries archiveQueries;
     @Autowired ChallengeCardCommands cardCommands;
+    @MockitoSpyBean JdbcChallengeArchiveRepository archiveRepository;
     @Autowired JdbcGenerationRepository generationRepository;
     @Autowired CurationOrchestrationIntegrationTest.ScriptedCuratorClient curator;
     @Autowired CurationOrchestrationIntegrationTest.SwitchableCandidateSetEngine generator;
@@ -180,6 +183,24 @@ class OfferDecisionLifecycleIntegrationTest {
     }
 
     @Test
+    void publicArchiveProjectsOpenFromTheConfirmedRequirementSnapshot() {
+        CurationQueries.OfferSetView ready = offered(1, 76_100_014L);
+        long candidateId = ready.offers().getFirst().candidateId();
+        jdbcTemplate.update("""
+                update candidate_requirement
+                   set challenge_specificity_snapshot = 'OPEN'
+                 where candidate_id = ? and position = 1
+                """, candidateId);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(ready.offerSetId()));
+        decisions.confirm(new OfferDecisionCommands.ConfirmOffer(ready.offerSetId(), ready.offers().getFirst().offerId()));
+
+        assertThat(archiveQueries.findChallengeByNumber(1).orElseThrow().requirements())
+                .filteredOn(requirement -> requirement.position() == 1)
+                .extracting(ChallengeArchiveQueries.RequirementSnapshot::specificity)
+                .containsExactly(ChallengeArchiveQueries.Specificity.OPEN);
+    }
+
+    @Test
     void archivePaginationIsStableNewestFirstAndRejectsUnavailablePages() {
         for (int index = 0; index < 3; index++) {
             CurationQueries.OfferSetView ready = offered(1, 76_100_100L + index);
@@ -199,6 +220,46 @@ class OfferDecisionLifecycleIntegrationTest {
                 .containsExactly(1L);
         assertThatThrownBy(() -> archiveQueries.listChallenges(new ChallengeArchiveQueries.PageRequest(3, 2)))
                 .isInstanceOf(ChallengeArchivePageOutOfRangeException.class);
+    }
+
+    @Test
+    void archivePageUsesOnePostgresSnapshotWhileAnotherChallengeIsConfirmed() throws Exception {
+        CurationQueries.OfferSetView confirmed = offered(1, 76_100_105L);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(confirmed.offerSetId()));
+        decisions.confirm(new OfferDecisionCommands.ConfirmOffer(
+                confirmed.offerSetId(), confirmed.offers().getFirst().offerId()));
+        CurationQueries.OfferSetView pending = offered(1, 76_100_106L);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(pending.offerSetId()));
+
+        CountDownLatch countRead = new CountDownLatch(1);
+        CountDownLatch continueArchiveRead = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            Object total = invocation.callRealMethod();
+            countRead.countDown();
+            if (!continueArchiveRead.await(5, TimeUnit.SECONDS)) {
+                throw new AssertionError("Archive read was not released after concurrent confirmation");
+            }
+            return total;
+        }).when(archiveRepository).challengeCount();
+
+        var executor = Executors.newSingleThreadExecutor();
+        try {
+            var pageFuture = executor.submit(() -> archiveQueries.listChallenges(
+                    new ChallengeArchiveQueries.PageRequest(1, 10)));
+            assertThat(countRead.await(5, TimeUnit.SECONDS)).isTrue();
+            decisions.confirm(new OfferDecisionCommands.ConfirmOffer(pending.offerSetId(), pending.offers().getFirst().offerId()));
+            continueArchiveRead.countDown();
+
+            ChallengeArchiveQueries.ChallengePage page = pageFuture.get(5, TimeUnit.SECONDS);
+            assertThat(page.totalChallenges()).isEqualTo(1);
+            assertThat(page.currentChallengeNumber()).isEqualTo(1L);
+            assertThat(page.totalPages()).isEqualTo(1);
+            assertThat(page.challenges()).extracting(ChallengeArchiveQueries.PublicChallenge::challengeNumber)
+                    .containsExactly(1L);
+        } finally {
+            continueArchiveRead.countDown();
+            executor.shutdownNow();
+        }
     }
 
     @Test

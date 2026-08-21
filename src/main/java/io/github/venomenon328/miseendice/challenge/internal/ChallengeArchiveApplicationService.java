@@ -18,6 +18,7 @@ import java.util.Optional;
 import javax.imageio.ImageIO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** Owns the narrow public archive projection and atomic Card mutations inside the challenge module. */
@@ -28,6 +29,7 @@ class ChallengeArchiveApplicationService implements ChallengeArchiveQueries, Cha
     private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
 
     private final JdbcChallengeArchiveRepository repository;
+    private final TransactionTemplate repeatableReadTransaction;
     private final TransactionTemplate writeTransaction;
 
     ChallengeArchiveApplicationService(
@@ -35,6 +37,9 @@ class ChallengeArchiveApplicationService implements ChallengeArchiveQueries, Cha
             PlatformTransactionManager transactionManager
     ) {
         this.repository = repository;
+        this.repeatableReadTransaction = new TransactionTemplate(transactionManager);
+        this.repeatableReadTransaction.setReadOnly(true);
+        this.repeatableReadTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
         this.writeTransaction = new TransactionTemplate(transactionManager);
     }
 
@@ -51,6 +56,10 @@ class ChallengeArchiveApplicationService implements ChallengeArchiveQueries, Cha
 
     @Override
     public ChallengePage listChallenges(PageRequest request) {
+        return repeatableReadTransaction.execute(status -> listChallengesFromOneSnapshot(request));
+    }
+
+    private ChallengePage listChallengesFromOneSnapshot(PageRequest request) {
         long totalChallenges = repository.challengeCount();
         int totalPages = pageCount(totalChallenges, request.pageSize());
         if ((totalChallenges == 0 && request.page() != 1)
