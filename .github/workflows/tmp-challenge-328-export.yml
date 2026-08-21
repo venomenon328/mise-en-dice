@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - tmp/challenge-328-render
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
