@@ -62,7 +62,7 @@ Grundrichtung bleibt **Style Study A – Helles Honigbrett**, nun konkretisiert 
 - zurückgenommene Slotflächen statt UI-artiger Doppelpanels,
 - dunkler Regelbalken als Bestandteil des Background-Masters.
 
-## 5. Verbindliche Nutztypografie und Wortmarke
+## 5. Verbindliche Nutztypografie, Wortmarke und Badge-Logik
 
 Für die Nutztypografie ist **Typography Study A – Kitchen Editorial** verbindlich.
 
@@ -72,7 +72,26 @@ Für die Nutztypografie ist **Typography Study A – Kitchen Editorial** verbind
 
 Die finale Wortmarke ist ausschließlich [`assets/brand/mise-en-dice-wordmark-master.png`](assets/brand/mise-en-dice-wordmark-master.png). Sie wird unverändert als RGBA-Rasterasset eingebunden; weder SVG-Rekonstruktion noch Vektorisierung oder Neugenerierung sind zulässig.
 
-Im `1200 × 1200 px`-Template liegt sie zunächst weiterhin bei `X = 330`, `Y = 24` mit `540 × 126 px`; `Challenge #NNN` steht zentriert mit Basislinie `Y = 195` und `28 px`. Diese Position wird im nächsten visuellen Review auf dem neuen Background-Master mitgeprüft.
+Im `1200 × 1200 px`-Template liegt die Wortmarke bei `X = 324`, `Y = 30` mit `552 × 129 px`. `Challenge #NNN` steht zentriert mit Basislinie `Y = 203` und `28 px`. Gegenüber der vorherigen Fassung sind Wortmarke und Challenge-Zeile damit bewusst geringfügig größer beziehungsweise tiefer gesetzt.
+
+### Vorgabennamen
+
+- einzeilig in Drei-/Vierer-Slots: `34 px`, `0.04em` Laufweite,
+- einzeilig in großen Zweier-Slots: `40 px`,
+- zweizeilig in Drei-/Vierer-Slots: `29 px`, `0.018em` Laufweite,
+- zweizeilig in großen Zweier-Slots: `33 px`, `0.018em` Laufweite.
+
+Zweizeilige Namen sind weiterhin etwas kleiner als einzeilige; beide wurden gegenüber der vorherigen Reviewfassung leicht vergrößert. Der Namensblock bleibt unabhängig vom `OFFEN`-Badge.
+
+### `OFFEN`-Badge
+
+Der Badge ist reine Metainformation für offene Konzepte und wird **nicht mehr an den Namensblock gekoppelt**. Er sitzt fest oben links im jeweiligen Slot:
+
+- `18 px` Abstand vom linken Slotrand,
+- `18 px` Abstand vom oberen Slotrand,
+- Größe `104 × 27 px`.
+
+Damit bleibt der untere Bereich vollständig dem Vorgabennamen vorbehalten; insbesondere zweizeilige Namen konkurrieren nicht mehr mit dem Badge.
 
 ## 6. Verbindliches Illustrationssystem
 
@@ -93,7 +112,7 @@ Maßgeblich ist [`illustration-system/ILLUSTRATION_GUIDE.md`](illustration-syste
 
 - normalerweise zwei bis drei repräsentative Konkretisierungen als Gruppe,
 - keine abschließende Auswahl suggerieren,
-- `OFFEN` bleibt Teil des Kartentemplates.
+- `OFFEN` bleibt Teil des Kartentemplates und wird oben links im Slot verankert.
 
 ### 6.3 Assetgröße innerhalb der Slots
 
@@ -126,10 +145,10 @@ Die Ähnlichkeitsprüfung gilt für jedes neue Asset. Unterschiedliche Konzepte 
 ## 9. Finales Mastertemplate und Referenzprüfung
 
 - Die generatorverwalteten Varianten liegen unter [`templates/`](templates/) für zwei, drei und vier Vorgaben.
-- `generate_challenge_card_templates.py` fixiert Background-Master, Geometrie, Wortmarkenhash, Slotstil und Referenzfälle.
+- `generate_challenge_card_templates.py` fixiert Background-Master, Geometrie, Wortmarkenhash, Slotstil, Badge-Verankerung, Typografie und Referenzfälle.
 - Für neue konkrete Challenges wird nicht der Mastergenerator geändert; ihre Daten werden als externe JSON-`CardSpec` über `render_challenge_card_from_spec.py` eingespeist.
 - Der Regelbalken stammt aus dem Background-Master; dynamisch sind ausschließlich Symbol/Ornament und Text.
 
 ## 10. Offene visuelle Abnahme
 
-Vor dem Merge werden die vier Referenzkarten erneut bei `1200 × 1200` und `320 × 320 px` geprüft. Insbesondere zu beurteilen sind Slotzurückhaltung, Motivgröße, Headerposition und die vertikale Ausrichtung des Regelbalkeninhalts auf dem neuen Background-Master.
+Vor dem Merge werden die vier Referenzkarten erneut bei `1200 × 1200` und `320 × 320 px` geprüft. Insbesondere zu beurteilen sind die leicht vergrößerte und tiefer gesetzte Kopfzone, die feste Badge-Verankerung oben links, die leicht größeren Vorgabennamen sowie der Long-Label-Fall.
