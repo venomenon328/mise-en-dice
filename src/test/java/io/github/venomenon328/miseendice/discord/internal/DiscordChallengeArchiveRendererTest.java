@@ -58,7 +58,7 @@ class DiscordChallengeArchiveRendererTest {
 
         String list = renderer.list(new ChallengePage(1, 10, 12, 10L, 2, challenges)).content();
 
-        assertThat(list).contains("Seite 1/2", "#10 · aktuell · 🖼️", "#1", "…", "(offener Begriff)");
+        assertThat(list).contains("Seite 1/2", "#10 · aktuell · 🖼️", "#1", "…", "(offen)");
         assertThat(list.length()).isLessThanOrEqualTo(2_000);
     }
 

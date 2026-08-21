@@ -38,7 +38,7 @@ final class DiscordChallengeArchiveRenderer {
                 .append(CONFIRMED_DATE.withZone(dateZone).format(challenge.confirmedAt()))
                 .append("\n\n**Vorgaben**\n");
         challenge.requirements().forEach(requirement -> description.append(requirement.position()).append(". ")
-                .append(requirement(requirement, DETAIL_VALUE_LIMIT)).append("\n"));
+                .append(requirement(requirement, DETAIL_VALUE_LIMIT, false)).append("\n"));
         description.append("\n**Einschränkung**\n");
         description.append(challenge.restriction().restricted()
                 ? safe(challenge.restriction().displayText(), RESTRICTION_VALUE_LIMIT)
@@ -65,7 +65,7 @@ final class DiscordChallengeArchiveRenderer {
             }
             content.append("\n");
             content.append(challenge.requirements().stream()
-                    .map(requirement -> requirement(requirement, LIST_VALUE_LIMIT))
+                    .map(requirement -> requirement(requirement, LIST_VALUE_LIMIT, true))
                     .reduce((left, right) -> left + " · " + right)
                     .orElse("Keine Vorgaben"));
             content.append("\n");
@@ -73,9 +73,9 @@ final class DiscordChallengeArchiveRenderer {
         return new RenderedText(content.toString().strip());
     }
 
-    private static String requirement(RequirementSnapshot requirement, int limit) {
+    private static String requirement(RequirementSnapshot requirement, int limit, boolean compact) {
         String label = safe(requirement.displayText(), limit);
-        return requirement.specificity() == Specificity.OPEN ? label + " (offener Begriff)" : label;
+        return requirement.specificity() == Specificity.OPEN ? label + (compact ? " (offen)" : " (offener Begriff)") : label;
     }
 
     private static String safe(String value, int limit) {

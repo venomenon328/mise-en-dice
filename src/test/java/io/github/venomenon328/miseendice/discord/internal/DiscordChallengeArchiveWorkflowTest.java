@@ -59,7 +59,7 @@ class DiscordChallengeArchiveWorkflowTest {
         assertThat(queries.requests).containsExactly(new ChallengeArchiveQueries.PageRequest(1, 10));
         assertThat(queries.cardLoads).isEmpty();
         String content = ((DiscordChallengeArchiveRenderer.RenderedText) delivery.response).content();
-        assertThat(content).contains("Seite 1/2", "#10 · aktuell · 🖼️", "Kohlgemüse (offener Begriff)");
+        assertThat(content).contains("Seite 1/2", "#10 · aktuell · 🖼️", "Kohlgemüse (offen)");
     }
 
     @Test
