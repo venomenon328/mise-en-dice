@@ -471,8 +471,12 @@ final class DiscordJdaListener extends ListenerAdapter {
         @Override
         public void publish(DiscordChallengeArchiveRenderer.RenderedDetail detail, Runnable delivered,
                             java.util.function.Consumer<Throwable> failed) {
-            hook.sendMessage(archiveCreateMessage(detail)).setAllowedMentions(List.of())
-                    .queue(ignored -> executor.execute(delivered), failed);
+            hook.editOriginal(ephemeralEdit("Die Card-Änderung wurde gespeichert. Die öffentliche Detailansicht wird gesendet."))
+                    .queue(ignored -> hook.sendMessage(archiveCreateMessage(detail))
+                                    .setAllowedMentions(List.of())
+                                    .setEphemeral(false)
+                                    .queue(message -> executor.execute(delivered), failed),
+                            failed);
         }
 
         @Override
