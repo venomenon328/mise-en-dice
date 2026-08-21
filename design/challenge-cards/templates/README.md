@@ -74,4 +74,10 @@ Eine CardSpec enthält:
 
 Der Renderer akzeptiert nur in `assets/ASSET_INDEX.csv` als `approved` geführte Produktionsassets unter `assets/ingredients/` beziehungsweise `assets/open-concepts/`. `display_name` und `open_concept` müssen zur dort freigegebenen Asset-Metadatenzeile passen.
 
+Vor einer Produktion muss der Katalog mit
+`python design/challenge-cards/tools/validate_asset_catalog.py` gültig sein.
+Der detaillierte Produktionsvertrag einschließlich der strikten
+`(concept_key, asset_kind)`-Identität und der finalen QA steht in
+[`../WORKFLOW.md`](../WORKFLOW.md).
+
 Die Templates und Renderer gehören nur zum versionierten Designsystem. Sie sind keine Bot-, Web- oder Laufzeitintegration.
