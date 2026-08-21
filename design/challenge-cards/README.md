@@ -4,7 +4,7 @@ Dieses Verzeichnis ist die verbindliche, versionierte Arbeitsgrundlage für die 
 
 Die Karten werden bewusst **nicht durch den Discord-Bot erzeugt**. Sie entstehen außerhalb von Discord direkt mit ChatGPT auf Basis der hier abgelegten Spezifikation, Templates, Referenzen und freigegebenen Bildassets. GitHub ist die Source of Truth.
 
-Maßgeblich sind die abgeschlossenen Designpakete zu Geometrie, visuellen Grundlagen, Typografie und Illustrationssystem sowie Issue #130 für die finale Wortmarke.
+Maßgeblich sind die abgeschlossenen Designpakete zu Geometrie, visuellen Grundlagen und Nutztypografie, Issue #128 für das Illustrationssystem, Issue #130 für die feste Raster-Wortmarke sowie Issue #135 für Background-Master und finales Mastertemplate.
 
 ## Abgrenzung zum Anwendungsbuild
 
@@ -23,11 +23,9 @@ design/challenge-cards/
 ├── style-studies/
 ├── typography-studies/
 ├── illustration-system/
-│   ├── ILLUSTRATION_GUIDE.md
-│   ├── CONFUSABLES.md
-│   └── PROMPT_TEMPLATES.md
 ├── assets/
 │   ├── ASSET_INDEX.csv
+│   ├── background/
 │   ├── brand/
 │   ├── ingredients/
 │   ├── open-concepts/
@@ -40,20 +38,15 @@ design/challenge-cards/
 
 ## Aktueller Stand
 
-- Geometrie für zwei, drei und vier Vorgaben: freigegeben.
-- Visuelle Richtung: **Style Study A – Helles Honigbrett**.
-- Nutztypografie: **Typography Study A – Kitchen Editorial**; Vorgabennamen werden als echte Small Caps gerendert.
-- Wortmarke: finales **Raster-Brand-Asset** unter `assets/brand/`; keine SVG-Rekonstruktion oder Neugenerierung.
+- Visuelle Grundrichtung: **Style Study A – Helles Honigbrett**.
+- Background: [`assets/background/mise-en-dice-background-master.png`](assets/background/mise-en-dice-background-master.png) ist das feste `1200 × 1200 px` Rasterasset mit Verlauf, Küchenutensilien, Holzboard und leerem Regelbalken.
+- Overlay-Geometrie: 2-/3-/4-Slot-Layouts sind an diesen Background-Master kalibriert; die frühere synthetische Wireframe-Boardfläche ist nur noch historische Vorstufe.
+- Slots: nur noch eine sehr subtile helle Fläche mit einzelner warmer Kontur; keine doppelte Panelumrandung.
+- Nutztypografie: **Typography Study A – Kitchen Editorial**; Vorgabennamen werden als Small Caps gerendert.
+- Wortmarke: ausschließlich das unveränderliche Rasterasset [`assets/brand/mise-en-dice-wordmark-master.png`](assets/brand/mise-en-dice-wordmark-master.png).
 - Illustrationsstil: durch `ILLUSTRATION_GUIDE.md` und die Anchor-Referenz definiert.
-- Visuell ähnliche Konzepte: allgemeine Nachbarschaftsprüfung gemäß `CONFUSABLES.md`; die zuerst getesteten Pasten und Saucen sind nur Beispielmaterial.
+- Illustrationen: kleine 3-/4-Slots rendern Motive standardmäßig größer; bei Bedarf kann eine externe CardSpec `visual_scale` zur Feinjustierung des optischen Gewichts verwenden.
 - Assetstrategie: **on demand** statt Vollbebilderung des 600+ Konzepte umfassenden Katalogs.
+- Mastertemplate: generatorverwaltete 2-/3-/4-Vorgaben-Varianten plus End-to-End-Referenzkarten.
 
-## Wortmarke
-
-Die finale Wortmarke liegt in drei freigegebenen Rastergrößen unter [`assets/brand/`](assets/brand/). Das Originalasset ist die Source of Truth und wird nur proportional skaliert und platziert. Frühere SVG-/Vektorisierungsstudien sind keine Bestandteile des Designsystems.
-
-`Challenge #NNN` bleibt separate Nutztypografie und wird im späteren Mastertemplate zusammen mit der Wortmarke positioniert.
-
-## Nächster Schritt
-
-Als nächstes wird in **Issue #135** das finale Mastertemplate aus den inzwischen eingefrorenen Bausteinen zusammengesetzt und mit realistischen 2-/3-/4-Vorgaben-Fällen bei `1200 × 1200` und `320 × 320` end-to-end geprüft.
+Für konkrete neue Challenges werden die Kartendaten als externe JSON-`CardSpec` an den Renderer unter [`templates/`](templates/) übergeben; der eingecheckte Generator wird dafür nicht verändert. Eine Bot- oder Laufzeitintegration gehört weiterhin nicht zum Designsystem.

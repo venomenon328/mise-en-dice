@@ -32,7 +32,7 @@ Zulässig sind ausschließlich:
 
 Das Master-PNG bleibt unverändert. Die Dateien mit Breite 1200 und 320 dienen als freigegebene Größenreferenzen und Kleinformatkontrolle; sie werden nicht unabhängig gestalterisch bearbeitet.
 
-Das finale Challenge-Card-Mastertemplate soll grundsätzlich vom Masterasset ausgehen und die Platzierung reproduzierbar festlegen. Die 320-Datei dient insbesondere dazu, die Lesbarkeit und Detailwirkung im kleinen Zielmaßstab zu beurteilen.
+Das finale Challenge-Card-Mastertemplate geht vom Masterasset aus und legt die Platzierung reproduzierbar fest. Die 320-Datei dient insbesondere dazu, die Lesbarkeit und Detailwirkung im kleinen Zielmaßstab zu beurteilen.
 
 ## Versionierung
 

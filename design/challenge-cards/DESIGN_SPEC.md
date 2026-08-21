@@ -1,7 +1,7 @@
 # Designspezifikation für Challenge-Cards
 
-Stand: 20. August 2026  
-Status: Geometrie, visuelle Grundlagen, Nutztypografie, Wortmarke und Illustrationssystem sind freigegeben
+Stand: 21. August 2026  
+Status: Challenge-Card-Designsystem v1 ist als Mastertemplate umgesetzt; die visuelle Abnahme von Issue #135 steht noch aus.
 
 ## 1. Ziel
 
@@ -10,80 +10,94 @@ Eine Challenge-Card stellt eine konkrete Mise-en-Dice-Challenge schnell erfassba
 ## 2. Verbindliche Informationsarchitektur
 
 - Masterformat: **1200 × 1200 px**.
-- Feste Kopfzone mit der `Mise en Dice`-Wortmarke und `Challenge #NNN`.
+- Feste Kopfzone mit `Mise en Dice` und `Challenge #NNN`.
 - Zwei Vorgaben: zwei große gleichwertige Slots nebeneinander.
 - Drei Vorgaben: zwei Slots oben, ein gleich großer Slot unten mittig.
 - Vier Vorgaben: gleichmäßiges `2 × 2`-Raster.
-- Feste untere Regelzone; ohne Zusatzregel nur neutrales Würfel-/Linienornament.
+- Fester unterer Regelbalken; ohne Zusatzregel nur neutrales Würfel-/Linienornament.
 - Konkrete Zutat: einzelnes klar lesbares Motiv.
 - Offenes Konzept: nach Möglichkeit Gruppe aus zwei bis drei repräsentativen Konkretisierungen plus `OFFEN`-Badge aus dem Template.
 
-## 3. Verbindliche Geometrie
+## 3. Background-Master und Overlay-Geometrie
 
-- Canvas: `1200 × 1200 px`.
-- Kopfzone bis `Y = 222`.
-- Boardfläche: `X = 72`, `Y = 222`, `1056 × 918 px`.
-- Regelzone: `X = 120`, `Y = 974`, `960 × 116 px`.
-- Slotabstand horizontal: `48 px`.
-- Slotabstand vertikal: `40 px`.
-- Zwei große Slots: `456 × 640 px`.
-- Drei-/Vierer-Slots: `432 × 300 px`.
+Der finale Kartenuntergrund ist [`assets/background/mise-en-dice-background-master.png`](assets/background/mise-en-dice-background-master.png). Das `1200 × 1200 px`-Rasterasset enthält Verlauf, Küchengeräte-Silhouetten, Holzboard und leeren Regelbalken. Es bestimmt die Pixelgeometrie des finalen Designs.
 
-Die vollständigen Maße stehen unter `wireframes/GEOMETRY.md`.
+Die früheren Wireframes bleiben als historische Layoutvorstufe erhalten; ihre synthetische Board-Geometrie wird **nicht** über den Background-Master gelegt.
+
+Kalibrierte visuelle Bereiche im Background-Master:
+
+- Holzboard ungefähr `X = 69`, `Y = 368`, `1058 × 682 px`,
+- Regelbalken ungefähr `X = 115`, `Y = 930`, `970 × 90 px`.
+
+Verbindliche Slotgeometrie:
+
+### Zwei Vorgaben
+
+- Slot 1: `X = 130`, `Y = 400`, `440 × 500 px`,
+- Slot 2: `X = 630`, `Y = 400`, `440 × 500 px`.
+
+### Drei Vorgaben
+
+- Slot 1: `X = 140`, `Y = 400`, `430 × 238 px`,
+- Slot 2: `X = 630`, `Y = 400`, `430 × 238 px`,
+- Slot 3: `X = 385`, `Y = 665`, `430 × 238 px`.
+
+### Vier Vorgaben
+
+- obere Reihe wie beim Dreierlayout,
+- untere Reihe: `X = 140` und `630`, jeweils `Y = 665`, `430 × 238 px`.
+
+Die Slots sind bewusst zurückgenommen: nur eine einzelne weiche Fläche mit `7 %` heller Füllung, warmer Kontur mit `18 %` Deckkraft, `1,4 px` Linienstärke und `28 px` Radius. Es gibt **keine zweite innere Slotkontur** mehr.
 
 ## 4. Verbindliche visuelle Richtung
 
-Freigegeben ist **Style Study A – Helles Honigbrett**.
+Grundrichtung bleibt **Style Study A – Helles Honigbrett**, nun konkretisiert durch den freigegebenen Background-Master:
 
 - warmes Goldorange mit hellem Fokus,
-- gebrannte Orange-/Rotbrauntöne zu den Rändern,
-- zurückhaltende dunkle Küchen-Silhouetten,
-- helle honigfarbene Schneidebrettfläche,
-- weiche semitransparente Slots,
-- keine vollfarbigen Dekorationslebensmittel im Vorgabenbereich,
-- dunkle Espresso-Regelzone mit hellem Text.
+- dunklere Orange-/Brauntöne nach unten,
+- klar erkennbare Küchenutensilien nur links und rechts der freien Kopfzone,
+- ruhiger, zentraler Kopfbereich ohne Dekoration hinter der Wortmarke,
+- helles Holzboard mit subtiler natürlicher Maserung,
+- keine synthetischen weißen Maserungslinien,
+- zurückgenommene Slotflächen statt UI-artiger Doppelpanels,
+- dunkler Regelbalken als Bestandteil des Background-Masters.
 
-Die vollständigen Tokens stehen unter `style-studies/VISUAL_FOUNDATIONS.md`.
+## 5. Verbindliche Nutztypografie, Wortmarke und Badge-Logik
 
-## 5. Verbindliche Nutztypografie
-
-Freigegeben ist **Typography Study A – Kitchen Editorial** für die dynamischen Textbestandteile der Karte.
+Für die Nutztypografie ist **Typography Study A – Kitchen Editorial** verbindlich.
 
 - `Challenge #NNN`, Badge und Regeltext: robuste Sans.
-- Vorgabennamen: normal geschriebene Quelldaten, typografisch als **echte Small Caps** gerendert.
-- `Go Smallcaps` ist die reproduzierbare Small-Caps-Referenz.
-- Zweizeilige Namen behalten ihre Hierarchie und werden nicht beliebig verkleinert.
+- Vorgabennamen: normal geschriebene Quelldaten, typografisch als Small Caps gerendert.
+- `Go Smallcaps` ist die freigegebene Small-Caps-Referenz.
 
-Die Markenwortmarke ist **kein dynamisch gesetzter Text** mehr und wird separat als festes Rasterasset behandelt.
+Die finale Wortmarke ist ausschließlich [`assets/brand/mise-en-dice-wordmark-master.png`](assets/brand/mise-en-dice-wordmark-master.png). Sie wird unverändert als RGBA-Rasterasset eingebunden; weder SVG-Rekonstruktion noch Vektorisierung oder Neugenerierung sind zulässig.
 
-## 6. Verbindliche Wortmarke
+Im `1200 × 1200 px`-Template liegt die Wortmarke bei `X = 324`, `Y = 30` mit `552 × 129 px`. `Challenge #NNN` steht zentriert mit Basislinie `Y = 203` und `28 px`. Gegenüber der vorherigen Fassung sind Wortmarke und Challenge-Zeile damit bewusst geringfügig größer beziehungsweise tiefer gesetzt.
 
-Die finale `Mise en Dice`-Wortmarke liegt unter [`assets/brand/`](assets/brand/) als festes PNG-Asset vor.
+### Vorgabennamen
 
-### 6.1 Dateien
+- einzeilig in Drei-/Vierer-Slots: `34 px`, `0.04em` Laufweite,
+- einzeilig in großen Zweier-Slots: `40 px`,
+- zweizeilig in Drei-/Vierer-Slots: `29 px`, `0.018em` Laufweite,
+- zweizeilig in großen Zweier-Slots: `33 px`, `0.018em` Laufweite.
 
-- `mise-en-dice-wordmark-master.png`: **2064 × 482 px**, alleinige gestalterische Source of Truth.
-- `mise-en-dice-wordmark-preview-1200.png`: **1200 × 280 px**, proportionale Referenzableitung.
-- `mise-en-dice-wordmark-preview-320.png`: **320 × 75 px**, Kleinformat-Referenz.
+Zweizeilige Namen sind weiterhin etwas kleiner als einzeilige; beide wurden gegenüber der vorherigen Reviewfassung leicht vergrößert. Der Namensblock bleibt unabhängig vom `OFFEN`-Badge.
 
-### 6.2 Nutzungsregeln
+### `OFFEN`-Badge
 
-- keine Vektorisierung, kein Nachzeichnen und keine SVG-Rekonstruktion,
-- keine KI-Neugenerierung pro Karte,
-- keine Farbänderung oder unabhängige Bearbeitung einzelner Bestandteile,
-- keine Änderung des Seitenverhältnisses,
-- ausschließlich proportionale Skalierung, deterministische Platzierung und technisch unsichtbare Datei-/Alphaoptimierung sind zulässig,
-- `Challenge #NNN` bleibt separate Nutztypografie und ist nicht Teil des Bildassets.
+Der Badge ist reine Metainformation für offene Konzepte und wird **nicht mehr an den Namensblock gekoppelt**. Er sitzt fest oben links im jeweiligen Slot:
 
-Das spätere Mastertemplate legt Größe und Position der Wortmarke verbindlich fest. Eine sichtbare Änderung an der Wortmarke wäre eine bewusste neue Brand-Version und kein stilles Ersetzen des Masters.
+- `18 px` Abstand vom linken Slotrand,
+- `18 px` Abstand vom oberen Slotrand,
+- Größe `104 × 27 px`.
 
-Frühere SVG-/Vektorisierungsstudien sind verworfen und nicht Bestandteil des Designsystems.
+Damit bleibt der untere Bereich vollständig dem Vorgabennamen vorbehalten; insbesondere zweizeilige Namen konkurrieren nicht mehr mit dem Badge.
 
-## 7. Verbindliches Illustrationssystem
+## 6. Verbindliches Illustrationssystem
 
 Maßgeblich ist [`illustration-system/ILLUSTRATION_GUIDE.md`](illustration-system/ILLUSTRATION_GUIDE.md).
 
-### 7.1 Produktionsassets
+### 6.1 Produktionsassets
 
 - PNG, `1024 × 1024 px`, transparenter Hintergrund.
 - Ungefähr 8 % Safe Area.
@@ -94,54 +108,47 @@ Maßgeblich ist [`illustration-system/ILLUSTRATION_GUIDE.md`](illustration-syste
 - kein Text, Badge, Kartenrahmen oder eingebrannter Bodenschatten.
 - neutrale unmarkierte Behälter nur wenn sachlich sinnvoll.
 
-### 7.2 Offene Konzepte
+### 6.2 Offene Konzepte
 
 - normalerweise zwei bis drei repräsentative Konkretisierungen als Gruppe,
 - keine abschließende Auswahl suggerieren,
-- `OFFEN` bleibt Teil des Kartentemplates.
+- `OFFEN` bleibt Teil des Kartentemplates und wird oben links im Slot verankert.
 
-### 7.3 Confusables und visuelle Nachbarschaft
+### 6.3 Assetgröße innerhalb der Slots
 
-Die Ähnlichkeitsprüfung gilt **für jedes neue Asset** und ist nicht auf bestimmte Beispielzutaten beschränkt. Bei über 600 Konzepten werden weitere Cluster erwartet.
+Die kleinen Drei-/Vierer-Slots vergrößern Illustrationen gegenüber der ersten Mastertemplate-Fassung standardmäßig um **18 %** innerhalb der reservierten Motivzone. Damit wird die zuvor zu kleine Symbolwirkung korrigiert.
 
-Unterschiedliche Konzepte teilen niemals absichtlich dasselbe Asset. Nahe Nachbarn werden bevorzugt über mindestens zwei primäre Dimensionen unterschieden: Silhouette, Farbe/Helligkeit, Textur, Stückigkeit, Glanz/Transparenz, Viskosität, Anschnitt/innere Struktur oder charakteristische Details.
+Zusätzlich darf eine konkrete externe `CardSpec` pro Vorgabe optional `visual_scale` zwischen `0.75` und `1.50` setzen. Dieser Faktor dient ausschließlich dem optischen Gewicht unterschiedlich geformter freigegebener Assets und verändert nicht die PNG-Datei selbst.
 
-Eine andere neutrale Behälterform ist als sekundäre Differenzierung erlaubt, wenn die Zutat selbst sonst zu ähnlich wirkt. Das Gefäß darf nie das einzige Erkennungsmerkmal sein.
+### 6.4 Confusables und Assetstrategie
 
-Die Methode und der erste Pasten-/Saucen-Stresstest stehen unter `illustration-system/CONFUSABLES.md`.
+Die Ähnlichkeitsprüfung gilt für jedes neue Asset. Unterschiedliche Konzepte teilen niemals absichtlich dasselbe Asset. Assets entstehen **on demand**; es gibt keine Vorabbebilderung des 600+ Konzepte umfassenden Katalogs. `assets/ASSET_INDEX.csv` enthält nur tatsächlich freigegebene Produktionsassets.
 
-### 7.4 Assetstrategie
+## 7. Konsistenz- und Reproduzierbarkeitsregeln
 
-- Assets entstehen **on demand**.
-- Keine Vollbebilderung des 600+ Konzepte umfassenden Katalogs.
-- Bestehende freigegebene Assets werden wiederverwendet und nicht pro Challenge neu generiert.
-- `assets/ASSET_INDEX.csv` enthält nur tatsächlich freigegebene Zutaten- und Konzept-Produktionsassets; Brand-Dateien gehören nicht hinein.
+- Wortmarke, Background-Master, Geometrie, Typografierollen und Illustrationsregeln werden versioniert.
+- Gleiche Challenge-Daten, gleiche Template-Version und gleiche Asset-Versionen erzeugen dasselbe SVG-Dokument.
+- Wortmarke und Background-Master werden gegen stillen Austausch abgesichert.
+- PNG-Renderings hängen zusätzlich von Browser, Betriebssystem und Fontumgebung ab. Ein bytegenauer `--render-check` ist ein Regressionstest innerhalb derselben Rendering-Umgebung, keine plattformübergreifende Byte-Garantie.
+- Für visuelle Abnahmen sind die 1200er Referenzrenderings maßgeblich; die 320er Dateien sind LANCZOS-Downscales genau dieser Vollformatbilder.
 
-## 8. Konsistenzregeln
+## 8. Referenzen
 
-- Wortmarke, Geometrie, Farben, Typografierollen und Illustrationsregeln werden versioniert.
-- Gleiche Challenge-Daten, gleiche Template-Version und gleiche Asset-Versionen sollen dasselbe Ergebnis liefern.
-- Der sichtbare Vorgabenname bleibt die fachlich verbindliche Aussage; die Illustration unterstützt ihn.
-- Die Bildgenerierung erfolgt bewusst außerhalb des Discord-Bots.
-- Das Mastertemplate darf die Wortmarke nur als unverändertes Rasterasset einbinden.
+- `wireframes/`: historische Geometrievorstufe,
+- `style-studies/`: visuelle Grundlagen,
+- `typography-studies/`: Nutztypografie,
+- `illustration-system/`: Illustrationsregeln,
+- `assets/background/`: finaler Background-Master,
+- `assets/brand/`: finale Raster-Wortmarke,
+- `assets/references/anchor-style-study.jpg`: Stilkalibrierung.
 
-## 9. Referenzen
+## 9. Finales Mastertemplate und Referenzprüfung
 
-- `wireframes/`: Geometrie.
-- `style-studies/`: visuelle Grundlagen.
-- `typography-studies/`: Nutztypografie.
-- `assets/brand/`: finale Wortmarke.
-- `illustration-system/`: Illustrationsregeln und Prompt-Templates.
-- `assets/references/anchor-style-study.jpg`: freigegebene Stilkalibrierung.
-- `assets/references/confusables-example-study.jpg`: exemplarischer Ähnlichkeits-Stresstest.
+- Die generatorverwalteten Varianten liegen unter [`templates/`](templates/) für zwei, drei und vier Vorgaben.
+- `generate_challenge_card_templates.py` fixiert Background-Master, Geometrie, Wortmarkenhash, Slotstil, Badge-Verankerung, Typografie und Referenzfälle.
+- Für neue konkrete Challenges wird nicht der Mastergenerator geändert; ihre Daten werden als externe JSON-`CardSpec` über `render_challenge_card_from_spec.py` eingespeist.
+- Der Regelbalken stammt aus dem Background-Master; dynamisch sind ausschließlich Symbol/Ornament und Text.
 
-## 10. Noch offene Entscheidungen
+## 10. Offene visuelle Abnahme
 
-- endgültige Feinheit der inneren Slotkontur im Mastertemplate,
-- finales Mastertemplate aus den eingefrorenen Bausteinen,
-- verbindliche Wortmarkenposition und -größe innerhalb der Kopfzone,
-- möglicher zusätzlicher Export für Querformat oder andere Plattformen.
-
-## 11. Nächster Schritt
-
-Issue #135 setzt Geometrie, Style A, Nutztypografie, die finale Raster-Wortmarke und das Illustrationssystem zu einem deterministischen Mastertemplate zusammen. Dabei werden 2-/3-/4-Vorgaben-Fälle, Regel/no-rule sowie Kleinformat- und Grenzfälle end-to-end geprüft. Weitere Zutatenassets entstehen weiterhin nur on demand gemäß dem Illustration Guide.
+Vor dem Merge werden die vier Referenzkarten erneut bei `1200 × 1200` und `320 × 320 px` geprüft. Insbesondere zu beurteilen sind die leicht vergrößerte und tiefer gesetzte Kopfzone, die feste Badge-Verankerung oben links, die leicht größeren Vorgabennamen sowie der Long-Label-Fall.

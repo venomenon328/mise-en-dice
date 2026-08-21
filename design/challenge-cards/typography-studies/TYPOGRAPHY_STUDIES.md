@@ -8,13 +8,13 @@ Die visuelle Grundrichtung ist durch das gemergte Paket zu den visuellen Grundla
 - die Regelzone ohne Zusatzregel verwendet ein neutrales Ornament,
 - die freigegebene Geometrie bleibt unverändert.
 
-Dieses Paket stellt drei kontrollierte Richtungen gegenüber. Nach visueller Auswahl ist **Study A – Kitchen Editorial** verbindlich freigegeben. Die Vorgabennamen werden mit normal geschriebenen Quelldaten typografisch in **Small Caps** gesetzt.
+Dieses Paket stellte drei kontrollierte Typografierichtungen gegenüber. Nach visueller Auswahl ist **Study A – Kitchen Editorial** für die Nutztypografie verbindlich freigegeben. Die Vorgabennamen werden mit normal geschriebenen Quelldaten typografisch in **Small Caps** gesetzt.
 
 ## Gemeinsame Testdaten
 
 Alle Studien verwenden identische Inhalte, damit sich die Beurteilung nicht mit wechselnden Layoutfällen vermischt:
 
-- Wortlogo: `Mise en Dice`,
+- damaliges Wortlogo: `Mise en Dice`,
 - `Challenge #012`,
 - konkrete Zutaten `Knoblauch` und `Aubergine`,
 - offenes Konzept `Blattgemüse` mit Badge `OFFEN`,
@@ -25,59 +25,43 @@ Alle Studien verwenden identische Inhalte, damit sich die Beurteilung nicht mit 
 
 ### Study A – Kitchen Editorial
 
-- Wortlogo in warmer, kursiver Serifenschrift,
+- damaliges Wortlogo in warmer, kursiver Serifenschrift,
 - alle Nutztexte in kräftiger Sans,
 - klare Trennung zwischen Marke und Informationssystem.
 
 **Stärken**
-- hohe Eigenständigkeit des Wortlogos,
 - warme, leicht kulinarische Anmutung,
-- gute Balance aus Charakter und Lesbarkeit.
-
-**Risiken**
-- Serifenschrift muss im finalen Logo sauber gewählt werden, damit sie nicht generisch oder zu elegant wirkt.
+- gute Balance aus Charakter und Lesbarkeit,
+- robuste Rollen für dynamische Kartentexte.
 
 ### Study B – Rounded Pantry
 
 - durchgehend rundere Sans-Schriften,
 - freundlichste und spielerischste Richtung.
 
-**Stärken**
-- sympathisch und zugänglich,
-- formal sehr konsistent.
-
 **Risiken**
 - droht am ehesten ins Niedliche abzurutschen,
-- wirkt als Markenlogo am wenigsten souverän.
+- wirkt in den Nutztexten weniger ruhig.
 
 ### Study C – Confident Brand
 
-- schweres, markiges Wortlogo in einer robusten Sans,
+- schwerere, markige Sans,
 - sehr klare Nutzschrift mit hoher Lesbarkeit.
-
-**Stärken**
-- beste Lesbarkeit auf kleiner Fläche,
-- sehr robust für lange Begriffe und Regeltexte,
-- technisch am sichersten.
 
 **Risiken**
 - weniger warm und charaktervoll als Study A,
-- Gefahr eines etwas generischen Brandings, wenn das endgültige Logo nicht sorgfältig verfeinert wird.
+- visuell härter als die freigegebene Kartenwelt.
 
 ## Entscheidung
 
-**Freigegeben ist Study A – Kitchen Editorial.**
+**Für die Nutztypografie freigegeben ist Study A – Kitchen Editorial.**
 
-- Das Wortlogo übernimmt den warmen, leicht editorialen Serif-Charakter aus Study A.
 - `Challenge #NNN`, `OFFEN` und Regeltext bleiben robuste Sans-Nutzschrift.
-- Vorgabennamen werden mit normal geschriebenen Quelldaten über die Small-Caps-Nutzschrift `Go Smallcaps` gesetzt.
-- Study B und Study C bleiben als verworfene Gegenproben nachvollziehbar erhalten.
+- Vorgabennamen werden mit normal geschriebenen Quelldaten über die Small-Caps-Referenz `Go Smallcaps` gesetzt.
+- Study B und Study C bleiben als verworfene Gegenproben der Nutztypografie nachvollziehbar erhalten.
 
-## Nächster Schritt
+Der damalige typografische Wortlogo-Ansatz ist **nicht mehr verbindlich**. Issue #130 hat stattdessen eine eigenständige Raster-Wortmarke festgelegt. Die einzige Produktionsquelle ist [`../assets/brand/mise-en-dice-wordmark-master.png`](../assets/brand/mise-en-dice-wordmark-master.png); sie wird weder aus diesen Studien rekonstruiert noch vektorisiert.
 
-Auf Basis der freigegebenen Study A werden:
+## Weiterer Stand
 
-1. das feste Wortlogo `Mise en Dice` finalisiert,
-2. die verbindlichen Schriftrollen für `Challenge #NNN`, Vorgabennamen, Badge und Regeltext festgelegt,
-3. Grenzfälle für Laufweite, Zeilenumbrüche und Größen eingefroren,
-4. erst danach der Illustrationsstandard für Zutaten und offene Konzepte entwickelt.
+Nutztypografie, Wortmarke, Illustrationssystem und Mastertemplate sind inzwischen getrennt versioniert. Änderungen an dynamischen Kartentexten werden weiterhin hier bzw. in der zentralen Designspezifikation bewertet; Änderungen an der Wortmarke erfolgen ausschließlich am freigegebenen Brand-Asset und nur als bewusstes neues Designpaket.
