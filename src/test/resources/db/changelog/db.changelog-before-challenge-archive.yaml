@@ -63,5 +63,3 @@ databaseChangeLog:
       file: db/changelog/schema/011-candidate-specific-restrictions.sql
   - include:
       file: db/changelog/schema/012-remove-legacy-generator-compatibility.sql
-  - include:
-      file: db/changelog/schema/013-challenge-archive-core.sql

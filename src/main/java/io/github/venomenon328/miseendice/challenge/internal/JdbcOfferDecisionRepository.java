@@ -86,13 +86,23 @@ class JdbcOfferDecisionRepository {
     }
 
     long insertChallenge(OfferSet offerSet, Offer offer) {
+        Long challengeNumber = jdbcTemplate.queryForObject("""
+                update challenge_archive_counter
+                   set last_challenge_number = last_challenge_number + 1
+                 where singleton = true
+                returning last_challenge_number
+                """, Long.class);
+        if (challengeNumber == null) {
+            throw new IllegalStateException("Challenge archive counter is missing");
+        }
         return jdbcTemplate.queryForObject("""
                 insert into challenge (generation_attempt_id, selected_candidate_id, curated_offer_id,
-                                       restriction_rule_id, restriction_rule_code_snapshot, restriction_text_snapshot)
+                                       restriction_rule_id, restriction_rule_code_snapshot, restriction_text_snapshot,
+                                       challenge_number)
                 select ?, ?, offer.id, offer.restriction_rule_id, offer.restriction_rule_code_snapshot,
-                       offer.restriction_text_snapshot
+                       offer.restriction_text_snapshot, ?
                 from curated_offer offer where offer.id = ? returning id
-                """, Long.class, offerSet.attemptId(), offer.candidateId(), offer.offerId());
+                """, Long.class, offerSet.attemptId(), offer.candidateId(), challengeNumber, offer.offerId());
     }
 
     void markRerolled(long offerSetId) {
