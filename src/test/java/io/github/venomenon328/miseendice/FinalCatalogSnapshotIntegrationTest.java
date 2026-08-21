@@ -220,7 +220,7 @@ class FinalCatalogSnapshotIntegrationTest {
             assertThat(value(connection,
                     "select version from ingredient_concept where code = 'TOMATO'", Integer.class)).isEqualTo(7);
             assertThat(value(connection,
-                    "select count(*) from databasechangelog", Integer.class)).isEqualTo(32);
+                    "select count(*) from databasechangelog", Integer.class)).isEqualTo(33);
         }
     }
 

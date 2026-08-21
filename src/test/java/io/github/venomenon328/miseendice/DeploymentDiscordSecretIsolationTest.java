@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -96,7 +97,7 @@ class DeploymentDiscordSecretIsolationTest {
                 + "OPENAI_PROPERTIES=\"$4\"\n"
                 + "ACCEPTANCE_PROPERTIES=\"$5\"\n"
                 + "write_instance_application_properties \"$6\" \"$7\" \"$8\"\n";
-        Process process = new ProcessBuilder(bashExecutable(), "-c", script, "bash",
+        Process process = new ProcessBuilder(bashExecutable(), "-lc", script, "bash",
                 Path.of("deploy/operator/runtime.sh").toAbsolutePath().toString(), admin.toString(), discord.toString(),
                 openai.toString(), acceptance.toString(), destination.toString(), Boolean.toString(secureCookie), providerSource)
                 .redirectErrorStream(true).start();
@@ -108,7 +109,23 @@ class DeploymentDiscordSecretIsolationTest {
     }
 
     private static String bashExecutable() {
-        Path gitBash = Path.of(System.getenv().getOrDefault("ProgramFiles", "C:/Program Files"), "Git", "bin", "bash.exe");
-        return Files.isExecutable(gitBash) ? gitBash.toString() : "bash";
+        List<Path> candidates = new ArrayList<>();
+        Path programFilesGit = Path.of(System.getenv().getOrDefault("ProgramFiles", "C:/Program Files"), "Git");
+        candidates.add(programFilesGit.resolve("bin/bash.exe"));
+        candidates.add(programFilesGit.resolve("usr/bin/bash.exe"));
+        for (String pathEntry : System.getenv().getOrDefault("PATH", "").split(System.getProperty("path.separator"))) {
+            if (pathEntry.isBlank()) {
+                continue;
+            }
+            Path directory = Path.of(pathEntry);
+            Path gitRoot = directory.getParent();
+            if (directory.getFileName() != null && directory.getFileName().toString().equalsIgnoreCase("cmd")
+                    && gitRoot != null && gitRoot.getFileName() != null
+                    && gitRoot.getFileName().toString().equalsIgnoreCase("Git")) {
+                candidates.add(gitRoot.resolve("bin/bash.exe"));
+                candidates.add(gitRoot.resolve("usr/bin/bash.exe"));
+            }
+        }
+        return candidates.stream().filter(Files::isExecutable).findFirst().map(Path::toString).orElse("bash");
     }
 }

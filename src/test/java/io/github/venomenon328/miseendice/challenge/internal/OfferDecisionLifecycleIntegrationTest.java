@@ -4,6 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.venomenon328.miseendice.MiseEnDiceApplication;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeArchivePageOutOfRangeException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeArchiveQueries;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeCardAlreadyExistsException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeCardCommands;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeCardNotFoundException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeCardValidationException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeNotFoundException;
 import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands;
 import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands.OfferReady;
 import io.github.venomenon328.miseendice.challenge.api.CurationQueries;
@@ -20,6 +27,10 @@ import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands.Rer
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands.RerollInProgress;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionConflictException;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -71,6 +82,8 @@ class OfferDecisionLifecycleIntegrationTest {
     @Autowired CurationQueries curationQueries;
     @Autowired OfferDecisionCommands decisions;
     @Autowired OfferDecisionQueries decisionQueries;
+    @Autowired ChallengeArchiveQueries archiveQueries;
+    @Autowired ChallengeCardCommands cardCommands;
     @Autowired JdbcGenerationRepository generationRepository;
     @Autowired CurationOrchestrationIntegrationTest.ScriptedCuratorClient curator;
     @Autowired CurationOrchestrationIntegrationTest.SwitchableCandidateSetEngine generator;
@@ -81,8 +94,9 @@ class OfferDecisionLifecycleIntegrationTest {
     void cleanData() {
         curator.reset();
         generator.reset();
-        jdbcTemplate.execute("truncate table reroll_offer_exposure_requirement, reroll_offer_exposure, challenge, "
+        jdbcTemplate.execute("truncate table challenge_card, reroll_offer_exposure_requirement, reroll_offer_exposure, challenge, "
                 + "curated_offer_set, curation_round, generation_batch, generation_attempt, challenge_session cascade");
+        jdbcTemplate.update("update challenge_archive_counter set last_challenge_number = 0 where singleton = true");
     }
 
     @ParameterizedTest
@@ -129,6 +143,133 @@ class OfferDecisionLifecycleIntegrationTest {
                 ready.offerSetId(), ready.offers().get(1).offerId())))
                 .isInstanceOf(OfferDecisionConflictException.class);
         assertThat(jdbcTemplate.queryForObject("select count(*) from challenge", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void publicArchiveUsesOnlyConfirmedHistoricalSnapshotsAndMarksTheCurrentChallenge() {
+        CurationQueries.OfferSetView first = offered(1, 76_100_012L);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(first.offerSetId()));
+        decisions.confirm(new OfferDecisionCommands.ConfirmOffer(first.offerSetId(), first.offers().getFirst().offerId()));
+
+        ChallengeArchiveQueries.PublicChallenge current = archiveQueries.findCurrentChallenge().orElseThrow();
+        assertThat(current.challengeNumber()).isEqualTo(1);
+        assertThat(current.requirements()).hasSize(4)
+                .extracting(ChallengeArchiveQueries.RequirementSnapshot::displayText)
+                .containsExactlyElementsOf(first.offers().getFirst().candidate().requirements().stream()
+                        .map(requirement -> requirement.displayTextSnapshot()).toList());
+        assertThat(current.restriction().restricted())
+                .isEqualTo(first.offers().getFirst().candidate().restriction().ruleId() != null);
+
+        jdbcTemplate.update("""
+                update ingredient_concept set display_name = 'renamed after confirmation ' || id
+                where id in (
+                    select ingredient_concept_id from candidate_requirement
+                    where candidate_id = ? and ingredient_concept_id is not null
+                )
+                """, first.offers().getFirst().candidateId());
+        assertThat(archiveQueries.findChallengeByNumber(1).orElseThrow().requirements())
+                .extracting(ChallengeArchiveQueries.RequirementSnapshot::displayText)
+                .containsExactlyElementsOf(current.requirements().stream()
+                        .map(ChallengeArchiveQueries.RequirementSnapshot::displayText).toList());
+
+        CurationQueries.OfferSetView unconfirmed = offered(1, 76_100_013L);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(unconfirmed.offerSetId()));
+        assertThat(archiveQueries.findCurrentChallenge().orElseThrow().challengeNumber()).isEqualTo(1);
+        assertThat(archiveQueries.listChallenges(new ChallengeArchiveQueries.PageRequest(1, 10)).totalChallenges())
+                .isEqualTo(1);
+    }
+
+    @Test
+    void archivePaginationIsStableNewestFirstAndRejectsUnavailablePages() {
+        for (int index = 0; index < 3; index++) {
+            CurationQueries.OfferSetView ready = offered(1, 76_100_100L + index);
+            decisions.present(new OfferDecisionCommands.PresentOfferSet(ready.offerSetId()));
+            decisions.confirm(new OfferDecisionCommands.ConfirmOffer(ready.offerSetId(), ready.offers().getFirst().offerId()));
+        }
+
+        ChallengeArchiveQueries.ChallengePage firstPage = archiveQueries.listChallenges(
+                new ChallengeArchiveQueries.PageRequest(1, 2));
+        assertThat(firstPage.totalChallenges()).isEqualTo(3);
+        assertThat(firstPage.currentChallengeNumber()).isEqualTo(3);
+        assertThat(firstPage.totalPages()).isEqualTo(2);
+        assertThat(firstPage.challenges()).extracting(ChallengeArchiveQueries.PublicChallenge::challengeNumber)
+                .containsExactly(3L, 2L);
+        assertThat(archiveQueries.listChallenges(new ChallengeArchiveQueries.PageRequest(2, 2)).challenges())
+                .extracting(ChallengeArchiveQueries.PublicChallenge::challengeNumber)
+                .containsExactly(1L);
+        assertThatThrownBy(() -> archiveQueries.listChallenges(new ChallengeArchiveQueries.PageRequest(3, 2)))
+                .isInstanceOf(ChallengeArchivePageOutOfRangeException.class);
+    }
+
+    @Test
+    void cardsRequireExplicitReplacementPersistExactBytesAndNeverChangeChallengeFacts() throws Exception {
+        CurationQueries.OfferSetView ready = offered(1, 76_100_110L);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(ready.offerSetId()));
+        decisions.confirm(new OfferDecisionCommands.ConfirmOffer(ready.offerSetId(), ready.offers().getFirst().offerId()));
+        byte[] firstPng = png(1200, 1200);
+
+        ChallengeArchiveQueries.ChallengeCardMetadata inserted = cardCommands.setChallengeCard(
+                new ChallengeCardCommands.SetChallengeCard(1,
+                        new ChallengeCardCommands.ChallengeCardUpload(firstPng, "text/plain", "first.png"), false));
+        assertThat(inserted.contentType()).isEqualTo("image/png");
+        assertThat(inserted.originalFilename()).isEqualTo("first.png");
+        assertThat(inserted.byteSize()).isEqualTo(firstPng.length);
+        assertThat(inserted.sha256()).isEqualTo(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(firstPng)));
+        assertThat(archiveQueries.findChallengeByNumber(1).orElseThrow().cardAvailable()).isTrue();
+        assertThat(archiveQueries.loadChallengeCard(1).orElseThrow().contentBytes()).containsExactly(firstPng);
+        assertThatThrownBy(() -> cardCommands.setChallengeCard(new ChallengeCardCommands.SetChallengeCard(1,
+                new ChallengeCardCommands.ChallengeCardUpload(firstPng, "image/png", "again.png"), false)))
+                .isInstanceOf(ChallengeCardAlreadyExistsException.class);
+
+        byte[] replacement = png(1200, 1200, 0xff556677);
+        ChallengeArchiveQueries.ChallengeCardMetadata replaced = cardCommands.setChallengeCard(
+                new ChallengeCardCommands.SetChallengeCard(1,
+                        new ChallengeCardCommands.ChallengeCardUpload(replacement, "image/png", "replacement.png"), true));
+        assertThat(replaced.createdAt()).isEqualTo(inserted.createdAt());
+        assertThat(replaced.sha256()).isNotEqualTo(inserted.sha256());
+        assertThat(archiveQueries.loadChallengeCard(1).orElseThrow().contentBytes()).containsExactly(replacement);
+
+        cardCommands.removeChallengeCard(new ChallengeCardCommands.RemoveChallengeCard(1));
+        assertThat(archiveQueries.findChallengeCardMetadata(1)).isEmpty();
+        assertThat(archiveQueries.findChallengeByNumber(1).orElseThrow().cardAvailable()).isFalse();
+        assertThatThrownBy(() -> cardCommands.removeChallengeCard(new ChallengeCardCommands.RemoveChallengeCard(1)))
+                .isInstanceOf(ChallengeCardNotFoundException.class);
+        assertThatThrownBy(() -> cardCommands.setChallengeCard(new ChallengeCardCommands.SetChallengeCard(99,
+                new ChallengeCardCommands.ChallengeCardUpload(firstPng, "image/png", "missing.png"), false)))
+                .isInstanceOf(ChallengeNotFoundException.class);
+    }
+
+    @Test
+    void cardsValidateActualPngSignatureDecodabilityDimensionsAndSize() throws Exception {
+        CurationQueries.OfferSetView ready = offered(1, 76_100_120L);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(ready.offerSetId()));
+        decisions.confirm(new OfferDecisionCommands.ConfirmOffer(ready.offerSetId(), ready.offers().getFirst().offerId()));
+
+        assertThatThrownBy(() -> cardCommands.setChallengeCard(new ChallengeCardCommands.SetChallengeCard(1,
+                new ChallengeCardCommands.ChallengeCardUpload(new byte[] {1, 2, 3}, "image/png", "bad.png"), false)))
+                .isInstanceOf(ChallengeCardValidationException.class);
+        byte[] signatureOnly = new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0};
+        assertThatThrownBy(() -> cardCommands.setChallengeCard(new ChallengeCardCommands.SetChallengeCard(1,
+                new ChallengeCardCommands.ChallengeCardUpload(signatureOnly, "image/png", "truncated.png"), false)))
+                .isInstanceOf(ChallengeCardValidationException.class)
+                .hasMessageContaining("decodable");
+        assertThatThrownBy(() -> cardCommands.setChallengeCard(new ChallengeCardCommands.SetChallengeCard(1,
+                new ChallengeCardCommands.ChallengeCardUpload(png(1199, 1200), "image/png", "wrong-size.png"), false)))
+                .isInstanceOf(ChallengeCardValidationException.class)
+                .hasMessageContaining("1200 x 1200");
+        byte[] oversized = new byte[5 * 1024 * 1024 + 1];
+        oversized[0] = (byte) 0x89;
+        oversized[1] = 0x50;
+        oversized[2] = 0x4e;
+        oversized[3] = 0x47;
+        oversized[4] = 0x0d;
+        oversized[5] = 0x0a;
+        oversized[6] = 0x1a;
+        oversized[7] = 0x0a;
+        assertThatThrownBy(() -> cardCommands.setChallengeCard(new ChallengeCardCommands.SetChallengeCard(1,
+                new ChallengeCardCommands.ChallengeCardUpload(oversized, "image/png", "too-large.png"), false)))
+                .isInstanceOf(ChallengeCardValidationException.class)
+                .hasMessageContaining("5 MiB");
     }
 
     @Test
@@ -183,6 +324,33 @@ class OfferDecisionLifecycleIntegrationTest {
             assertThat(outcomes.stream().filter(Confirmation.class::isInstance)).hasSize(1);
             assertThat(outcomes.stream().filter(OfferDecisionConflictException.class::isInstance)).hasSize(1);
         }
+    }
+
+    @Test
+    void concurrentConfirmedChallengesReceiveConsecutiveUniquePublicNumbers() throws Exception {
+        CurationQueries.OfferSetView first = offered(1, 76_100_018L);
+        CurationQueries.OfferSetView second = offered(1, 76_100_019L);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(first.offerSetId()));
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(second.offerSetId()));
+
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var firstConfirmation = executor.submit(raced(ready, start, () -> decisions.confirm(
+                    new OfferDecisionCommands.ConfirmOffer(first.offerSetId(), first.offers().getFirst().offerId()))));
+            var secondConfirmation = executor.submit(raced(ready, start, () -> decisions.confirm(
+                    new OfferDecisionCommands.ConfirmOffer(second.offerSetId(), second.offers().getFirst().offerId()))));
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            assertThat(List.of(firstConfirmation.get(), secondConfirmation.get()))
+                    .allMatch(Confirmation.class::isInstance);
+        }
+
+        assertThat(archiveQueries.listChallenges(new ChallengeArchiveQueries.PageRequest(1, 10)).challenges())
+                .extracting(ChallengeArchiveQueries.PublicChallenge::challengeNumber)
+                .containsExactly(2L, 1L);
+        assertThat(jdbcTemplate.queryForObject("select last_challenge_number from challenge_archive_counter", Long.class))
+                .isEqualTo(2L);
     }
 
     @Test
@@ -400,6 +568,13 @@ class OfferDecisionLifecycleIntegrationTest {
             jdbcTemplate.execute("drop function reject_offer_decision_challenge()");
         }
         assertThat(status(confirmation.offerSetId())).isEqualTo("PRESENTED_PENDING_DECISION");
+        assertThat(jdbcTemplate.queryForObject("select last_challenge_number from challenge_archive_counter", Long.class))
+                .isZero();
+        Confirmation afterRollback = decisions.confirm(new OfferDecisionCommands.ConfirmOffer(
+                confirmation.offerSetId(), confirmation.offers().getFirst().offerId()));
+        assertThat(afterRollback.challengeId()).isPositive();
+        assertThat(archiveQueries.findChallengeByNumber(1).orElseThrow().challengeNumber())
+                .isEqualTo(1);
 
         CurationQueries.OfferSetView reroll = offered(1, 76_100_052L);
         decisions.present(new OfferDecisionCommands.PresentOfferSet(reroll.offerSetId()));
@@ -476,6 +651,20 @@ class OfferDecisionLifecycleIntegrationTest {
                     order by offer.position
                     """, exposureId, source.offerSetId());
         });
+    }
+
+    private static byte[] png(int width, int height) throws Exception {
+        return png(width, height, 0x00000000);
+    }
+
+    private static byte[] png(int width, int height, int highlightedPixel) throws Exception {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        image.setRGB(0, 0, highlightedPixel);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        if (!javax.imageio.ImageIO.write(image, "png", output)) {
+            throw new IllegalStateException("No PNG writer is available");
+        }
+        return output.toByteArray();
     }
 
     private static <T> Callable<Object> raced(CountDownLatch ready, CountDownLatch start, Callable<T> action) {

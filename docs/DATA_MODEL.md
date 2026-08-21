@@ -15,6 +15,8 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 - [`009-challenge-voting-participation.sql`](../src/main/resources/db/changelog/schema/009-challenge-voting-participation.sql) für Phase 11B: generische Teilnehmeridentitäten, Electorate-Snapshots, Voting-Ergebnisse und Challenge-Teilnahme
 - [`010-selection-voting-review-hardening.sql`](../src/main/resources/db/changelog/schema/010-selection-voting-review-hardening.sql) für die monotone Apply-Zustandsmaschine und die Übernahme eines bereits eingefrorenen Electorates nach späterer Deaktivierung
 - [`011-candidate-specific-restrictions.sql`](../src/main/resources/db/changelog/schema/011-candidate-specific-restrictions.sql) für Generator 1.2, Curation Contract V2 und unveränderliche Restriktions-History
+- [`012-remove-legacy-generator-compatibility.sql`](../src/main/resources/db/changelog/schema/012-remove-legacy-generator-compatibility.sql) für die ausschließlich ausführbare Generator-1.2-Struktur
+- [`013-challenge-archive-core.sql`](../src/main/resources/db/changelog/schema/013-challenge-archive-core.sql) für öffentliche Challenge-Nummern und die optionale Challenge-Card
 
 Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
 
@@ -205,8 +207,10 @@ challenge_session
             └─ curated_offer (Positionen 1..requested_offer_count)
 
 challenge
+  ├─ besitzt eine positive, globale und unveränderliche challenge_number
   ├─ verweist bei neuen Challenges auf genau ein bestätigtes curated_offer; nur bei Migration 008 eingefrorene Legacy-Zeilen bleiben ohne diese Referenz lesbar
-  └─ challenge_participation (veränderbare Teilnehmermenge)
+  ├─ challenge_participation (veränderbare Teilnehmermenge)
+  └─ challenge_card (optional genau eine aktuelle PNG-Card)
 
 participant
   └─ participant_external_identity (generischer Provider und stabiler externer Subject)
@@ -217,6 +221,14 @@ reroll_offer_exposure (Phase 11A)
 ```
 
 `reroll_offer_exposure` und seine Snapshot-Requirements sind die in Phase 11A eingeführte append-only Tabellenform für diese Cooldown-only-Rolle. Der Phase-11B-Voting-Core und der erst danach folgende 11C-Discord-Adapter schreiben sie nicht selbst, sondern verwenden ausschließlich die öffentlichen Offer-Decision-Commands.
+
+### Öffentliche Challenge-Nummer und Card
+
+Phase 13A ergänzt `challenge.challenge_number` als positiven, global eindeutigen und nach Vergabe unveränderlichen fachlichen Bezeichner. Bei der Migration werden bereits bestätigte Challenges stabil nach `shown_at`, anschließend `id`, ab `1` nummeriert. Ein einzelner `challenge_archive_counter` hält die zuletzt vergebene Nummer. Der normale Confirm-Use-Case sperrt und erhöht diesen Datensatz innerhalb derselben Transaktion, die auch die neue Challenge materialisiert; ein Rollback nimmt daher Zähler und Challenge gemeinsam zurück.
+
+Die öffentliche Archivprojektion liest ausschließlich die bestätigte Challenge, ihre vier `candidate_requirement`-Snapshots und den auf `challenge` kopierten Restriction-Snapshot. Sie rekonstruiert weder Texte noch Spezifität aus aktuellen Katalogdaten und transportiert keine Offer-, Voting-, Reroll-, Kurator- oder Providerdaten.
+
+`challenge_card` ist eine optionale Eins-zu-eins-Relation mit der bestätigten Challenge. Sie speichert exakt die hochgeladenen PNG-Bytes als `bytea`, den kanonischen Content-Type `image/png`, ursprünglichen Dateinamen, Byteanzahl, SHA-256 und Erstellungs-/Änderungszeitpunkte. Die Tabelle enthält keine Versionierung oder Audit-Historie. Der Application Service validiert tatsächliche PNG-Signatur, vollständige Decodierbarkeit, exakt `1200 × 1200 px` und die 5-MiB-Grenze; die Datenbank sichert zusätzlich Byteanzahl, SHA-256-Länge und die Eins-zu-eins-Beziehung. Card-Änderungen verändern niemals Challenge-Snapshots, Nummer oder Historienwirkung.
 
 Phase 9D implementiert noch keine Kuratororchestrierung und kein Offer Set. Seine Persistenz muss jedoch verhindern, dass die spätere fachliche Kardinalität durch eine starre Annahme „eine Kurationsrunde = genau ein Generation Batch = genau ein ausgewählter Kandidat“ verbaut wird.
 
