@@ -24,6 +24,19 @@ Die kleinen Drei-/Vierer-Slots rendern die Illustrationen standardmäßig um `18
 
 Der dunkle Regelbalken ist Bestandteil des Background-Masters; dynamisch gerendert werden nur Regeltext/Symbol oder das neutrale No-Rule-Ornament.
 
+## Kopfzone
+
+Die finale Wortmarke wird als unverändertes Rasterasset bei `X = 324`, `Y = 30`, `552 × 129 px` gesetzt. `Challenge #NNN` steht zentriert auf Basislinie `Y = 203`. Diese Werte sind bewusst leicht größer und tiefer als in der vorherigen Reviewfassung.
+
+## Vorgabennamen und `OFFEN`
+
+- einzeilige Namen in Drei-/Vierer-Slots: `34 px`,
+- einzeilige Namen in großen Zweier-Slots: `40 px`,
+- zweizeilige Namen in Drei-/Vierer-Slots: `29 px`,
+- zweizeilige Namen in großen Zweier-Slots: `33 px`.
+
+Der `OFFEN`-Badge ist nicht an den Namensblock gekoppelt. Bei offenen Konzepten sitzt er fest oben links im Slot, jeweils `18 px` vom linken und oberen Rand entfernt, bei `104 × 27 px`. Dadurch bleibt der untere Slotbereich ausschließlich der Vorgabenbezeichnung vorbehalten.
+
 ## Mastertemplates und Referenzkarten erzeugen und prüfen
 
 ```bash
