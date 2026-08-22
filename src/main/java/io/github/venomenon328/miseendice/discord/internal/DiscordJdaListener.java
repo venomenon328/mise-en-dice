@@ -185,7 +185,7 @@ final class DiscordJdaListener extends ListenerAdapter {
             return;
         }
         if (!acceptsChallengeCommand(event.getGuild(), event.getMember())) {
-            ephemeralReply(event, "Dieser Command ist nur fÃ¼r Mitglieder mit der konfigurierten Challenge-Operator-Rolle verfÃ¼gbar.");
+            ephemeralReply(event, "Dieser Command ist nur für Mitglieder mit der konfigurierten Challenge-Operator-Rolle verfügbar.");
             return;
         }
         String subcommand = event.getSubcommandName();
@@ -528,7 +528,7 @@ final class DiscordJdaListener extends ListenerAdapter {
         public void technicalFailure(Throwable exception) {
             log.error("Discord participant administration failed", exception);
             hook.editOriginal(ephemeralEdit("Die Teilnehmerverwaltung konnte technisch nicht verarbeitet werden. "
-                    + "Bitte spÃ¤ter erneut versuchen.")).queue();
+                    + "Bitte später erneut versuchen.")).queue();
         }
     }
 
