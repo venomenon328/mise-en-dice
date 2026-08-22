@@ -2,7 +2,6 @@ package io.github.venomenon328.miseendice.discord.internal;
 
 import java.time.ZoneId;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -38,24 +37,15 @@ record DiscordProperties(boolean enabled, String token, long guildId, long chall
         if (challengeOperatorRoleId <= 0) {
             throw new IllegalStateException("mise-en-dice.discord.challenge-operator-role-id is required when Discord is enabled");
         }
-        for (String code : java.util.List.of("GEORGIA", "TOBIAS")) {
-            String userId = participantUserIds.get(code);
-            if (userId == null || !userId.matches("[0-9]{5,32}")) {
-                throw new IllegalStateException("A numeric Discord user ID for " + code + " is required when Discord is enabled");
+        for (Map.Entry<String, String> entry : participantUserIds.entrySet()) {
+            if (!entry.getValue().matches("[0-9]{5,32}")) {
+                throw new IllegalStateException("Legacy Discord user IDs must be numeric");
             }
-        }
-        if (new HashSet<>(participantUserIds.values()).size() != participantUserIds.size()) {
-            throw new IllegalStateException("Discord user IDs must not be assigned to multiple participant codes");
         }
     }
 
-    boolean isConfiguredUser(String externalSubject) {
-        if (externalSubject == null) {
-            return false;
-        }
-        return java.util.List.of("GEORGIA", "TOBIAS").stream()
-                .map(participantUserIds::get)
-                .anyMatch(externalSubject::equals);
+    boolean hasLegacyParticipantBootstrap() {
+        return !participantUserIds.isEmpty();
     }
 
     private static Map<String, String> canonicalParticipantUserIds(Map<String, String> configured) {
@@ -69,10 +59,16 @@ record DiscordProperties(boolean enabled, String token, long guildId, long chall
             }
             String code = entry.getKey().strip().toUpperCase(Locale.ROOT);
             String userId = entry.getValue().strip();
+            if (!"GEORGIA".equals(code) && !"TOBIAS".equals(code)) {
+                throw new IllegalArgumentException("Legacy Discord participant mappings support only GEORGIA and TOBIAS");
+            }
             String existing = canonical.putIfAbsent(code, userId);
             if (existing != null && !existing.equals(userId)) {
                 throw new IllegalArgumentException("Conflicting Discord user IDs for participant code " + code);
             }
+        }
+        if (canonical.size() == 2 && canonical.get("GEORGIA").equals(canonical.get("TOBIAS"))) {
+            throw new IllegalArgumentException("Discord user IDs must not be assigned to multiple participant codes");
         }
         return Map.copyOf(canonical);
     }

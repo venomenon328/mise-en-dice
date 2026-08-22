@@ -8,6 +8,10 @@ public interface ParticipantQueries {
 
     Optional<ParticipantView> findParticipantByExternalIdentity(String provider, String externalSubject);
 
+    Optional<ParticipantView> findParticipantByCode(String participantCode);
+
+    Optional<ExternalIdentityView> findExternalIdentity(long participantId, String provider);
+
     List<ParticipantView> listParticipants();
 
     List<ParticipantView> listDefaultElectorate();
@@ -19,5 +23,8 @@ public interface ParticipantQueries {
             boolean active,
             boolean defaultElectorateMember
     ) {
+    }
+
+    record ExternalIdentityView(long participantId, String provider, String externalSubject) {
     }
 }

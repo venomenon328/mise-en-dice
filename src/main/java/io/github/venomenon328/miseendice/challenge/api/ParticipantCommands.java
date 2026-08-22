@@ -10,6 +10,8 @@ public interface ParticipantCommands {
 
     ParticipantQueries.ParticipantView resolveOrCreateParticipant(ResolveOrCreateParticipant command);
 
+    ParticipantQueries.ExternalIdentityView linkExternalIdentity(LinkExternalIdentity command);
+
     ParticipantQueries.ParticipantView activateParticipant(ActivateParticipant command);
 
     ParticipantQueries.ParticipantView deactivateParticipant(DeactivateParticipant command);
@@ -29,6 +31,14 @@ public interface ParticipantCommands {
             provider = requiredText(provider, "Identity provider");
             externalSubject = requiredText(externalSubject, "External subject");
             displayNameFallback = requiredText(displayNameFallback, "Display name fallback");
+        }
+    }
+
+    record LinkExternalIdentity(long participantId, String provider, String externalSubject) {
+        public LinkExternalIdentity {
+            positiveId(participantId);
+            provider = requiredText(provider, "Identity provider");
+            externalSubject = requiredText(externalSubject, "External subject");
         }
     }
 

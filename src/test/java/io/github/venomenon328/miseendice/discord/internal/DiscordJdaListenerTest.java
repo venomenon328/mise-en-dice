@@ -25,6 +25,8 @@ import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionE
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.dv8tion.jda.api.requests.restaction.CacheRestAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.InteractionCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction;
@@ -34,6 +36,59 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
 class DiscordJdaListenerTest {
+
+    @Test
+    void registersCompleteParticipantAdministrationWithRequiredUserOptions() {
+        var command = DiscordJdaListener.participantCommand();
+
+        assertThat(command.getName()).isEqualTo("teilnehmer");
+        assertThat(command.getSubcommands()).extracting(SubcommandData::getName)
+                .containsExactly("anlegen", "aktivieren", "deaktivieren", "elektorat-hinzufuegen",
+                        "elektorat-entfernen", "liste");
+        assertThat(command.getSubcommands()).filteredOn(subcommand -> !"liste".equals(subcommand.getName()))
+                .allSatisfy(subcommand -> assertThat(subcommand.getOptions()).first().satisfies(option -> {
+                    assertThat(option.getName()).isEqualTo("person");
+                    assertThat(option.getType()).isEqualTo(OptionType.USER);
+                    assertThat(option.isRequired()).isTrue();
+                }));
+        assertThat(command.getSubcommands()).filteredOn(subcommand -> "anlegen".equals(subcommand.getName()))
+                .singleElement().satisfies(subcommand -> assertThat(subcommand.getOptions()).extracting(OptionData::getName)
+                        .containsExactly("person", "name"));
+    }
+
+    @Test
+    void rejectsParticipantAdministrationBeforeItTouchesTheCoreWhenCallerIsNotAnOperator() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var participantWorkflow = mock(DiscordParticipantAdministrationWorkflow.class);
+        var event = slashEvent("99999", 98, false);
+        var reply = mock(ReplyCallbackAction.class);
+        when(event.getName()).thenReturn("teilnehmer");
+        when(event.reply(any(String.class))).thenReturn(reply);
+        when(reply.setEphemeral(true)).thenReturn(reply);
+        when(reply.setAllowedMentions(any())).thenReturn(reply);
+
+        new DiscordJdaListener(new DiscordProperties(true, "token", 99, 77777, ZoneId.of("Europe/Berlin"), Map.of()),
+                challengeWorkflow, null, null, participantWorkflow, Runnable::run).onSlashCommandInteraction(event);
+
+        org.mockito.Mockito.verify(event).reply(any(String.class));
+        org.mockito.Mockito.verifyNoInteractions(participantWorkflow, challengeWorkflow);
+    }
+
+    @Test
+    void permitsAnOperatorWithoutParticipantIdentityToAdministerParticipants() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var participantWorkflow = mock(DiscordParticipantAdministrationWorkflow.class);
+        var event = slashEvent("operator-without-participant", 99, true);
+        when(event.getName()).thenReturn("teilnehmer");
+        when(event.getSubcommandName()).thenReturn("liste");
+        ephemeralAcknowledgement(event);
+
+        new DiscordJdaListener(new DiscordProperties(true, "token", 99, 77777, ZoneId.of("Europe/Berlin"), Map.of()),
+                challengeWorkflow, null, null, participantWorkflow, Runnable::run).onSlashCommandInteraction(event);
+
+        org.mockito.Mockito.verify(participantWorkflow).list(any());
+        org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
+    }
 
     @Test
     void registersIngredientLookupWithOneRequiredSearchString() {

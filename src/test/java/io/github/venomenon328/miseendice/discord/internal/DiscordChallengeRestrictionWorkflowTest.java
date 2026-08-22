@@ -87,10 +87,10 @@ class DiscordChallengeRestrictionWorkflowTest {
                                                        OfferDecisionQueries offers,
                                                        SelectionVotingCommands voting,
                                                        SelectionVotingQueries queries) {
-        return new DiscordChallengeWorkflow(
-                new DiscordProperties(true, "token", 99, ZoneId.of("Europe/Berlin"),
-                        Map.of("GEORGIA", "10001", "TOBIAS", "10002")),
-                preparation, offers, voting, queries, new DiscordChallengeRenderer());
+        DiscordProperties properties = new DiscordProperties(true, "token", 99, ZoneId.of("Europe/Berlin"),
+                Map.of("GEORGIA", "10001", "TOBIAS", "10002"));
+        return new DiscordChallengeWorkflow(properties, preparation, offers, voting, queries,
+                new DiscordTestParticipantQueries(properties, queries), new DiscordChallengeRenderer());
     }
 
     private static OfferDecisionQueries.OfferSetView restrictedOfferSet() {

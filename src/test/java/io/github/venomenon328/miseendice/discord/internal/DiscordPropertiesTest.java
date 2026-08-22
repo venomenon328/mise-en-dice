@@ -40,6 +40,12 @@ class DiscordPropertiesTest {
     }
 
     @Test
+    void enabledAdapterDoesNotRequireLegacyParticipantMappingsAfterBootstrap() {
+        assertThatCode(() -> new DiscordProperties(true, "token", 99, 77777, ZoneId.of("Europe/Berlin"), Map.of())
+                .validateEnabledConfiguration()).doesNotThrowAnyException();
+    }
+
+    @Test
     void disabledSpringConfigurationCreatesNoJdaLifecycleOrExecutor() {
         context.withPropertyValues("mise-en-dice.discord.enabled=false").run(applicationContext -> {
             assertThat(applicationContext).hasNotFailed();
@@ -72,8 +78,7 @@ class DiscordPropertiesTest {
             assertThat(properties.challengeOperatorRoleId()).isEqualTo(77777);
             assertThat(properties.participantUserIds()).containsExactlyInAnyOrderEntriesOf(Map.of(
                     "GEORGIA", "10001", "TOBIAS", "10002"));
-            assertThat(properties.isConfiguredUser("10001")).isTrue();
-            assertThat(properties.isConfiguredUser(null)).isFalse();
+            assertThat(properties.hasLegacyParticipantBootstrap()).isTrue();
             properties.validateEnabledConfiguration();
         });
     }
@@ -88,9 +93,9 @@ class DiscordPropertiesTest {
                 "mise-en-dice.discord.participant-user-ids.georgia=10001",
                 "mise-en-dice.discord.participant-user-ids.tobias=10001"
         ).run(applicationContext -> {
-            DiscordProperties properties = applicationContext.getBean(DiscordProperties.class);
-            assertThatThrownBy(properties::validateEnabledConfiguration).isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("must not be assigned to multiple participant codes");
+            assertThat(applicationContext).hasFailed();
+            assertThat(applicationContext.getStartupFailure()).hasRootCauseMessage(
+                    "Discord user IDs must not be assigned to multiple participant codes");
         });
     }
 
