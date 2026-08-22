@@ -232,8 +232,8 @@ Maßgeblich ist der restriktivste vorhandene Beschaffbarkeitswert des vorab mate
 | schlechtester Wert | Faktor |
 |---|---:|
 | `EASY` | 1,00 |
-| `PLANNED` | 0,65 |
-| `DIFFICULT` | 0,20 |
+| `PLANNED` | 0,45 |
+| `DIFFICULT` | 0,03 |
 | `UNAVAILABLE` | 0,00 |
 | kein Wert vorhanden | 1,00 (neutral) |
 
@@ -637,7 +637,7 @@ Es verwendet keine Ländernamen, Rezeptnamen oder Zutaten-Sonderfälle.
 
 ### 11.4 Offenheit und Nicht-Trivialität
 
-Offene Requirements und mehrere plausible Rollenbelegungen erhöhen den Wert. Ein Kandidat mit vier spezifischen Vorgaben bleibt zulässig und kann durch semantische Distanz und kreative Spannung gut abschneiden.
+Offene Requirements und mehrere plausible Rollenbelegungen erhöhen den Wert. Ein Kandidat mit vier spezifischen Vorgaben bleibt zulässig und kann durch semantische Distanz und kontrollierte Spannung gut abschneiden.
 
 Ein niedriger Wert entsteht bei einer sehr dichten, vollständig vertrauten Rollenbelegung, die wenig Entscheidungsspielraum erkennen lässt. Das ist nur ein schwaches Ranking-Signal; der Generator behauptet nicht, ein bestimmtes Standardgericht erkannt zu haben.
 
@@ -943,8 +943,8 @@ Die Implementierung bildet sämtliche Defaults in einem unveränderlichen fachli
 | Cooldown-Grenzen | 9 / 12 / 16 | streng aufsteigend, jeweils höchstens 104 |
 | Ausschluss-Hardcooldown | 4 Challenges | 0 bis 52 |
 | Ausschluss-Abklinggrenze | 7 Challenges | größer als Hardcooldown, höchstens 104 |
-| `PLANNED`-Faktor | 0,65 | größer als `DIFFICULT`, höchstens 1 |
-| `DIFFICULT`-Faktor | 0,20 | größer 0, kleiner als `PLANNED` |
+| `PLANNED`-Faktor | 0,45 | größer als `DIFFICULT`, höchstens 1 |
+| `DIFFICULT`-Faktor | 0,03 | größer 0, kleiner als `PLANNED` |
 | Stufe-5-Cap | 1 | 0 bis 4 |
 | Stufe-4/5-Cap | 2 | mindestens Stufe-5-Cap, höchstens 4 |
 | Neuigkeitslast-Cap | 11 | 0 bis 28 |
@@ -972,7 +972,7 @@ Die vollständigen Faktor-, Punkte-, Profil- und Quotentabellen aus den vorangeh
 Mindestens enthalten:
 
 - `generatorVersion = 1.2.0`,
-- `configurationVersion = 2026-08-15.1`,
+- `configurationVersion = 2026-08-22.1`,
 - `rngAlgorithm = SPLITMIX64_V1`,
 - `candidateSetSize = 12`,
 - Reservoir- und Versuchslimits,
@@ -988,7 +988,7 @@ Mindestens enthalten:
 - alle Fallbackstufen.
 
 Der produktive Default für neue Sessions ist `generatorVersion = 1.2.0`,
-`configurationVersion = 2026-08-15.1`, `candidateRestrictionProbability = 0.20` und eine vollständige
+`configurationVersion = 2026-08-22.1`, `candidateRestrictionProbability = 0.20` und eine vollständige
 `RESTRICTION`-Ähnlichkeitsgewichtung.
 
 Fail-fast-Validierung mindestens für:
@@ -1291,7 +1291,9 @@ Sequenzfortschreibung, Timeout und technische Fehler ab.
 ### 20.4 Aktueller Kalibrierungsumfang
 
 Die begrenzte aktuelle Simulation deckt feste Seeds mit `AUTO`, `NONE` und `REQUIRED` ab; der normale Nachweis
-bleibt `./mvnw clean verify`. Breite, künstliche Null-/Eins-Varianten werden nicht fortgeführt.
+bleibt `./mvnw clean verify`. Die getrennte, reproduzierbare Availability-Kalibrierung aus Issue #152 ist in
+[`analysis/availability-weight-calibration-2026-08-22.md`](analysis/availability-weight-calibration-2026-08-22.md)
+dokumentiert. Breite, künstliche Null-/Eins-Varianten werden nicht fortgeführt.
 
 ## 21. Test- und Simulationsvertrag
 

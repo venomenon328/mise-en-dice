@@ -25,6 +25,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,12 +100,16 @@ class GeneratorSimulationExhaustionRegressionTest {
 
     @Test
     void strictNoveltyQuotaDeviationRemainsASoftSignal() {
+        AtomicBoolean alteredStrictSet = new AtomicBoolean();
         CandidateSetEngine scriptedSetEngine = (prepared, batchNumber) -> {
             CandidateSetEngine.CandidateSetResult actual = setEngine.generate(prepared, batchNumber);
             if (!(actual instanceof GeneratedCandidateSet generated)) {
                 return actual;
             }
-            assertThat(generated.fallbackLevel()).isEqualTo(FallbackLevel.STRICT);
+            if (generated.fallbackLevel() != FallbackLevel.STRICT) {
+                return generated;
+            }
+            alteredStrictSet.set(true);
             SetEvaluation evaluation = generated.evaluation();
             Map<NoveltyBand, Integer> deviations = new EnumMap<>(NoveltyBand.class);
             deviations.putAll(evaluation.novelty().deviations());
@@ -124,20 +129,21 @@ class GeneratorSimulationExhaustionRegressionTest {
         GeneratorSimulation simulation = simulationWith(scriptedSetEngine);
         SimulationScenario scenario = new SimulationScenario(
                 "STRICT_NOVELTY_QUOTA",
-                new SeedRange(40_400_001L, 1),
-                List.of(LocalDate.of(2026, 1, 15)),
-                HistoryScenario.EMPTY_HISTORY,
+                new SeedRange(152_000_001L, 10),
+                List.of(LocalDate.of(2026, 2, 12)),
+                HistoryScenario.NEUTRAL_HISTORY,
                 AttemptType.INITIAL,
                 List.of(),
                 1,
                 RestrictionMode.AUTO);
 
         GeneratorSimulation.SimulationReport report = simulation.simulate(new SimulationRequest(
-                "STRICT_NOVELTY_QUOTA_REGRESSION_V1", List.of(scenario), 1,
+                "STRICT_NOVELTY_QUOTA_REGRESSION_V1", List.of(scenario), 10,
                 GeneratorSimulation.SimulationControl.unbounded()));
 
         assertThat(report.completion().status()).isEqualTo(GeneratorSimulation.CompletionStatus.COMPLETED);
-        assertThat(report.metrics().successfulSets()).isEqualTo(1);
+        assertThat(report.metrics().successfulSets()).isEqualTo(10);
+        assertThat(alteredStrictSet).isTrue();
         assertThat(report.metrics().quotaViolations()).isZero();
         assertThat(report.metrics().hardRuleViolations()).isZero();
     }
