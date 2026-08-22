@@ -18,6 +18,7 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 - [`012-remove-legacy-generator-compatibility.sql`](../src/main/resources/db/changelog/schema/012-remove-legacy-generator-compatibility.sql) für die ausschließlich ausführbare Generator-1.2-Struktur
 - [`013-challenge-archive-core.sql`](../src/main/resources/db/changelog/schema/013-challenge-archive-core.sql) für öffentliche Challenge-Nummern und die optionale Challenge-Card
 - [`014-participant-electorate-core.sql`](../src/main/resources/db/changelog/schema/014-participant-electorate-core.sql) für das persistente Standard-Elektorat, immutable Participant-Codes und die Vor-Generierung-Materialisierung
+- [`015-challenge-results-completion-core.sql`](../src/main/resources/db/changelog/schema/015-challenge-results-completion-core.sql) für Ergebnisdaten, optionale Fotos, Abschlusszeitpunkte und Statusprojektionen
 
 Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
 
@@ -211,7 +212,10 @@ challenge
   ├─ besitzt eine positive, globale und unveränderliche challenge_number
   ├─ verweist bei neuen Challenges auf genau ein bestätigtes curated_offer; nur bei Migration 008 eingefrorene Legacy-Zeilen bleiben ohne diese Referenz lesbar
   ├─ challenge_participation (Legacy, nicht fachautoritative Daten)
-  └─ challenge_card (optional genau eine aktuelle PNG-Card)
+  ├─ challenge_card (optional genau eine aktuelle PNG-Card)
+  └─ challenge_result (höchstens eines je participant, direkt referenziert)
+       ├─ challenge_result_ingredient (0..25 ungeordnete Freitexte mit optionaler Katalogreferenz)
+       └─ challenge_result_photo (optional genau ein PNG- oder JPEG-Foto)
 
 participant
   └─ participant_external_identity (generischer Provider und stabiler externer Subject)
@@ -235,6 +239,10 @@ Phase 13A ergänzt `challenge.challenge_number` als positiven, global eindeutige
 Die öffentliche Archivprojektion liest ausschließlich die bestätigte Challenge, ihre vier `candidate_requirement`-Snapshots und den auf `challenge` kopierten Restriction-Snapshot. Sie rekonstruiert weder Texte noch Spezifität aus aktuellen Katalogdaten und transportiert keine Offer-, Voting-, Reroll-, Kurator- oder Providerdaten.
 
 `challenge_card` ist eine optionale Eins-zu-eins-Relation mit der bestätigten Challenge. Sie speichert exakt die hochgeladenen PNG-Bytes als `bytea`, den kanonischen Content-Type `image/png`, ursprünglichen Dateinamen, Byteanzahl, SHA-256 und Erstellungs-/Änderungszeitpunkte. Die Tabelle enthält keine Versionierung oder Audit-Historie. Der Application Service validiert tatsächliche PNG-Signatur, vollständige Decodierbarkeit, exakt `1200 × 1200 px` und die 5-MiB-Grenze; die Datenbank sichert zusätzlich Byteanzahl, SHA-256-Länge und die Eins-zu-eins-Beziehung. Card-Änderungen verändern niemals Challenge-Snapshots, Nummer oder Historienwirkung.
+
+Issue #153 ergänzt den davon getrennten Ergebnis- und Abschlusskern. `challenge.completed_at` gehört exakt zu Status `COMPLETED`; die Migration verwendet für frühere, zeitlos gespeicherte `COMPLETED`-Zeilen deterministisch deren bereits vorhandenes `shown_at`, weil der tatsächliche historische Abschlusszeitpunkt nicht rekonstruierbar ist. Neue Abschlüsse sind ausschließlich der idempotente Übergang `ACTIVE → COMPLETED`; mehrere `ACTIVE`-Challenges bleiben zulässig.
+
+`challenge_result` referenziert direkt genau eine `challenge` und einen `participant` und ist je Paar eindeutig. Gerichtsname und Beschreibung sind Pflicht, die textuelle Bewertung ist optional. `challenge_result_ingredient` speichert bis zu 25 ungeordnete, case-insensitiv eindeutige freie Anzeigetexte mit einer optionalen `ingredient_concept`-Referenz; der Freitext bleibt historische Autorität. `challenge_result_photo` ist eine separate optionale Eins-zu-eins-Relation, damit Text- und Listenprojektionen nie `bytea` laden. Sie speichert exakte PNG-/JPEG-Bytes, kanonischen Typ, Originalname, Bytezahl, Dimensionen, SHA-256, Version und Zeitstempel. Ergebnis- und Foto-Versionen schützen ihre jeweiligen konkurrierenden Änderungen, ohne Text- und Bilddaten gegeneinander zu überschreiben.
 
 Phase 9D implementiert noch keine Kuratororchestrierung und kein Offer Set. Seine Persistenz muss jedoch verhindern, dass die spätere fachliche Kardinalität durch eine starre Annahme „eine Kurationsrunde = genau ein Generation Batch = genau ein ausgewählter Kandidat“ verbaut wird.
 
@@ -396,7 +404,6 @@ Die Struktur soll folgende Erweiterungen ermöglichen, bildet sie aber noch nich
 - persönliche Konkretisierungen offener Vorgaben,
 - drei zusätzliche Zutaten pro Person,
 - optionaler Grundplan,
-- Gericht, Foto und Fazit,
 - Vergleich und Rückblick auf beide Lösungen,
 - Verwaltungsoberfläche für die Datenpflege.
 

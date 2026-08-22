@@ -67,5 +67,3 @@ databaseChangeLog:
       file: db/changelog/schema/013-challenge-archive-core.sql
   - include:
       file: db/changelog/schema/014-participant-electorate-core.sql
-  - include:
-      file: db/changelog/schema/015-challenge-results-completion-core.sql

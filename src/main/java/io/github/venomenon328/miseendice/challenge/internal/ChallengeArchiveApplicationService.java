@@ -7,6 +7,7 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeCardCommands;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeCardNotFoundException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeCardValidationException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeNotFoundException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultQueries;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -29,14 +30,17 @@ class ChallengeArchiveApplicationService implements ChallengeArchiveQueries, Cha
     private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
 
     private final JdbcChallengeArchiveRepository repository;
+    private final ChallengeResultQueries resultQueries;
     private final TransactionTemplate repeatableReadTransaction;
     private final TransactionTemplate writeTransaction;
 
     ChallengeArchiveApplicationService(
             JdbcChallengeArchiveRepository repository,
+            ChallengeResultQueries resultQueries,
             PlatformTransactionManager transactionManager
     ) {
         this.repository = repository;
+        this.resultQueries = resultQueries;
         this.repeatableReadTransaction = new TransactionTemplate(transactionManager);
         this.repeatableReadTransaction.setReadOnly(true);
         this.repeatableReadTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
@@ -45,13 +49,18 @@ class ChallengeArchiveApplicationService implements ChallengeArchiveQueries, Cha
 
     @Override
     public Optional<PublicChallenge> findCurrentChallenge() {
-        return repository.findCurrentChallenge().map(this::publicChallenge);
+        return findLatestChallenge();
+    }
+
+    @Override
+    public Optional<PublicChallenge> findLatestChallenge() {
+        return repository.findLatestChallenge().map(row -> publicChallenge(row, true));
     }
 
     @Override
     public Optional<PublicChallenge> findChallengeByNumber(long challengeNumber) {
         requirePositiveChallengeNumber(challengeNumber);
-        return repository.findChallenge(challengeNumber).map(this::publicChallenge);
+        return repository.findChallenge(challengeNumber).map(row -> publicChallenge(row, true));
     }
 
     @Override
@@ -68,7 +77,27 @@ class ChallengeArchiveApplicationService implements ChallengeArchiveQueries, Cha
         }
         long offset = (long) (request.page() - 1) * request.pageSize();
         List<PublicChallenge> challenges = repository.listChallenges(request.pageSize(), offset).stream()
-                .map(this::publicChallenge)
+                .map(row -> publicChallenge(row, false))
+                .toList();
+        return new ChallengePage(request.page(), request.pageSize(), totalChallenges, repository.currentChallengeNumber(),
+                totalPages, challenges);
+    }
+
+    @Override
+    public ChallengePage listActiveChallenges(PageRequest request) {
+        return repeatableReadTransaction.execute(status -> listActiveChallengesFromOneSnapshot(request));
+    }
+
+    private ChallengePage listActiveChallengesFromOneSnapshot(PageRequest request) {
+        long totalChallenges = repository.activeChallengeCount();
+        int totalPages = pageCount(totalChallenges, request.pageSize());
+        if ((totalChallenges == 0 && request.page() != 1)
+                || (totalChallenges > 0 && request.page() > totalPages)) {
+            throw new ChallengeArchivePageOutOfRangeException(request.page(), totalPages);
+        }
+        long offset = (long) (request.page() - 1) * request.pageSize();
+        List<PublicChallenge> challenges = repository.listActiveChallenges(request.pageSize(), offset).stream()
+                .map(row -> publicChallenge(row, false))
                 .toList();
         return new ChallengePage(request.page(), request.pageSize(), totalChallenges, repository.currentChallengeNumber(),
                 totalPages, challenges);
@@ -118,7 +147,7 @@ class ChallengeArchiveApplicationService implements ChallengeArchiveQueries, Cha
         });
     }
 
-    private PublicChallenge publicChallenge(JdbcChallengeArchiveRepository.ChallengeRow row) {
+    private PublicChallenge publicChallenge(JdbcChallengeArchiveRepository.ChallengeRow row, boolean includeResults) {
         List<RequirementSnapshot> requirements = repository.requirements(row.challengeId()).stream()
                 .map(requirement -> new RequirementSnapshot(requirement.position(), requirement.displayText(),
                         requirement.specificity()))
@@ -127,7 +156,8 @@ class ChallengeArchiveApplicationService implements ChallengeArchiveQueries, Cha
                 ? RestrictionSnapshot.none()
                 : RestrictionSnapshot.present(row.restrictionText());
         return new PublicChallenge(row.challengeNumber(), row.confirmedAt(), requirements, restriction,
-                row.cardAvailable());
+                row.cardAvailable(), row.status(), row.completedAt(), row.resultCount(),
+                includeResults ? resultQueries.listChallengeResults(row.challengeNumber()) : List.of());
     }
 
     private static ChallengeCardMetadata metadata(JdbcChallengeArchiveRepository.CardRow card) {

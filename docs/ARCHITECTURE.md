@@ -117,6 +117,7 @@ Das Challenge-Modul besitzt:
 - ausgewählte sichtbare Challenges,
 - Reroll-Semantik,
 - Challenge-Historie,
+- dauerhafte Challenge-Ergebnisse, optionale Ergebnisfotos und den expliziten Abschluss,
 - die Schnittstelle zum externen Kurator.
 
 Es darf die öffentliche API des Katalogmoduls verwenden. Ein direkter Zugriff auf interne Katalog-Repositories oder Tabellen ist unzulässig.
