@@ -120,7 +120,8 @@ class CatalogGeneratorProjectionIntegrationTest {
         var descriptor = proposalEngine.descriptor();
 
         assertThat(descriptor.generatorVersion()).isEqualTo("1.2.0");
-        assertThat(descriptor.configurationVersion()).isEqualTo("2026-08-15.1");
+        assertThat(descriptor.configurationVersion()).isEqualTo("2026-08-22.1");
+        assertThat(descriptor.canonicalConfigurationSnapshot()).contains("PLANNED", "0.45", "DIFFICULT", "0.03");
         assertThat(descriptor.canonicalConfigurationSnapshot()).contains(
                 "candidateSetSize", "scoreWeights", "SPLITMIX64_V1");
     }

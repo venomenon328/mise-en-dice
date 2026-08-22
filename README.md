@@ -104,6 +104,10 @@ versionierte PostgreSQL-Szenarioset erzeugt einen kanonischen JSON-Report unter
 Der aktuelle Simulationskern deckt die festen 1.2-Szenarien für `AUTO`, `NONE` und `REQUIRED` ab. Breite
 Kompatibilitäts- oder Kalibrierungsmatrizen früherer Generatorversionen werden nicht fortgeführt.
 
+Die Availability-Kalibrierung aus Issue #152 vergleicht die vorherige und aktuelle Konfiguration mit identischen
+Seeds, Saisonmonaten und Kadenzzuständen. Der versionierte Bericht und sein Standardbefehl stehen in
+[`analysis/availability-weight-calibration-2026-08-22.md`](analysis/availability-weight-calibration-2026-08-22.md).
+
 Zentrale Modellierungsentscheidungen sind insbesondere:
 
 - ein gemeinsames Zutatenkonzept statt einer starren Trennung zwischen „Zutat“ und „Kategorie“

@@ -32,7 +32,7 @@ mise-en-dice:
   generator:
     configuration:
       generator-version: 1.2.0
-      configuration-version: 2026-08-15.1
+      configuration-version: 2026-08-22.1
       rng-algorithm: SPLITMIX64_V1
       canonical-payload-version: 1
       candidate-set-size: 12
@@ -44,8 +44,8 @@ mise-en-dice:
       exclusion-probability: 0.20
       availability-factors:
         EASY: 1.00
-        PLANNED: 0.65
-        DIFFICULT: 0.20
+        PLANNED: 0.45
+        DIFFICULT: 0.03
         UNAVAILABLE: 0.00
       cooldown:
         hard-window: 6
