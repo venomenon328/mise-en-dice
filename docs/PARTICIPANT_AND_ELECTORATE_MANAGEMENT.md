@@ -1,7 +1,7 @@
 # Teilnehmeridentität, Elektorat und Beschaffbarkeit
 
 Stand: 22. August 2026  
-Status: verbindliche Fach- und Architekturspezifikation; Implementierungsissues folgen separat
+Status: verbindliche Fach- und Architekturspezifikation; Umsetzung in getrennten Entwicklungspaketen
 
 Dieses Dokument spezifiziert die Verwaltung bekannter Personen, das veränderbare Standard-Elektorat für zukünftige Challenge-Auswahlen, den unveränderlichen Session-Snapshot sowie die Wirkung optional gepflegter Beschaffbarkeiten.
 
@@ -29,7 +29,7 @@ Der Begriff dient ausschließlich dazu, Votes, Ergebnisse, optionale Beschaffbar
 
 Das Standard-Elektorat ist die veränderbare Menge von Personen, die bei einem künftig gestarteten Challenge-Auswahlprozess standardmäßig stimmberechtigt sein sollen.
 
-Es ist keine Challenge-Teilnehmerliste und keine Generatorprofil-Liste unabhängig vom Auswahlprozess. Seine Bedeutung entsteht erst dadurch, dass es beim Start einer Session in einen unveränderlichen Snapshot kopiert wird.
+Es ist keine Challenge-Teilnehmerliste. Seine Bedeutung entsteht dadurch, dass es beim Start einer Session in einen unveränderlichen Snapshot kopiert wird.
 
 ### 1.3 Session-Elektorat
 
@@ -74,9 +74,9 @@ Verbindlich gilt:
 - `code` ist stabil, eindeutig und nach Anlage unveränderlich.
 - Neue Codes werden serverseitig kollisionssicher erzeugt; ein Discord-Administrator muss keinen technischen Code eingeben.
 - `display_name` ist ein gespeicherter Fallback, niemals externe Identität.
-- `active` ist ein administrativer Nutzbarkeitsstatus, keine Aussage über eine laufende Challenge.
+- `active` ist ausschließlich ein administrativer Nutzbarkeitsstatus. Fachlich gibt es keine Menge „aktiver Challenge-Teilnehmer“.
 - Deaktivierung löscht keine Votes, Ergebnisse, externen Identitäten oder Beschaffbarkeiten.
-- Historische Ergebnisse dürfen auch für deaktivierte Personen weiterhin gelesen und administrativ korrigiert werden.
+- Historische Ergebnisse dürfen auch für deaktivierte Personen gelesen und administrativ korrigiert werden.
 
 Ein neuer Teilnehmer wird standardmäßig aktiv angelegt, aber niemals automatisch ins Standard-Elektorat aufgenommen.
 
@@ -99,11 +99,11 @@ Für Discord gilt:
 - Anzeigename, Nickname oder Nachrichtenautor sind keine Identität,
 - eine vorhandene Zuordnung wird niemals stillschweigend auf einen anderen Teilnehmer umgehängt.
 
-Die laufende PostgreSQL-Datenbank ist nach der Einführung dieser Verwaltung die einzige Runtime-Autorität für die Zuordnung Discord-ID → Teilnehmer.
+Nach Einführung der Verwaltung ist die laufende PostgreSQL-Datenbank die einzige Runtime-Autorität für Discord-ID → Teilnehmer.
 
 ### 3.1 Legacy-Bootstrap für Georgia und Tobias
 
-Die bisherige Properties-Map für `GEORGIA` und `TOBIAS` darf ausschließlich als einmaliger kompatibler Bootstrap dienen:
+Die bisherige Properties-Map für `GEORGIA` und `TOBIAS` darf ausschließlich als kompatibler Bootstrap dienen:
 
 - Fehlt die jeweilige Discord-Zuordnung in der Datenbank, darf sie aus der vorhandenen Konfiguration angelegt werden.
 - Existiert dieselbe Zuordnung bereits passend, ist der Vorgang idempotent.
@@ -150,8 +150,8 @@ Verbindlich:
 - Aufnahme und Entfernung wirken ausschließlich auf später gestartete Sessions.
 - Reaktivierung stellt eine frühere Elektoratsmitgliedschaft nicht automatisch wieder her.
 - Deaktivierung entfernt die Person atomar aus dem Standard-Elektorat.
-- Ein technisch leeres Standard-Elektorat ist als vorübergehender Wartungszustand zulässig; eine neue Challenge-Anforderung wird dann verständlich abgewiesen.
-- Bestehende Sessions bleiben auch dann unverändert, wenn das Standard-Elektorat zwischenzeitlich leer oder anders zusammengesetzt wird.
+- Ein technisch leeres Standard-Elektorat ist als Wartungszustand zulässig; eine neue Challenge-Anforderung wird dann verständlich abgewiesen.
+- Bestehende Sessions bleiben unverändert, wenn das Standard-Elektorat zwischenzeitlich leer oder anders zusammengesetzt wird.
 
 Georgia und Tobias werden bei der Migration in diese Relation übernommen.
 
@@ -161,20 +161,20 @@ Der Session-Snapshot muss künftig **vor der Kandidatengenerierung** feststehen.
 
 Ablauf für einen neuen INITIAL-Versuch:
 
-1. `challenge_session` anlegen beziehungsweise den neuen Auswahlprozess beginnen.
+1. `challenge_session` anlegen beziehungsweise den Auswahlprozess beginnen.
 2. Das zu diesem Zeitpunkt gültige Standard-Elektorat in `selection_electorate` materialisieren.
 3. Diesen Snapshot als unveränderliche Personenmenge für den vollständigen Generation Context verwenden.
 4. Erst danach Catalog Snapshot, Generator und Kurator starten.
-5. Bei tatsächlicher Präsentation und Voting denselben bereits vorhandenen Snapshot verwenden.
+5. Bei tatsächlicher Präsentation und Voting denselben Snapshot verwenden.
 
-Die bisherige Initialisierung des Electorates erst nach erfolgreicher Discord-Präsentation wird damit für neue Sessions ersetzt. Der Presentation-Handshake bleibt für die Sichtbarkeit des Offer Sets und die Öffnung der Voting-Runde maßgeblich, aber nicht mehr für die Wahl der Personenmenge.
+Die bisherige Initialisierung des Electorates erst nach erfolgreicher Discord-Präsentation wird für neue Sessions ersetzt. Der Presentation-Handshake bleibt für die Sichtbarkeit des Offer Sets und die Öffnung der Voting-Runde maßgeblich, aber nicht mehr für die Wahl der Personenmenge.
 
 Ein Reroll übernimmt denselben Snapshot ohne Neuberechnung.
 
 Eine Deaktivierung nach Sessionstart:
 
 - entfernt die Person nicht aus dem Snapshot,
-- verändert ihre bereits snapshotwirksamen Beschaffbarkeiten nicht,
+- verändert die bereits im Generation Context gespeicherten Beschaffbarkeitswerte nicht,
 - und darf die offene Abstimmung nicht unabschließbar machen.
 
 ## 7. Optionale Beschaffbarkeitsdaten
@@ -206,33 +206,39 @@ Pro Zutatenkonzept werden alle für das Session-Elektorat **vorhandenen** Werte 
 UNAVAILABLE > DIFFICULT > PLANNED > EASY
 ```
 
-Die Generatorfaktoren bleiben zunächst:
+Es wird niemals gemittelt. Eine für eine einzige maßgebliche Person unbeschaffbare Zutat wird nicht dadurch hilfreich, dass andere sie bequem kaufen könnten.
 
-| restriktivster vorhandener Wert | Faktor |
-|---|---:|
-| `EASY` | 1,00 |
-| `PLANNED` | 0,65 |
-| `DIFFICULT` | 0,20 |
-| `UNAVAILABLE` | 0,00 |
-| kein einziger gepflegter Wert | neutraler Faktor 1,00 |
-
-Der neutrale Fall ist keine fachliche Umdeutung zu `EASY`; er bedeutet lediglich, dass Beschaffbarkeit für diese Ziehung kein Signal liefert.
+Fehlt für alle Mitglieder des Session-Electorates ein Wert, bleibt der Beschaffbarkeitsbeitrag neutral. Dies ist keine fachliche Umdeutung zu `EASY`, sondern schlicht das Fehlen eines Signals.
 
 Beispiele:
 
 - Georgia `EASY`, Tobias `UNAVAILABLE` → Konzept ist nicht zufällig ziehbar.
-- Georgia `EASY`, Tobias `DIFFICULT` → Faktor `0,20`.
-- Georgia ohne Wert, Tobias `PLANNED` → Faktor `0,65`.
+- Georgia `EASY`, Tobias `DIFFICULT` → der `DIFFICULT`-Faktor gilt.
+- Georgia ohne Wert, Tobias `PLANNED` → der `PLANNED`-Faktor gilt.
 - Beide ohne Wert → Beschaffbarkeit verändert die Ziehung nicht.
 - Eine dritte Person außerhalb des Session-Electorates mit `UNAVAILABLE` → ohne Wirkung auf diese Session.
 
-Die Auswertung darf nicht mitteln. Eine für eine einzige maßgebliche Person unbeschaffbare Zutat wird nicht dadurch hilfreich, dass andere sie bequem kaufen könnten.
+### 7.3 Zielwerte der Beschaffbarkeitsfaktoren
 
-### 7.3 Katalogprojektion und Modulgrenze
+Die bislang verwendeten Faktoren `PLANNED = 0,65` und `DIFFICULT = 0,20` gewichten erschwerte Beschaffbarkeit zu großzügig. Für den nächsten Konfigurationsstand gelten als verbindliches Ziel:
+
+| restriktivster vorhandener Wert | Faktor |
+|---|---:|
+| `EASY` | 1,00 |
+| `PLANNED` | 0,45 |
+| `DIFFICULT` | 0,03 |
+| `UNAVAILABLE` | 0,00 |
+| kein einziger gepflegter Wert | neutraler Faktor 1,00 |
+
+`DIFFICULT` bezeichnet eine zwar nicht logisch unmögliche, praktisch aber nur mit unverhältnismäßigem Reise-, Import- oder Kostenaufwand realisierbare Beschaffung. Es soll deshalb selten, aber nicht vollständig ausgeschlossen bleiben.
+
+Die numerische Umstellung wird bewusst in einem eigenen Kalibrierungspaket umgesetzt. Dieses Paket muss eine reproduzierbare Vorher-/Nachher-Auswertung liefern und die Konfigurationsversion erhöhen. Es verändert nicht stillschweigend Neuigkeitsziele, Kandidaten-Caps oder andere Generatorparameter.
+
+### 7.4 Katalogprojektion und Modulgrenze
 
 Das Challenge-Modul bleibt Eigentümer des Session-Electorates. Das Katalogmodul bleibt Eigentümer der Zutaten- und Beschaffbarkeitsdaten.
 
-Die öffentliche Generatorprojektion des Katalogmoduls erhält deshalb die feste Personenmenge als expliziten Request, beispielsweise über stabile Teilnehmer-IDs und -Codes. Sie leitet diese Menge nicht mehr selbst aus `participant.active` ab.
+Die öffentliche Generatorprojektion des Katalogmoduls erhält die feste Personenmenge als expliziten Request, beispielsweise über stabile Teilnehmer-IDs und -Codes. Sie leitet diese Menge nicht mehr selbst aus `participant.active` ab.
 
 Der Catalog Snapshot enthält:
 
@@ -244,7 +250,7 @@ Replay und Audit verwenden denselben gespeicherten Snapshot; spätere Änderunge
 
 ## 8. Bestehende Webverwaltung
 
-Dieses Paket führt keine allgemeine Teilnehmer- oder Beschaffbarkeitsmatrix in der Weboberfläche ein.
+Dieses Vorhaben führt keine allgemeine Teilnehmer- oder Beschaffbarkeitsmatrix in der Weboberfläche ein.
 
 Für den ersten Stand gilt:
 
@@ -291,7 +297,7 @@ Für zukünftige Pakete gilt:
 - keine Ergebnisreferenz auf `challenge_participation`,
 - keine Abschlussbedingung aus dieser Tabelle.
 
-Die vorhandene Tabelle darf zunächst als nicht autoritative Legacy-Struktur bestehen bleiben, um das erste Umbaupaket nicht unnötig mit einer destruktiven Migration zu belasten. Bestehende Zeilen besitzen keine neue fachliche Bedeutung. Eine spätere Entfernung ist zulässig.
+Die vorhandene Tabelle darf zunächst als nicht autoritative Legacy-Struktur bestehen bleiben. Bestehende Zeilen besitzen keine neue fachliche Bedeutung. Eine spätere Entfernung ist zulässig.
 
 ## 11. Öffentliche Application-APIs
 
@@ -367,26 +373,15 @@ Mindestens erforderlich sind:
 
 Persistenz-, Migrations-, Snapshot- und Konkurrenztests verwenden echtes PostgreSQL über Testcontainers.
 
-## 15. Kalibrierung von Beschaffbarkeit und Ungewöhnlichkeit
+## 15. Entwicklungspakete
 
-Eine statische Prüfung des aktuellen Generators zeigt:
+Die Umsetzung wird in drei getrennte Pakete geschnitten:
 
-- Die bestehende Implementierung verwendet bereits den schlechteren Wert von Georgia und Tobias; es gibt keinen Mittelwertfehler.
-- Fehlende Werte werden derzeit jedoch hart als `AVAILABILITY_MISSING` behandelt und müssen gemäß dieser Spezifikation neutral werden.
-- Der aktuelle finale Zwölfer-Satz erlaubt im strikten Pfad bis zu drei, in Fallbackpfaden bis zu vier Kandidaten mit mindestens einer `DIFFICULT`-Zutat.
-- Neuigkeits-Zielmengen wirken außerhalb von `RECOVERY` überwiegend als weiches Auswahlziel; dadurch können tatsächlich mehr abenteuerliche Kandidaten als die nominelle Zielzahl im Satz landen.
+1. **Transportneutraler Teilnehmer-/Elektoratskern**: Schema, Application-APIs, frühes Session-Elektorat, sparse Beschaffbarkeit und Stilllegung der Participation-Autorität.
+2. **Discord-Administration und Legacy-Bootstrap**: `/teilnehmer`-Commands, DB-basierte Runtime-Auflösung und kontrollierte Übernahme der bisherigen Properties-Map.
+3. **Beschaffbarkeitskalibrierung**: reproduzierbare Vorher-/Nachher-Messung, Faktoren `0,45` und `0,03`, Konfigurationsversionswechsel und gezielte Regressionstests.
 
-Damit ist der Eindruck einer vergleichsweise häufigen Kombination aus erschwerter Beschaffbarkeit und hoher Ungewöhnlichkeit technisch plausibel, aber ohne Auswertung realer beziehungsweise simulierter Batches noch nicht quantifiziert.
-
-Das spätere Implementierungspaket muss deshalb vor einer stillen Gewichtsanpassung einen reproduzierbaren Vorher-/Nachher-Bericht aus Generatorlabor oder Baselinesimulation liefern, mindestens für:
-
-- Verteilung gezogener Requirement-Neuigkeitsstufen,
-- tatsächliche Candidate-Bänder `FAMILIAR`, `BALANCED`, `ADVENTUROUS`,
-- Zahl der Kandidaten mit `PLANNED` beziehungsweise `DIFFICULT`,
-- gemeinsame Häufigkeit von `DIFFICULT` und Neuigkeitsstufe 4/5,
-- Unterschiede zwischen `STRICT` und den Fallbackstufen.
-
-Diese Spezifikation ändert zunächst die Sparse-Semantik und Personenautorität, nicht automatisch die numerischen Faktoren oder Neuigkeitsziele. Eine Kalibrierungsänderung benötigt eine sichtbare, datenbasierte Entscheidung.
+Die Pakete bauen in dieser Reihenfolge aufeinander auf. Die numerische Kalibrierung wird nicht in das strukturelle Kernpaket gemischt.
 
 ## 16. Nicht-Ziele
 
@@ -397,5 +392,5 @@ Diese Spezifikation ändert zunächst die Sparse-Semantik und Personenautorität
 - keine Challenge-Anmeldung oder erwartete Ergebnisliste,
 - keine automatische Aufnahme neuer Teilnehmer ins Elektorat,
 - keine Löschung historischer Teilnehmerdaten,
-- keine Generatorgewichtsanpassung ohne vorherige Messung,
+- keine stillen Änderungen weiterer Generatorparameter im Kalibrierungspaket,
 - keine Umsetzung der explorativen Challenge-Modi aus [`CHALLENGE_MODE_IDEAS.md`](CHALLENGE_MODE_IDEAS.md).
