@@ -138,7 +138,7 @@ final class DiscordChallengeRenderer {
     }
 
     private static void appendConfirmedChallenge(StringBuilder text, OfferDecisionQueries.OfferSetView offerSet,
-                                                 SelectionVotingQueries.ChallengeParticipationView challenge) {
+                                                 OfferDecisionQueries.ChallengeView challenge) {
         OfferDecisionQueries.ChallengeView confirmed = offerSet.confirmedChallenge();
         if (confirmed == null || confirmed.challengeId() != challenge.challengeId()) {
             throw new IllegalStateException("Confirmed challenge is missing from the authoritative offer snapshot");

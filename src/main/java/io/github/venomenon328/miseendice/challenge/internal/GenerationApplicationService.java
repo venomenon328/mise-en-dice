@@ -2,6 +2,8 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.CatalogGeneratorSnapshot;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.SessionParticipant;
+import io.github.venomenon328.miseendice.challenge.api.EmptyDefaultElectorateException;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.GeneratedCandidateSet;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.AcceptedProposal;
@@ -56,6 +58,7 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
     private static final int PHASE_9D_BATCH_NUMBER = 1;
 
     private final JdbcGenerationRepository repository;
+    private final JdbcParticipantElectorateRepository participantElectorateRepository;
     private final CatalogGeneratorProjection catalogProjection;
     private final io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine reservoirEngine;
     private final CandidateSetEngine candidateSetEngine;
@@ -67,6 +70,7 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
 
     GenerationApplicationService(
             JdbcGenerationRepository repository,
+            JdbcParticipantElectorateRepository participantElectorateRepository,
             CatalogGeneratorProjection catalogProjection,
             io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine reservoirEngine,
             CandidateSetEngine candidateSetEngine,
@@ -76,6 +80,7 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
             PlatformTransactionManager transactionManager
     ) {
         this.repository = repository;
+        this.participantElectorateRepository = participantElectorateRepository;
         this.catalogProjection = catalogProjection;
         this.reservoirEngine = reservoirEngine;
         this.candidateSetEngine = candidateSetEngine;
@@ -95,6 +100,7 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
         UUID operationToken = UUID.randomUUID();
         JdbcGenerationRepository.AttemptState attempt = writeTransaction.execute(status -> {
             long sessionId = repository.createSession(command.requestedOfferCount(), command.restrictionMode());
+            materializeDefaultElectorate(sessionId);
             return repository.createAttempt(sessionId, AttemptType.INITIAL, command.effectiveDate(), seed,
                     configuration().generatorVersion(), configuration().configurationVersion(),
                     configuration().rngAlgorithm().name(), configuration().canonicalPayloadVersion(),
@@ -174,6 +180,9 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
                         configuration().processingLease()), operationToken, true);
             }
 
+            if (type == AttemptType.INITIAL && participantElectorateRepository.sessionElectorate(command.sessionId()).isEmpty()) {
+                materializeDefaultElectorate(command.sessionId());
+            }
             long seed = command.explicitSeed() == null ? seedSource.nextSeed() : command.explicitSeed();
             JdbcGenerationRepository.AttemptState created = repository.createAttempt(
                     command.sessionId(), type, command.effectiveDate(), seed,
@@ -195,8 +204,16 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
         try {
             PreparedGenerationAttempt prepared;
             if (attempt.status().equals("PENDING")) {
-                MaterializedInputs inputs = repeatableReadTransaction.execute(status -> new MaterializedInputs(
-                        catalogProjection.snapshotForMonth(attempt.seasonMonth()), repository.visibleHistory()));
+                MaterializedInputs inputs = repeatableReadTransaction.execute(status -> {
+                    List<SessionParticipant> electorate = participantElectorateRepository.sessionElectorate(attempt.sessionId())
+                            .stream().map(member -> new SessionParticipant(member.participantId(), member.participantCode()))
+                            .toList();
+                    if (electorate.isEmpty()) {
+                        throw new EmptyDefaultElectorateException();
+                    }
+                    return new MaterializedInputs(catalogProjection.snapshotForMonth(attempt.seasonMonth(), electorate),
+                            repository.visibleHistory());
+                });
                 GenerationAttemptRequest request = request(attempt, inputs);
                 prepared = reservoirEngine.prepare(request);
                 GenerationSnapshotCodec.EncodedContext snapshot = repository.snapshotCodec().encode(request, prepared);
@@ -495,6 +512,12 @@ class GenerationApplicationService implements GenerationCommands, GenerationQuer
 
     private static boolean isTerminal(String status) {
         return Set.of("GENERATED", "EXHAUSTED", "FAILED").contains(status);
+    }
+
+    private void materializeDefaultElectorate(long sessionId) {
+        if (participantElectorateRepository.materializeDefaultElectorate(sessionId).isEmpty()) {
+            throw new EmptyDefaultElectorateException();
+        }
     }
 
     private static void validateManualPositions(List<ManualRequirementInput> manuals) {

@@ -25,14 +25,6 @@ class JdbcSelectionVotingRepository {
                 "select id from challenge_session where id = ? for update", Long.class, sessionId).isEmpty();
     }
 
-    List<Long> defaultElectorateParticipantIds() {
-        return jdbcTemplate.queryForList("""
-                select id from participant
-                where active and code in ('GEORGIA', 'TOBIAS')
-                order by code
-                """, Long.class);
-    }
-
     Optional<Participant> findParticipant(long participantId) {
         return jdbcTemplate.query("""
                 select id, code, display_name, active from participant where id = ?
@@ -48,6 +40,14 @@ class JdbcSelectionVotingRepository {
                 where electorate.challenge_session_id = ?
                 order by participant.code, participant.id
                 """, this::mapElectorateMember, sessionId);
+    }
+
+    boolean sessionElectorateMaterialized(long sessionId) {
+        Boolean materialized = jdbcTemplate.queryForObject("""
+                select selection_electorate_materialized_at is not null
+                from challenge_session where id = ?
+                """, Boolean.class, sessionId);
+        return Boolean.TRUE.equals(materialized);
     }
 
     void insertElectorate(long sessionId, List<Long> participantIds) {
@@ -200,39 +200,6 @@ class JdbcSelectionVotingRepository {
                 """, participantId, provider, externalSubject);
     }
 
-    Optional<ChallengeParticipation> challengeParticipation(long challengeId) {
-        Boolean exists = jdbcTemplate.queryForObject("select exists (select 1 from challenge where id = ?)",
-                Boolean.class, challengeId);
-        if (!Boolean.TRUE.equals(exists)) {
-            return Optional.empty();
-        }
-        return Optional.of(new ChallengeParticipation(challengeId, jdbcTemplate.query("""
-                select participation.challenge_id, participant.id, participant.code, participant.display_name,
-                       participation.joined_at
-                from challenge_participation participation
-                join participant on participant.id = participation.participant_id
-                where participation.challenge_id = ?
-                order by participation.joined_at, participant.id
-                """, this::mapChallengeParticipant, challengeId)));
-    }
-
-    void initializeChallengeParticipation(long sessionId, long challengeId) {
-        jdbcTemplate.update("""
-                insert into challenge_participation (challenge_id, participant_id)
-                select ?, electorate.participant_id
-                from selection_electorate electorate
-                where electorate.challenge_session_id = ?
-                on conflict (challenge_id, participant_id) do nothing
-                """, challengeId, sessionId);
-    }
-
-    void joinChallenge(long challengeId, long participantId) {
-        jdbcTemplate.update("""
-                insert into challenge_participation (challenge_id, participant_id)
-                values (?, ?) on conflict (challenge_id, participant_id) do nothing
-                """, challengeId, participantId);
-    }
-
     private Participant mapParticipant(ResultSet result, int row) throws SQLException {
         return new Participant(result.getLong("id"), result.getString("code"), result.getString("display_name"),
                 result.getBoolean("active"));
@@ -269,11 +236,6 @@ class JdbcSelectionVotingRepository {
     private Identity mapIdentity(ResultSet result, int row) throws SQLException {
         return new Identity(result.getLong("id"), result.getString("code"), result.getString("display_name"),
                 result.getBoolean("active"), result.getString("provider"), result.getString("external_subject"));
-    }
-
-    private ChallengeParticipant mapChallengeParticipant(ResultSet result, int row) throws SQLException {
-        return new ChallengeParticipant(result.getLong("challenge_id"), result.getLong("id"), result.getString("code"),
-                result.getString("display_name"), instant(result, "joined_at"));
     }
 
     private static Instant instant(ResultSet result, String column) throws SQLException {
@@ -315,10 +277,4 @@ class JdbcSelectionVotingRepository {
                     String provider, String externalSubject) {
     }
 
-    record ChallengeParticipation(long challengeId, List<ChallengeParticipant> participants) {
-    }
-
-    record ChallengeParticipant(long challengeId, long participantId, String code, String displayName,
-                                Instant joinedAt) {
-    }
 }

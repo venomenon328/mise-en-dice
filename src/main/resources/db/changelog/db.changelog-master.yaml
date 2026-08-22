@@ -65,3 +65,5 @@ databaseChangeLog:
       file: db/changelog/schema/012-remove-legacy-generator-compatibility.sql
   - include:
       file: db/changelog/schema/013-challenge-archive-core.sql
+  - include:
+      file: db/changelog/schema/014-participant-electorate-core.sql

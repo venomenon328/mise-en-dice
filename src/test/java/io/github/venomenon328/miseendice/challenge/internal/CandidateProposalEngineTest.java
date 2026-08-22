@@ -86,6 +86,33 @@ class CandidateProposalEngineTest {
     }
 
     @Test
+    void absentAvailabilityIsNeutralAndDoesNotEmitAMissingReason() {
+        CatalogGeneratorSnapshot sparseCatalog = withAvailability(catalog(false), Map.of());
+
+        AcceptedProposal accepted = findAccepted(context(sparseCatalog, List.of(), 77L));
+
+        assertThat(accepted.requirements()).extracting(requirement -> requirement.weightEvaluation().availabilityFactor())
+                .allSatisfy(value -> assertThat(value).isEqualByComparingTo(BigDecimal.ONE));
+        assertThat(accepted.requirements()).flatExtracting(requirement -> requirement.weightEvaluation().diagnostics())
+                .doesNotContain(GeneratorReasonCode.AVAILABILITY_MISSING);
+    }
+
+    @Test
+    void theMostRestrictivePresentAvailabilityBlocksTheConcept() {
+        CatalogGeneratorSnapshot unavailableCatalog = withAvailability(catalog(false),
+                Map.of("GEORGIA", Availability.EASY, "TOBIAS", Availability.UNAVAILABLE));
+
+        ProposalResult result = engine.propose(context(unavailableCatalog, List.of(), 78L), 0);
+
+        assertThat(result).isInstanceOf(io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.RejectedProposal.class);
+        var rejected = (io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.RejectedProposal) result;
+        assertThat(rejected.weightEvaluations()).allSatisfy(weight -> {
+            assertThat(weight.availabilityFactor()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(weight.diagnostics()).contains(GeneratorReasonCode.AVAILABILITY_UNAVAILABLE);
+        });
+    }
+
+    @Test
     void unmatchedManualProjectsImpossibleFourSpecificTargetAndInventsNoMetadata() {
         GenerationContext context = context(catalog(false),
                 List.of(new ManualRequirement(1, "use a waffle iron", null)), 41L);
@@ -397,6 +424,17 @@ class CandidateProposalEngineTest {
                 concept.culinaryDimensions(), concept.availabilityByParticipant(), concept.seasonMultiplier(),
                 concept.directAncestorCodes(), concept.directDescendantCodes(), concept.transitiveAncestorCodes(),
                 concept.transitiveDescendantCodes());
+    }
+
+    private CatalogGeneratorSnapshot withAvailability(CatalogGeneratorSnapshot source,
+                                                      Map<String, Availability> availability) {
+        return new CatalogGeneratorSnapshot(source.seasonMonth(), source.activeParticipantCodes(), source.concepts().stream()
+                .map(concept -> new GeneratorConcept(concept.id(), concept.code(), concept.displayName(), concept.active(),
+                        concept.randomDrawEnabled(), concept.specificity(), concept.baseDrawWeight(), concept.noveltyLevel(),
+                        concept.functionalRoles(), concept.culinaryFlags(), concept.culinaryDimensions(), availability,
+                        concept.seasonMultiplier(), concept.directAncestorCodes(), concept.directDescendantCodes(),
+                        concept.transitiveAncestorCodes(), concept.transitiveDescendantCodes()))
+                .toList(), source.exclusionRules());
     }
 
     private Map<String, Availability> availability() {

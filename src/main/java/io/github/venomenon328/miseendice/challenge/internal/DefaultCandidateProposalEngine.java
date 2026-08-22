@@ -189,12 +189,6 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
         if (requiredSlot != null && !ProfileMatcher.supports(requiredSlot, concept.functionalRoles(), configuration)) {
             reasons.add(GeneratorReasonCode.PROFILE_SLOT_INELIGIBLE);
         }
-        if (!concept.availabilityByParticipant().keySet().containsAll(context.catalog().activeParticipantCodes())) {
-            reasons.add(GeneratorReasonCode.AVAILABILITY_MISSING);
-        }
-        if (concept.availabilityByParticipant().values().stream().anyMatch(value -> value == Availability.UNAVAILABLE)) {
-            reasons.add(GeneratorReasonCode.AVAILABILITY_UNAVAILABLE);
-        }
         int distance = exactHistoryDistance(concept.code(), context);
         BigDecimal cooldownFactor = cooldownFactor(distance, configuration);
         if (cooldownFactor.signum() == 0) reasons.add(GeneratorReasonCode.EXACT_COOLDOWN_BLOCKED);
@@ -215,7 +209,12 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
         }
 
         Availability worst = worstAvailability(concept, context);
-        BigDecimal availabilityFactor = worst == null ? BigDecimal.ZERO
+        if (worst == Availability.UNAVAILABLE) {
+            reasons.add(GeneratorReasonCode.AVAILABILITY_UNAVAILABLE);
+        }
+        // No explicitly maintained value is neutral. It is intentionally not represented as EASY
+        // and must not emit AVAILABILITY_MISSING.
+        BigDecimal availabilityFactor = worst == null ? BigDecimal.ONE
                 : configuration.availabilityFactors().get(worst);
         BigDecimal noveltyFactor = concept.noveltyLevel() == null ? BigDecimal.ZERO
                 : configuration.novelty().targetFactors().get(targetBand).get(concept.noveltyLevel());
@@ -376,7 +375,7 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
                 : GeneratorReasonCode.NOVELTY_TARGET_MISMATCH);
 
         List<Availability> randomAvailability = requirements.stream().filter(r -> r.source() == RequirementSource.RANDOM)
-                .map(r -> worstAvailability(r.concept(), context)).toList();
+                .map(r -> worstAvailability(r.concept(), context)).filter(java.util.Objects::nonNull).toList();
         int availability = randomAvailability.isEmpty() ? 100 : (int) Math.round(randomAvailability.stream()
                 .mapToInt(value -> value == Availability.EASY ? 100 : value == Availability.PLANNED ? 65 : 20)
                 .average().orElse(100));
@@ -577,7 +576,7 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
         Availability worst = null;
         for (String participant : context.catalog().activeParticipantCodes()) {
             Availability value = concept.availabilityByParticipant().get(participant);
-            if (value == null) return null;
+            if (value == null) continue;
             if (worst == null || value.ordinal() > worst.ordinal()) worst = value;
         }
         return worst;

@@ -17,10 +17,14 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayDifferenceType;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayStatus;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
+import io.github.venomenon328.miseendice.challenge.api.ParticipantCommands;
+import io.github.venomenon328.miseendice.challenge.api.ParticipantQueries;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +66,8 @@ class PersistedGenerationIntegrationTest {
 
     @Autowired GenerationCommands commands;
     @Autowired GenerationQueries queries;
+    @Autowired ParticipantCommands participantCommands;
+    @Autowired ParticipantQueries participantQueries;
     @Autowired JdbcGenerationRepository repository;
     @Autowired CandidateSetEngine candidateSetEngine;
     @Autowired JdbcTemplate jdbcTemplate;
@@ -71,10 +77,23 @@ class PersistedGenerationIntegrationTest {
     void cleanGenerationData() {
         jdbcTemplate.execute("drop trigger if exists test_reject_candidate_five on challenge_candidate");
         jdbcTemplate.execute("drop function if exists test_reject_candidate_five()");
+        // PostgreSQL deliberately rejects DML mutation of an electorate snapshot; TRUNCATE is test isolation.
+        jdbcTemplate.execute("truncate table selection_electorate");
         jdbcTemplate.update("delete from challenge");
         jdbcTemplate.update("delete from generation_batch");
         jdbcTemplate.update("delete from generation_attempt");
         jdbcTemplate.update("delete from challenge_session");
+        jdbcTemplate.update("delete from default_electorate_member where participant_id in "
+                + "(select id from participant where code like 'PARTICIPANT-%')");
+        jdbcTemplate.update("delete from participant_external_identity where participant_id in "
+                + "(select id from participant where code like 'PARTICIPANT-%')");
+        jdbcTemplate.update("delete from participant where code like 'PARTICIPANT-%'");
+        jdbcTemplate.update("update participant set active = true where code in ('GEORGIA', 'TOBIAS')");
+        jdbcTemplate.update("""
+                insert into default_electorate_member (participant_id)
+                select id from participant where code in ('GEORGIA', 'TOBIAS')
+                on conflict (participant_id) do nothing
+                """);
     }
 
     @Test
@@ -316,6 +335,82 @@ class PersistedGenerationIntegrationTest {
                 join generation_attempt attempt on attempt.id = batch.generation_attempt_id
                 where attempt.challenge_session_id = ?
                 """, Integer.class, sessionId)).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForList("""
+                select participant.code
+                from selection_electorate electorate
+                join participant on participant.id = electorate.participant_id
+                where electorate.challenge_session_id = ?
+                order by participant.code
+                """, String.class, sessionId)).containsExactly("GEORGIA", "TOBIAS");
+        assertThat(jdbcTemplate.queryForObject("""
+                select selection_electorate_materialized_at is not null
+                from challenge_session where id = ?
+                """, Boolean.class, sessionId)).isTrue();
+    }
+
+    @Test
+    void sessionElectorateIsFrozenBeforeItsCatalogSnapshotAndSurvivesRestart() {
+        Generated initial = generated(commands.startNewSession(
+                new StartNewSession(DATE, List.of(), 47_000_042L, 1, RestrictionMode.AUTO)));
+        var laterParticipant = participantCommands.createParticipant(new ParticipantCommands.CreateParticipant("Later voter"));
+        participantCommands.addDefaultElectorateMember(
+                new ParticipantCommands.AddDefaultElectorateMember(laterParticipant.participantId()));
+        long georgiaId = jdbcTemplate.queryForObject("select id from participant where code = 'GEORGIA'", Long.class);
+        participantCommands.deactivateParticipant(new ParticipantCommands.DeactivateParticipant(georgiaId));
+
+        Generated restarted = generated(commands.startInitial(new StartExistingSession(
+                initial.sessionId(), DATE.plusDays(1), List.of(), 99L)));
+
+        assertThat(restarted.setFingerprint()).isEqualTo(initial.setFingerprint());
+        assertThat(jdbcTemplate.queryForList("""
+                select participant.code
+                from selection_electorate electorate
+                join participant on participant.id = electorate.participant_id
+                where electorate.challenge_session_id = ?
+                order by participant.code
+                """, String.class, initial.sessionId())).containsExactly("GEORGIA", "TOBIAS");
+        assertThat(queries.findContext(initial.attemptId()).orElseThrow().catalogSnapshotJson())
+                .contains("GEORGIA", "TOBIAS")
+                .doesNotContain(laterParticipant.participantCode());
+        assertThat(participantQueries.listDefaultElectorate()).extracting(ParticipantQueries.ParticipantView::participantCode)
+                .containsExactly(laterParticipant.participantCode(), "TOBIAS");
+    }
+
+    @Test
+    void concurrentIdentityResolutionCreatesOneStableParticipant() throws Exception {
+        var command = new ParticipantCommands.ResolveOrCreateParticipant("test", "shared-subject", "Shared voter");
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> resolveAfterStart(command, ready, start));
+            var second = executor.submit(() -> resolveAfterStart(command, ready, start));
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            var resolved = List.of(first.get(), second.get());
+            assertThat(resolved).extracting(ParticipantQueries.ParticipantView::participantId).containsOnly(resolved.getFirst().participantId());
+            assertThat(resolved).extracting(ParticipantQueries.ParticipantView::participantCode)
+                    .allMatch(code -> code.matches("PARTICIPANT-[0-9]+"));
+        }
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from participant_external_identity
+                where provider = 'test' and external_subject = 'shared-subject'
+                """, Integer.class)).isOne();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from participant where display_name = 'Shared voter'", Integer.class))
+                .isOne();
+    }
+
+    @Test
+    void emptyDefaultElectorateRejectsANewSessionWithoutPersistingIt() {
+        participantQueries.listDefaultElectorate().forEach(member -> participantCommands.removeDefaultElectorateMember(
+                new ParticipantCommands.RemoveDefaultElectorateMember(member.participantId())));
+        int sessionsBefore = jdbcTemplate.queryForObject("select count(*) from challenge_session", Integer.class);
+
+        assertThatThrownBy(() -> commands.startNewSession(
+                new StartNewSession(DATE, List.of(), 47_000_043L, 1, RestrictionMode.AUTO)))
+                .isInstanceOf(io.github.venomenon328.miseendice.challenge.api.EmptyDefaultElectorateException.class);
+
+        assertThat(jdbcTemplate.queryForObject("select count(*) from challenge_session", Integer.class)).isEqualTo(sessionsBefore);
     }
 
     @Test
@@ -371,6 +466,18 @@ class PersistedGenerationIntegrationTest {
     private Generated generated(GenerationOutcome outcome) {
         assertThat(outcome).isInstanceOf(Generated.class);
         return (Generated) outcome;
+    }
+
+    private ParticipantQueries.ParticipantView resolveAfterStart(
+            ParticipantCommands.ResolveOrCreateParticipant command,
+            CountDownLatch ready,
+            CountDownLatch start
+    ) throws InterruptedException {
+        ready.countDown();
+        if (!start.await(5, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Concurrent identity-resolution test did not start");
+        }
+        return participantCommands.resolveOrCreateParticipant(command);
     }
 
     private void assertDifference(long attemptId, ReplayDifferenceType type, String path) {

@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.CatalogGeneratorSnapshot;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.SessionParticipant;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.ExhaustedCandidateSet;
@@ -33,6 +34,7 @@ class GeneratorLaboratoryService implements GeneratorLaboratory {
     private static final int PREVIEW_BATCH_NUMBER = 1;
 
     private final JdbcGenerationRepository repository;
+    private final JdbcParticipantElectorateRepository participantElectorateRepository;
     private final CatalogGeneratorProjection catalogProjection;
     private final CandidateReservoirEngine reservoirEngine;
     private final CandidateSetEngine candidateSetEngine;
@@ -42,6 +44,7 @@ class GeneratorLaboratoryService implements GeneratorLaboratory {
 
     GeneratorLaboratoryService(
             JdbcGenerationRepository repository,
+            JdbcParticipantElectorateRepository participantElectorateRepository,
             CatalogGeneratorProjection catalogProjection,
             CandidateReservoirEngine reservoirEngine,
             CandidateSetEngine candidateSetEngine,
@@ -50,6 +53,7 @@ class GeneratorLaboratoryService implements GeneratorLaboratory {
             PlatformTransactionManager transactionManager
     ) {
         this.repository = repository;
+        this.participantElectorateRepository = participantElectorateRepository;
         this.catalogProjection = catalogProjection;
         this.reservoirEngine = reservoirEngine;
         this.candidateSetEngine = candidateSetEngine;
@@ -85,7 +89,7 @@ class GeneratorLaboratoryService implements GeneratorLaboratory {
         long seed = request.explicitSeed() == null ? seedSource.nextSeed() : request.explicitSeed();
         int month = request.effectiveDate().getMonthValue();
         MaterializedInputs inputs = repeatableReadTransaction.execute(status -> {
-            CatalogGeneratorSnapshot catalog = catalogProjection.snapshotForMonth(month);
+            CatalogGeneratorSnapshot catalog = catalogProjection.snapshotForMonth(month, defaultElectorate());
             VisibleHistorySnapshot history = request.historyScenario() == HistoryScenario.PRODUCTION_VISIBLE
                     ? repository.visibleHistory()
                     : GeneratorLaboratoryScenarios.synthetic(request.historyScenario(), request.effectiveDate(), catalog);
@@ -122,6 +126,11 @@ class GeneratorLaboratoryService implements GeneratorLaboratory {
 
     private static GeneratorValidationException invalid(String detail) {
         return new GeneratorValidationException(GeneratorReasonCode.INVALID_GENERATION_REQUEST, detail);
+    }
+
+    private List<SessionParticipant> defaultElectorate() {
+        return participantElectorateRepository.listDefaultElectorate().stream()
+                .map(member -> new SessionParticipant(member.participantId(), member.code())).toList();
     }
 
     private record MaterializedInputs(CatalogGeneratorSnapshot catalog, VisibleHistorySnapshot history) {

@@ -22,26 +22,14 @@ public interface SelectionVotingCommands {
 
     SelectionVotingQueries.SelectionView resume(ResumeSelection command);
 
-    SelectionVotingQueries.ChallengeParticipantView joinChallenge(JoinChallenge command);
-
     SelectionVotingQueries.ParticipantIdentityView linkExternalIdentity(LinkExternalIdentity command);
 
     /**
-     * Starts the fixed electorate snapshot. An empty participant list deliberately selects the configured
-     * transport-neutral default electorate (currently the stable GEORGIA and TOBIAS participant codes).
+     * Reads the electorate that was materialized before INITIAL generation. It never selects or changes members.
      */
-    record InitializeSelection(long sessionId, List<Long> participantIds) {
+    record InitializeSelection(long sessionId) {
         public InitializeSelection {
             requireId(sessionId, "Challenge session");
-            participantIds = participantIds == null ? List.of() : List.copyOf(participantIds);
-            if (participantIds.stream().anyMatch(id -> id == null || id <= 0)
-                    || participantIds.stream().distinct().count() != participantIds.size()) {
-                throw new IllegalArgumentException("Electorate participant IDs must be distinct positive values");
-            }
-        }
-
-        public InitializeSelection(long sessionId) {
-            this(sessionId, List.of());
         }
     }
 
@@ -66,13 +54,6 @@ public interface SelectionVotingCommands {
     record ResumeSelection(long sessionId) {
         public ResumeSelection {
             requireId(sessionId, "Challenge session");
-        }
-    }
-
-    record JoinChallenge(long challengeId, long participantId) {
-        public JoinChallenge {
-            requireId(challengeId, "Challenge");
-            requireId(participantId, "Participant");
         }
     }
 

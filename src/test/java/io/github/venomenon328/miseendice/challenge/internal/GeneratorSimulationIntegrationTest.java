@@ -197,9 +197,10 @@ class GeneratorSimulationIntegrationTest {
 
         TrackingCatalogProjection(CatalogGeneratorProjection delegate) { this.delegate = delegate; }
 
-        @Override public synchronized CatalogGeneratorSnapshot snapshotForMonth(int month) {
+        @Override public synchronized CatalogGeneratorSnapshot snapshotForMonth(
+                int month, List<CatalogGeneratorProjection.SessionParticipant> sessionParticipants) {
             months.add(month);
-            return delegate.snapshotForMonth(month);
+            return delegate.snapshotForMonth(month, sessionParticipants);
         }
 
         synchronized List<Integer> months() { return List.copyOf(months); }

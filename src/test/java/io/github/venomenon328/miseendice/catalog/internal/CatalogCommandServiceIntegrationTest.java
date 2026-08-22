@@ -140,7 +140,7 @@ class CatalogCommandServiceIntegrationTest {
     }
 
     @Test
-    void rejectsDrawableConceptsWithoutRequiredMetadataButNotBecauseOpenHasNoChild() {
+    void rejectsDrawableConceptsWithoutRolesButNotBecauseOpenHasNoChildOrAvailability() {
         long concept = insertConcept("MISSING_METADATA", "Issue eleven incomplete", "OPEN", true, false, null);
         var before = catalogQueries.findConcept(concept).orElseThrow();
 
@@ -148,7 +148,7 @@ class CatalogCommandServiceIntegrationTest {
                 "OPEN", BigDecimal.ONE, null, null, false)))
                 .isInstanceOf(CatalogCommandValidationException.class)
                 .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
-                        .containsKeys("functionalRoles", "availabilityGeorgia", "availabilityTobias"));
+                        .containsOnlyKeys("functionalRoles"));
         assertThat(auditCount()).isZero();
     }
 

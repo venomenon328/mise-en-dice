@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.challenge.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.SessionParticipant;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine.GeneratedReservoir;
 import io.github.venomenon328.miseendice.challenge.api.GenerationAttemptRequest;
@@ -109,12 +110,21 @@ class CandidateReservoirCatalogIntegrationTest {
 
     private GenerationAttemptRequest request(int month, long seed, VisibleHistorySnapshot history) {
         return new GenerationAttemptRequest(AttemptType.INITIAL, LocalDate.of(2026, month, 12), month,
-                catalogProjection.snapshotForMonth(month), history, List.of(),
+                catalogProjection.snapshotForMonth(month, defaultElectorate()), history, List.of(),
                 generatorProperties.configuration(), seed, RestrictionMode.AUTO);
     }
 
     private int count(String table) {
         return jdbcTemplate.queryForObject("select count(*) from " + table, Integer.class);
+    }
+
+    private List<SessionParticipant> defaultElectorate() {
+        return jdbcTemplate.query("""
+                select participant.id, participant.code
+                from default_electorate_member member
+                join participant on participant.id = member.participant_id
+                order by participant.code, participant.id
+                """, (result, row) -> new SessionParticipant(result.getLong("id"), result.getString("code")));
     }
 
     private record Scenario(int month, long seed) {

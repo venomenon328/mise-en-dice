@@ -153,7 +153,7 @@ Der öffentliche Katalog-Use-Case liefert kanonisch sortiert mindestens:
 - Challenge-Spezifität,
 - Basisgewicht und Neuigkeitsstufe,
 - Rollen, Flags und gepflegte Dimensionen,
-- Beschaffbarkeit aller aktiven Teilnehmer,
+- die explizit angeforderte, feste Session-Personenmenge und nur deren vorhandene Beschaffbarkeitswerte,
 - Saisonmultiplikator des wirksamen Monats,
 - direkte und transitive Vorfahren beziehungsweise Nachfahren in der benötigten Form,
 - aktive Ausschlussregeln einschließlich expandierter Ziele,
@@ -192,11 +192,10 @@ Die Messung und das Gate sind in [`CANDIDATE_GENERATOR_DATA_READINESS.md`](CANDI
 Für zufällige Ziehungen sind hart erforderlich:
 
 - mindestens eine funktionale Rolle,
-- vollständige Beschaffbarkeit für alle aktiven Teilnehmer,
 - ein gepflegter Neuigkeitswert,
 - gültige Spezifität und positives Basisgewicht.
 
-Fehlen diese Daten, ist das einzelne Konzept zufällig nicht geeignet. Der Generator erfindet keinen Ersatzwert.
+Fehlen Rollen, Neuigkeit, Spezifität oder Gewicht, ist das einzelne Konzept zufällig nicht geeignet. Fehlende Beschaffbarkeit ist dagegen ein bewusst sparsches, neutrales Signal: Der Generator erfindet keinen Wert und erzeugt keinen Missing-Fehler.
 
 Optional bleiben:
 
@@ -218,8 +217,7 @@ Ein Konzept ist für einen zufälligen Slot nur geeignet, wenn:
 - `random_draw_enabled = true`,
 - mindestens eine Rolle vorhanden ist,
 - `novelty_level` vorhanden ist,
-- für Georgia und Tobias je ein Beschaffbarkeitswert vorhanden ist,
-- keiner dieser Werte `UNAVAILABLE` ist,
+- kein vorhandener Beschaffbarkeitswert des Session-Elektorats `UNAVAILABLE` ist,
 - das Konzept nicht durch den exakten Cooldown der sichtbaren Historie gesperrt ist,
 - es nicht mit der Attempt-Ausschlussregel kollidiert,
 - es für den aktuell zu belegenden Profilslot und Spezifitätsbedarf geeignet ist,
@@ -229,7 +227,7 @@ Manuelle Vorgaben sind hiervon ausgenommen.
 
 ### 5.2 Beschaffbarkeitsfaktor
 
-Maßgeblich ist die schlechtere Beschaffbarkeit beider Teilnehmer:
+Maßgeblich ist der restriktivste vorhandene Beschaffbarkeitswert des vorab materialisierten Session-Elektorats:
 
 | schlechtester Wert | Faktor |
 |---|---:|
@@ -237,7 +235,7 @@ Maßgeblich ist die schlechtere Beschaffbarkeit beider Teilnehmer:
 | `PLANNED` | 0,65 |
 | `DIFFICULT` | 0,20 |
 | `UNAVAILABLE` | 0,00 |
-| fehlend | 0,00 |
+| kein Wert vorhanden | 1,00 (neutral) |
 
 `DIFFICULT` bleibt damit möglich, wird aber deutlich seltener. Die Satzselektion begrenzt zusätzlich Kandidaten mit schwieriger Beschaffbarkeit.
 
@@ -673,7 +671,7 @@ Cooldown-only-Expositionen eines rerollten Offer Sets wirken nur auf den exakten
 
 ### 11.8 Datenkonfidenz
 
-Rollen, Beschaffbarkeit und Neuigkeit sind für zufällige Requirements vollständig und zählen als Grundvertrauen. Zusätzliche Konfidenz entsteht durch gepflegte Dimensionen, die für eine konkrete Bewertung tatsächlich verwendet wurden.
+Rollen und Neuigkeit sind für zufällige Requirements Grundvoraussetzungen. Beschaffbarkeit wird nur aus vorhandenen Sessionwerten bewertet; vollständig fehlende Werte bleiben neutral. Zusätzliche Konfidenz entsteht durch gepflegte Dimensionen, die für eine konkrete Bewertung tatsächlich verwendet wurden.
 
 Ein Kandidat mit wenig Dimensionswissen darf einen guten Struktur- und Neuigkeitsscore besitzen, wird aber nicht als kulinarisch präzise analysiert ausgegeben.
 
@@ -1357,7 +1355,7 @@ Mindestens zu berichten sind:
 - Rollen-, Profil- und projizierte Spezifitätsverteilung,
 - Neuigkeitsbänder und mehrwöchige Recovery-/Seeking-Sequenzen,
 - Ausschlussfrequenz, Regelfrequenz und Wiederholung,
-- Beschaffbarkeitslast für beide Teilnehmer,
+- Beschaffbarkeitslast des jeweiligen Session-Elektorats,
 - Mittelwert, 95. Perzentil und Maximum der Kandidatenpaarähnlichkeit je Satz,
 - exakte Konzept- und informative Vorfahrenüberschneidungen,
 - Kandidaten- und Setkonfidenz bei fehlenden optionalen Metadaten,
