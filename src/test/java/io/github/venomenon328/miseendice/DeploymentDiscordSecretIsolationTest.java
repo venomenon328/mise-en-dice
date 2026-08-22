@@ -107,8 +107,26 @@ class DeploymentDiscordSecretIsolationTest {
                 "acceptance-openai-key", "accidental-admin-token", "accidental-admin-key");
     }
 
-    private static String bashExecutable() {
+    private static String bashExecutable() throws IOException, InterruptedException {
         Path gitBash = Path.of(System.getenv().getOrDefault("ProgramFiles", "C:/Program Files"), "Git", "bin", "bash.exe");
-        return Files.isExecutable(gitBash) ? gitBash.toString() : "bash";
+        if (Files.isExecutable(gitBash)) {
+            return gitBash.toString();
+        }
+
+        try {
+            Process process = new ProcessBuilder("where.exe", "git.exe").redirectErrorStream(true).start();
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            if (process.waitFor() == 0 && !output.isBlank()) {
+                Path gitExecutable = Path.of(output.lines().findFirst().orElseThrow());
+                Path gitInstallation = gitExecutable.getParent().getParent();
+                Path discoveredGitBash = gitInstallation.resolve("bin").resolve("bash.exe");
+                if (Files.isExecutable(discoveredGitBash)) {
+                    return discoveredGitBash.toString();
+                }
+            }
+        } catch (IOException ignored) {
+            // On non-Windows systems the regular bash executable remains the fallback.
+        }
+        return "bash";
     }
 }

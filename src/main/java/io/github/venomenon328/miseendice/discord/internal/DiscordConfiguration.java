@@ -4,6 +4,8 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeOfferPreparation
 import io.github.venomenon328.miseendice.challenge.api.ChallengeArchiveQueries;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeCardCommands;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
+import io.github.venomenon328.miseendice.challenge.api.ParticipantCommands;
+import io.github.venomenon328.miseendice.challenge.api.ParticipantQueries;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingCommands;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingQueries;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
@@ -30,10 +32,27 @@ class DiscordConfiguration {
                                                        ChallengeOfferPreparationCommands preparation,
                                                        OfferDecisionQueries offers,
                                                        SelectionVotingCommands votingCommands,
-                                                       SelectionVotingQueries votingQueries) {
+                                                       SelectionVotingQueries votingQueries,
+                                                       ParticipantQueries participantQueries) {
         properties.validateEnabledConfiguration();
-        return new DiscordChallengeWorkflow(properties, preparation, offers, votingCommands, votingQueries,
+        return new DiscordChallengeWorkflow(properties, preparation, offers, votingCommands, votingQueries, participantQueries,
                 new DiscordChallengeRenderer());
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "mise-en-dice.discord", name = "enabled", havingValue = "true")
+    DiscordParticipantAdministrationWorkflow discordParticipantAdministrationWorkflow(ParticipantCommands participantCommands,
+                                                                                         ParticipantQueries participantQueries) {
+        return new DiscordParticipantAdministrationWorkflow(participantCommands, participantQueries);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "mise-en-dice.discord", name = "enabled", havingValue = "true")
+    DiscordLegacyParticipantBootstrap discordLegacyParticipantBootstrap(DiscordProperties properties,
+                                                                         ParticipantCommands participantCommands,
+                                                                         ParticipantQueries participantQueries) {
+        properties.validateEnabledConfiguration();
+        return new DiscordLegacyParticipantBootstrap(properties, participantCommands, participantQueries);
     }
 
     @Bean
@@ -59,8 +78,9 @@ class DiscordConfiguration {
     DiscordJdaLifecycle discordJdaLifecycle(DiscordProperties properties, DiscordChallengeWorkflow workflow,
                                             DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
                                             DiscordChallengeArchiveWorkflow archiveWorkflow,
+                                            DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow,
                                             ExecutorService discordChallengeExecutor) {
         return new DiscordJdaLifecycle(properties, workflow, ingredientLookupWorkflow, archiveWorkflow,
-                discordChallengeExecutor);
+                participantAdministrationWorkflow, discordChallengeExecutor);
     }
 }

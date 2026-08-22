@@ -12,6 +12,7 @@ final class DiscordJdaLifecycle implements SmartLifecycle {
     private final DiscordChallengeWorkflow workflow;
     private final DiscordIngredientLookupWorkflow ingredientLookupWorkflow;
     private final DiscordChallengeArchiveWorkflow archiveWorkflow;
+    private final DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow;
     private final Executor executor;
     private volatile JDA jda;
     private volatile boolean running;
@@ -19,10 +20,18 @@ final class DiscordJdaLifecycle implements SmartLifecycle {
     DiscordJdaLifecycle(DiscordProperties properties, DiscordChallengeWorkflow workflow,
                         DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
                         DiscordChallengeArchiveWorkflow archiveWorkflow, Executor executor) {
+        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, null, executor);
+    }
+
+    DiscordJdaLifecycle(DiscordProperties properties, DiscordChallengeWorkflow workflow,
+                        DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
+                        DiscordChallengeArchiveWorkflow archiveWorkflow,
+                        DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow, Executor executor) {
         this.properties = properties;
         this.workflow = workflow;
         this.ingredientLookupWorkflow = ingredientLookupWorkflow;
         this.archiveWorkflow = archiveWorkflow;
+        this.participantAdministrationWorkflow = participantAdministrationWorkflow;
         this.executor = executor;
     }
 
@@ -34,7 +43,7 @@ final class DiscordJdaLifecycle implements SmartLifecycle {
         properties.validateEnabledConfiguration();
         jda = JDABuilder.createLight(properties.token(), GatewayIntent.GUILD_MESSAGES)
                 .addEventListeners(new DiscordJdaListener(properties, workflow, ingredientLookupWorkflow, archiveWorkflow,
-                        executor)).build();
+                        participantAdministrationWorkflow, executor)).build();
         running = true;
     }
 

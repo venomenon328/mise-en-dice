@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.discord.internal;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeOfferPreparationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
+import io.github.venomenon328.miseendice.challenge.api.ParticipantQueries;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingCommands;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingConflictException;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingQueries;
@@ -19,21 +20,25 @@ final class DiscordChallengeWorkflow {
     private final OfferDecisionQueries offerQueries;
     private final SelectionVotingCommands votingCommands;
     private final SelectionVotingQueries votingQueries;
+    private final ParticipantQueries participantQueries;
     private final DiscordChallengeRenderer renderer;
 
     DiscordChallengeWorkflow(DiscordProperties properties, ChallengeOfferPreparationCommands preparation,
                              OfferDecisionQueries offerQueries, SelectionVotingCommands votingCommands,
-                             SelectionVotingQueries votingQueries, DiscordChallengeRenderer renderer) {
+                             SelectionVotingQueries votingQueries, ParticipantQueries participantQueries,
+                             DiscordChallengeRenderer renderer) {
         this.properties = properties;
         this.preparation = preparation;
         this.offerQueries = offerQueries;
         this.votingCommands = votingCommands;
         this.votingQueries = votingQueries;
+        this.participantQueries = participantQueries;
         this.renderer = renderer;
     }
 
     boolean accepts(long guildId, String userId) {
-        return guildId == properties.guildId() && properties.isConfiguredUser(userId);
+        return guildId == properties.guildId() && userId != null
+                && participantQueries.findParticipantByExternalIdentity(DiscordProperties.PROVIDER, userId).isPresent();
     }
 
     void start(int offerCount, Delivery delivery, Feedback feedback) {
@@ -74,7 +79,7 @@ final class DiscordChallengeWorkflow {
                 presentationSucceeded(presentation.sessionId(), presentation.offerSetId(), memberNames, delivery, feedback);
                 return;
             }
-            SelectionVotingQueries.ParticipantIdentityView participant = votingQueries
+            ParticipantQueries.ParticipantView participant = participantQueries
                     .findParticipantByExternalIdentity(DiscordProperties.PROVIDER, externalSubject)
                     .orElseThrow(() -> new SelectionVotingConflictException("Discord identity is not linked to the frozen electorate"));
             if (parsed instanceof DiscordComponentId.Resume resume) {
@@ -142,23 +147,11 @@ final class DiscordChallengeWorkflow {
         try {
             SelectionVotingQueries.SelectionView selection = votingCommands.presentationSucceeded(
                     new SelectionVotingCommands.PresentationSucceeded(sessionId, offerSetId));
-            linkConfiguredElectorate(selection);
             renderSelection(selection, memberNames, delivery, feedback);
         } catch (SelectionVotingConflictException | IllegalArgumentException exception) {
             feedback.staleOrRejected("Diese Interaktion ist nicht mehr aktuell oder nicht erlaubt.");
         } catch (RuntimeException exception) {
             feedback.technicalFailure(exception);
-        }
-    }
-
-    private void linkConfiguredElectorate(SelectionVotingQueries.SelectionView selection) {
-        for (SelectionVotingQueries.ElectorateMemberView member : selection.electorate()) {
-            String userId = properties.participantUserIds().get(member.participantCode());
-            if (userId == null) {
-                throw new IllegalStateException("Discord mapping is missing for electorate member " + member.participantCode());
-            }
-            votingCommands.linkExternalIdentity(new SelectionVotingCommands.LinkExternalIdentity(
-                    member.participantId(), DiscordProperties.PROVIDER, userId));
         }
     }
 
@@ -185,16 +178,14 @@ final class DiscordChallengeWorkflow {
                                                                 DiscordMemberNameResolver memberNames) {
         Map<Long, String> names = new HashMap<>();
         for (SelectionVotingQueries.ElectorateMemberView member : selection.electorate()) {
-            String userId = properties.participantUserIds().get(member.participantCode());
-            if (userId == null) {
-                continue;
-            }
-            try {
-                String current = memberNames.resolve(userId, member.displayName());
-                names.put(member.participantId(), current == null || current.isBlank() ? member.displayName() : current);
-            } catch (RuntimeException ignored) {
-                names.put(member.participantId(), member.displayName());
-            }
+            participantQueries.findExternalIdentity(member.participantId(), DiscordProperties.PROVIDER).ifPresent(identity -> {
+                try {
+                    String current = memberNames.resolve(identity.externalSubject(), member.displayName());
+                    names.put(member.participantId(), current == null || current.isBlank() ? member.displayName() : current);
+                } catch (RuntimeException ignored) {
+                    names.put(member.participantId(), member.displayName());
+                }
+            });
         }
         return (participantId, storedFallback) -> names.getOrDefault(participantId, storedFallback);
     }

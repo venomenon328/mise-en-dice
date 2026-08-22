@@ -32,7 +32,7 @@ Für `/zutat` gilt bewusst eine andere Zugriffspolitik als für `/challenge`:
 
 - ausschließlich die konfigurierte Guild,
 - innerhalb dieser Guild für jedes Mitglied nutzbar,
-- kein Eintrag unter `participant-user-ids` erforderlich,
+- keine Teilnehmeridentität in der Datenbank erforderlich,
 - keine gültige Nutzung in DMs oder fremden Guilds.
 
 Die fachliche Antwort ist öffentlich. Reine Autorisierungs-, Eingabe-, Stale- oder technische Fehlermeldungen dürfen ephemer bleiben.
@@ -242,7 +242,7 @@ Discord-Grenzen werden vor dem Senden deterministisch eingehalten. Eine überlan
 
 `DiscordIngredientLookupRenderer` besitzt ein transportneutrales Render-Modell für Embed-Description, Inline-Felder und String-Select-Navigation. Erst `DiscordJdaListener` mappt dieses Modell auf JDA-Embeds und native String Selects und bindet dabei die Navigationskomponenten an den Card-Owner. Zutaten-Navigationsbuttons existieren nicht.
 
-Die `/challenge`-Startautorisierung verwendet separat `mise-en-dice.discord.challenge-operator-role-id`. Sie ist kein Ersatz für Participant-Identitäten und verleiht keine Stimme in einem Electorate. Umgekehrt berechtigt ein Participant-Mapping nicht zum Start einer Challenge.
+Die `/challenge`-Startautorisierung verwendet separat `mise-en-dice.discord.challenge-operator-role-id`. Sie ist kein Ersatz für Participant-Identitäten und verleiht keine Stimme in einem Electorate. Umgekehrt berechtigt eine DB-Teilnehmeridentität nicht zum Start einer Challenge.
 
 ## 12. Fehlerdarstellung und Verifikation
 
@@ -266,7 +266,7 @@ Automatisierte Tests decken mindestens ab:
 - Stale-Verhalten nach Deaktivierung sowie für alte ungebundene Navigationskomponenten,
 - stateless Component-Parsing,
 - JDA-Routing der Zutaten-Navigation als String Select,
-- `/challenge`-Start nur mit Operator-Rolle und unabhängig vom Participant-Mapping,
+- `/challenge`-Start nur mit Operator-Rolle und unabhängig von einer Teilnehmeridentität,
 - bestehende Challenge-Interaktions-/Voting-Regressionen.
 
 Verpflichtendes Gate:

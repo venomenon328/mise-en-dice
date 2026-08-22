@@ -280,7 +280,7 @@ Zeigt die bestätigte Challenge mit der höchsten öffentlichen Nummer. Existier
 
 ### 8.1 Guild-weite Lesezugriffe
 
-`aktuell`, `liste` und `anzeigen` dürfen von jedem Mitglied der konfigurierten Guild verwendet werden. Eine Registrierung als Challenge-Teilnehmer oder Eintrag in `participant-user-ids` ist nicht erforderlich.
+`aktuell`, `liste` und `anzeigen` dürfen von jedem Mitglied der konfigurierten Guild verwendet werden. Eine Registrierung als Challenge-Teilnehmer oder DB-Identitätszuordnung ist nicht erforderlich.
 
 In DMs und fremden Guilds wird vor jeder Core-Query abgewiesen.
 
@@ -291,7 +291,7 @@ In DMs und fremden Guilds wird vor jeder Core-Query abgewiesen.
 Dabei gilt dieselbe Trennung wie für `/challenge`:
 
 - Operatorberechtigung ist unabhängig von Challenge-Teilnahme und Electorate.
-- Ein Operator muss nicht in `participant-user-ids` stehen.
+- Ein Operator muss keine Teilnehmeridentität in der Datenbank besitzen.
 - Ein Teilnehmer ohne Operatorrolle darf Cards lesen, aber nicht verändern.
 - Der Bot benötigt keine Discord-Administratorberechtigung.
 

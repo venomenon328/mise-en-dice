@@ -39,24 +39,33 @@ final class DiscordJdaListener extends ListenerAdapter {
     private final DiscordChallengeWorkflow workflow;
     private final DiscordIngredientLookupWorkflow ingredientLookupWorkflow;
     private final DiscordChallengeArchiveWorkflow archiveWorkflow;
+    private final DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow;
     private final Executor executor;
 
     DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow, Executor executor) {
-        this(properties, workflow, null, null, executor);
+        this(properties, workflow, null, null, null, executor);
     }
 
     DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow,
                        DiscordIngredientLookupWorkflow ingredientLookupWorkflow, Executor executor) {
-        this(properties, workflow, ingredientLookupWorkflow, null, executor);
+        this(properties, workflow, ingredientLookupWorkflow, null, null, executor);
     }
 
     DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow,
                        DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
                        DiscordChallengeArchiveWorkflow archiveWorkflow, Executor executor) {
+        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, null, executor);
+    }
+
+    DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow,
+                       DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
+                       DiscordChallengeArchiveWorkflow archiveWorkflow,
+                       DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow, Executor executor) {
         this.properties = properties;
         this.workflow = workflow;
         this.ingredientLookupWorkflow = ingredientLookupWorkflow;
         this.archiveWorkflow = archiveWorkflow;
+        this.participantAdministrationWorkflow = participantAdministrationWorkflow;
         this.executor = executor;
     }
 
@@ -76,6 +85,10 @@ final class DiscordJdaListener extends ListenerAdapter {
         if (archiveWorkflow != null) {
             guild.upsertCommand(challengesCommand())
                     .queue(null, failure -> log.warn("Discord challenge archive command registration failed", failure));
+        }
+        if (participantAdministrationWorkflow != null) {
+            guild.upsertCommand(participantCommand())
+                    .queue(null, failure -> log.warn("Discord participant command registration failed", failure));
         }
     }
 
@@ -110,8 +123,29 @@ final class DiscordJdaListener extends ListenerAdapter {
                                 .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", true));
     }
 
+    static SlashCommandData participantCommand() {
+        return Commands.slash("teilnehmer", "Teilnehmer und Standard-Elektorat verwalten")
+                .addSubcommands(
+                        new SubcommandData("anlegen", "Discord-Person als Teilnehmer anlegen")
+                                .addOption(OptionType.USER, "person", "Discord-Person", true)
+                                .addOption(OptionType.STRING, "name", "Fallback-Anzeigename", false),
+                        new SubcommandData("aktivieren", "Teilnehmer aktivieren")
+                                .addOption(OptionType.USER, "person", "Discord-Person", true),
+                        new SubcommandData("deaktivieren", "Teilnehmer deaktivieren")
+                                .addOption(OptionType.USER, "person", "Discord-Person", true),
+                        new SubcommandData("elektorat-hinzufuegen", "Ins Standard-Elektorat aufnehmen")
+                                .addOption(OptionType.USER, "person", "Discord-Person", true),
+                        new SubcommandData("elektorat-entfernen", "Aus dem Standard-Elektorat entfernen")
+                                .addOption(OptionType.USER, "person", "Discord-Person", true),
+                        new SubcommandData("liste", "Teilnehmer auflisten"));
+    }
+
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        if ("teilnehmer".equals(event.getName())) {
+            participantSlash(event);
+            return;
+        }
         if ("zutat".equals(event.getName())) {
             ingredientSlash(event);
             return;
@@ -144,6 +178,67 @@ final class DiscordJdaListener extends ListenerAdapter {
         event.deferReply().queue(hook -> executor.execute(() -> workflow.start(offers, restrictionMode, memberNames(guild),
                 new HookDelivery(hook, executor), new HookFeedback(hook))),
                 failure -> log.warn("Discord slash acknowledgement failed", failure));
+    }
+
+    private void participantSlash(SlashCommandInteractionEvent event) {
+        if (participantAdministrationWorkflow == null) {
+            return;
+        }
+        if (!acceptsChallengeCommand(event.getGuild(), event.getMember())) {
+            ephemeralReply(event, "Dieser Command ist nur fÃ¼r Mitglieder mit der konfigurierten Challenge-Operator-Rolle verfÃ¼gbar.");
+            return;
+        }
+        String subcommand = event.getSubcommandName();
+        if ("liste".equals(subcommand)) {
+            event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.list(
+                    new HookParticipantAdministrationDelivery(hook))),
+                    failure -> log.warn("Discord participant list acknowledgement failed", failure));
+            return;
+        }
+        OptionMapping personOption = event.getOption("person");
+        if (personOption == null || personOption.getAsUser() == null) {
+            ephemeralReply(event, "`person` ist erforderlich.");
+            return;
+        }
+        net.dv8tion.jda.api.entities.User person = personOption.getAsUser();
+        String discordUserId = person.getId();
+        if ("anlegen".equals(subcommand)) {
+            OptionMapping nameOption = event.getOption("name");
+            String fallbackName = nameOption == null ? person.getName() : nameOption.getAsString().strip();
+            if (fallbackName.isBlank()) {
+                ephemeralReply(event, "`name` darf nicht leer sein.");
+                return;
+            }
+            event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.create(
+                    discordUserId, fallbackName, new HookParticipantAdministrationDelivery(hook))),
+                    failure -> log.warn("Discord participant create acknowledgement failed", failure));
+            return;
+        }
+        if ("aktivieren".equals(subcommand)) {
+            event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.activate(
+                    discordUserId, new HookParticipantAdministrationDelivery(hook))),
+                    failure -> log.warn("Discord participant activation acknowledgement failed", failure));
+            return;
+        }
+        if ("deaktivieren".equals(subcommand)) {
+            event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.deactivate(
+                    discordUserId, new HookParticipantAdministrationDelivery(hook))),
+                    failure -> log.warn("Discord participant deactivation acknowledgement failed", failure));
+            return;
+        }
+        if ("elektorat-hinzufuegen".equals(subcommand)) {
+            event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.addToDefaultElectorate(
+                    discordUserId, new HookParticipantAdministrationDelivery(hook))),
+                    failure -> log.warn("Discord electorate addition acknowledgement failed", failure));
+            return;
+        }
+        if ("elektorat-entfernen".equals(subcommand)) {
+            event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.removeFromDefaultElectorate(
+                    discordUserId, new HookParticipantAdministrationDelivery(hook))),
+                    failure -> log.warn("Discord electorate removal acknowledgement failed", failure));
+            return;
+        }
+        ephemeralReply(event, "Dieser Teilnehmer-Command ist nicht bekannt.");
     }
 
     private void ingredientSlash(SlashCommandInteractionEvent event) {
@@ -408,6 +503,32 @@ final class DiscordJdaListener extends ListenerAdapter {
             log.error("Discord ingredient lookup interaction failed", exception);
             hook.sendMessage("Die Zutatenabfrage konnte technisch nicht verarbeitet werden. Bitte später erneut versuchen.")
                     .setEphemeral(true).queue();
+        }
+    }
+
+    private static final class HookParticipantAdministrationDelivery
+            implements DiscordParticipantAdministrationWorkflow.Delivery {
+        private final net.dv8tion.jda.api.interactions.InteractionHook hook;
+
+        private HookParticipantAdministrationDelivery(net.dv8tion.jda.api.interactions.InteractionHook hook) {
+            this.hook = hook;
+        }
+
+        @Override
+        public void success(String message) {
+            hook.editOriginal(ephemeralEdit(message)).queue();
+        }
+
+        @Override
+        public void rejected(String message) {
+            hook.editOriginal(ephemeralEdit(message)).queue();
+        }
+
+        @Override
+        public void technicalFailure(Throwable exception) {
+            log.error("Discord participant administration failed", exception);
+            hook.editOriginal(ephemeralEdit("Die Teilnehmerverwaltung konnte technisch nicht verarbeitet werden. "
+                    + "Bitte spÃ¤ter erneut versuchen.")).queue();
         }
     }
 

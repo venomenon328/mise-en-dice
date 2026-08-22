@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import io.github.venomenon328.miseendice.challenge.api.InactiveParticipantException;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantCommands;
+import io.github.venomenon328.miseendice.challenge.api.ParticipantIdentityConflictException;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantNotFoundException;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantQueries;
 import java.util.List;
@@ -52,6 +53,30 @@ class ParticipantElectorateApplicationService implements ParticipantCommands, Pa
             return findParticipantByExternalIdentity(command.provider(), command.externalSubject())
                     .orElseThrow(() -> duplicate);
         }
+    }
+
+    @Override
+    public ParticipantQueries.ExternalIdentityView linkExternalIdentity(LinkExternalIdentity command) {
+        return inWriteTransaction(() -> {
+            requireParticipantForUpdate(command.participantId());
+            Optional<JdbcParticipantElectorateRepository.Identity> existing = repository.findIdentity(
+                    command.provider(), command.externalSubject());
+            if (existing.isPresent()) {
+                if (existing.get().participant().participantId() != command.participantId()) {
+                    throw new ParticipantIdentityConflictException(
+                            "External identity is already linked to another participant");
+                }
+                return externalIdentityView(existing.get());
+            }
+            Optional<JdbcParticipantElectorateRepository.Identity> existingProvider =
+                    repository.findIdentityForParticipantAndProvider(command.participantId(), command.provider());
+            if (existingProvider.isPresent()) {
+                throw new ParticipantIdentityConflictException(
+                        "Participant already has a different identity for provider " + command.provider());
+            }
+            repository.insertIdentity(command.participantId(), command.provider(), command.externalSubject());
+            return externalIdentityView(repository.findIdentity(command.provider(), command.externalSubject()).orElseThrow());
+        });
     }
 
     @Override
@@ -110,6 +135,23 @@ class ParticipantElectorateApplicationService implements ParticipantCommands, Pa
     }
 
     @Override
+    public Optional<ParticipantView> findParticipantByCode(String participantCode) {
+        if (participantCode == null || participantCode.isBlank()) {
+            throw new IllegalArgumentException("Participant code must not be blank");
+        }
+        return repository.findParticipantByCode(participantCode.strip()).map(this::participantView);
+    }
+
+    @Override
+    public Optional<ParticipantQueries.ExternalIdentityView> findExternalIdentity(long participantId, String provider) {
+        if (participantId <= 0 || provider == null || provider.isBlank()) {
+            throw new IllegalArgumentException("Participant ID and identity provider must be present");
+        }
+        return repository.findIdentityForParticipantAndProvider(participantId, provider.strip())
+                .map(this::externalIdentityView);
+    }
+
+    @Override
     public List<ParticipantView> listParticipants() {
         return repository.listParticipants().stream().map(this::participantView).toList();
     }
@@ -131,6 +173,11 @@ class ParticipantElectorateApplicationService implements ParticipantCommands, Pa
     private ParticipantView participantView(JdbcParticipantElectorateRepository.Participant participant) {
         return new ParticipantView(participant.participantId(), participant.code(), participant.displayName(),
                 participant.active(), repository.isDefaultElectorateMember(participant.participantId()));
+    }
+
+    private ParticipantQueries.ExternalIdentityView externalIdentityView(JdbcParticipantElectorateRepository.Identity identity) {
+        return new ParticipantQueries.ExternalIdentityView(identity.participant().participantId(), identity.provider(),
+                identity.externalSubject());
     }
 
     private <T> T inWriteTransaction(Supplier<T> callback) {

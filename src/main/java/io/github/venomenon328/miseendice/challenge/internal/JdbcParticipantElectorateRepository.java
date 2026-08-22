@@ -36,6 +36,13 @@ class JdbcParticipantElectorateRepository {
                 """, this::mapParticipant, participantId).stream().findFirst();
     }
 
+    Optional<Participant> findParticipantByCode(String participantCode) {
+        return jdbcTemplate.query("""
+                select id, code, display_name, active
+                from participant where code = ?
+                """, this::mapParticipant, participantCode).stream().findFirst();
+    }
+
     Optional<Participant> findParticipantForUpdate(long participantId) {
         return jdbcTemplate.query("""
                 select id, code, display_name, active
@@ -51,6 +58,16 @@ class JdbcParticipantElectorateRepository {
                 join participant on participant.id = identity.participant_id
                 where identity.provider = ? and identity.external_subject = ?
                 """, this::mapIdentity, provider, externalSubject).stream().findFirst();
+    }
+
+    Optional<Identity> findIdentityForParticipantAndProvider(long participantId, String provider) {
+        return jdbcTemplate.query("""
+                select participant.id, participant.code, participant.display_name, participant.active,
+                       identity.provider, identity.external_subject
+                from participant_external_identity identity
+                join participant on participant.id = identity.participant_id
+                where identity.participant_id = ? and identity.provider = ?
+                """, this::mapIdentity, participantId, provider).stream().findFirst();
     }
 
     void insertIdentity(long participantId, String provider, String externalSubject) {

@@ -160,9 +160,9 @@ validate_discord_provider_configuration() {
         || med_die "$description benötigt eine positive numerische Discord-Guild-ID."
     [[ $operator_role_id =~ ^[1-9][0-9]{4,31}$ ]] \
         || med_die "$description benötigt eine positive numerische Discord-Challenge-Operator-Rollen-ID."
-    [[ $georgia_id =~ ^[1-9][0-9]{4,31}$ && $tobias_id =~ ^[1-9][0-9]{4,31}$ ]] \
-        || med_die "$description benötigt positive numerische Discord-User-IDs für GEORGIA und TOBIAS."
-    [[ $georgia_id != "$tobias_id" ]] \
+    [[ ( -z $georgia_id || $georgia_id =~ ^[1-9][0-9]{4,31}$ ) && ( -z $tobias_id || $tobias_id =~ ^[1-9][0-9]{4,31}$ ) ]] \
+        || med_die "$description enthält ungültige Legacy-Discord-User-IDs für GEORGIA oder TOBIAS."
+    [[ -z $georgia_id || -z $tobias_id || $georgia_id != "$tobias_id" ]] \
         || med_die "$description darf GEORGIA und TOBIAS nicht dieselbe Discord-User-ID zuordnen."
 }
 

@@ -18,6 +18,7 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayD
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayStatus;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantCommands;
+import io.github.venomenon328.miseendice.challenge.api.ParticipantIdentityConflictException;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantQueries;
 import java.time.LocalDate;
 import java.util.List;
@@ -398,6 +399,30 @@ class PersistedGenerationIntegrationTest {
                 """, Integer.class)).isOne();
         assertThat(jdbcTemplate.queryForObject("select count(*) from participant where display_name = 'Shared voter'", Integer.class))
                 .isOne();
+    }
+
+    @Test
+    void linksExternalIdentitiesIdempotentlyAndRejectsAnyReassignment() {
+        var first = participantCommands.createParticipant(new ParticipantCommands.CreateParticipant("Identity owner"));
+        var second = participantCommands.createParticipant(new ParticipantCommands.CreateParticipant("Other participant"));
+
+        var linked = participantCommands.linkExternalIdentity(new ParticipantCommands.LinkExternalIdentity(
+                first.participantId(), "discord", "discord-identity-owner"));
+        var repeated = participantCommands.linkExternalIdentity(new ParticipantCommands.LinkExternalIdentity(
+                first.participantId(), "discord", "discord-identity-owner"));
+
+        assertThat(linked).isEqualTo(repeated);
+        assertThat(participantQueries.findParticipantByExternalIdentity("discord", "discord-identity-owner"))
+                .contains(first);
+        assertThat(participantQueries.findExternalIdentity(first.participantId(), "discord")).contains(linked);
+        assertThatThrownBy(() -> participantCommands.linkExternalIdentity(new ParticipantCommands.LinkExternalIdentity(
+                second.participantId(), "discord", "discord-identity-owner")))
+                .isInstanceOf(ParticipantIdentityConflictException.class)
+                .hasMessageContaining("another participant");
+        assertThatThrownBy(() -> participantCommands.linkExternalIdentity(new ParticipantCommands.LinkExternalIdentity(
+                first.participantId(), "discord", "another-discord-identity")))
+                .isInstanceOf(ParticipantIdentityConflictException.class)
+                .hasMessageContaining("different identity");
     }
 
     @Test

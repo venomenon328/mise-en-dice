@@ -12,6 +12,7 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeOfferPreparation
 import io.github.venomenon328.miseendice.challenge.api.CurationModel;
 import io.github.venomenon328.miseendice.challenge.api.CurationRequest;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
+import io.github.venomenon328.miseendice.challenge.api.ParticipantQueries;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingCommands;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingQueries;
 import java.time.Instant;
@@ -90,6 +91,56 @@ class DiscordChallengeWorkflowTest {
         assertThat(workflow.accepts(99, "10001")).isTrue();
         assertThat(workflow.accepts(98, "10001")).isFalse();
         assertThat(workflow.accepts(99, "not-a-participant")).isFalse();
+    }
+
+    @Test
+    void resolvesVotingIdentityFromTheDatabaseInsteadOfTheLegacyPropertyMap() {
+        var voting = mock(SelectionVotingCommands.class);
+        var votingQueries = mock(SelectionVotingQueries.class);
+        var participants = mock(ParticipantQueries.class);
+        var selection = selection(offerSet());
+        when(participants.findParticipantByExternalIdentity("discord", "db-only-user")).thenReturn(java.util.Optional.of(
+                new ParticipantQueries.ParticipantView(6, "PARTICIPANT-1", "DB participant", true, false)));
+        when(votingQueries.findSelection(1)).thenReturn(java.util.Optional.of(selection));
+        when(voting.castVoteDeferred(any())).thenReturn(selection);
+        when(voting.resume(new SelectionVotingCommands.ResumeSelection(1))).thenReturn(selection);
+
+        workflow(mock(ChallengeOfferPreparationCommands.class), mock(OfferDecisionQueries.class), voting, votingQueries,
+                participants, Map.of("GEORGIA", "legacy-user")).component(
+                DiscordComponentId.vote(1, 7, SelectionVotingCommands.VoteOptionType.ACCEPT, null), "db-only-user",
+                delivered(), feedback());
+
+        var command = ArgumentCaptor.forClass(SelectionVotingCommands.CastVote.class);
+        verify(voting).castVoteDeferred(command.capture());
+        assertThat(command.getValue().participantId()).isEqualTo(6);
+    }
+
+    @Test
+    void resolvesCurrentMemberNamesFromTheDatabaseIdentityWithoutLegacyProperties() {
+        var voting = mock(SelectionVotingCommands.class);
+        var votingQueries = mock(SelectionVotingQueries.class);
+        var participants = mock(ParticipantQueries.class);
+        var selection = selection(offerSet());
+        when(participants.findParticipantByExternalIdentity("discord", "10001")).thenReturn(java.util.Optional.of(
+                new ParticipantQueries.ParticipantView(6, "PARTICIPANT-1", "Stored fallback", true, false)));
+        when(participants.findExternalIdentity(6, "discord")).thenReturn(java.util.Optional.of(
+                new ParticipantQueries.ExternalIdentityView(6, "discord", "10001")));
+        when(votingQueries.findSelection(1)).thenReturn(java.util.Optional.of(selection));
+        when(voting.castVoteDeferred(any())).thenReturn(selection);
+        when(voting.resume(new SelectionVotingCommands.ResumeSelection(1))).thenReturn(selection);
+        var resolvedIds = new ArrayList<String>();
+        var messages = new ArrayList<DiscordChallengeRenderer.RenderedMessage>();
+
+        workflow(mock(ChallengeOfferPreparationCommands.class), mock(OfferDecisionQueries.class), voting, votingQueries,
+                participants, Map.of()).component(
+                DiscordComponentId.vote(1, 7, SelectionVotingCommands.VoteOptionType.ACCEPT, null), "10001",
+                (discordUserId, storedFallback) -> {
+                    resolvedIds.add(discordUserId);
+                    return "Aktueller DB-Name";
+                }, recordingDelivery(messages), feedback());
+
+        assertThat(resolvedIds).containsExactly("10001");
+        assertThat(messages.getLast().content()).contains("Aktueller DB-Name");
     }
 
     @Test
@@ -386,8 +437,20 @@ class DiscordChallengeWorkflowTest {
     private static DiscordChallengeWorkflow workflow(ChallengeOfferPreparationCommands preparation,
                                                        OfferDecisionQueries offers, SelectionVotingCommands voting,
                                                        SelectionVotingQueries queries) {
-        return new DiscordChallengeWorkflow(new DiscordProperties(true, "token", 99, ZoneId.of("Europe/Berlin"),
-                Map.of("GEORGIA", "10001", "TOBIAS", "10002")), preparation, offers, voting, queries,
+        DiscordProperties properties = new DiscordProperties(true, "token", 99, ZoneId.of("Europe/Berlin"),
+                Map.of("GEORGIA", "10001", "TOBIAS", "10002"));
+        return new DiscordChallengeWorkflow(properties, preparation, offers, voting, queries,
+                new DiscordTestParticipantQueries(properties, queries),
+                new DiscordChallengeRenderer());
+    }
+
+    private static DiscordChallengeWorkflow workflow(ChallengeOfferPreparationCommands preparation,
+                                                       OfferDecisionQueries offers, SelectionVotingCommands voting,
+                                                       SelectionVotingQueries votingQueries,
+                                                       ParticipantQueries participantQueries,
+                                                       Map<String, String> legacyProperties) {
+        DiscordProperties properties = new DiscordProperties(true, "token", 99, ZoneId.of("Europe/Berlin"), legacyProperties);
+        return new DiscordChallengeWorkflow(properties, preparation, offers, voting, votingQueries, participantQueries,
                 new DiscordChallengeRenderer());
     }
 

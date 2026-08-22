@@ -87,6 +87,7 @@ mise-en-dice.discord.token=PRODUCTION_DISCORD_TOKEN
 mise-en-dice.discord.guild-id=PRODUCTION_GUILD_ID
 mise-en-dice.discord.challenge-operator-role-id=PRODUCTION_CHALLENGE_OPERATOR_ROLE_ID
 mise-en-dice.discord.effective-date-zone=Europe/Berlin
+# Optionaler einmaliger Legacy-Bootstrap. Die DB bleibt danach Runtime-Autorität.
 mise-en-dice.discord.participant-user-ids.GEORGIA=PRODUCTION_GEORGIA_ID
 mise-en-dice.discord.participant-user-ids.TOBIAS=PRODUCTION_TOBIAS_ID
 ```
@@ -108,6 +109,7 @@ mise-en-dice.discord.token=ACCEPTANCE_DISCORD_TESTBOT_TOKEN
 mise-en-dice.discord.guild-id=ACCEPTANCE_GUILD_ID
 mise-en-dice.discord.challenge-operator-role-id=ACCEPTANCE_CHALLENGE_OPERATOR_ROLE_ID
 mise-en-dice.discord.effective-date-zone=Europe/Berlin
+# Optionaler einmaliger Legacy-Bootstrap. Die DB bleibt danach Runtime-Autorität.
 mise-en-dice.discord.participant-user-ids.GEORGIA=ACCEPTANCE_GEORGIA_ID
 mise-en-dice.discord.participant-user-ids.TOBIAS=ACCEPTANCE_TOBIAS_ID
 
@@ -117,8 +119,9 @@ mise-en-dice.curation.openai.model=gpt-5.6-terra
 mise-en-dice.curation.openai.reasoning-effort=medium
 ```
 
-Der Preflight akzeptiert nur die dokumentierten Providerkeys. Er verlangt bei aktivem Discord positive Guild-,
-Challenge-Operator-Rollen- und User-IDs sowie verschiedene IDs für `GEORGIA` und `TOBIAS`; bei aktivem OpenAI Modell
+Der Preflight akzeptiert nur die dokumentierten Providerkeys. Er verlangt bei aktivem Discord positive Guild- und
+Challenge-Operator-Rollen-IDs; optional angegebene Legacy-User-IDs müssen positiv und bei zwei Einträgen verschieden
+sein. Bei aktivem OpenAI verlangt er Modell
 und unterstützte Reasoning-Stufe. Bei deaktiviertem Provider muss der jeweilige Secretwert fehlen:
 
 ```properties
@@ -199,17 +202,17 @@ Für tiefergehende, sensitive Audits existiert bewusst kein Kopierbefehl im Runb
 
 Nach Merge von #115 und vor dem ersten produktiven Pilot-Command wird die Rollen- und Ownership-Grenze einmal in der
 Live-Acceptance geprüft. Dazu erhält zunächst nur ein beabsichtigter Operator die konfigurierte Challenge-Operator-
-Rolle; mindestens ein weiterhin gemappter Electorate-Teilnehmer besitzt sie bewusst nicht.
+Rolle; mindestens ein weiterhin in der DB zugeordneter Electorate-Teilnehmer besitzt sie bewusst nicht.
 
 Verbindliche Fälle:
 
 1. Ein Mitglied mit Operator-Rolle kann `/challenge` in der konfigurierten Guild starten.
-2. Ein gemappter Challenge-Teilnehmer **ohne** Operator-Rolle erhält bei `/challenge` eine ephemere Ablehnung. Vor und
+2. Ein in der DB zugeordneter Challenge-Teilnehmer **ohne** Operator-Rolle erhält bei `/challenge` eine ephemere Ablehnung. Vor und
    nach diesem Versuch werden Session-/Curation-Zähler beziehungsweise die Provider-Usage geprüft: Es darf weder eine
    neue `challenge_session` noch ein `generation_attempt`, eine `curation_round` oder ein OpenAI-Request entstehen.
 3. Die bestehende Challenge-Interaktion bleibt vom Startrecht unabhängig: Electorate-Teilnehmer können die für sie
    autorisierten Voting-/Reroll-Komponenten weiterhin bedienen, auch wenn sie keine Operator-Rolle besitzen.
-4. Ein Guild-Mitglied ohne `participant-user-ids`-Mapping kann `/zutat` aufrufen und seine eigene Card vollständig
+4. Ein Guild-Mitglied ohne Teilnehmerzuordnung kann `/zutat` aufrufen und seine eigene Card vollständig
    navigieren.
 5. Ein zweites Guild-Mitglied kann eine fremde `/zutat`-Card nicht navigieren; die Card bleibt unverändert und die
    Ablehnung ist ephemer. Es darf dabei keine neue Katalogabfrage ausgelöst werden.
