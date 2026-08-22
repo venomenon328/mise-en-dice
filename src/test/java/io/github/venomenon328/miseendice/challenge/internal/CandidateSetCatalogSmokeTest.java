@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.challenge.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.SessionParticipant;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.GeneratedCandidateSet;
@@ -16,6 +17,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.junit.jupiter.Container;
@@ -40,11 +42,12 @@ class CandidateSetCatalogSmokeTest {
     @Autowired CandidateReservoirEngine reservoirEngine;
     @Autowired CandidateSetEngine setEngine;
     @Autowired GeneratorProperties generatorProperties;
+    @Autowired JdbcTemplate jdbcTemplate;
 
     @Test
     void realCatalogProducesAndReplaysOneCompleteSelectedSet() {
         var request = new GenerationAttemptRequest(AttemptType.INITIAL, LocalDate.of(2026, 8, 12), 8,
-                catalogProjection.snapshotForMonth(8), VisibleHistorySnapshot.empty(), List.of(),
+                catalogProjection.snapshotForMonth(8, defaultElectorate()), VisibleHistorySnapshot.empty(), List.of(),
                 generatorProperties.configuration(), 47_000_001L, RestrictionMode.AUTO);
         var prepared = reservoirEngine.prepare(request);
         var first = setEngine.generate(prepared, 1);
@@ -54,5 +57,14 @@ class CandidateSetCatalogSmokeTest {
         GeneratedCandidateSet generated = (GeneratedCandidateSet) first;
         assertThat(generated.candidates()).hasSize(12);
         assertThat(generated.evaluation().pairs()).hasSize(66);
+    }
+
+    private List<SessionParticipant> defaultElectorate() {
+        return jdbcTemplate.query("""
+                select participant.id, participant.code
+                from default_electorate_member member
+                join participant on participant.id = member.participant_id
+                order by participant.code, participant.id
+                """, (result, row) -> new SessionParticipant(result.getLong("id"), result.getString("code")));
     }
 }

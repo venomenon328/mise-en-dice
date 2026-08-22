@@ -149,7 +149,7 @@ Direkt sichtbar sind vier Schnellfilter:
 `Pflegebedarf` umfasst mindestens:
 
 - aktive ziehbare Konzepte ohne funktionale Rolle,
-- aktive ziehbare Konzepte ohne Beschaffbarkeit für Georgia oder Tobias.
+- aktive ziehbare Konzepte mit redaktionell ungepflegter Beschaffbarkeit für Georgia oder Tobias.
 
 ### 5.3 Erweiterte Filter
 
@@ -1084,7 +1084,7 @@ Die Implementierung wird nach dieser Spezifikation in sechs fachlich getrennte P
 
 **Gate**
 
-- aktive Ziehkandidaten können nicht ohne Rollen und Beschaffbarkeit für Georgia und Tobias gespeichert werden; `OPEN` benötigt keine direkte Konkretisierung,
+- aktive Ziehkandidaten können nicht ohne Rollen gespeichert werden; ungepflegte Beschaffbarkeit für Georgia oder Tobias bleibt ein redaktioneller Hinweis, `OPEN` benötigt keine direkte Konkretisierung,
 - fehlende Dimensions- und Saisonwerte behalten ihre dokumentierte Semantik,
 - alle Änderungen sind versionsgesichert und auditiert.
 

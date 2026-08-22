@@ -195,11 +195,6 @@ class CatalogBulkCommandService implements CatalogBulkCommands {
             if (state.functionalRoleCodes.isEmpty()) {
                 errors.put("selection", "\u201e%s\u201c w\u00e4re aktiv und ziehbar, aber ohne funktionale Rolle.".formatted(state.displayName));
             }
-            if (!state.availabilityByParticipant.containsKey("GEORGIA")
-                    || !state.availabilityByParticipant.containsKey("TOBIAS")) {
-                errors.put("selection", "\u201e%s\u201c w\u00e4re aktiv und ziehbar, aber ohne vollst\u00e4ndige Beschaffbarkeit."
-                        .formatted(state.displayName));
-            }
         });
         if (!errors.isEmpty()) {
             throw new CatalogCommandValidationException(errors);

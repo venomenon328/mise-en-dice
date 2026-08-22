@@ -360,12 +360,6 @@ class CatalogCommandService implements CatalogCommands {
         if (metadata.functionalRoleCodes().isEmpty()) {
             errors.put("functionalRoles", "Ziehbare aktive Konzepte benötigen mindestens eine funktionale Rolle.");
         }
-        if (!metadata.availabilityByParticipant().containsKey("GEORGIA")) {
-            errors.put("availabilityGeorgia", "Ziehbare aktive Konzepte benötigen eine Beschaffbarkeit für Georgia.");
-        }
-        if (!metadata.availabilityByParticipant().containsKey("TOBIAS")) {
-            errors.put("availabilityTobias", "Ziehbare aktive Konzepte benötigen eine Beschaffbarkeit für Tobias.");
-        }
         if (!errors.isEmpty()) {
             throw new CatalogCommandValidationException(errors);
         }

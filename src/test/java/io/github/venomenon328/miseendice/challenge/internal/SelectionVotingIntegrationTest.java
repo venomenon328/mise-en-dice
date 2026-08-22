@@ -86,6 +86,11 @@ class SelectionVotingIntegrationTest {
                 + "reroll_offer_exposure, challenge, curated_offer_set, curation_round, generation_batch, "
                 + "generation_attempt, challenge_session cascade");
         jdbcTemplate.update("update participant set active = true where code in ('GEORGIA', 'TOBIAS')");
+        jdbcTemplate.update("""
+                insert into default_electorate_member (participant_id)
+                select id from participant where code in ('GEORGIA', 'TOBIAS')
+                on conflict (participant_id) do nothing
+                """);
         jdbcTemplate.update("delete from participant where code like 'SELECTION_TEST_%'");
     }
 
@@ -124,7 +129,7 @@ class SelectionVotingIntegrationTest {
             assertThat(round.votes()).allSatisfy(vote -> assertThat(vote.vote()).isEqualTo(
                     SelectionVotingCommands.VoteChoice.offer(winner)));
         });
-        assertThat(completed.confirmedChallenge().participants()).hasSize(2);
+        assertNoNewParticipation(completed.confirmedChallenge().challengeId());
         assertThat(tieBreakRandom.calls()).isZero();
         assertThatThrownBy(() -> voting.castVote(new SelectionVotingCommands.CastVote(ready.sessionId(),
                 participants.get("TOBIAS"), SelectionVotingCommands.VoteChoice.offer(winner))))
@@ -201,14 +206,14 @@ class SelectionVotingIntegrationTest {
                 new SelectionVotingCommands.PresentationSucceeded(initial.sessionId(), rerolledOfferSetId));
 
         assertThat(confirmed.currentRound()).isNull();
-        assertThat(confirmed.confirmedChallenge().participants()).hasSize(2);
+        assertNoNewParticipation(confirmed.confirmedChallenge().challengeId());
         assertThat(confirmed.completedRounds()).singleElement().satisfies(round ->
                 assertThat(round.result().applyState()).isEqualTo(SelectionVotingQueries.ApplyState.REROLL_AUTO_CONFIRMED));
         assertThat(jdbcTemplate.queryForObject("select count(*) from challenge", Integer.class)).isEqualTo(1);
     }
 
     @Test
-    void genericIdentityAndLateParticipationDoNotChangeTheElectorateOrAvailability() {
+    void genericIdentityDoesNotChangeTheElectorateOrAvailability() {
         OfferDecisionQueries.OfferSetView ready = offered(1, 81_000_005L);
         Map<String, Long> participants = participants();
         voting.presentationSucceeded(new SelectionVotingCommands.PresentationSucceeded(ready.sessionId(), ready.offerSetId()));
@@ -227,15 +232,10 @@ class SelectionVotingIntegrationTest {
                 insert into participant_external_identity (participant_id, provider, external_subject)
                 values (?, 'test-provider', 'external-extra')
                 """, participants.get("GEORGIA"))).isInstanceOf(DataAccessException.class);
-        SelectionVotingQueries.ChallengeParticipantView joined = voting.joinChallenge(
-                new SelectionVotingCommands.JoinChallenge(confirmed.confirmedChallenge().challengeId(), extraParticipant));
-
         assertThat(votingQueries.findParticipantByExternalIdentity("test-provider", "external-extra"))
                 .contains(identity);
-        assertThat(joined.participantId()).isEqualTo(extraParticipant);
         assertThat(votingQueries.findSelection(ready.sessionId()).orElseThrow().electorate()).hasSize(2);
-        assertThat(votingQueries.findChallengeParticipation(confirmed.confirmedChallenge().challengeId()).orElseThrow()
-                .participants()).hasSize(3);
+        assertNoNewParticipation(confirmed.confirmedChallenge().challengeId());
         assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_availability where participant_id = ?",
                 Integer.class, extraParticipant)).isZero();
     }
@@ -275,24 +275,21 @@ class SelectionVotingIntegrationTest {
         assertThatThrownBy(() -> voting.presentationSucceeded(new SelectionVotingCommands.PresentationSucceeded(
                 ready.sessionId(), foreign.offerSetId())))
                 .isInstanceOf(SelectionVotingConflictException.class);
-        assertThat(votingQueries.findSelection(ready.sessionId())).isEmpty();
+        assertThat(votingQueries.findSelection(ready.sessionId())).isPresent();
 
-        voting.initialize(new SelectionVotingCommands.InitializeSelection(ready.sessionId(),
-                List.of(participants.get("GEORGIA"))));
         jdbcTemplate.update("update participant set active = false where id = ?", participants.get("GEORGIA"));
 
         SelectionVotingQueries.SelectionView opened = voting.presentationSucceeded(
                 new SelectionVotingCommands.PresentationSucceeded(ready.sessionId(), ready.offerSetId()));
 
-        assertThat(opened.electorate()).singleElement().satisfies(member -> {
-            assertThat(member.participantId()).isEqualTo(participants.get("GEORGIA"));
-            assertThat(member.active()).isFalse();
-        });
+        assertThat(opened.electorate()).hasSize(2);
+        assertThat(opened.electorate()).filteredOn(member -> member.participantId() == participants.get("GEORGIA"))
+                .singleElement().satisfies(member -> assertThat(member.active()).isFalse());
         assertThat(opened.currentRound()).isNotNull();
     }
 
     @Test
-    void frozenElectorateMembersJoinTheConfirmedChallengeAfterLaterDeactivation() {
+    void frozenElectorateSurvivesLaterDeactivationWithoutCreatingParticipationRows() {
         OfferDecisionQueries.OfferSetView ready = offered(1, 81_000_009L);
         Map<String, Long> participants = participants();
         voting.presentationSucceeded(new SelectionVotingCommands.PresentationSucceeded(ready.sessionId(), ready.offerSetId()));
@@ -303,12 +300,9 @@ class SelectionVotingIntegrationTest {
         SelectionVotingQueries.SelectionView confirmed = voting.castVote(new SelectionVotingCommands.CastVote(
                 ready.sessionId(), participants.get("TOBIAS"), SelectionVotingCommands.VoteChoice.accept()));
 
-        assertThat(confirmed.confirmedChallenge().participants()).extracting(
-                SelectionVotingQueries.ChallengeParticipantView::participantId)
+        assertThat(confirmed.electorate()).extracting(SelectionVotingQueries.ElectorateMemberView::participantId)
                 .containsExactlyInAnyOrder(participants.get("GEORGIA"), participants.get("TOBIAS"));
-        assertThatThrownBy(() -> voting.joinChallenge(new SelectionVotingCommands.JoinChallenge(
-                confirmed.confirmedChallenge().challengeId(), participants.get("GEORGIA"))))
-                .isInstanceOf(SelectionVotingConflictException.class);
+        assertNoNewParticipation(confirmed.confirmedChallenge().challengeId());
     }
 
     @Test
@@ -327,14 +321,14 @@ class SelectionVotingIntegrationTest {
     }
 
     @Test
-    void resumeCompletesPersistedConfirmAndParticipationCrashWindowsExactlyOnce() throws Exception {
+    void resumeCompletesPersistedConfirmCrashWindowsWithoutParticipationInitialization() throws Exception {
         OfferDecisionQueries.OfferSetView beforeConfirm = offered(1, 81_000_011L);
         Map<String, Long> participants = participants();
         long firstRound = preparedCompletedOfferRound(beforeConfirm, participants);
 
         SelectionVotingQueries.SelectionView afterResume = voting.resume(
                 new SelectionVotingCommands.ResumeSelection(beforeConfirm.sessionId()));
-        assertThat(afterResume.confirmedChallenge().participants()).hasSize(2);
+        assertNoNewParticipation(afterResume.confirmedChallenge().challengeId());
         assertThat(jdbcTemplate.queryForObject("select count(*) from challenge", Integer.class)).isEqualTo(1);
 
         OfferDecisionQueries.OfferSetView afterConfirm = offered(1, 81_000_012L);
@@ -346,10 +340,10 @@ class SelectionVotingIntegrationTest {
                 where id = ?
                 """, secondRound);
 
-        SelectionVotingQueries.SelectionView participationResumed = voting.resume(
+        SelectionVotingQueries.SelectionView confirmationResumed = voting.resume(
                 new SelectionVotingCommands.ResumeSelection(afterConfirm.sessionId()));
-        assertThat(participationResumed.confirmedChallenge().challengeId()).isEqualTo(confirmation.challengeId());
-        assertThat(participationResumed.confirmedChallenge().participants()).hasSize(2);
+        assertThat(confirmationResumed.confirmedChallenge().challengeId()).isEqualTo(confirmation.challengeId());
+        assertNoNewParticipation(confirmation.challengeId());
         assertThat(firstRound).isPositive();
     }
 
@@ -457,17 +451,9 @@ class SelectionVotingIntegrationTest {
         }
         long challengeId = jdbcTemplate.queryForObject("select id from challenge where curated_offer_id = ?", Long.class,
                 resumedReady.offers().getFirst().offerId());
-        long extraParticipant = testParticipant("SELECTION_TEST_PARALLEL_JOIN");
-        try (var executor = Executors.newFixedThreadPool(2)) {
-            var first = executor.submit(() -> voting.joinChallenge(new SelectionVotingCommands.JoinChallenge(challengeId, extraParticipant)));
-            var second = executor.submit(() -> voting.joinChallenge(new SelectionVotingCommands.JoinChallenge(challengeId, extraParticipant)));
-            assertThat(first.get(5, TimeUnit.SECONDS).participantId()).isEqualTo(extraParticipant);
-            assertThat(second.get(5, TimeUnit.SECONDS).participantId()).isEqualTo(extraParticipant);
-        }
         assertThat(jdbcTemplate.queryForObject("select count(*) from challenge where curated_offer_id = ?", Integer.class,
                 resumedReady.offers().getFirst().offerId())).isEqualTo(1);
-        assertThat(jdbcTemplate.queryForObject("select count(*) from challenge_participation where challenge_id = ? and participant_id = ?",
-                Integer.class, challengeId, extraParticipant)).isEqualTo(1);
+        assertNoNewParticipation(challengeId);
         assertThat(round).isPositive();
     }
 
@@ -507,6 +493,11 @@ class SelectionVotingIntegrationTest {
         assertThat(curation.curate(generated.attemptId())).isInstanceOf(CurationOrchestrationCommands.OfferReady.class);
         return offerDecisionQueries.findOfferSet(curationQueries.findOfferSet(generated.attemptId()).orElseThrow().offerSetId())
                 .orElseThrow();
+    }
+
+    private void assertNoNewParticipation(long challengeId) {
+        assertThat(jdbcTemplate.queryForObject("select count(*) from challenge_participation where challenge_id = ?",
+                Integer.class, challengeId)).isZero();
     }
 
     private long preparedCompletedOfferRound(OfferDecisionQueries.OfferSetView ready, Map<String, Long> participants) {

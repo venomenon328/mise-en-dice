@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.challenge.internal;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.CatalogGeneratorSnapshot;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.SessionParticipant;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.AcceptedProposal;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine.RequirementSnapshot;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
@@ -50,6 +51,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -62,12 +64,35 @@ class GeneratorSimulationService implements GeneratorSimulation {
     private static final RoundingMode ROUNDING = RoundingMode.HALF_EVEN;
 
     private final CatalogGeneratorProjection catalogProjection;
+    private final JdbcParticipantElectorateRepository participantElectorateRepository;
     private final JdbcGenerationRepository repository;
     private final CandidateReservoirEngine defaultReservoirEngine;
     private final CandidateSetEngine defaultSetEngine;
     private final GeneratorProperties properties;
     private final TransactionTemplate repeatableReadTransaction;
 
+    @Autowired
+    GeneratorSimulationService(
+            CatalogGeneratorProjection catalogProjection,
+            JdbcParticipantElectorateRepository participantElectorateRepository,
+            JdbcGenerationRepository repository,
+            CandidateReservoirEngine defaultReservoirEngine,
+            CandidateSetEngine defaultSetEngine,
+            GeneratorProperties properties,
+            PlatformTransactionManager transactionManager
+    ) {
+        this.catalogProjection = catalogProjection;
+        this.participantElectorateRepository = participantElectorateRepository;
+        this.repository = repository;
+        this.defaultReservoirEngine = defaultReservoirEngine;
+        this.defaultSetEngine = defaultSetEngine;
+        this.properties = properties;
+        this.repeatableReadTransaction = new TransactionTemplate(transactionManager);
+        this.repeatableReadTransaction.setReadOnly(true);
+        this.repeatableReadTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+    }
+
+    /** Package-private compatibility constructor for pure tests with a synthetic catalog projection. */
     GeneratorSimulationService(
             CatalogGeneratorProjection catalogProjection,
             JdbcGenerationRepository repository,
@@ -77,6 +102,7 @@ class GeneratorSimulationService implements GeneratorSimulation {
             PlatformTransactionManager transactionManager
     ) {
         this.catalogProjection = catalogProjection;
+        this.participantElectorateRepository = null;
         this.repository = repository;
         this.defaultReservoirEngine = defaultReservoirEngine;
         this.defaultSetEngine = defaultSetEngine;
@@ -179,14 +205,23 @@ class GeneratorSimulationService implements GeneratorSimulation {
     private MaterializedInputs materialize(SimulationRequest request) {
         return repeatableReadTransaction.execute(status -> {
             TreeMap<Integer, CatalogGeneratorSnapshot> catalogs = new TreeMap<>();
+            List<SessionParticipant> electorate = defaultElectorate();
             request.scenarios().stream().flatMap(scenario -> scenario.effectiveDates().stream())
                     .map(LocalDate::getMonthValue).distinct().sorted()
-                    .forEach(month -> catalogs.put(month, catalogProjection.snapshotForMonth(month)));
+                    .forEach(month -> catalogs.put(month, catalogProjection.snapshotForMonth(month, electorate)));
             VisibleHistorySnapshot production = request.scenarios().stream()
                     .anyMatch(scenario -> scenario.historyScenario() == HistoryScenario.PRODUCTION_VISIBLE)
                     ? repository.visibleHistory() : VisibleHistorySnapshot.empty();
             return new MaterializedInputs(Map.copyOf(catalogs), production);
         });
+    }
+
+    private List<SessionParticipant> defaultElectorate() {
+        if (participantElectorateRepository == null) {
+            return List.of(new SessionParticipant(1, "GEORGIA"), new SessionParticipant(2, "TOBIAS"));
+        }
+        return participantElectorateRepository.listDefaultElectorate().stream()
+                .map(member -> new SessionParticipant(member.participantId(), member.code())).toList();
     }
 
     private void validateFrozenReferences(SimulationRequest request, Map<Integer, CatalogGeneratorSnapshot> catalogs) {

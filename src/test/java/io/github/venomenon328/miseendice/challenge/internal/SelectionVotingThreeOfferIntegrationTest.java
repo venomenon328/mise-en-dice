@@ -99,7 +99,7 @@ class SelectionVotingThreeOfferIntegrationTest {
             assertThat(round.roundNumber()).isEqualTo(1);
             assertThat(round.result().winningChoice()).isEqualTo(SelectionVotingCommands.VoteChoice.offer(winner));
         });
-        assertThat(completed.confirmedChallenge().participants()).hasSize(2);
+        assertNoNewParticipation(completed.confirmedChallenge().challengeId());
         assertThat(offerDecisionQueries.findOfferSet(ready.offerSetId()).orElseThrow()
                 .confirmedChallenge().offerId()).isEqualTo(winner);
     }
@@ -146,7 +146,7 @@ class SelectionVotingThreeOfferIntegrationTest {
                 .singleElement()
                 .satisfies(round -> assertThat(round.result().winningChoice())
                         .isEqualTo(SelectionVotingCommands.VoteChoice.offer(winner)));
-        assertThat(completed.confirmedChallenge().participants()).hasSize(2);
+        assertNoNewParticipation(completed.confirmedChallenge().challengeId());
         assertThat(offerDecisionQueries.findOfferSet(rerolledOfferSetId).orElseThrow()
                 .confirmedChallenge().offerId()).isEqualTo(winner);
     }
@@ -164,5 +164,10 @@ class SelectionVotingThreeOfferIntegrationTest {
         return jdbcTemplate.query("select code, id from participant where code in ('GEORGIA', 'TOBIAS')",
                 (result, row) -> Map.entry(result.getString("code"), result.getLong("id"))).stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    private void assertNoNewParticipation(long challengeId) {
+        assertThat(jdbcTemplate.queryForObject("select count(*) from challenge_participation where challenge_id = ?",
+                Integer.class, challengeId)).isZero();
     }
 }

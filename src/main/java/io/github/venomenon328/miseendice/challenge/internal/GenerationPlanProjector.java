@@ -120,7 +120,6 @@ final class GenerationPlanProjector {
     private boolean basicallyDrawable(GeneratorConcept concept, GenerationContext context) {
         return concept.active() && concept.randomDrawEnabled() && !concept.functionalRoles().isEmpty()
                 && concept.noveltyLevel() != null
-                && concept.availabilityByParticipant().keySet().containsAll(context.catalog().activeParticipantCodes())
                 && concept.availabilityByParticipant().values().stream()
                 .noneMatch(value -> value == io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Availability.UNAVAILABLE)
                 && exactHistoryDistance(concept.code(), context) > context.configuration().cooldown().hardWindow()

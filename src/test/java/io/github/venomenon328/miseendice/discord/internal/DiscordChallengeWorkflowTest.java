@@ -368,7 +368,7 @@ class DiscordChallengeWorkflowTest {
         var waiting = new SelectionVotingQueries.SelectionView(1, electorate, rerollSet, null, List.of(),
                 new SelectionVotingQueries.WaitingForPresentationView(3, 1), null);
         var confirmed = new SelectionVotingQueries.SelectionView(1, electorate, rerollSet, null, List.of(), null,
-                new SelectionVotingQueries.ChallengeParticipationView(12, List.of()));
+                rerollSet.confirmedChallenge());
         when(queries.findParticipantByExternalIdentity("discord", "10001")).thenReturn(java.util.Optional.of(
                 new SelectionVotingQueries.ParticipantIdentityView(6, "GEORGIA", "Georgia", true, "discord", "10001")));
         when(voting.resume(new SelectionVotingCommands.ResumeSelection(1))).thenReturn(waiting);

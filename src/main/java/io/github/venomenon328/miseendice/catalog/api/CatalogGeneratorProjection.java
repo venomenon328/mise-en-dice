@@ -16,7 +16,11 @@ import java.util.Set;
  */
 public interface CatalogGeneratorProjection {
 
-    CatalogGeneratorSnapshot snapshotForMonth(int month);
+    /**
+     * Materializes the generator catalog for an already frozen challenge-session electorate.
+     * The catalog module never derives this person set from participant activity.
+     */
+    CatalogGeneratorSnapshot snapshotForMonth(int month, List<SessionParticipant> sessionParticipants);
 
     enum Specificity {
         SPECIFIC,
@@ -30,6 +34,15 @@ public interface CatalogGeneratorProjection {
         UNAVAILABLE
     }
 
+    /** Stable participant references supplied by the challenge module with a generation request. */
+    record SessionParticipant(long participantId, String participantCode) {
+        public SessionParticipant {
+            if (participantId <= 0 || participantCode == null || participantCode.isBlank()) {
+                throw new IllegalArgumentException("Session participants require a positive ID and stable code");
+            }
+        }
+    }
+
     record CatalogGeneratorSnapshot(
             int seasonMonth,
             List<String> activeParticipantCodes,
@@ -40,6 +53,8 @@ public interface CatalogGeneratorProjection {
             if (seasonMonth < 1 || seasonMonth > 12) {
                 throw new IllegalArgumentException("seasonMonth must be between 1 and 12");
             }
+            // Kept as the canonical JSON field name for historical generator snapshot compatibility.
+            // Its values are now exactly the explicit frozen session participant codes, never all active participants.
             activeParticipantCodes = activeParticipantCodes.stream().sorted().toList();
             concepts = concepts.stream().sorted(GeneratorConcept.CANONICAL_ORDER).toList();
             exclusionRules = exclusionRules.stream().sorted(GeneratorExclusionRule.CANONICAL_ORDER).toList();

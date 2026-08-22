@@ -7,6 +7,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorExclusionRule;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorExclusionTarget;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Specificity;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.SessionParticipant;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -36,13 +37,20 @@ public class JdbcCatalogGeneratorProjection implements CatalogGeneratorProjectio
 
     @Override
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
-    public CatalogGeneratorSnapshot snapshotForMonth(int month) {
+    public CatalogGeneratorSnapshot snapshotForMonth(int month, List<SessionParticipant> sessionParticipants) {
         if (month < 1 || month > 12) {
             throw new IllegalArgumentException("month must be between 1 and 12");
         }
-
-        List<String> participants = jdbcTemplate.queryForList(
-                "select code from participant where active order by code, id", String.class);
+        if (sessionParticipants == null || sessionParticipants.stream().anyMatch(participant -> participant == null)
+                || sessionParticipants.stream().map(SessionParticipant::participantId).distinct().count()
+                != sessionParticipants.size()
+                || sessionParticipants.stream().map(SessionParticipant::participantCode).distinct().count()
+                != sessionParticipants.size()) {
+            throw new IllegalArgumentException("Session participants must be a distinct non-null fixed set");
+        }
+        List<SessionParticipant> participants = sessionParticipants.stream()
+                .sorted(java.util.Comparator.comparing(SessionParticipant::participantCode)
+                        .thenComparingLong(SessionParticipant::participantId)).toList();
         List<ConceptRow> rows = jdbcTemplate.query("""
                 select ic.id, ic.code, ic.display_name, ic.active, ic.random_draw_enabled,
                        ic.challenge_specificity, ic.base_draw_weight, ic.novelty_level,
@@ -66,7 +74,7 @@ public class JdbcCatalogGeneratorProjection implements CatalogGeneratorProjectio
                 order by flag.code, assignment.ingredient_concept_id
                 """);
         Map<Long, Map<String, Integer>> dimensions = dimensions();
-        Map<Long, Map<String, Availability>> availability = availability();
+        Map<Long, Map<String, Availability>> availability = availability(participants);
         Graph graph = graph();
 
         List<GeneratorConcept> concepts = rows.stream().map(row -> new GeneratorConcept(
@@ -80,7 +88,8 @@ public class JdbcCatalogGeneratorProjection implements CatalogGeneratorProjectio
                 graph.transitiveDescendants().getOrDefault(row.id(), Set.of())
         )).toList();
 
-        return new CatalogGeneratorSnapshot(month, participants, concepts, exclusions(graph));
+        return new CatalogGeneratorSnapshot(month, participants.stream().map(SessionParticipant::participantCode).toList(),
+                concepts, exclusions(graph));
     }
 
     private Map<Long, Set<String>> stringAssignments(String sql) {
@@ -104,17 +113,24 @@ public class JdbcCatalogGeneratorProjection implements CatalogGeneratorProjectio
         return immutableMapMap(values);
     }
 
-    private Map<Long, Map<String, Availability>> availability() {
+    private Map<Long, Map<String, Availability>> availability(List<SessionParticipant> participants) {
         Map<Long, Map<String, Availability>> values = new HashMap<>();
+        if (participants.isEmpty()) {
+            return Map.of();
+        }
+        String placeholders = String.join(", ", java.util.Collections.nCopies(participants.size(), "?"));
+        Map<Long, String> requestedCodes = participants.stream().collect(java.util.stream.Collectors.toMap(
+                SessionParticipant::participantId, SessionParticipant::participantCode));
         jdbcTemplate.query("""
-                select assignment.ingredient_concept_id, participant.code, assignment.availability_level
+                select assignment.ingredient_concept_id, assignment.participant_id, assignment.availability_level
                 from ingredient_availability assignment
-                join participant on participant.id = assignment.participant_id
-                where participant.active
-                order by participant.code, assignment.ingredient_concept_id
-                """, (RowCallbackHandler) result -> values
+                where assignment.participant_id in (%s)
+                order by assignment.participant_id, assignment.ingredient_concept_id
+                """.formatted(placeholders), (RowCallbackHandler) result -> values
                 .computeIfAbsent(result.getLong("ingredient_concept_id"), ignored -> new LinkedHashMap<>())
-                .put(result.getString("code"), Availability.valueOf(result.getString("availability_level"))));
+                .put(requestedCodes.get(result.getLong("participant_id")),
+                        Availability.valueOf(result.getString("availability_level"))),
+                participants.stream().map(SessionParticipant::participantId).toArray());
         return immutableMapMap(values);
     }
 

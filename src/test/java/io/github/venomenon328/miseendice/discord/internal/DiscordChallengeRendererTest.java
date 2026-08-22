@@ -62,7 +62,7 @@ class DiscordChallengeRendererTest {
                                 SelectionVotingCommands.VoteChoice.offer(offerSet.offers().get(1).offerId())),
                         new SelectionVotingQueries.VoteStatusView(9, "TOBIAS", "Tobias", true,
                                 SelectionVotingCommands.VoteChoice.offer(offerSet.offers().get(0).offerId()))), result);
-        var challenge = new SelectionVotingQueries.ChallengeParticipationView(12, List.of());
+        var challenge = offerSet.confirmedChallenge();
 
         var rendered = renderer.selection(new SelectionVotingQueries.SelectionView(1, electorate(), offerSet, null,
                 List.of(completed), null, challenge));

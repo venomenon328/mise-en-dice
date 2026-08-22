@@ -1,13 +1,15 @@
 # Challenge-Voting und Teilnahme
 
-Stand: 17. August 2026  
-Status: verbindliche Fachspezifikation; Phase-11B-Core mit Issue #81 umgesetzt
+Stand: 22. August 2026
+Status: historische Phase-11B-Spezifikation; Voting-Mechanik weiterhin gültig, Teilnehmer-, Elektorats-, Beschaffbarkeits- und Participation-Semantik seit Issue #150 durch [PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md](PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md) ersetzt
 
 Dieses Dokument ergänzt [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) um die Mehrnutzer-Semantik zwischen einem präsentierten Offer Set und der tatsächlich gestarteten Challenge. Es baut auf dem transportneutralen Offer-/Decision-Lifecycle aus Phase 11A auf, verändert aber dessen Generator-, Kurator- oder Historienregeln nicht.
 
 Die zentrale Trennung lautet:
 
-> Ein registrierter Teilnehmer ist eine fachliche Identität. Ein Electorate bestimmt, wer über einen konkreten Auswahlprozess abstimmt. Die Challenge-Teilnahme bestimmt unabhängig davon, wer an der anschließend gestarteten Challenge teilnimmt.
+> Ein registrierter Teilnehmer ist eine fachliche Identität. Ein Electorate bestimmt, wer über einen konkreten Auswahlprozess abstimmt. Die frühere Challenge-Teilnahme bleibt davon getrennte Legacy-Historie und bestimmt keinen aktuellen Produktfluss.
+
+Für neue Sessions gilt ab Issue #150: Das mutable Standard-Elektorat wird vor Catalog Snapshot und Generator materialisiert und bleibt für INITIAL, Restart und REROLL unverändert. Der Catalog Snapshot enthält nur vorhandene Beschaffbarkeitswerte dieser festen Menge; fehlende Werte sind neutral. Die Snapshot-Materialisierung startet keine Voting-Runde: Diese wird weiterhin erst vom expliziten Voting-Workflow nach Präsentation eines Offer Sets angelegt. `challenge_participation` wird weder initialisiert noch im Produktfluss gelesen und ist ausschließlich Legacy.
 
 ## 1. Ziele und Grundsätze
 
@@ -193,27 +195,11 @@ Mehrheit und zufälliger Tie-Break funktionieren wie in Runde 1.
 
 Bei `requested_offer_count = 1` und bereits verbrauchtem freiwilligem Reroll existiert keine echte Auswahl mehr. Das einzige neue Offer kann ohne eine zweite bedeutungslose Abstimmung automatisch bestätigt und als Challenge gestartet werden.
 
-## 8. Challenge-Teilnahme ist nicht Stimmberechtigung
+## 8. Historische Challenge-Teilnahme
 
-Die Teilnehmer einer operativen Challenge werden unabhängig vom Electorate modelliert.
+`challenge_participation` bleibt als historische Tabelle bestehen, ist aber seit Issue #150 keine aktive Produktrelation mehr: Weder eine Bestätigung noch der Voting-Core erzeugen oder lesen ihre Zeilen. Die Session-Mitgliedschaft ist ausschließlich das feste Electorate; spätere Challenge-bezogene Teilnahmekonzepte bleiben bewusst späteren Paketen vorbehalten.
 
-Beim erstmaligen Erzeugen der Challenge werden die Mitglieder des Electorate-Snapshots standardmäßig als Challenge-Teilnehmer übernommen. Dies ist eine Initialisierung, keine Identitätsgleichheit zwischen den Konzepten.
-
-Danach gilt:
-
-- registrierte Teilnehmer dürfen einer konkreten Challenge später beitreten,
-- ein späterer Beitritt verändert das abgeschlossene Voting nicht,
-- ein späterer Beitritt verändert die Generatorhistorie der Challenge nicht,
-- ein späterer Beitritt erfordert keine persönliche Beschaffbarkeitsmatrix,
-- und spätere teilnehmerbezogene Funktionen wie eigener Grundplan, eigene Zutaten, Foto oder Ergebnis können an diese Challenge-Teilnahme statt an das frühere Electorate angehängt werden.
-
-Damit sind insbesondere folgende Fälle gültig:
-
-- Ein Nutzer stimmt über die Challenge ab und nimmt anschließend teil.
-- Ein Nutzer nimmt an der Challenge teil, obwohl er bei der Auswahl nicht stimmberechtigt war.
-- Ein künftig registrierter Nutzer kann einer bereits gestarteten Challenge beitreten, sofern die spätere Produktpolicy dies erlaubt.
-
-Das Verlassen einer Challenge, nachträgliche Entfernung durch andere Nutzer und Berechtigungsregeln für fremde Beitritte sind noch nicht festgelegt und werden nicht vorzeitig aus dem Datenmodell abgeleitet.
+Historische Zeilen werden nicht umgedeutet oder gelöscht. Eine spätere neue Teilnahme-Policy, Beitritte oder Austritte sind nicht Bestandteil dieses Pakets.
 
 ## 9. Persistenzziel
 
@@ -226,26 +212,24 @@ participant
 challenge_session
   ├─ selection electorate snapshot
   │    └─ electorate participant
-  ├─ voting round 1
+  ├─ optional voting round 1
   │    └─ one current vote per electorate participant
   ├─ optional voting round 2 after reroll
   │    └─ one current vote per electorate participant
   └─ operative challenge
-       └─ mutable challenge participation
-            └─ participant
+
+challenge_participation (legacy, außerhalb des Produktflusses)
 ```
 
 Verbindliche Invarianten:
 
-- Electorate und Challenge-Teilnahme sind unterschiedliche Relationen.
 - Der Electorate-Snapshot ist nach Start der Session stabil.
 - Pro Voting-Runde existiert je Electorate-Teilnehmer höchstens eine aktuelle Stimme.
 - Nur Offers des aktuell präsentierten Sets beziehungsweise die für diese Runde erlaubte Reroll-/Accept-Option sind gültig.
 - Eine abgeschlossene Runde besitzt genau ein persistiertes Ergebnis.
 - Ein zufälliger Tie-Break wird höchstens einmal materialisiert.
 - Runde 2 darf nur nach einem tatsächlich gewonnenen und erfolgreich persistierten Reroll der Runde 1 existieren.
-- Challenge-Teilnahme darf nach Challenge-Erzeugung ergänzt werden.
-- Eine Challenge-Mitgliedschaft erzeugt keine `ingredient_availability`-Pflicht.
+- `challenge_participation` wird nicht aus dem Electorate abgeleitet und erzeugt keine `ingredient_availability`-Pflicht.
 
 ## 10. Konkurrenz und Idempotenz
 
@@ -259,7 +243,6 @@ Die spätere Implementierung muss mindestens folgende Fälle sicher behandeln:
 - Abstimmungsergebnis Offer gegen parallelen veralteten Reroll-Klick: nur die autoritative Rundenauswertung darf die Offer-Decision auslösen,
 - Restart nach abgeschlossener Abstimmung, aber vor Challenge-Bestätigung: Fortsetzung derselben Entscheidung,
 - Restart nach gewonnenem Reroll, aber vor vollständigem REROLL-Workflow: Fortsetzung über den bereits restartfähigen Phase-11A-Pfad,
-- spätere Challenge-Beitritte: idempotent und ohne Änderung des Electorates.
 
 ## 11. Paketgrenzen ab Phase 11
 
@@ -291,8 +274,6 @@ Issue #81 implementiert den transportneutralen Core über `SelectionVotingComman
 - automatische Auswertung nach vollständigem Electorate,
 - einmaligen persistenten Tie-Break,
 - zweite Voting-Runde nach Reroll,
-- Initialisierung der Challenge-Teilnahme aus dem Electorate,
-- spätere Beitritte registrierter Teilnehmer,
 - Presentation-Handshake erst nach gemeldeter tatsächlicher Auslieferung sowie Orchestrierung ausschließlich über die öffentlichen APIs aus 11A.
 
 Der Abschluss einer Runde persistiert Gewinner und gegebenenfalls Tie-Break atomar vor dem separaten 11A-Apply-Schritt. Dessen Zustand bleibt sichtbar und `resume` setzt Confirm, Reroll, Reroll-Fortschritt oder die idempotente Participation-Initialisierung nach einem Restart fort. Eine öffentliche Selbstregistrierung ist hierfür nicht erforderlich; Erweiterbarkeit genügt.
@@ -330,4 +311,4 @@ Keine dieser Fragen darf dazu führen, heute Electorate und Challenge-Teilnahme 
 
 ## 13. Leitentscheidung in Kurzform
 
-> Eine Challenge-Session friert beim Start ihr Electorate ein. In der ersten sichtbaren Runde stimmt jeder Electorate-Teilnehmer geheim für eines von 1–3 Offers beziehungsweise für den einmaligen Reroll; bei genau einem Offer heißt die Wahl ACCEPT oder REROLL. Nach der letzten Stimme gewinnt die Mehrheit, bei Gleichstand entscheidet einmalig und persistent der Zufall nur zwischen den bestplatzierten Optionen. Gewinnt der Reroll, läuft der bestehende 11A-Reroll-Workflow und dasselbe Electorate entscheidet anschließend ohne weitere Reroll-Option über das neue Set; bei nur einem neuen Offer ist keine zweite Scheinabstimmung nötig. Die gestartete Challenge besitzt danach eine eigene, veränderbare Teilnehmermenge: Electorate-Mitglieder starten als Teilnehmer, weitere registrierte Nutzer dürfen später hinzukommen. Zusätzliche registrierte Nutzer benötigen keine Beschaffbarkeitsdaten; der Generator berücksichtigt weiterhin ausschließlich die ausdrücklich konfigurierten Profile von Georgia und Tobias.
+> Eine Challenge-Session friert beim Start ihr Electorate ein. Eine sichtbare Voting-Runde wird erst durch den Voting-Workflow nach Präsentation gestartet; dann stimmt jeder Electorate-Teilnehmer geheim für eines von 1–3 Offers beziehungsweise für den einmaligen Reroll. Nach der letzten Stimme gewinnt die Mehrheit, bei Gleichstand entscheidet einmalig und persistent der Zufall nur zwischen den bestplatzierten Optionen. Gewinnt der Reroll, läuft der bestehende 11A-Reroll-Workflow und dasselbe Electorate entscheidet anschließend ohne weitere Reroll-Option über das neue Set; bei nur einem neuen Offer ist keine zweite Scheinabstimmung nötig. `challenge_participation` bleibt historische, nicht mehr produktiv verwendete Daten. Zusätzliche Standard-Elektoratsmitglieder benötigen keine Beschaffbarkeitsdaten; der Generator bewertet fehlende Werte neutral.

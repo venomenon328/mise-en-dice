@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.GeneratorConcept;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.SessionParticipant;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine;
 import java.math.BigDecimal;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -42,9 +45,14 @@ class CatalogGeneratorProjectionIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @AfterEach
+    void removeSparseProjectionParticipant() {
+        jdbcTemplate.update("delete from participant where code = 'CATALOG_SPARSE_TEST'");
+    }
+
     @Test
     void projectsTheCompleteCanonicalBaselineIncludingManualOnlyConcepts() {
-        var snapshot = projection.snapshotForMonth(8);
+        var snapshot = projection.snapshotForMonth(8, defaultElectorate());
 
         assertThat(snapshot.concepts()).hasSize(698);
         assertThat(snapshot.concepts()).filteredOn(concept -> concept.active() && concept.randomDrawEnabled())
@@ -70,7 +78,7 @@ class CatalogGeneratorProjectionIntegrationTest {
 
     @Test
     void resolvesSeasonGraphPropertiesAndExpandedExclusionsInBulkSnapshot() {
-        var snapshot = projection.snapshotForMonth(8);
+        var snapshot = projection.snapshotForMonth(8, defaultElectorate());
         String missingSeasonCode = jdbcTemplate.queryForObject("""
                 select concept.code
                 from ingredient_concept concept
@@ -115,5 +123,33 @@ class CatalogGeneratorProjectionIntegrationTest {
         assertThat(descriptor.configurationVersion()).isEqualTo("2026-08-15.1");
         assertThat(descriptor.canonicalConfigurationSnapshot()).contains(
                 "candidateSetSize", "scoreWeights", "SPLITMIX64_V1");
+    }
+
+    @Test
+    void projectsOnlyMaintainedAvailabilityForTheFixedSessionElectorate() {
+        long sparseParticipantId = jdbcTemplate.queryForObject("""
+                insert into participant (code, display_name) values ('CATALOG_SPARSE_TEST', 'Sparse projection test')
+                returning id
+                """, Long.class);
+        long georgiaId = jdbcTemplate.queryForObject("select id from participant where code = 'GEORGIA'", Long.class);
+
+        var snapshot = projection.snapshotForMonth(8, List.of(
+                new SessionParticipant(georgiaId, "GEORGIA"),
+                new SessionParticipant(sparseParticipantId, "CATALOG_SPARSE_TEST")));
+
+        assertThat(snapshot.activeParticipantCodes()).containsExactly("CATALOG_SPARSE_TEST", "GEORGIA");
+        assertThat(snapshot.conceptByCode("FISH_SAUCE").orElseThrow().availabilityByParticipant())
+                .containsKey("GEORGIA")
+                .doesNotContainKey("CATALOG_SPARSE_TEST")
+                .doesNotContainKey("TOBIAS");
+    }
+
+    private List<SessionParticipant> defaultElectorate() {
+        return jdbcTemplate.query("""
+                select participant.id, participant.code
+                from default_electorate_member member
+                join participant on participant.id = member.participant_id
+                order by participant.code, participant.id
+                """, (result, row) -> new SessionParticipant(result.getLong("id"), result.getString("code")));
     }
 }

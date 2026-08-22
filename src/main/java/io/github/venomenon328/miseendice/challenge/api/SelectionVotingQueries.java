@@ -4,14 +4,12 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-/** Read-only transport-neutral projections for the Phase-11B selection and participation workflow. */
+/** Read-only transport-neutral projections for the fixed-electorate selection workflow. */
 public interface SelectionVotingQueries {
 
     Optional<ParticipantIdentityView> findParticipantByExternalIdentity(String provider, String externalSubject);
 
     Optional<SelectionView> findSelection(long sessionId);
-
-    Optional<ChallengeParticipationView> findChallengeParticipation(long challengeId);
 
     record ParticipantIdentityView(long participantId, String participantCode, String displayName, boolean active,
                                    String provider, String externalSubject) {
@@ -24,7 +22,7 @@ public interface SelectionVotingQueries {
             VotingRoundView currentRound,
             List<VotingRoundView> completedRounds,
             WaitingForPresentationView waitingForPresentation,
-            ChallengeParticipationView confirmedChallenge
+            OfferDecisionQueries.ChallengeView confirmedChallenge
     ) {
         public SelectionView {
             electorate = List.copyOf(electorate);
@@ -69,16 +67,6 @@ public interface SelectionVotingQueries {
     }
 
     record WaitingForPresentationView(long offerSetId, int offerCount) {
-    }
-
-    record ChallengeParticipationView(long challengeId, List<ChallengeParticipantView> participants) {
-        public ChallengeParticipationView {
-            participants = List.copyOf(participants);
-        }
-    }
-
-    record ChallengeParticipantView(long challengeId, long participantId, String participantCode, String displayName,
-                                    Instant joinedAt) {
     }
 
     enum VotingRoundStatus {

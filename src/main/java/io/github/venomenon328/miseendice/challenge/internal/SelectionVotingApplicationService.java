@@ -48,7 +48,7 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
     public SelectionView initialize(InitializeSelection command) {
         inWriteTransaction(() -> {
             lockSession(command.sessionId());
-            initializeElectorate(command.sessionId(), command.participantIds());
+            requireMaterializedElectorate(command.sessionId());
             return null;
         });
         return selection(command.sessionId());
@@ -66,7 +66,7 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
         }
         inWriteTransaction(() -> {
             lockSession(command.sessionId());
-            initializeElectorate(command.sessionId(), List.of());
+            requireMaterializedElectorate(command.sessionId());
             return null;
         });
         if (reportedOfferSet.status() == CurationModel.OfferSetStatus.CURATED_UNPRESENTED) {
@@ -134,24 +134,6 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
     }
 
     @Override
-    public ChallengeParticipantView joinChallenge(JoinChallenge command) {
-        return inWriteTransaction(() -> {
-            JdbcSelectionVotingRepository.Participant participant = repository.findParticipant(command.participantId())
-                    .orElseThrow(() -> new IllegalArgumentException("Participant does not exist"));
-            if (!participant.active()) {
-                throw new SelectionVotingConflictException("An inactive participant cannot join a challenge");
-            }
-            if (repository.challengeParticipation(command.challengeId()).isEmpty()) {
-                throw new IllegalArgumentException("Challenge does not exist");
-            }
-            repository.joinChallenge(command.challengeId(), command.participantId());
-            return repository.challengeParticipation(command.challengeId()).orElseThrow().participants().stream()
-                    .filter(member -> member.participantId() == command.participantId())
-                    .findFirst().map(this::challengeParticipantView).orElseThrow();
-        });
-    }
-
-    @Override
     public ParticipantIdentityView linkExternalIdentity(LinkExternalIdentity command) {
         return inWriteTransaction(() -> {
             JdbcSelectionVotingRepository.Participant participant = repository.findParticipant(command.participantId())
@@ -178,11 +160,6 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
     public Optional<SelectionView> findSelection(long sessionId) {
         JdbcSelectionVotingRepository.SelectionSnapshot snapshot = repository.selection(sessionId);
         return snapshot.electorate().isEmpty() ? Optional.empty() : Optional.of(selection(snapshot));
-    }
-
-    @Override
-    public Optional<ChallengeParticipationView> findChallengeParticipation(long challengeId) {
-        return repository.challengeParticipation(challengeId).map(this::challengeParticipationView);
     }
 
     private void reconcilePersistedPresentation(long sessionId) {
@@ -275,7 +252,6 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
     private void apply(Continuation continuation) {
         JdbcSelectionVotingRepository.Round round = continuation.round();
         if (round.applyState() == ApplyState.CONFIRMED || round.applyState() == ApplyState.REROLL_AUTO_CONFIRMED) {
-            initializeParticipation(continuation.sessionId(), confirmedChallengeId(round));
             return;
         }
         if (round.applyState() == ApplyState.REROLL_AUTO_CONFIRM_PENDING) {
@@ -288,7 +264,6 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
                 repository.markRerollAutoConfirmed(round.roundId(), offerSetId);
                 return null;
             });
-            initializeParticipation(continuation.sessionId(), confirmation.challengeId());
             return;
         }
         if (round.resultChoice().type() == VoteOptionType.REROLL) {
@@ -305,7 +280,6 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
             repository.markConfirmed(round.roundId());
             return null;
         });
-        initializeParticipation(continuation.sessionId(), confirmation.challengeId());
     }
 
     private void applyReroll(Continuation continuation) {
@@ -331,20 +305,6 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
         });
     }
 
-    private void initializeParticipation(long sessionId, long challengeId) {
-        inWriteTransaction(() -> {
-            lockSession(sessionId);
-            repository.initializeChallengeParticipation(sessionId, challengeId);
-            return null;
-        });
-    }
-
-    private long confirmedChallengeId(JdbcSelectionVotingRepository.Round round) {
-        long offerSetId = round.applyState() == ApplyState.REROLL_AUTO_CONFIRMED
-                ? requireResultingOfferSet(round) : round.offerSetId();
-        return offerSet(offerSetId).confirmedChallenge().challengeId();
-    }
-
     private SelectionView selection(long sessionId) {
         return findSelection(sessionId).orElseThrow(() -> new IllegalStateException("Selection electorate was not initialized"));
     }
@@ -362,9 +322,7 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
                 .map(round -> roundView(round, snapshot.electorate(), offerSet(round.offerSetId())))
                 .toList();
         WaitingForPresentationView waiting = waitingForPresentation(snapshot.rounds());
-        ChallengeParticipationView challenge = offerDecisionQueries.findSession(snapshot.sessionId())
-                .map(OfferDecisionQueries.SessionDecisionView::confirmedChallengeId)
-                .flatMap(this::findChallengeParticipation).orElse(null);
+        OfferDecisionQueries.ChallengeView challenge = currentOfferSet == null ? null : currentOfferSet.confirmedChallenge();
         return new SelectionView(snapshot.sessionId(), electorate, currentOfferSet, currentRound, completedRounds, waiting, challenge);
     }
 
@@ -437,30 +395,14 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
         }
     }
 
-    private void initializeElectorate(long sessionId, List<Long> requestedParticipantIds) {
+    private void requireMaterializedElectorate(long sessionId) {
         List<Long> existing = repository.electorate(sessionId).stream()
                 .map(JdbcSelectionVotingRepository.ElectorateMember::participantId)
                 .sorted().toList();
-        if (!existing.isEmpty()) {
-            if (!requestedParticipantIds.isEmpty() && !existing.equals(requestedParticipantIds.stream().sorted().toList())) {
-                throw new SelectionVotingConflictException("Challenge session electorate is already initialized differently");
-            }
-            return;
+        if (existing.isEmpty() || !repository.sessionElectorateMaterialized(sessionId)) {
+            throw new SelectionVotingConflictException(
+                    "Challenge session electorate must be materialized before generation and presentation");
         }
-        List<Long> expected = requestedParticipantIds.isEmpty() ? repository.defaultElectorateParticipantIds()
-                : requestedParticipantIds;
-        expected = expected.stream().sorted().toList();
-        if (expected.isEmpty() || (requestedParticipantIds.isEmpty() && expected.size() != 2)) {
-            throw new IllegalStateException("The configured default electorate must contain active Georgia and Tobias participants");
-        }
-        for (long participantId : expected) {
-            JdbcSelectionVotingRepository.Participant participant = repository.findParticipant(participantId)
-                    .orElseThrow(() -> new SelectionVotingConflictException("Electorate participant does not exist"));
-            if (!participant.active()) {
-                throw new SelectionVotingConflictException("An inactive participant cannot initialize a new electorate snapshot");
-            }
-        }
-        repository.insertElectorate(sessionId, expected);
     }
 
     private OfferDecisionQueries.OfferSetView offerSet(long offerSetId) {
@@ -491,16 +433,6 @@ class SelectionVotingApplicationService implements SelectionVotingCommands, Sele
     private ParticipantIdentityView identityView(JdbcSelectionVotingRepository.Identity identity) {
         return new ParticipantIdentityView(identity.participantId(), identity.code(), identity.displayName(), identity.active(),
                 identity.provider(), identity.externalSubject());
-    }
-
-    private ChallengeParticipationView challengeParticipationView(JdbcSelectionVotingRepository.ChallengeParticipation participation) {
-        return new ChallengeParticipationView(participation.challengeId(), participation.participants().stream()
-                .map(this::challengeParticipantView).toList());
-    }
-
-    private ChallengeParticipantView challengeParticipantView(JdbcSelectionVotingRepository.ChallengeParticipant participant) {
-        return new ChallengeParticipantView(participant.challengeId(), participant.participantId(), participant.code(),
-                participant.displayName(), participant.joinedAt());
     }
 
     private static String detail(String reasonCode, String detail) {

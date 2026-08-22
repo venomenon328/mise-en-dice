@@ -1,6 +1,6 @@
 # Datenmodell
 
-Stand: 17. August 2026
+Stand: 22. August 2026
 
 Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt als explizit geordnete Liquibase-Changesets vor:
 
@@ -17,6 +17,7 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 - [`011-candidate-specific-restrictions.sql`](../src/main/resources/db/changelog/schema/011-candidate-specific-restrictions.sql) für Generator 1.2, Curation Contract V2 und unveränderliche Restriktions-History
 - [`012-remove-legacy-generator-compatibility.sql`](../src/main/resources/db/changelog/schema/012-remove-legacy-generator-compatibility.sql) für die ausschließlich ausführbare Generator-1.2-Struktur
 - [`013-challenge-archive-core.sql`](../src/main/resources/db/changelog/schema/013-challenge-archive-core.sql) für öffentliche Challenge-Nummern und die optionale Challenge-Card
+- [`014-participant-electorate-core.sql`](../src/main/resources/db/changelog/schema/014-participant-electorate-core.sql) für das persistente Standard-Elektorat, immutable Participant-Codes und die Vor-Generierung-Materialisierung
 
 Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
 
@@ -114,7 +115,7 @@ Die Bezugsart wird nicht gespeichert.
 
 Die Beschaffbarkeit eines allgemeineren Konzepts wird **nicht aus seinen bekannten Konkretisierungen abgeleitet**. Beispielsweise kann `Chili` problemlos beschaffbar sein, obwohl keine der konkret benannten Chilisorten lokal zuverlässig verfügbar ist.
 
-Fehlende Beschaffbarkeitsdaten sollen von der Anwendung bei Zufallsziehungen konservativ behandelt werden. Manuelle Vorgaben ignorieren Beschaffbarkeitsdaten vollständig.
+Für einen erzeugten Session-Snapshot werden ausschließlich vorhandene Werte seiner Elektoratsmitglieder ausgewertet. Fehlt ein Wert, bleibt er neutral; ein vorhandenes `UNAVAILABLE` einer dieser Personen blockiert weiterhin. Werte von Personen außerhalb des Snapshots bleiben wirkungslos. Manuelle Vorgaben ignorieren Beschaffbarkeitsdaten vollständig.
 
 ## 7. Ziehungsgewicht, Ungewöhnlichkeit und Saison
 
@@ -191,8 +192,8 @@ Phase 9D migriert append-only zunächst auf die in [`CANDIDATE_GENERATOR.md`](CA
 
 ```text
 challenge_session
-  ├─ selection_electorate (unveränderlicher Snapshot)
-  ├─ selection_voting_round (1..2)
+  ├─ selection_electorate (vor Catalog Snapshot materialisierter, unveränderlicher Snapshot)
+  ├─ selection_voting_round (optional 1..2, erst nach expliziter Voting-Initialisierung)
   │    └─ selection_vote (genau eine aktuelle Wahl je Electorate-Mitglied)
   └─ generation_attempt
        ├─ generation_manual_requirement (0-2)
@@ -209,11 +210,14 @@ challenge_session
 challenge
   ├─ besitzt eine positive, globale und unveränderliche challenge_number
   ├─ verweist bei neuen Challenges auf genau ein bestätigtes curated_offer; nur bei Migration 008 eingefrorene Legacy-Zeilen bleiben ohne diese Referenz lesbar
-  ├─ challenge_participation (veränderbare Teilnehmermenge)
+  ├─ challenge_participation (Legacy, nicht fachautoritative Daten)
   └─ challenge_card (optional genau eine aktuelle PNG-Card)
 
 participant
   └─ participant_external_identity (generischer Provider und stabiler externer Subject)
+
+default_electorate_member
+  └─ aktiver participant für künftige Sessions
 
 reroll_offer_exposure (Phase 11A)
   └─ referenziert genau ein vollständig rerolltes sichtbares curated_offer_set derselben Session
@@ -221,6 +225,8 @@ reroll_offer_exposure (Phase 11A)
 ```
 
 `reroll_offer_exposure` und seine Snapshot-Requirements sind die in Phase 11A eingeführte append-only Tabellenform für diese Cooldown-only-Rolle. Der Phase-11B-Voting-Core und der erst danach folgende 11C-Discord-Adapter schreiben sie nicht selbst, sondern verwenden ausschließlich die öffentlichen Offer-Decision-Commands.
+
+Seit Issue #150 wird das Session-Elektorat bei jedem neuen INITIAL-Start unter derselben Transaktionssperre wie das mutable `default_electorate_member` materialisiert, noch bevor Attempt, Catalog Snapshot oder Generator laufen. `selection_electorate_materialized_at` schließt die Menge anschließend auch auf Datenbankebene; Rerolls verwenden dieselben Zeilen. Deaktivierung entfernt ausschließlich die künftige Standardmitgliedschaft. Neue `challenge_participation`-Zeilen werden nicht mehr automatisch erzeugt; vorhandene Zeilen bleiben lesbare Legacy-Daten.
 
 ### Öffentliche Challenge-Nummer und Card
 
@@ -246,7 +252,7 @@ Phase 10A speichert für die Session die gewünschte Zahl präsentierter Angebot
 `REQUIRED`. Er gehört für Generator `1.2.0` in den gespeicherten Context und Set-Fingerprint; die historische
 attempt-weite Ausschlussentscheidung auf `generation_attempt` bleibt ausschließlich für `1.0.x`/`1.1.x` erhalten.
 
-Phase 11B ergänzt pro Session einen festen `selection_electorate`-Snapshot. Er enthält ausschließlich stabile `participant`-Referenzen und wird beim ersten Start des Auswahlprozesses atomar materialisiert. Die transportneutrale Default-Policy wählt die aktiven stabilen Codes `GEORGIA` und `TOBIAS`; spätere Registrierungen oder Deaktivierungen ändern keinen bereits vorhandenen Snapshot. Eine abweichende erneute Initialisierung derselben Session ist ein fachlicher Konflikt.
+Issue #150 ergänzt pro Session einen festen `selection_electorate`-Snapshot. Er enthält ausschließlich stabile `participant`-Referenzen und wird bei jedem neuen INITIAL-Start atomar vor Catalog Snapshot und Generator materialisiert. Die transportneutrale Default-Policy liest die aktiven Mitglieder von `default_electorate_member` (zunächst Georgia und Tobias); spätere Registrierungen, Änderungen am Default oder Deaktivierungen ändern keinen bereits vorhandenen Snapshot. Eine leere Default-Menge weist einen neuen INITIAL-Start fachlich zurück.
 
 ### Teilnehmeridentität, Voting und Teilnahme
 
@@ -256,7 +262,7 @@ Eine `selection_voting_round` referenziert genau ein tatsächlich durch 11A prä
 
 `selection_vote` hält pro Runde und Electorate-Mitglied höchstens eine veränderbare aktuelle Wahl. PostgreSQL prüft Electorate-, Session-, Offer- und Reroll-Zugehörigkeit. Beim Übergang nach `COMPLETED` verlangt die Datenbank alle Stimmen und genau ein Ergebnis. Das Ergebnis, der Tie-Break-Marker und die Ergebniswahl sind anschließend unveränderlich. Der Anwendungscode materialisiert den Tie-Break nur in diesem Abschluss und persistiert ihn vor der Folgeaktion; `apply_state` dokumentiert die restartfähige Anwendung über 11A (`PENDING`, Reroll-Fortschritt/-Terminalzustand oder Bestätigung). Die Zustandsübergänge sind ausschließlich vorwärts erlaubt, damit ein verspätet beobachtetes `REROLL_IN_PROGRESS` weder einen bereitstehenden Reroll noch dessen Offer-Set-ID zurückschreiben kann.
 
-`challenge_participation` bleibt davon getrennt. Nach einer 11A-Bestätigung übernimmt 11B idempotent alle Electorate-Mitglieder, auch wenn eines seit dem Snapshot deaktiviert wurde; ein weiterer freiwilliger Join verlangt weiterhin einen aktuell aktiven registrierten Teilnehmer. Weder Snapshot noch Votes, Generatorhistorie oder Beschaffbarkeitsmatrix ändern sich dadurch.
+`challenge_participation` bleibt als Legacy-Tabelle erhalten. Issue #150 erzeugt, liest oder verändert im Produktfluss keine neuen Participation-Zeilen; weder Snapshot noch Votes, Generatorhistorie oder Beschaffbarkeitsmatrix hängen davon ab.
 
 ### Generation Attempt
 
