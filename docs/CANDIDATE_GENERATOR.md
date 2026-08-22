@@ -637,7 +637,7 @@ Es verwendet keine Ländernamen, Rezeptnamen oder Zutaten-Sonderfälle.
 
 ### 11.4 Offenheit und Nicht-Trivialität
 
-Offene Requirements und mehrere plausible Rollenbelegungen erhöhen den Wert. Ein Kandidat mit vier spezifischen Vorgaben bleibt zulässig und kann durch semantische Distanz und kreative Spannung gut abschneiden.
+Offene Requirements und mehrere plausible Rollenbelegungen erhöhen den Wert. Ein Kandidat mit vier spezifischen Vorgaben bleibt zulässig und kann durch semantische Distanz und kontrollierte Spannung gut abschneiden.
 
 Ein niedriger Wert entsteht bei einer sehr dichten, vollständig vertrauten Rollenbelegung, die wenig Entscheidungsspielraum erkennen lässt. Das ist nur ein schwaches Ranking-Signal; der Generator behauptet nicht, ein bestimmtes Standardgericht erkannt zu haben.
 
@@ -1262,7 +1262,7 @@ eine sichtbare Kandidatenposition `1..12` sowie `AUTO`, `NONE` oder `REQUIRED` a
 Die API akzeptiert nie `SeedSource`, begrenzt jeden Application-Run fail-fast auf 4.096 Fälle und erlaubt dem
 aufrufenden Adapter nur strengere Grenzen.
 
-Zu Beginn eines Laufs materialisiert eine einzige read-only-`REPEATABLE_READ`-Transaktion alle benötigten
+Zu Beginn eines Laufs materialisiert eine einzige read-only-`REPEATABLE READ`-Transaktion alle benötigten
 Monats-`CatalogGeneratorSnapshot`s sowie bei `PRODUCTION_VISIBLE` genau einen `VisibleHistorySnapshot`. Danach
 nutzen Preview und Simulation denselben reinen `GeneratorRunExecution`-Kern über diese Eingaben: kein JDBC-Zugriff,
 keine Produktionwrites, keine implizite Parallelisierung. Erfolgreiche Sequenzschritte schreiben ausschließlich eine
