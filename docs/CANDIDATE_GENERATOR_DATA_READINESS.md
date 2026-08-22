@@ -1,19 +1,24 @@
 # Datenreife für den Kandidatengenerator
 
-Stand: 13. August 2026
+Stand: 13. August 2026  
+Aktualitätshinweis: 22. August 2026  
+Status: historische Phase-9-Datenreife-Baseline; weiterhin Referenz für Messwerte und Kalibrierungsvergleiche, aber keine aktuelle Fachautorität für die Beschaffbarkeitssemantik
+
 Bezugsstand: finaler Katalog-Snapshot aus Issue #52, SHA-256 `d20fdf8278ff8b00c56c28984531836d42e8698da154e1ec36dbcb43341db6bb`
 
 Dieses Dokument hält die Messung des über Liquibase aufgebauten Repository-Baseline-Katalogs für Phase 9 fest. Die Abfragen liegen reproduzierbar unter [`analysis/candidate-generator-data-readiness.sql`](analysis/candidate-generator-data-readiness.sql).
 
 Die Messung wurde gegen echtes PostgreSQL 17.6 mit Testcontainers und dem vollständigen Liquibase-Changelog durchgeführt. Sie verändert keine Katalogdaten.
 
-## 1. Gate-Definition
+> **Gültigkeit seit Issue #150:** Die unten dokumentierten Katalogzahlen und Verteilungen bleiben als historische Baseline gültig und werden insbesondere für die Kalibrierung in Issue #152 weiterverwendet. Die damalige Forderung nach vollständiger Beschaffbarkeit aller aktiven Teilnehmer ist jedoch **keine aktuelle Generatorregel mehr**. Für neue Sessions sind [`PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md`](PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md) und [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md) autoritativ: Nur das feste Session-Elektorat ist relevant, nur tatsächlich gepflegte Werte werden berücksichtigt, fehlende Werte sind neutral und der restriktivste vorhandene Wert gewinnt. Dieses Dokument ist eine Mess- und Vergleichsreferenz, kein Runtime- oder Testfixture-Vertrag.
 
-### 1.1 Hart erforderliche Daten
+## 1. Historische Gate-Definition für Phase 9
 
-Vor Beginn von Phase 9B muss der aktive Ziehpool erfüllen:
+### 1.1 Damals hart erforderliche Daten
 
-| Merkmal | Gate |
+Vor Beginn von Phase 9B musste der aktive Ziehpool nach dem damaligen Stand erfüllen:
+
+| Merkmal | damaliges Gate |
 |---|---:|
 | funktionale Rolle | 100 % der aktiven Ziehkandidaten |
 | Beschaffbarkeit | 100 % für alle aktiven Teilnehmer |
@@ -23,7 +28,7 @@ Vor Beginn von Phase 9B muss der aktive Ziehpool erfüllen:
 | Rollenpool | mindestens 48 Kandidaten je Referenzrolle |
 | Graphabdeckung | mindestens 95 % der Ziehkandidaten verbunden; fehlende Kante allein ist kein Ausschlussgrund |
 
-`UNAVAILABLE` oder fehlende Beschaffbarkeit machen ein einzelnes Konzept zufällig ungeeignet. Die hier gemessene Baseline enthält im aktiven Ziehpool keinen solchen Fall.
+Historisch machten `UNAVAILABLE` oder fehlende Beschaffbarkeit ein einzelnes Konzept zufällig ungeeignet. Die hier gemessene Baseline enthielt im aktiven Ziehpool keinen solchen Fall. **Seit Issue #150 gilt abweichend:** Ein fehlender Beschaffbarkeitswert ist neutral; nur ein tatsächlich vorhandenes `UNAVAILABLE` eines Mitglieds des festen Session-Elektorats blockiert.
 
 ### 1.2 Optionale Daten
 
@@ -89,9 +94,9 @@ Die häufigsten reinen beziehungsweise kombinierten Rollensignaturen sind unter 
 
 497 Konzepte besitzen mindestens eine der breit als strukturell oder unterstützend gemessenen Rollen einschließlich `FAT`; 154 sind ausschließlich geschmacksgebend. Die verbindliche Generatorspezifikation verwendet für ihre härtere Ankerdefinition kein Fett als alleinige Ankerrolle und verhindert dadurch, dass mehrere reine Fett-/Würzkomponenten eine Struktur nur auf dem Papier erfüllen.
 
-## 4. Beschaffbarkeit
+## 4. Beschaffbarkeit – historische Georgia-/Tobias-Baseline
 
-Für 651 Ziehkandidaten und zwei aktive Teilnehmer existieren vollständig 1.302 Zuordnungen. Es fehlt keine Zeile.
+Für 651 Ziehkandidaten und die beiden damaligen Referenzteilnehmer existieren vollständig 1.302 Zuordnungen. Es fehlt in dieser Baseline keine Zeile. Diese Vollständigkeit ist seit Issue #150 **kein allgemeines Datenreife-Gate** mehr; die Verteilung bleibt jedoch als Vergleichsbasis für Generator- und Kalibrierungsanalysen nützlich.
 
 ### 4.1 Georgia
 
@@ -119,7 +124,7 @@ Für 651 Ziehkandidaten und zwei aktive Teilnehmer existieren vollständig 1.302
 | `PLANNED` | 145 |
 | `DIFFICULT` | 70 |
 
-Der Pool ist vollständig nutzbar. Die 70 gemeinsam mindestens schwierigen Konzepte sind groß genug, um nicht als Einzelfälle behandelt zu werden, müssen aber über Gewichtung und Satzcaps dosiert werden.
+Der damalige Pool war vollständig bewertet. Die 70 gemeinsam mindestens schwierigen Konzepte sind groß genug, um nicht als Einzelfälle behandelt zu werden, und bilden gerade deshalb eine wichtige Ausgangsbasis für die stärkere Gewichtungsdämpfung aus Issue #152.
 
 ## 5. Neuigkeit
 
@@ -216,30 +221,34 @@ Der Graph ist ausreichend tief und besitzt reale Mehrfach-Eltern-Strukturen. Er 
 
 Die einzelne isolierte Vorgabe `Kaffee` ist kein Blocker. Ein Konzept benötigt nicht zwingend eine Hierarchiekante, um eigenständig eine gültige Challenge-Vorgabe zu sein. Für semantische Ähnlichkeit steht bei diesen Konzepten lediglich weniger Information zur Verfügung.
 
-## 9. Gate-Ergebnis
+## 9. Historisches Gate-Ergebnis
 
-**Ergebnis: bestanden mit deutlich verbreiterter, weiterhin optionaler Dimensionsnutzung.**
+**Ergebnis zum Phase-9-Bezugsstand: bestanden mit deutlich verbreiterter, weiterhin optionaler Dimensionsnutzung.**
 
-Vor Phase 9B ist kein zusätzliches Katalog- oder Metadatenpaket erforderlich, weil:
+Vor Phase 9B war kein zusätzliches Katalog- oder Metadatenpaket erforderlich, weil:
 
-- Rollen, Beschaffbarkeit und Neuigkeit vollständig sind,
-- spezifische und offene Pools deutlich über den Mindestgrößen liegen,
-- alle Referenzrollen ausreichend besetzt sind,
-- der Graph Redundanz und semantische Nähe zuverlässig genug unterstützt.
+- Rollen, Beschaffbarkeit und Neuigkeit in der damaligen Baseline vollständig waren,
+- spezifische und offene Pools deutlich über den Mindestgrößen lagen,
+- alle Referenzrollen ausreichend besetzt waren,
+- der Graph Redundanz und semantische Nähe zuverlässig genug unterstützte.
 
-Die verbleibenden Dimensionslücken werden nicht durch erfundene Defaults kaschiert. Sie begrenzen weiterhin bewusst den Anspruch des Generators:
+Die Aussage zur vollständigen Beschaffbarkeit beschreibt den damaligen Datenbestand und ist keine aktuelle Pflicht. Die verbleibenden Dimensionslücken werden weiterhin nicht durch erfundene Defaults kaschiert. Sie begrenzen bewusst den Anspruch des Generators:
 
 - Struktur und Neuigkeitsbalance sind belastbar prüfbar.
 - bekannte Eigenschaftshäufungen sind als schwaches Softsignal nutzbar.
 - echte paarweise Zutatenkompatibilität bleibt beim späteren Kurator.
 
-## 10. Operativer Katalog
+## 10. Operativer Katalog und heutige Verwendung
 
-Diese Messung beschreibt den reproduzierbaren Repository-Baseline-Katalog. Die laufende PostgreSQL-Datenbank ist nach Einführung der Webverwaltung die redaktionelle Quelle der Wahrheit und kann abweichen.
+Diese Messung beschreibt den reproduzierbaren Repository-Baseline-Katalog vom 13. August 2026. Die laufende PostgreSQL-Datenbank ist nach Einführung der Webverwaltung die redaktionelle Quelle der Wahrheit und kann abweichen.
 
-Deshalb gelten zusätzlich:
+Für neue Entwicklung gilt deshalb:
 
-- Phase 9B behandelt fehlende hart erforderliche Daten pro Konzept konservativ.
-- Eine zu kleine geeignete Projektion führt zu einem klaren Datenreife-/Erschöpfungsergebnis.
-- Das Generator-Labor zeigt fehlende Metadaten und verlinkt auf die Katalogpflege.
-- Phase 9F führt vor Abschluss einen gesonderten nicht schreibenden Lauf gegen den operativen Katalog durch und dokumentiert dessen Fingerprint.
+- aktuelle Generator-Fachregeln werden aus [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md) und den jeweils neueren, ausdrücklich überschreibenden Spezifikationen abgeleitet,
+- Rollen, Neuigkeitsstufe, Spezifität und positives Gewicht behalten ihre dokumentierten harten Voraussetzungen,
+- fehlende Beschaffbarkeit ist seit Issue #150 neutral und kein Datenreife- oder Erschöpfungsgrund,
+- ein vorhandenes `UNAVAILABLE` im festen Session-Elektorat bleibt ein harter Ausschlussgrund für zufällige Ziehung,
+- das Generator-Labor und die Simulation dürfen die historischen Verteilungen dieses Dokuments als Vergleichsbasis verwenden,
+- Issue #152 verwendet diese Baseline ausdrücklich für den reproduzierbaren Vorher-/Nachher-Vergleich der Beschaffbarkeitsgewichtung.
+
+Die SQL-Auswertung bleibt deshalb erhalten. Ihre historischen Georgia-/Tobias-Vollständigkeitszahlen sind Messdaten, keine implizite Aufforderung, für jeden künftig bekannten Teilnehmer eine vollständige Beschaffbarkeitsmatrix zu pflegen.
