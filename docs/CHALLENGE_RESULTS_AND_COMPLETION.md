@@ -1,7 +1,7 @@
 # Challenge-Ergebnisse, Abschluss und öffentliche Statussicht
 
 Stand: 22. August 2026  
-Status: verbindliche Fach-, Persistenz- und Discord-Spezifikation; Implementierungsissues folgen separat
+Status: verbindliche Fach-, Persistenz- und Discord-Spezifikation; Umsetzung in getrennten Entwicklungspaketen
 
 Dieses Dokument spezifiziert die dauerhafte Erfassung tatsächlich gekochter Ergebnisse, den ausdrücklich administrierten Abschluss einer Challenge sowie die Trennung zwischen letzter bestätigter und aktuell aktiver Challenge.
 
@@ -19,10 +19,11 @@ Bei Widersprüchen ersetzt dieses Dokument für zukünftige Pakete insbesondere:
 Mise en Dice soll nach einer Challenge dauerhaft festhalten können:
 
 - welche Person tatsächlich ein Gericht umgesetzt hat,
+- wie dieses Gericht heißt,
 - welche frei gewählten Nicht-Basic-Zutaten sie verwendet hat,
 - wie sie Gericht beziehungsweise Rezept beschreibt,
-- wie sie das Ergebnis bewertet,
-- und welches Foto das Ergebnis dokumentiert.
+- optional wie sie das Ergebnis bewertet,
+- und optional welches Foto das Ergebnis dokumentiert.
 
 Es gibt keine vorgelagerte verbindliche Anmeldung zu einer Challenge.
 
@@ -57,15 +58,20 @@ Verbindlich:
 - Diese automatische Anlage erzeugt keine Elektoratsmitgliedschaft und keine Beschaffbarkeitsdaten.
 - Bestehende Ergebnisse bleiben bei späterer Deaktivierung der Person vollständig erhalten.
 
-## 3. Inhalt eines Ergebnisses
+## 3. Inhalt und Pflichtfelder eines Ergebnisses
 
-Ein fachlich vollständiges Ergebnis enthält:
+Ein fachlich vollständiges Ergebnis enthält zwingend:
 
-- optional einen Namen des Gerichts,
+- einen nicht leeren Namen des Gerichts,
+- eine nicht leere Beschreibung des Gerichts, der Umsetzung oder des Rezepts.
+
+Optional sind:
+
 - null bis mehrere selbst gewählte Zutaten,
-- eine nicht leere Beschreibung des Gerichts beziehungsweise der Umsetzung oder des Rezepts,
-- eine nicht leere textuelle persönliche Bewertung,
-- genau ein Ergebnisfoto.
+- eine textuelle persönliche Bewertung,
+- ein Ergebnisfoto.
+
+Ein fehlendes Foto oder eine fehlende Bewertung erzeugt keinen Draft-, Offen- oder Unvollständig-Status. Das Ergebnis ist trotzdem ein normales vollständiges Ergebnis.
 
 Der erste Stand erzwingt keine strukturierte Rezeptnotation, Mengenliste, Arbeitsschritte, Sternebewertung oder Bewertungsrubrik.
 
@@ -73,11 +79,13 @@ Der erste Stand erzwingt keine strukturierte Rezeptnotation, Mengenliste, Arbeit
 
 Für Discord-Bedienbarkeit und defensive Persistenz gelten zunächst:
 
-- Gerichtsname: optional, höchstens 200 Zeichen,
-- Beschreibung/Rezept: erforderlich, höchstens 4.000 Zeichen,
-- Bewertung: erforderlich, höchstens 4.000 Zeichen,
+- Gerichtsname: erforderlich, getrimmt, höchstens 200 Zeichen,
+- Beschreibung/Rezept: erforderlich, getrimmt, höchstens 4.000 Zeichen,
+- Bewertung: optional; wenn vorhanden getrimmt und höchstens 4.000 Zeichen,
 - eigene Zutaten: `0..25` Einträge,
 - Text einer eigenen Zutat: erforderlich, getrimmt, höchstens 200 Zeichen.
+
+Leere optionale Texte werden als `null` beziehungsweise nicht vorhanden behandelt, nicht als inhaltsleere Bewertung gespeichert.
 
 Die technische Obergrenze von 25 Zutaten ist keine fachliche Erlaubnis, 25 Zusatzzutaten zu verwenden. Sie verhindert lediglich unbeschränkte Eingaben und hält spätere Modi offen.
 
@@ -92,9 +100,10 @@ challenge_result
 - id
 - challenge_id
 - participant_id
-- dish_name                 nullable
-- description
-- evaluation
+- dish_name                 not null
+- description               not null
+- evaluation                nullable
+- version                    not null
 - created_at
 - updated_at
 
@@ -111,11 +120,11 @@ challenge_result_ingredient
 - ingredient_concept_id     nullable
 ```
 
-Das Foto wird getrennt gespeichert:
+Ein optionales Foto wird getrennt gespeichert:
 
 ```text
 challenge_result_photo
-- challenge_result_id       PRIMARY KEY
+- challenge_result_id       primary key
 - content_bytes
 - content_type
 - original_filename
@@ -126,6 +135,8 @@ challenge_result_photo
 - created_at
 - updated_at
 ```
+
+Die Abwesenheit einer `challenge_result_photo`-Zeile bedeutet schlicht, dass kein Foto gespeichert ist.
 
 Gründe für die Trennung:
 
@@ -169,7 +180,7 @@ Die Erfassung darf eine Katalogreferenz nicht allein deshalb leer lassen, weil d
 
 Der Admin-Workflow bietet deshalb eine optionale Zuordnungsstufe ähnlich der vorhandenen `/zutat`-Suche:
 
-1. Der Freitext wird zunächst immer gespeichert.
+1. Der Freitext wird immer als fachliche Autorität erfasst.
 2. Ein eindeutiger case-insensitiver exakter Treffer auf Name oder Code darf vorgeschlagen werden.
 3. Für nicht eindeutige oder nicht gefundene Einträge kann der Admin eine literale Teilstringsuche starten.
 4. Höchstens 25 priorisierte Treffer werden zur Auswahl gezeigt.
@@ -180,9 +191,9 @@ Der Admin-Workflow bietet deshalb eine optionale Zuordnungsstufe ähnlich der vo
 
 Die Zuordnung ist optional und darf die erfolgreiche Speicherung eines ansonsten vollständigen Ergebnisses nicht blockieren.
 
-## 6. Ergebnisfoto
+## 6. Optionales Ergebnisfoto
 
-Pro Ergebnis existiert genau ein aktuelles Foto.
+Ein Ergebnis besitzt null oder ein aktuelles Foto.
 
 Unterstützt werden zunächst:
 
@@ -200,28 +211,33 @@ Die exakten Uploadbytes werden ohne Re-Encoding, Skalierung oder Zuschnitt als P
 Eine Challenge-Card bleibt davon unabhängig:
 
 - Card: festes gestaltetes `1200 × 1200`-PNG,
-- Ergebnisfoto: normales Teller- oder Kochfoto in zulässigem PNG-/JPEG-Format.
+- Ergebnisfoto: optionales Teller- oder Kochfoto in zulässigem PNG-/JPEG-Format.
+
+Ein Foto darf später gesetzt, ersetzt oder entfernt werden, ohne die übrigen Ergebnisdaten erneut vollständig einzugeben.
 
 ## 7. Anlegen, Ersetzen, Bearbeiten und Entfernen
 
-Der transportneutrale Core bietet mindestens folgende Operationen:
+Der transportneutrale Core bietet mindestens sinngemäße Operationen für:
 
 ```text
-setChallengeResult(challengeNumber, participantId, result, replaceExisting)
-updateChallengeResult(challengeNumber, participantId, resultVersion, changes)
+createChallengeResult(challengeNumber, participantId, resultData, optionalPhoto)
+replaceChallengeResult(challengeNumber, participantId, resultData, optionalPhoto)
+updateChallengeResult(challengeNumber, participantId, expectedVersion, changes)
 removeChallengeResult(challengeNumber, participantId)
+setChallengeResultPhoto(challengeNumber, participantId, photo, replaceExisting)
+removeChallengeResultPhoto(challengeNumber, participantId)
 setResultIngredientReference(resultIngredientId, ingredientConceptId | none)
 ```
 
 Verbindlich:
 
-- Ein neues Ergebnis wird atomar einschließlich Zutaten und Foto gespeichert.
+- Ein neues Ergebnis wird atomar einschließlich seiner Zutaten und eines optionalen Fotos gespeichert.
 - Ein vorhandenes Ergebnis wird niemals stillschweigend überschrieben.
-- Ersetzen erfordert eine ausdrückliche Bestätigung beziehungsweise `replaceExisting = true`.
-- Beim vollständigen Replace bleiben `created_at` und die fachliche Identität erhalten; `updated_at` ändert sich.
+- Vollständiger Ersatz erfordert eine ausdrückliche Bestätigung.
+- Beim Replace bleiben `created_at` und die fachliche Identität erhalten; `updated_at` ändert sich.
 - Textkorrekturen dürfen das vorhandene Foto unverändert lassen.
-- Fotoersatz ist ausdrücklich möglich.
-- Entfernen löscht Ergebnis, Zutaten und Foto atomar.
+- Foto setzen, ersetzen und entfernen sind eigenständige ausdrückliche Operationen.
+- Entfernen des Ergebnisses löscht Ergebnis, Zutaten und gegebenenfalls Foto atomar.
 - Es gibt im ersten Stand kein Versionsarchiv gelöschter oder ersetzter Ergebnisse.
 - Ergebnisse dürfen unabhängig vom Challenge-Status ergänzt, bearbeitet, ersetzt oder entfernt werden.
 
@@ -253,7 +269,7 @@ Damit sind insbesondere gültig:
 
 - Georgia postet ihr eigenes Ergebnis und Tobias erfasst es,
 - Tobias postet Georgias Foto und ordnet es Georgia zu,
-- ein Dritter postet ein Ergebnis für eine bislang unbekannte Person,
+- ein Dritter postet Text oder Bild für eine bislang unbekannte Person,
 - der Admin erfasst sein eigenes Ergebnis aus einer eigenen Nachricht.
 
 ### 8.2 Nachrichtentext bleibt sichtbar und kopierbar
@@ -271,14 +287,27 @@ Es wird niemals still abgeschnitten. Bei Überlänge wird dies sichtbar gemeldet
 
 Die ursprüngliche Discord-Nachricht wird nicht verändert.
 
-### 8.3 Bildauswahl
+### 8.3 Eingabemaske
 
-- Gibt es genau einen unterstützten Bildanhang, wird er vorausgewählt.
-- Gibt es mehrere unterstützte Bildanhänge, muss der Admin einen ausdrücklich auswählen.
-- Gibt es keinen unterstützten Bildanhang, wird keine unvollständige Ergebniserfassung gestartet.
+Die eigentliche Textmaske enthält mindestens:
+
+- Gerichtsname, erforderlich,
+- Beschreibung/Rezept, erforderlich und möglichst aus dem Nachrichtentext vorbelegt,
+- Bewertung, optional,
+- eigene Zutaten, optional und zeilenweise.
+
+Person und Challenge werden bereits in der Vorbereitungsansicht eindeutig gewählt und müssen nicht in freie Textfelder der Maske gequetscht werden.
+
+### 8.4 Bildauswahl
+
+- Gibt es genau einen unterstützten Bildanhang, darf er vorausgewählt werden.
+- Der Admin kann ausdrücklich `ohne Foto` fortfahren.
+- Gibt es mehrere unterstützte Bildanhänge, wählt der Admin höchstens einen oder ausdrücklich keinen.
+- Gibt es keinen unterstützten Bildanhang, wird die Ergebniserfassung normal ohne Foto fortgesetzt.
 - Autorisierung erfolgt vor Download der Bildbytes.
+- Ein späteres Foto kann über eine eigene Admin-Operation ergänzt werden.
 
-### 8.4 Challenge-Auswahl
+### 8.5 Challenge-Auswahl
 
 - Existiert genau eine aktive Challenge, wird sie vorausgewählt.
 - Existieren mehrere aktive Challenges, muss der Admin eine auswählen.
@@ -286,13 +315,13 @@ Die ursprüngliche Discord-Nachricht wird nicht verändert.
 - Der Admin darf ausdrücklich auch eine andere bestätigte, bereits abgeschlossene Challenge wählen.
 - Status und öffentliche Nummer werden in der Auswahl sichtbar dargestellt.
 
-### 8.5 Kurzlebiger Draft
+### 8.6 Kurzlebiger Draft
 
 Vor dem finalen Speichern muss kein dauerhafter fachlicher Draft entstehen.
 
-Kurzlebige Discord-Interaktionsdaten dürfen Zielnachricht, Auswahl und Anhänge vorübergehend referenzieren. Sie werden nicht als Ergebnisquelle in PostgreSQL gespeichert. Ein durch Restart oder Zeitablauf veralteter Draft kann ohne Datenverlust erneut über den Kontextbefehl gestartet werden.
+Kurzlebige Discord-Interaktionsdaten dürfen Zielnachricht, Auswahl und Attachments vorübergehend referenzieren. Sie werden nicht als Ergebnisquelle in PostgreSQL gespeichert. Ein durch Restart oder Zeitablauf veralteter Draft kann erneut über den Kontextbefehl gestartet werden.
 
-### 8.6 Keine persistierte Ursprungsnachricht
+### 8.7 Keine persistierte Ursprungsnachricht
 
 Nicht gespeichert werden:
 
@@ -302,23 +331,26 @@ Nicht gespeichert werden:
 - Autor der Ursprungsnachricht als Ergebnisattribut,
 - Discord-CDN-URL des Bildes.
 
-Die dauerhafte Autorität sind ausschließlich die Ergebnisdaten und exakten Bildbytes in PostgreSQL.
+Die dauerhafte Autorität sind ausschließlich die Ergebnisdaten und gegebenenfalls exakten Bildbytes in PostgreSQL.
 
 ## 9. Weitere Discord-Admin-Operationen
 
-Der Root-Command `/challenges` wird ergänzt um:
+Der Root-Command `/challenges` wird mindestens ergänzt um:
 
 ```text
 /challenges abschließen [nummer:<Challenge-Nummer>]
 /challenges ergebnis-bearbeiten nummer:<Challenge-Nummer> person:<Discord-Nutzer>
 /challenges ergebnis-entfernen nummer:<Challenge-Nummer> person:<Discord-Nutzer>
+/challenges ergebnis-foto-setzen nummer:<Challenge-Nummer> person:<Discord-Nutzer> bild:<Attachment> [ersetzen:<bool>]
+/challenges ergebnis-foto-entfernen nummer:<Challenge-Nummer> person:<Discord-Nutzer>
 ```
 
 Semantik:
 
-- `ergebnis-bearbeiten` öffnet die gespeicherten Texte und Zutaten zur Korrektur; das Foto bleibt standardmäßig bestehen.
+- `ergebnis-bearbeiten` öffnet Gerichtsname, Beschreibung, optionale Bewertung und Zutaten zur Korrektur; das Foto bleibt unverändert.
 - `ergebnis-entfernen` erfordert eine ausdrückliche Bestätigung.
-- Ein vollständiger neuer Foto-/Text-Replace kann erneut über einen passenden Nachrichten-Kontextbefehl erfolgen.
+- `ergebnis-foto-setzen` setzt oder ersetzt ausschließlich das Foto.
+- `ergebnis-foto-entfernen` entfernt ausschließlich das Foto.
 - Alle Mutationen sind operatorgebunden und antworten zunächst ephemer.
 
 Ein öffentlicher Self-Service-Command für Teilnehmer ist nicht Bestandteil dieses Pakets.
@@ -360,7 +392,7 @@ Verbindlich:
 
 Ohne `nummer` darf `/challenges abschließen` nur dann automatisch auflösen, wenn genau eine aktive Challenge existiert. Bei keiner oder mehreren aktiven Challenges wird eine ausdrückliche Nummer verlangt.
 
-Andere bestehende Statuswerte wie `ABANDONED` oder historisches `REROLLED` werden durch dieses Paket nicht automatisch umgedeutet. Ein Resultat darf dennoch an jede bestätigte Challenge mit öffentlicher Nummer angehängt werden; der Status ist kein Schreibschutz.
+Andere bestehende Statuswerte wie `ABANDONED` oder historisches `REROLLED` werden durch dieses Paket nicht automatisch umgedeutet. Ein Ergebnis darf dennoch an jede bestätigte Challenge mit öffentlicher Nummer angehängt werden; der Status ist kein Schreibschutz.
 
 ## 11. „Letzte“ und „aktive“ Challenge
 
@@ -386,13 +418,7 @@ Eine abgeschlossene letzte Challenge bleibt die letzte, bis eine neue Challenge 
 
 zeigt alle Challenges mit Status `ACTIVE`, sortiert nach `challenge_number DESC`.
 
-Die Liste darf:
-
-- leer sein,
-- genau einen Eintrag enthalten,
-- oder mehrere Einträge enthalten.
-
-Sie verwendet dieselbe defensive Seitengröße wie die übrige Challenge-Liste; im Discord-Adapter zunächst zehn Einträge pro Seite.
+Die Liste darf leer sein, genau einen Eintrag oder mehrere Einträge enthalten. Im Discord-Adapter werden zunächst zehn Einträge pro Seite verwendet.
 
 ### 11.3 Bestehende Commands
 
@@ -433,11 +459,11 @@ Die Detailprojektion enthält die Ergebnisübersichten mit:
 
 - stabiler Teilnehmerreferenz,
 - darstellbarem Namen,
-- optionalem Gerichtsname,
+- verpflichtendem Gerichtsname,
 - eigenen Zutaten als gespeicherten Texten,
 - Beschreibung/Rezept,
-- Bewertung,
-- Information über das vorhandene Foto,
+- optionaler Bewertung,
+- Information über ein gegebenenfalls vorhandenes Foto,
 - Erfassungs- und Änderungszeitpunkt.
 
 Bildbytes bleiben getrennt von Text- und Listenprojektionen.
@@ -463,19 +489,16 @@ Nach Challenge-Fakten und optionaler Card werden die vorhandenen Ergebnisse darg
 Pro Ergebnis mindestens:
 
 ```text
-🍽️ <Person> [– <optionaler Gerichtsname>]
+🍽️ <Person> – <Gerichtsname>
 
 Eigene Zutaten
 • ...
 
 Gericht / Umsetzung
 ...
-
-Bewertung
-...
 ```
 
-Danach wird das persistierte Foto als natives Discord-Attachment ausgeliefert.
+Die Rubrik `Eigene Zutaten` darf bei null Einträgen als `keine angegeben` erscheinen oder kompakt entfallen. Die Rubrik `Bewertung` wird nur bei vorhandener Bewertung angezeigt. Ein Foto wird nur bei vorhandenen Bilddaten als natives Discord-Attachment ausgeliefert.
 
 Bei mehreren Ergebnissen sind getrennte öffentliche Nachrichten beziehungsweise Follow-ups zulässig, damit Text- und Attachmentgrenzen nicht zu einer unlesbaren Sammelkarte führen.
 
@@ -510,7 +533,8 @@ Er besitzt keine eigene Ergebnis-, Abschluss-, Replace-, Bildvalidierungs- oder 
 PostgreSQL bleibt letzte Integritätssicherung. Mindestens abzusichern sind:
 
 - Ergebnis eindeutig je Challenge und Teilnehmer,
-- Foto eindeutig je Ergebnis,
+- nicht leerer Gerichtsname und nicht leere Beschreibung,
+- höchstens ein optionales Foto je Ergebnis,
 - Zutatenzeile gehört genau zu einem Ergebnis,
 - optionale Katalogreferenz verweist auf ein existierendes Konzept,
 - case-insensitiv identischer Zutatenfreitext höchstens einmal je Ergebnis,
@@ -519,9 +543,10 @@ PostgreSQL bleibt letzte Integritätssicherung. Mindestens abzusichern sind:
 - stilles Überschreiben eines vorhandenen Ergebnisses ist ausgeschlossen,
 - konkurrierende Bearbeitung erkennt einen Versionskonflikt,
 - Replace von Texten, Zutaten und gegebenenfalls Foto ist atomar,
+- Fotooperationen verlieren keine parallelen Textänderungen,
 - Entfernen löscht das vollständige Ergebnis atomar,
 - `completed_at` und `COMPLETED` bleiben konsistent,
-- konkurrierender Abschluss setzt denselben Zeitpunkt beziehungsweise denselben finalen Zustand genau einmal,
+- konkurrierender Abschluss setzt denselben finalen Zustand genau einmal,
 - Ergebnisänderung und Abschluss dürfen einander nicht unnötig blockieren oder Daten verlieren,
 - unbekannte `DataAccessException` wird nicht als fachlicher Konflikt maskiert.
 
@@ -548,32 +573,47 @@ Mindestens erforderlich sind:
 2. Ergebnisanlage mit atomarem Resolve-or-Create einer unbekannten Discord-Person,
 3. Nachrichtenautor, Admin und Ergebnisinhaber dürfen drei verschiedene Personen sein,
 4. keine Ursprungsnachrichten-ID oder CDN-URL wird persistiert,
-5. null, eine und mehrere eigene Zutaten sind zulässig,
-6. mehr als drei eigene Zutaten werden auf Persistenzebene nicht als Regelverstoß behandelt,
-7. doppelte Zutatenfreitexte werden case-insensitiv abgewiesen,
-8. eindeutiger Katalogmatch, Suchauswahl und ausdrückliches `ohne Referenz`,
-9. Katalogreferenzänderung verändert den Freitext nicht,
-10. gültiges PNG und JPEG,
-11. Ablehnung falscher Signatur, beschädigter Datei, Übergröße und pathologischer Pixelzahl,
-12. exakte Bildbytes, SHA-256 und Metadaten bleiben nach Restart erhalten,
-13. stilles Überschreiben eines vorhandenen Ergebnisses wird abgewiesen,
-14. ausdrücklicher Replace ist atomar,
-15. Textbearbeitung kann vorhandenes Foto erhalten,
-16. Entfernen löscht Ergebnis, Zutaten und Foto,
-17. Ergebnisse bleiben nach Abschluss bearbeitbar,
-18. Abschluss mit null, einem und mehreren Ergebnissen,
-19. mehrere aktive Challenges sind zulässig,
-20. `letzte` verwendet immer die höchste Challenge-Nummer,
-21. `aktiv` liefert null, eine oder mehrere aktive Challenges stabil neueste zuerst,
-22. parameterloser Abschluss funktioniert nur bei genau einer aktiven Challenge,
-23. Liste und Detail zeigen Status und Ergebniszahl,
-24. Detail zeigt keine Electorate-, Vote-, Offer- oder Kuratorhistorie,
-25. Operatorprüfung erfolgt vor Attachment-Download und Mutation,
-26. Modulgrenzen und `./mvnw clean verify` bleiben grün.
+5. Gerichtsname und Beschreibung sind erforderlich,
+6. fehlende Bewertung und fehlendes Foto sind zulässig,
+7. null, eine und mehrere eigene Zutaten sind zulässig,
+8. mehr als drei eigene Zutaten werden auf Persistenzebene nicht als Regelverstoß behandelt,
+9. doppelte Zutatenfreitexte werden case-insensitiv abgewiesen,
+10. eindeutiger Katalogmatch, Suchauswahl und ausdrückliches `ohne Referenz`,
+11. Katalogreferenzänderung verändert den Freitext nicht,
+12. Ergebniserfassung aus einer Nachricht ohne Bild funktioniert,
+13. gültiges PNG und JPEG können optional gesetzt werden,
+14. Ablehnung falscher Signatur, beschädigter Datei, Übergröße und pathologischer Pixelzahl,
+15. exakte Bildbytes, SHA-256 und Metadaten bleiben nach Restart erhalten,
+16. Foto setzen, ersetzen und entfernen verändert übrige Ergebnisdaten nicht,
+17. stilles Überschreiben eines vorhandenen Ergebnisses wird abgewiesen,
+18. ausdrücklicher Replace ist atomar,
+19. Textbearbeitung kann vorhandenes Foto erhalten,
+20. Entfernen löscht Ergebnis, Zutaten und gegebenenfalls Foto,
+21. Ergebnisse bleiben nach Abschluss bearbeitbar,
+22. Abschluss mit null, einem und mehreren Ergebnissen,
+23. mehrere aktive Challenges sind zulässig,
+24. `letzte` verwendet immer die höchste Challenge-Nummer,
+25. `aktiv` liefert null, eine oder mehrere aktive Challenges stabil neueste zuerst,
+26. parameterloser Abschluss funktioniert nur bei genau einer aktiven Challenge,
+27. Liste und Detail zeigen Status und Ergebniszahl,
+28. optionale Bewertung und optionales Foto werden nur bei Vorhandensein dargestellt,
+29. Detail zeigt keine Electorate-, Vote-, Offer- oder Kuratorhistorie,
+30. Operatorprüfung erfolgt vor Attachment-Download und Mutation,
+31. Modulgrenzen und `./mvnw clean verify` bleiben grün.
 
 Persistenz-, Migration-, Bild-, Konkurrenz- und Transaktionstests verwenden echtes PostgreSQL über Testcontainers. Discord-Adaptertests verwenden lokale Fixtures und keine echten Gateway- oder CDN-Aufrufe.
 
-## 18. Nicht-Ziele
+## 18. Entwicklungspakete
+
+Die Umsetzung wird in drei getrennte Pakete geschnitten:
+
+1. **Transportneutraler Ergebnis-/Abschlusskern**: Schema, Application-APIs, optionales Foto, Katalogreferenzen, Statusübergang und Archivprojektionen.
+2. **Discord-Status- und Ergebnisdarstellung**: `letzte`, `aktiv`, Abschlusscommand sowie öffentliche Ausgabe bereits gespeicherter Ergebnisse und optionaler Fotos.
+3. **Discord-Erfassung und Pflege**: Nachrichten-Kontextbefehl, Vorbereitungsansicht, Textmaske, optionale Zutatenzuordnung, automatische Personenanlage sowie Bearbeiten-, Entfernen- und Fotooperationen.
+
+Der komplexe Nachrichten-/Modalablauf wird bewusst nicht mit der Kernmigration oder der reinen Statusdarstellung in ein einzelnes Paket gepresst.
+
+## 19. Nicht-Ziele
 
 - keine verbindliche Anmeldung zu einer Challenge,
 - keine Anzeige „noch offen“ oder automatische Erinnerung an vermeintlich fehlende Ergebnisse,
