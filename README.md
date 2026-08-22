@@ -106,7 +106,7 @@ Kompatibilitäts- oder Kalibrierungsmatrizen früherer Generatorversionen werden
 
 Die Availability-Kalibrierung aus Issue #152 vergleicht die vorherige und aktuelle Konfiguration mit identischen
 Seeds, Saisonmonaten und Kadenzzuständen. Der versionierte Bericht und sein Standardbefehl stehen in
-[`analysis/availability-weight-calibration-2026-08-22.md`](analysis/availability-weight-calibration-2026-08-22.md).
+[`docs/analysis/availability-weight-calibration-2026-08-22.md`](docs/analysis/availability-weight-calibration-2026-08-22.md).
 
 Zentrale Modellierungsentscheidungen sind insbesondere:
 
