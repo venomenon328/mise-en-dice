@@ -357,7 +357,6 @@ final class DiscordResultCaptureJdaListener {
             hook.editOriginal(textEdit(complete.message())).queue();
         }
     }
-
     private void publishSaved(InteractionHook hook, Saved saved) {
         MessageEditData initial = savedEdit(saved, false, false);
         hook.editOriginal(initial).queue(ignored -> {
@@ -393,7 +392,7 @@ final class DiscordResultCaptureJdaListener {
     static MessageCreateData preparationCreate(Preparation preparation) {
         MessageCreateBuilder builder = new MessageCreateBuilder().setAllowedMentions(List.of())
                 .setContent(preparationContent(preparation)).setComponents(preparationRows(preparation));
-        if (preparation.attachFullText()) {
+        if (preparation.attachFullText() || preparationPreviewTruncated(preparation)) {
             builder.setFiles(FileUpload.fromData(preparation.fullTextBytes(), "nachrichtentext.txt"));
         }
         return builder.build();
@@ -406,20 +405,19 @@ final class DiscordResultCaptureJdaListener {
 
     private static String preparationContent(Preparation preparation) {
         String text = preparation.messageText().isBlank() ? "(kein Nachrichtentext)" : preparation.messageText();
-        int previewLimit = preparation.concretizations().isEmpty() ? 1_200 : 600;
+        int previewLimit = preparationPreviewLimit(preparation);
         String displayed = truncate(text, previewLimit);
         boolean previewTruncated = displayed.length() < text.length();
+        boolean fullTextAttached = preparation.attachFullText() || previewTruncated;
         StringBuilder content = new StringBuilder("**Challenge-Ergebnis vorbereiten**\n")
                 .append("Ergebnis-Person: ").append(preparation.selectedPersonName() == null
                         ? "noch nicht gewählt" : safe(preparation.selectedPersonName())).append('\n')
                 .append("Challenge: ").append(preparation.selectedChallengeNumber() == null
                         ? "ausdrücklich wählen" : "#" + preparation.selectedChallengeNumber()).append('\n')
                 .append("Foto: ").append(safe(cut(selectedPhotoLabel(preparation), 100))).append("\n\n")
-                .append(preparation.attachFullText()
+                .append(fullTextAttached
                         ? "Der vollständige Nachrichtentext ist kopierbar als `nachrichtentext.txt` angehängt; die Vorschau ist gekennzeichnet gekürzt.\n"
-                        : previewTruncated
-                                ? "Gekürzte Vorschau; der vollständige Text bleibt in der Ursprungsnachricht kopierbar:\n"
-                                : "Vollständiger kopierbarer Nachrichtentext:\n")
+                        : "Vollständiger kopierbarer Nachrichtentext:\n")
                 .append("```\n").append(code(displayed)).append("\n```");
         if (preparation.descriptionNeedsCondensing()) {
             content.append("\nDer Text überschreitet 4.000 Zeichen. Bitte verdichte ihn in der Maske; die Anlage bleibt vollständig.");
@@ -639,6 +637,15 @@ final class DiscordResultCaptureJdaListener {
 
     private static Long positiveLong(OptionMapping option) {
         return option == null || option.getAsLong() < 1 ? null : option.getAsLong();
+    }
+
+    private static int preparationPreviewLimit(Preparation preparation) {
+        return preparation.concretizations().isEmpty() ? 1_200 : 600;
+    }
+
+    private static boolean preparationPreviewTruncated(Preparation preparation) {
+        String text = preparation.messageText().isBlank() ? "(kein Nachrichtentext)" : preparation.messageText();
+        return text.length() > preparationPreviewLimit(preparation);
     }
 
     private static String selectedPhotoLabel(Preparation preparation) {
