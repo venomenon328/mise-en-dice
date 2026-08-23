@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -175,6 +176,18 @@ class DiscordResultCaptureWorkflowTest {
     }
 
     @Test
+    void draftTtlIsAbsoluteAndDoesNotSlideOnInteraction() {
+        var preparation = workflow.startCapture(OPERATOR, "Text", List.of());
+        clock.advance(Duration.ofMinutes(10));
+        workflow.selectPerson(OPERATOR, preparation.token(), "1001", "Person");
+
+        clock.advance(Duration.ofMinutes(6));
+
+        assertThatThrownBy(() -> workflow.captureModal(OPERATOR, preparation.token()))
+                .isInstanceOf(Rejected.class).hasMessageContaining("abgelaufen");
+    }
+
+    @Test
     void storeIsBoundedAndARecreatedWorkflowCannotResumeOldDrafts() {
         DiscordResultCaptureWorkflow bounded = workflow(clock, 2);
         String first = bounded.startCapture(OPERATOR, "eins", List.of()).token();
@@ -192,12 +205,14 @@ class DiscordResultCaptureWorkflowTest {
     @Test
     void existingResultNeedsExplicitReplaceAndAttachmentDownloadsOnlyAfterConfirmation() {
         AtomicBoolean downloaded = new AtomicBoolean();
+        AtomicLong currentPhotoVersion = new AtomicLong(3);
         PhotoSource source = photo("plate.jpg", "image/jpeg", new byte[]{1, 2}, downloaded);
         var preparation = workflow.startCapture(OPERATOR, "Text", List.of(source));
         preparation = workflow.selectPerson(OPERATOR, preparation.token(), "1001", "Person");
         ChallengeResultQueries.ChallengeResultView existing = result(List.of(), true, 5);
         when(resultQueries.findChallengeResult(CHALLENGE, PARTICIPANT)).thenReturn(Optional.of(existing));
-        when(resultQueries.findChallengeResultPhotoMetadata(CHALLENGE, PARTICIPANT)).thenReturn(Optional.of(photoMetadata(3)));
+        when(resultQueries.findChallengeResultPhotoMetadata(CHALLENGE, PARTICIPANT))
+                .thenAnswer(invocation -> Optional.of(photoMetadata(currentPhotoVersion.get())));
         when(resultCommands.replaceChallengeResult(any())).thenAnswer(invocation -> result(List.of(), true, 6));
 
         var firstSubmission = workflow.submitCapture(OPERATOR, preparation.token(),
@@ -206,10 +221,16 @@ class DiscordResultCaptureWorkflowTest {
         assertThat(downloaded).isFalse();
         verify(resultCommands, never()).replaceChallengeResult(any());
 
-        var order = inOrder(source, resultCommands);
+        currentPhotoVersion.set(4);
+        var order = inOrder(resultQueries, source, resultCommands);
         Saved saved = (Saved) workflow.confirmCaptureReplacement(OPERATOR, preparation.token());
+        ArgumentCaptor<ChallengeResultCommands.ReplaceChallengeResult> replace = ArgumentCaptor.forClass(
+                ChallengeResultCommands.ReplaceChallengeResult.class);
+        order.verify(resultQueries).findChallengeResultPhotoMetadata(CHALLENGE, PARTICIPANT);
         order.verify(source).download();
-        order.verify(resultCommands).replaceChallengeResult(any());
+        order.verify(resultCommands).replaceChallengeResult(replace.capture());
+        assertThat(replace.getValue().photoChange()).isNotNull();
+        assertThat(replace.getValue().photoChange().expectedPhotoVersion()).isEqualTo(3);
         assertThat(saved.message()).contains("gespeichert");
     }
 
@@ -245,6 +266,29 @@ class DiscordResultCaptureWorkflowTest {
     }
 
     @Test
+    void selectedChallengeDoesNotDisplaceAFullChallengeSelectionPage() {
+        ChallengeArchiveQueries.PublicChallenge selected = challenge(100, ChallengeStatus.ACTIVE);
+        List<ChallengeArchiveQueries.PublicChallenge> firstPage = java.util.stream.LongStream.rangeClosed(76, 100)
+                .mapToObj(number -> challenge(number, ChallengeStatus.COMPLETED)).toList();
+        List<ChallengeArchiveQueries.PublicChallenge> secondPage = java.util.stream.LongStream.rangeClosed(51, 75)
+                .mapToObj(number -> challenge(number, ChallengeStatus.COMPLETED)).toList();
+        when(archiveQueries.listChallenges(any())).thenReturn(page(firstPage, 1, 2), page(secondPage, 2, 2));
+        when(archiveQueries.listActiveChallenges(any())).thenReturn(page(List.of(selected), 1, 1));
+        when(archiveQueries.findChallengeByNumber(100)).thenReturn(Optional.of(selected));
+
+        var preparation = workflow.startCapture(OPERATOR, "Text", List.of());
+        assertThat(preparation.selectedChallengeNumber()).isEqualTo(100);
+
+        preparation = workflow.navigateChallenges(OPERATOR, preparation.token(), 2);
+
+        assertThat(preparation.challenges()).hasSize(25)
+                .extracting(DiscordResultCaptureWorkflow.ChallengeChoice::challengeNumber)
+                .containsExactlyElementsOf(secondPage.stream().map(ChallengeArchiveQueries.PublicChallenge::challengeNumber).toList())
+                .doesNotContain(100L);
+        assertThat(preparation.selectedChallengeNumber()).isEqualTo(100);
+    }
+
+    @Test
     void noActiveChallengeSuggestsTheLatestConfirmedChallenge() {
         ChallengeArchiveQueries.PublicChallenge completed = challenge(6, ChallengeStatus.COMPLETED);
         when(archiveQueries.listChallenges(any())).thenReturn(page(List.of(completed), 1, 1));
@@ -268,6 +312,7 @@ class DiscordResultCaptureWorkflowTest {
         when(resultCommands.createChallengeResult(any())).thenReturn(result(ingredients, false, 0));
         when(resultQueries.findChallengeResult(CHALLENGE, PARTICIPANT))
                 .thenReturn(Optional.empty(), Optional.of(result(ingredients, false, 0)),
+                        Optional.of(result(ingredients, false, 0)), Optional.of(result(ingredients, false, 1)),
                         Optional.of(result(ingredients, false, 1)));
         var exact = new ResultIngredientCatalogQueries.IngredientConcept(11, "MISO", "Miso", true);
         var inactive = new ResultIngredientCatalogQueries.IngredientConcept(12, "OLD_CHILI", "Alte Chili-Sauce", false);
@@ -292,6 +337,29 @@ class DiscordResultCaptureWorkflowTest {
         assertThat(reference.getValue().resultIngredientId()).isEqualTo(501);
         assertThat(reference.getValue().ingredientConceptId()).isNull();
         assertThat(DiscordResultCaptureJdaListener.mappingEdit(second).getContent()).contains("Chili-Sauce");
+    }
+
+    @Test
+    void staleIngredientWizardCannotApplyAnOldChoiceToAReplacementIngredient() {
+        var preparation = workflow.startCapture(OPERATOR, "Text", List.of());
+        preparation = workflow.selectPerson(OPERATOR, preparation.token(), "1001", "Person");
+        List<ChallengeResultQueries.ResultIngredientView> initialIngredients = List.of(
+                ingredient(501, "Miso"), ingredient(502, "Chili-Sauce"));
+        List<ChallengeResultQueries.ResultIngredientView> changedIngredients = List.of(
+                ingredient(503, "Tofu"), ingredient(502, "Chili-Sauce"));
+        when(resultCommands.createChallengeResult(any())).thenReturn(result(initialIngredients, false, 0));
+        when(resultQueries.findChallengeResult(CHALLENGE, PARTICIPANT))
+                .thenReturn(Optional.empty(), Optional.of(result(initialIngredients, false, 0)),
+                        Optional.of(result(changedIngredients, false, 1)));
+
+        Saved saved = (Saved) workflow.submitCapture(OPERATOR, preparation.token(),
+                new FormData("Gericht", "Beschreibung", "", "Miso\nChili-Sauce", ""), false);
+        MappingStep visible = workflow.startMapping(OPERATOR, saved.mappingToken());
+        assertThat(visible.ingredientText()).isEqualTo("Miso");
+
+        assertThatThrownBy(() -> workflow.assignMapping(OPERATOR, saved.mappingToken(), 11L))
+                .isInstanceOf(Rejected.class).hasMessageContaining("zwischenzeitlich geändert");
+        verify(resultCommands, never()).setResultIngredientReference(any());
     }
 
     @Test
