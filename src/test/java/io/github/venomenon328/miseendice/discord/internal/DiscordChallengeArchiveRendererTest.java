@@ -12,6 +12,7 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeArchiveQueries.S
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,7 @@ class DiscordChallengeArchiveRendererTest {
                 new RequirementSnapshot(3, "Kohlgemüse", Specificity.OPEN),
                 new RequirementSnapshot(4, "Essig", Specificity.OPEN)), RestrictionSnapshot.present("Keine `Fischsauce`"));
 
-        DiscordChallengeArchiveRenderer.RenderedDetail detail = renderer.detail(challenge, Optional.of(card(12)));
+        DiscordChallengeArchiveRenderer.RenderedDetail detail = renderer.detail(challenge, Optional.of(card(12)), Map.of()).challenge();
 
         assertThat(detail.title()).isEqualTo("Challenge #12");
         assertThat(detail.description()).contains("Bestätigt am 21. August 2026", "1. @\u200beveryone \\*Tempeh\\*",
@@ -58,7 +59,7 @@ class DiscordChallengeArchiveRendererTest {
 
         String list = renderer.list(new ChallengePage(1, 10, 12, 10L, 2, challenges)).content();
 
-        assertThat(list).contains("Seite 1/2", "#10 · aktuell · 🖼️", "#1", "…", "(offen)");
+        assertThat(list).contains("Seite 1/2", "#10 · letzte · Aktiv · 0 Ergebnisse · 🖼️", "#1", "…", "(offen)");
         assertThat(list.length()).isLessThanOrEqualTo(2_000);
     }
 
