@@ -80,6 +80,80 @@ class JdbcChallengeResultRepository {
         }
     }
 
+    List<RequirementRow> challengeRequirements(long challengeNumber) {
+        return jdbcTemplate.query("""
+                select requirement.position, requirement.display_text_snapshot,
+                       requirement.challenge_specificity_snapshot, requirement.ingredient_concept_id
+                from challenge
+                join candidate_requirement requirement
+                  on requirement.candidate_id = challenge.selected_candidate_id
+                where challenge.challenge_number = ?
+                order by requirement.position
+                """, this::mapRequirement, challengeNumber);
+    }
+
+    void deleteConcretizations(long resultId) {
+        jdbcTemplate.update("delete from challenge_result_concretization where challenge_result_id = ?", resultId);
+    }
+
+    void insertConcretizations(long resultId, List<ConcretizationWrite> concretizations) {
+        for (ConcretizationWrite concretization : concretizations) {
+            jdbcTemplate.update("""
+                    insert into challenge_result_concretization
+                        (challenge_result_id, requirement_position, display_text, ingredient_concept_id)
+                    values (?, ?, ?, ?)
+                    """, resultId, concretization.requirementPosition(), concretization.displayText(),
+                    concretization.ingredientConceptId());
+        }
+    }
+
+    List<ConcretizationRow> concretizations(long resultId) {
+        return jdbcTemplate.query("""
+                select concretization.challenge_result_id, concretization.requirement_position,
+                       requirement.ingredient_concept_id as open_requirement_concept_id,
+                       requirement.display_text_snapshot as requirement_display_text,
+                       concretization.display_text, concept.id as concept_id, concept.code as concept_code,
+                       concept.display_name as concept_display_name, concept.active as concept_active
+                from challenge_result_concretization concretization
+                join challenge_result result on result.id = concretization.challenge_result_id
+                join challenge on challenge.id = result.challenge_id
+                join candidate_requirement requirement
+                  on requirement.candidate_id = challenge.selected_candidate_id
+                 and requirement.position = concretization.requirement_position
+                left join ingredient_concept concept on concept.id = concretization.ingredient_concept_id
+                where concretization.challenge_result_id = ?
+                order by concretization.requirement_position
+                """, this::mapConcretization, resultId);
+    }
+
+    Optional<ConcretizationForUpdate> lockConcretization(long resultId, int requirementPosition) {
+        return jdbcTemplate.query("""
+                select concretization.challenge_result_id, concretization.requirement_position,
+                       result.version, challenge.challenge_number, participant.id as participant_id,
+                       requirement.ingredient_concept_id as open_requirement_concept_id
+                from challenge_result_concretization concretization
+                join challenge_result result on result.id = concretization.challenge_result_id
+                join challenge on challenge.id = result.challenge_id
+                join participant on participant.id = result.participant_id
+                join candidate_requirement requirement
+                  on requirement.candidate_id = challenge.selected_candidate_id
+                 and requirement.position = concretization.requirement_position
+                where concretization.challenge_result_id = ? and concretization.requirement_position = ?
+                for update of result, concretization
+                """, this::mapConcretizationForUpdate, resultId, requirementPosition).stream().findFirst();
+    }
+
+    void updateConcretizationReference(long resultId, int requirementPosition, Long ingredientConceptId) {
+        int updated = jdbcTemplate.update("""
+                update challenge_result_concretization
+                   set ingredient_concept_id = ?
+                 where challenge_result_id = ? and requirement_position = ?
+                """, ingredientConceptId, resultId, requirementPosition);
+        if (updated != 1) {
+            throw new IllegalStateException("Locked challenge result concretization disappeared");
+        }
+    }
+
     int deleteResult(long resultId) {
         return jdbcTemplate.update("delete from challenge_result where id = ?", resultId);
     }
@@ -216,6 +290,29 @@ class JdbcChallengeResultRepository {
                 result.getLong("version"), result.getLong("challenge_number"), result.getLong("participant_id"));
     }
 
+    private RequirementRow mapRequirement(ResultSet result, int row) throws SQLException {
+        return new RequirementRow(result.getInt("position"), result.getString("display_text_snapshot"),
+                result.getString("challenge_specificity_snapshot"),
+                (Long) result.getObject("ingredient_concept_id"));
+    }
+
+    private ConcretizationRow mapConcretization(ResultSet result, int row) throws SQLException {
+        Long conceptId = (Long) result.getObject("concept_id");
+        ChallengeResultQueries.IngredientConceptReference reference = conceptId == null ? null
+                : new ChallengeResultQueries.IngredientConceptReference(conceptId, result.getString("concept_code"),
+                        result.getString("concept_display_name"), result.getBoolean("concept_active"));
+        return new ConcretizationRow(result.getLong("challenge_result_id"), result.getInt("requirement_position"),
+                result.getLong("open_requirement_concept_id"), result.getString("requirement_display_text"),
+                result.getString("display_text"), reference);
+    }
+
+    private ConcretizationForUpdate mapConcretizationForUpdate(ResultSet result, int row) throws SQLException {
+        return new ConcretizationForUpdate(result.getLong("challenge_result_id"),
+                result.getInt("requirement_position"), result.getLong("version"),
+                result.getLong("challenge_number"), result.getLong("participant_id"),
+                result.getLong("open_requirement_concept_id"));
+    }
+
     private PhotoRow mapPhoto(ResultSet result, int row, boolean includesBytes) throws SQLException {
         return new PhotoRow(result.getLong("challenge_result_id"), result.getLong("challenge_number"),
                 result.getLong("participant_id"), result.getString("content_type"), result.getString("original_filename"),
@@ -266,6 +363,12 @@ class JdbcChallengeResultRepository {
     record IngredientWrite(String displayText, Long ingredientConceptId) {
     }
 
+    record ConcretizationWrite(int requirementPosition, String displayText, Long ingredientConceptId) {
+    }
+
+    record RequirementRow(int position, String displayText, String specificity, Long ingredientConceptId) {
+    }
+
     record ResultRow(long resultId, long challengeNumber, ChallengeResultQueries.ParticipantReference participant,
                      String dishName, String description, String evaluation, boolean photoAvailable, long version,
                      Instant createdAt, Instant updatedAt) {
@@ -277,6 +380,15 @@ class JdbcChallengeResultRepository {
 
     record IngredientForUpdate(long resultIngredientId, long resultId, long resultVersion, long challengeNumber,
                                long participantId) {
+    }
+
+    record ConcretizationRow(long resultId, int requirementPosition, long openRequirementConceptId,
+                             String requirementDisplayText, String displayText,
+                             ChallengeResultQueries.IngredientConceptReference ingredientConcept) {
+    }
+
+    record ConcretizationForUpdate(long resultId, int requirementPosition, long resultVersion, long challengeNumber,
+                                   long participantId, long openRequirementConceptId) {
     }
 
     record ValidatedPhoto(byte[] contentBytes, String contentType, String originalFilename, long byteSize, int width,

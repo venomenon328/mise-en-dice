@@ -22,8 +22,12 @@ final class DiscordChallengeArchiveRenderer {
     private static final int EMBED_TITLE_LIMIT = 256;
     private static final int EMBED_DESCRIPTION_LIMIT = 4_096;
     private static final int RESULT_INGREDIENTS_LIMIT = 900;
+    private static final int RESULT_CONCRETIZATIONS_LIMIT = 600;
     private static final int RESULT_DESCRIPTION_LIMIT = 2_300;
     private static final int RESULT_EVALUATION_LIMIT = 700;
+    private static final int RESULT_WITH_CONCRETIZATIONS_INGREDIENTS_LIMIT = 650;
+    private static final int RESULT_WITH_CONCRETIZATIONS_DESCRIPTION_LIMIT = 2_100;
+    private static final int RESULT_WITH_CONCRETIZATIONS_EVALUATION_LIMIT = 600;
     private static final DateTimeFormatter CONFIRMED_DATE = DateTimeFormatter
             .ofPattern("d. MMMM uuuu", Locale.GERMAN);
     private static final DateTimeFormatter COMPLETED_AT = DateTimeFormatter
@@ -125,6 +129,14 @@ final class DiscordChallengeArchiveRenderer {
 
     private RenderedDetail result(long challengeNumber, int resultNumber, ChallengeResultView result,
                                   ChallengeResultPhotoBinary photo) {
+        boolean hasConcretizations = !result.concretizations().isEmpty();
+        int ingredientsLimit = hasConcretizations
+                ? RESULT_WITH_CONCRETIZATIONS_INGREDIENTS_LIMIT : RESULT_INGREDIENTS_LIMIT;
+        int descriptionLimit = hasConcretizations
+                ? RESULT_WITH_CONCRETIZATIONS_DESCRIPTION_LIMIT : RESULT_DESCRIPTION_LIMIT;
+        int evaluationLimit = hasConcretizations
+                ? RESULT_WITH_CONCRETIZATIONS_EVALUATION_LIMIT : RESULT_EVALUATION_LIMIT;
+
         String ingredients = result.ownIngredients().isEmpty()
                 ? "Keine angegeben"
                 : result.ownIngredients().stream()
@@ -132,13 +144,24 @@ final class DiscordChallengeArchiveRenderer {
                 .reduce((left, right) -> left + "\n" + right)
                 .orElse("Keine angegeben");
 
-        StringBuilder description = new StringBuilder("**Eigene Zutaten**\n")
-                .append(truncate(ingredients, RESULT_INGREDIENTS_LIMIT))
+        StringBuilder description = new StringBuilder();
+        if (hasConcretizations) {
+            String concretizations = result.concretizations().stream()
+                    .map(concretization -> "• " + safe(concretization.requirementDisplayText(), 150) + " → "
+                            + safe(concretization.displayText(), 150))
+                    .reduce((left, right) -> left + "\n" + right)
+                    .orElse("");
+            description.append("**Konkretisierungen**\n")
+                    .append(truncate(concretizations, RESULT_CONCRETIZATIONS_LIMIT))
+                    .append("\n\n");
+        }
+        description.append("**Eigene Zutaten**\n")
+                .append(truncate(ingredients, ingredientsLimit))
                 .append("\n\n**Gericht / Umsetzung**\n")
-                .append(safe(result.description(), RESULT_DESCRIPTION_LIMIT));
+                .append(safe(result.description(), descriptionLimit));
         if (result.evaluation() != null && !result.evaluation().isBlank()) {
             description.append("\n\n**Bewertung**\n")
-                    .append(safe(result.evaluation(), RESULT_EVALUATION_LIMIT));
+                    .append(safe(result.evaluation(), evaluationLimit));
         }
         String title = "🍽️ " + safe(result.participant().displayName(), 100) + " – " + safe(result.dishName(), 130);
         if (photo == null) {

@@ -1,6 +1,6 @@
 # Challenge-Ergebnisse, Abschluss und öffentliche Statussicht
 
-Stand: 22. August 2026  
+Stand: 23. August 2026
 Status: verbindliche Fach-, Persistenz- und Discord-Spezifikation; Umsetzung in getrennten Entwicklungspaketen
 
 Dieses Dokument spezifiziert die dauerhafte Erfassung tatsächlich gekochter Ergebnisse, den ausdrücklich administrierten Abschluss einer Challenge sowie die Trennung zwischen letzter bestätigter und aktuell aktiver Challenge.
@@ -68,6 +68,7 @@ Ein fachlich vollständiges Ergebnis enthält zwingend:
 Optional sind:
 
 - null bis mehrere selbst gewählte Zutaten,
+- null bis eine persönliche Konkretisierung je historisch offener Challenge-Vorgabe,
 - eine textuelle persönliche Bewertung,
 - ein Ergebnisfoto.
 
@@ -90,6 +91,14 @@ Leere optionale Texte werden als `null` beziehungsweise nicht vorhanden behandel
 Die technische Obergrenze von 25 Zutaten ist keine fachliche Erlaubnis, 25 Zusatzzutaten zu verwenden. Sie verhindert lediglich unbeschränkte Eingaben und hält spätere Modi offen.
 
 Die Anwendung kontrolliert in diesem Paket nicht nachträglich, ob die aktuell geltende Challenge-Regel zu den erlaubten Zusatz-Zutaten eingehalten wurde.
+
+### 3.2 Persönliche Konkretisierungen offener Vorgaben
+
+Eine persönliche Konkretisierung erfüllt eine bereits gesetzte offene Challenge-Vorgabe und ist deshalb **keine eigene Zusatz-Zutat**. Sie gehört zum Ergebnis und zu genau einer Requirement-Position `1..4` des bestätigten Candidate-Snapshots. Nur Positionen mit historischer Spezifität `OPEN` sind zulässig; für `SPECIFIC`-Positionen und unbekannte Positionen wird die Eingabe abgewiesen. Pro Ergebnis und Position existiert höchstens eine Konkretisierung.
+
+Konkretisierungen bleiben optional. Weder eine fehlende Konkretisierung noch ein vollständig ohne Konkretisierungen gespeichertes älteres Ergebnis wird dadurch unvollständig. Der Core prüft keine vollständige nachträgliche Gerichtsregel, sondern ausschließlich die sichere Zuordnung zur offenen Vorgabe.
+
+Der maßgebliche Freitext wird getrimmt, darf nicht leer sein und ist auf 200 Zeichen begrenzt. Eine optionale Katalogreferenz ersetzt ihn niemals. Sie ist nur zulässig, wenn das gewählte Konzept ein direkter oder transitiver Nachfahr des damaligen offenen Vorgabenkonzepts im bestehenden `ingredient_refinement`-Graphen ist. Inaktive bekannte Nachfahren bleiben sichtbar und referenzierbar; `ohne Katalogreferenz` und katalogfreier Freitext bleiben immer gültig. Es gibt kein fuzzy oder semantisches Auto-Matching.
 
 ## 4. Persistenzziel
 
@@ -118,6 +127,18 @@ challenge_result_ingredient
 - challenge_result_id
 - display_text
 - ingredient_concept_id     nullable
+```
+
+Persönliche Konkretisierungen werden nochmals getrennt modelliert:
+
+```text
+challenge_result_concretization
+- challenge_result_id       FK challenge_result, ON DELETE CASCADE
+- requirement_position      1..4
+- display_text              historische Autorität
+- ingredient_concept_id     nullable Auswertungsreferenz
+
+PRIMARY KEY (challenge_result_id, requirement_position)
 ```
 
 Ein optionales Foto wird getrennt gespeichert:
@@ -227,6 +248,8 @@ removeChallengeResult(challengeNumber, participantId)
 setChallengeResultPhoto(challengeNumber, participantId, photo, replaceExisting)
 removeChallengeResultPhoto(challengeNumber, participantId)
 setResultIngredientReference(resultIngredientId, ingredientConceptId | none)
+updateResultConcretizations(challengeNumber, participantId, expectedVersion, concretizations)
+setResultConcretizationReference(resultId, requirementPosition, ingredientConceptId | none, expectedVersion)
 ```
 
 Verbindlich:
@@ -235,7 +258,7 @@ Verbindlich:
 - Ein vorhandenes Ergebnis wird niemals stillschweigend überschrieben.
 - Vollständiger Ersatz erfordert eine ausdrückliche Bestätigung.
 - Beim Replace bleiben `created_at` und die fachliche Identität erhalten; `updated_at` ändert sich.
-- Textkorrekturen dürfen das vorhandene Foto unverändert lassen.
+- Textkorrekturen und Konkretisierungsänderungen dürfen das vorhandene Foto unverändert lassen.
 - Foto setzen, ersetzen und entfernen sind eigenständige ausdrückliche Operationen.
 - Entfernen des Ergebnisses löscht Ergebnis, Zutaten und gegebenenfalls Foto atomar.
 - Es gibt im ersten Stand kein Versionsarchiv gelöschter oder ersetzter Ergebnisse.
@@ -298,6 +321,8 @@ Die eigentliche Textmaske enthält mindestens:
 
 Person und Challenge werden bereits in der Vorbereitungsansicht eindeutig gewählt und müssen nicht in freie Textfelder der Maske gequetscht werden.
 
+Da diese Textmaske alle fünf Discord-Modalfelder nutzt, zeigt die Vorbereitung bei mindestens einer `OPEN`-Vorgabe einen getrennten Schritt `Konkretisierungen eingeben`. Er enthält höchstens ein optionales Feld je offener Vorgabe, also maximal vier Felder. Leere Felder erzeugen keine Zeile. Die Vorbereitung zeigt erfasste Werte als `Vorgabe → Konkretisierung`; sie werden bis zur finalen Speicherung nur im kurzlebigen Adapter-Draft gehalten.
+
 ### 8.4 Bildauswahl
 
 - Gibt es genau einen unterstützten Bildanhang, darf er vorausgewählt werden.
@@ -347,7 +372,7 @@ Der Root-Command `/challenges` wird mindestens ergänzt um:
 
 Semantik:
 
-- `ergebnis-bearbeiten` öffnet Gerichtsname, Beschreibung, optionale Bewertung und Zutaten zur Korrektur; das Foto bleibt unverändert.
+- `ergebnis-bearbeiten` bietet getrennte Schritte für Gerichtsname/Beschreibung/Bewertung/eigene Zutaten und für persönliche Konkretisierungen; vorhandene Werte sind jeweils sichtbar, das Foto bleibt unverändert.
 - `ergebnis-entfernen` erfordert eine ausdrückliche Bestätigung.
 - `ergebnis-foto-setzen` setzt oder ersetzt ausschließlich das Foto.
 - `ergebnis-foto-entfernen` entfernt ausschließlich das Foto.
@@ -461,6 +486,7 @@ Die Detailprojektion enthält die Ergebnisübersichten mit:
 - darstellbarem Namen,
 - verpflichtendem Gerichtsname,
 - eigenen Zutaten als gespeicherten Texten,
+- persönlichen Konkretisierungen in Requirement-Reihenfolge samt historischem Vorgaben-Anzeigetext,
 - Beschreibung/Rezept,
 - optionaler Bewertung,
 - Information über ein gegebenenfalls vorhandenes Foto,
@@ -491,6 +517,9 @@ Pro Ergebnis mindestens:
 ```text
 🍽️ <Person> – <Gerichtsname>
 
+Konkretisierungen
+• <historische offene Vorgabe> → <persönlicher Freitext>
+
 Eigene Zutaten
 • ...
 
@@ -499,6 +528,8 @@ Gericht / Umsetzung
 ```
 
 Die Rubrik `Eigene Zutaten` darf bei null Einträgen als `keine angegeben` erscheinen oder kompakt entfallen. Die Rubrik `Bewertung` wird nur bei vorhandener Bewertung angezeigt. Ein Foto wird nur bei vorhandenen Bilddaten als natives Discord-Attachment ausgeliefert.
+
+Die Rubrik `Konkretisierungen` steht vor `Eigene Zutaten` und entfällt vollständig, wenn kein Eintrag gespeichert ist. Links wird immer der historische Requirement-Snapshot, rechts immer der gespeicherte Konkretisierungs-Freitext angezeigt; eine Katalogreferenz ersetzt keinen der Texte.
 
 Bei mehreren Ergebnissen sind getrennte öffentliche Nachrichten beziehungsweise Follow-ups zulässig, damit Text- und Attachmentgrenzen nicht zu einer unlesbaren Sammelkarte führen.
 
@@ -536,14 +567,17 @@ PostgreSQL bleibt letzte Integritätssicherung. Mindestens abzusichern sind:
 - nicht leerer Gerichtsname und nicht leere Beschreibung,
 - höchstens ein optionales Foto je Ergebnis,
 - Zutatenzeile gehört genau zu einem Ergebnis,
+- Konkretisierung gehört eindeutig zu Ergebnis und einer historisch `OPEN`en Requirement-Position,
+- höchstens eine Konkretisierung je Ergebnis und Position,
 - optionale Katalogreferenz verweist auf ein existierendes Konzept,
+- Konkretisierungsreferenz verweist nur auf einen bekannten direkten oder transitiven Nachfahren der offenen Vorgabe,
 - case-insensitiv identischer Zutatenfreitext höchstens einmal je Ergebnis,
 - Challenge und Teilnehmer existieren,
 - ein unbekannter Discord-Nutzer wird bei paralleler Erfassung höchstens einmal angelegt,
 - stilles Überschreiben eines vorhandenen Ergebnisses ist ausgeschlossen,
 - konkurrierende Bearbeitung erkennt einen Versionskonflikt,
 - Replace von Texten, Zutaten und gegebenenfalls Foto ist atomar,
-- Fotooperationen verlieren keine parallelen Textänderungen,
+- Fotooperationen verlieren keine parallelen Text- oder Konkretisierungsänderungen,
 - Entfernen löscht das vollständige Ergebnis atomar,
 - `completed_at` und `COMPLETED` bleiben konsistent,
 - konkurrierender Abschluss setzt denselben finalen Zustand genau einmal,

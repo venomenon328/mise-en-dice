@@ -60,6 +60,49 @@ public class JdbcResultIngredientCatalogQueries implements ResultIngredientCatal
                 """, this::mapConcept, ingredientConceptId).stream().findFirst();
     }
 
+    @Override
+    public Optional<IngredientConcept> findUniqueExactRefinementMatch(long openRequirementConceptId,
+                                                                      String displayTextOrCode) {
+        requirePositiveConceptId(openRequirementConceptId);
+        String term = normalize(displayTextOrCode);
+        if (term.isEmpty()) {
+            return Optional.empty();
+        }
+        List<IngredientConcept> matches = jdbcTemplate.query(refinementCte() + """
+                select concept.id, concept.code, concept.display_name, concept.active
+                from descendants
+                join ingredient_concept concept on concept.id = descendants.concept_id
+                where lower(concept.display_name) = ? or lower(concept.code) = ?
+                order by concept.id
+                limit 2
+                """, this::mapConcept, openRequirementConceptId, term, term);
+        return matches.size() == 1 ? Optional.of(matches.getFirst()) : Optional.empty();
+    }
+
+    @Override
+    public List<IngredientConcept> searchRefinementsLiterally(long openRequirementConceptId, String searchTerm) {
+        requirePositiveConceptId(openRequirementConceptId);
+        String term = normalize(searchTerm);
+        return jdbcTemplate.query(refinementCte() + """
+                select concept.id, concept.code, concept.display_name, concept.active
+                from descendants
+                join ingredient_concept concept on concept.id = descendants.concept_id
+                where position(? in lower(concept.display_name)) > 0 or position(? in lower(concept.code)) > 0
+                order by lower(concept.display_name), concept.id
+                limit ?
+                """, this::mapConcept, openRequirementConceptId, term, term, MAX_SEARCH_RESULTS);
+    }
+
+    @Override
+    public boolean isKnownRefinement(long openRequirementConceptId, long ingredientConceptId) {
+        requirePositiveConceptId(openRequirementConceptId);
+        requirePositiveConceptId(ingredientConceptId);
+        Boolean result = jdbcTemplate.queryForObject(refinementCte() + """
+                select exists (select 1 from descendants where concept_id = ?)
+                """, Boolean.class, openRequirementConceptId, ingredientConceptId);
+        return Boolean.TRUE.equals(result);
+    }
+
     private IngredientConcept mapConcept(ResultSet result, int row) throws SQLException {
         return new IngredientConcept(result.getLong("id"), result.getString("code"), result.getString("display_name"),
                 result.getBoolean("active"));
@@ -67,5 +110,25 @@ public class JdbcResultIngredientCatalogQueries implements ResultIngredientCatal
 
     private static String normalize(String value) {
         return value == null ? "" : value.strip().toLowerCase(Locale.ROOT);
+    }
+
+    private static void requirePositiveConceptId(long ingredientConceptId) {
+        if (ingredientConceptId <= 0) {
+            throw new IllegalArgumentException("Ingredient concept ID must be positive");
+        }
+    }
+
+    private static String refinementCte() {
+        return """
+                with recursive descendants(concept_id) as (
+                    select child_concept_id
+                    from ingredient_refinement
+                    where parent_concept_id = ?
+                    union
+                    select refinement.child_concept_id
+                    from ingredient_refinement refinement
+                    join descendants on descendants.concept_id = refinement.parent_concept_id
+                )
+                """;
     }
 }
