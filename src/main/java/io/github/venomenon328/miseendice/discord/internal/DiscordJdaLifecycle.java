@@ -13,6 +13,7 @@ final class DiscordJdaLifecycle implements SmartLifecycle {
     private final DiscordIngredientLookupWorkflow ingredientLookupWorkflow;
     private final DiscordChallengeArchiveWorkflow archiveWorkflow;
     private final DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow;
+    private final DiscordResultCaptureWorkflow resultCaptureWorkflow;
     private final Executor executor;
     private volatile JDA jda;
     private volatile boolean running;
@@ -27,11 +28,20 @@ final class DiscordJdaLifecycle implements SmartLifecycle {
                         DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
                         DiscordChallengeArchiveWorkflow archiveWorkflow,
                         DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow, Executor executor) {
+        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, participantAdministrationWorkflow, null, executor);
+    }
+
+    DiscordJdaLifecycle(DiscordProperties properties, DiscordChallengeWorkflow workflow,
+                        DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
+                        DiscordChallengeArchiveWorkflow archiveWorkflow,
+                        DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow,
+                        DiscordResultCaptureWorkflow resultCaptureWorkflow, Executor executor) {
         this.properties = properties;
         this.workflow = workflow;
         this.ingredientLookupWorkflow = ingredientLookupWorkflow;
         this.archiveWorkflow = archiveWorkflow;
         this.participantAdministrationWorkflow = participantAdministrationWorkflow;
+        this.resultCaptureWorkflow = resultCaptureWorkflow;
         this.executor = executor;
     }
 
@@ -41,9 +51,11 @@ final class DiscordJdaLifecycle implements SmartLifecycle {
             return;
         }
         properties.validateEnabledConfiguration();
+        DiscordResultCaptureJdaListener resultListener = resultCaptureWorkflow == null ? null
+                : new DiscordResultCaptureJdaListener(properties, resultCaptureWorkflow, archiveWorkflow, executor);
         jda = JDABuilder.createLight(properties.token(), GatewayIntent.GUILD_MESSAGES)
                 .addEventListeners(new DiscordJdaListener(properties, workflow, ingredientLookupWorkflow, archiveWorkflow,
-                        participantAdministrationWorkflow, executor)).build();
+                        participantAdministrationWorkflow, resultListener, executor)).build();
         running = true;
     }
 

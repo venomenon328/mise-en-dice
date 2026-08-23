@@ -5,12 +5,14 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeArchiveQueries;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeCardCommands;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeCompletionCommands;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultQueries;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantCommands;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantQueries;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingCommands;
 import io.github.venomenon328.miseendice.challenge.api.SelectionVotingQueries;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
+import io.github.venomenon328.miseendice.catalog.api.ResultIngredientCatalogQueries;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -79,12 +81,27 @@ class DiscordConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = "mise-en-dice.discord", name = "enabled", havingValue = "true")
+    DiscordResultCaptureWorkflow discordResultCaptureWorkflow(DiscordProperties properties,
+                                                               ChallengeArchiveQueries archiveQueries,
+                                                               ChallengeResultCommands resultCommands,
+                                                               ChallengeResultQueries resultQueries,
+                                                               ParticipantCommands participantCommands,
+                                                               ParticipantQueries participantQueries,
+                                                               ResultIngredientCatalogQueries catalogQueries) {
+        properties.validateEnabledConfiguration();
+        return new DiscordResultCaptureWorkflow(properties, archiveQueries, resultCommands, resultQueries,
+                participantCommands, participantQueries, catalogQueries);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "mise-en-dice.discord", name = "enabled", havingValue = "true")
     DiscordJdaLifecycle discordJdaLifecycle(DiscordProperties properties, DiscordChallengeWorkflow workflow,
                                             DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
                                             DiscordChallengeArchiveWorkflow archiveWorkflow,
                                             DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow,
+                                            DiscordResultCaptureWorkflow resultCaptureWorkflow,
                                             ExecutorService discordChallengeExecutor) {
         return new DiscordJdaLifecycle(properties, workflow, ingredientLookupWorkflow, archiveWorkflow,
-                participantAdministrationWorkflow, discordChallengeExecutor);
+                participantAdministrationWorkflow, resultCaptureWorkflow, discordChallengeExecutor);
     }
 }
