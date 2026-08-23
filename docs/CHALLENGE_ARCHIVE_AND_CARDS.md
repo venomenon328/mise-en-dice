@@ -57,15 +57,14 @@ Die Vergabe neuer Nummern muss global konkurrenzsicher in PostgreSQL erfolgen. E
 
 ### 2.3 Aktuelle Challenge
 
-Im ersten Stand bezeichnet `aktuell` immer die bestätigte Challenge mit der höchsten öffentlichen Challenge-Nummer.
+Bis einschließlich Phase 13 bezeichnete `aktuell` die bestätigte Challenge mit der höchsten öffentlichen Challenge-Nummer. Seit der verbindlichen Ergebnis- und Abschlussspezifikation ist dieser Begriff durch **letzte Challenge** ersetzt: Sie ist weiterhin die höchste öffentliche Nummer, unabhängig vom Status. **Aktive Challenges** sind davon getrennt alle Zeilen mit Status `ACTIVE`, stabil neueste zuerst. Die vollständige Status-, Abschluss- und Ergebnisdarstellung regelt [`CHALLENGE_RESULTS_AND_COMPLETION.md`](CHALLENGE_RESULTS_AND_COMPLETION.md); dessen Vorgaben gehen diesem früheren Phase-13-Abschnitt vor.
 
 Daraus folgt:
 
-- Während einer neuen Generierung oder Abstimmung bleibt die bisherige Challenge aktuell.
-- Erst die erfolgreiche Materialisierung einer neuen Challenge wechselt `aktuell`.
+- Während einer neuen Generierung oder Abstimmung bleibt die bisherige letzte Challenge unverändert.
+- Erst die erfolgreiche Materialisierung einer neuen Challenge wechselt die letzte Challenge.
 - Eine ältere Challenge muss dafür nicht auf `COMPLETED` gesetzt werden.
-- Es wird kein eigener Start-, Abschluss-, Koch- oder Abbruchworkflow eingeführt.
-- Der vorhandene technische beziehungsweise fachliche `challenge.status` wird durch dieses Paket nicht neu interpretiert.
+- Der Abschluss ist eine unabhängige explizite Admin-Entscheidung und wird nicht automatisch abgeleitet.
 
 Diese bewusst einfache Semantik vermeidet die Behauptung, der Bot wisse bereits, ob eine Challenge tatsächlich gekocht, verschoben oder aufgegeben wurde.
 

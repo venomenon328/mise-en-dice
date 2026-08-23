@@ -19,7 +19,7 @@ class JdbcChallengeArchiveRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    Optional<ChallengeRow> findCurrentChallenge() {
+    Optional<ChallengeRow> findLatestChallenge() {
         return jdbcTemplate.query(challengeSelect() + " order by challenge.challenge_number desc limit 1",
                 this::mapChallenge).stream().findFirst();
     }
@@ -33,12 +33,22 @@ class JdbcChallengeArchiveRepository {
         return jdbcTemplate.queryForObject("select count(*) from challenge", Long.class);
     }
 
+    long activeChallengeCount() {
+        return jdbcTemplate.queryForObject("select count(*) from challenge where status = 'ACTIVE'", Long.class);
+    }
+
     Long currentChallengeNumber() {
         return jdbcTemplate.queryForObject("select max(challenge_number) from challenge", Long.class);
     }
 
     List<ChallengeRow> listChallenges(int pageSize, long offset) {
         return jdbcTemplate.query(challengeSelect() + " order by challenge.challenge_number desc limit ? offset ?",
+                this::mapChallenge, pageSize, offset);
+    }
+
+    List<ChallengeRow> listActiveChallenges(int pageSize, long offset) {
+        return jdbcTemplate.query(challengeSelect() + " where challenge.status = 'ACTIVE' "
+                        + "order by challenge.challenge_number desc limit ? offset ?",
                 this::mapChallenge, pageSize, offset);
     }
 
@@ -101,7 +111,9 @@ class JdbcChallengeArchiveRepository {
     private ChallengeRow mapChallenge(ResultSet result, int row) throws SQLException {
         return new ChallengeRow(result.getLong("id"), result.getLong("challenge_number"),
                 instant(result, "shown_at"), result.getString("restriction_text_snapshot"),
-                result.getBoolean("card_available"));
+                result.getBoolean("card_available"),
+                ChallengeArchiveQueries.ChallengeStatus.valueOf(result.getString("status")),
+                instant(result, "completed_at"), result.getLong("result_count"));
     }
 
     private RequirementRow mapRequirement(ResultSet result, int row) throws SQLException {
@@ -125,7 +137,9 @@ class JdbcChallengeArchiveRepository {
     private static String challengeSelect() {
         return """
                 select challenge.id, challenge.challenge_number, challenge.shown_at, challenge.restriction_text_snapshot,
-                       exists (select 1 from challenge_card card where card.challenge_id = challenge.id) as card_available
+                       challenge.status, challenge.completed_at,
+                       exists (select 1 from challenge_card card where card.challenge_id = challenge.id) as card_available,
+                       (select count(*) from challenge_result result where result.challenge_id = challenge.id) as result_count
                 from challenge
                 """;
     }
@@ -140,7 +154,8 @@ class JdbcChallengeArchiveRepository {
     }
 
     record ChallengeRow(long challengeId, long challengeNumber, Instant confirmedAt, String restrictionText,
-                        boolean cardAvailable) {
+                        boolean cardAvailable, ChallengeArchiveQueries.ChallengeStatus status, Instant completedAt,
+                        long resultCount) {
     }
 
     record RequirementRow(int position, String displayText, ChallengeArchiveQueries.Specificity specificity) {

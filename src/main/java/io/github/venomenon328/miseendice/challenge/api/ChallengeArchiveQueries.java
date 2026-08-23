@@ -9,11 +9,23 @@ public interface ChallengeArchiveQueries {
 
     int MAX_PAGE_SIZE = 50;
 
+    /** @deprecated The former "current" term now deliberately means the latest confirmed Challenge. */
+    @Deprecated(forRemoval = false)
     Optional<PublicChallenge> findCurrentChallenge();
+
+    /** The confirmed Challenge with the highest public number, regardless of its status. */
+    default Optional<PublicChallenge> findLatestChallenge() {
+        return findCurrentChallenge();
+    }
 
     Optional<PublicChallenge> findChallengeByNumber(long challengeNumber);
 
     ChallengePage listChallenges(PageRequest request);
+
+    /** All ACTIVE Challenges, newest public number first. */
+    default ChallengePage listActiveChallenges(PageRequest request) {
+        throw new UnsupportedOperationException("Active-Challenge listing is not implemented by this query adapter");
+    }
 
     Optional<ChallengeCardMetadata> findChallengeCardMetadata(long challengeNumber);
 
@@ -41,6 +53,12 @@ public interface ChallengeArchiveQueries {
         public ChallengePage {
             challenges = List.copyOf(challenges);
         }
+
+        /** @deprecated Kept for adapter compatibility; it is the latest, not the only active Challenge. */
+        @Deprecated(forRemoval = false)
+        public Long latestChallengeNumber() {
+            return currentChallengeNumber;
+        }
     }
 
     /** Contains only historical public snapshots, never the selection, voting, or provider path. */
@@ -49,8 +67,18 @@ public interface ChallengeArchiveQueries {
             Instant confirmedAt,
             List<RequirementSnapshot> requirements,
             RestrictionSnapshot restriction,
-            boolean cardAvailable
+            boolean cardAvailable,
+            ChallengeStatus status,
+            Instant completedAt,
+            long resultCount,
+            List<ChallengeResultQueries.ChallengeResultView> results
     ) {
+        public PublicChallenge(long challengeNumber, Instant confirmedAt, List<RequirementSnapshot> requirements,
+                               RestrictionSnapshot restriction, boolean cardAvailable) {
+            this(challengeNumber, confirmedAt, requirements, restriction, cardAvailable, ChallengeStatus.ACTIVE,
+                    null, 0, List.of());
+        }
+
         public PublicChallenge {
             if (challengeNumber < 1) {
                 throw new IllegalArgumentException("Challenge number must be positive");
@@ -68,7 +96,18 @@ public interface ChallengeArchiveQueries {
                 }
             }
             restriction = restriction == null ? RestrictionSnapshot.none() : restriction;
+            if (status == null || resultCount < 0 || (status == ChallengeStatus.COMPLETED) != (completedAt != null)) {
+                throw new IllegalArgumentException("Challenge status, completion timestamp, and result count are inconsistent");
+            }
+            results = List.copyOf(results);
         }
+    }
+
+    enum ChallengeStatus {
+        ACTIVE,
+        COMPLETED,
+        REROLLED,
+        ABANDONED
     }
 
     /** Specificity is null only for an old snapshot that did not contain that historical fact. */

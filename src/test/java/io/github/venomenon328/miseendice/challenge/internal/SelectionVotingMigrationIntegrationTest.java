@@ -43,12 +43,12 @@ class SelectionVotingMigrationIntegrationTest {
             assertThat(regclass(connection, "selection_voting_round")).isNull();
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(count(connection, "databasechangelog")).isEqualTo(34);
+            assertThat(count(connection, "databasechangelog")).isEqualTo(35);
             assertThat(regclass(connection, "selection_voting_round")).isEqualTo("selection_voting_round");
             assertThat(regclass(connection, "challenge_participation")).isEqualTo("challenge_participation");
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(count(connection, "databasechangelog")).isEqualTo(34);
+            assertThat(count(connection, "databasechangelog")).isEqualTo(35);
         }
     }
 

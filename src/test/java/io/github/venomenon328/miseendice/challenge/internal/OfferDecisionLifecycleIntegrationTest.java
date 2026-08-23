@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doAnswer;
 
 import io.github.venomenon328.miseendice.MiseEnDiceApplication;
+import io.github.venomenon328.miseendice.catalog.api.ResultIngredientCatalogQueries;
+import io.github.venomenon328.miseendice.catalog.internal.JdbcResultIngredientCatalogQueries;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeArchivePageOutOfRangeException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeArchiveQueries;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeCardAlreadyExistsException;
@@ -12,6 +14,17 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeCardCommands;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeCardNotFoundException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeCardValidationException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeNotFoundException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeCompletionCommands;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultAlreadyExistsException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands.ChallengeResultPhotoUpload;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands.OwnIngredientInput;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands.ResultData;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultPhotoAlreadyExistsException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultPhotoValidationException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultPhotoVersionConflictException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultQueries;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultVersionConflictException;
 import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands;
 import io.github.venomenon328.miseendice.challenge.api.CurationOrchestrationCommands.OfferReady;
 import io.github.venomenon328.miseendice.challenge.api.CurationQueries;
@@ -86,6 +99,10 @@ class OfferDecisionLifecycleIntegrationTest {
     @Autowired OfferDecisionQueries decisionQueries;
     @Autowired ChallengeArchiveQueries archiveQueries;
     @Autowired ChallengeCardCommands cardCommands;
+    @Autowired ChallengeResultCommands resultCommands;
+    @Autowired ChallengeResultQueries resultQueries;
+    @Autowired ChallengeCompletionCommands completionCommands;
+    @Autowired ResultIngredientCatalogQueries resultIngredientCatalogQueries;
     @MockitoSpyBean JdbcChallengeArchiveRepository archiveRepository;
     @Autowired JdbcGenerationRepository generationRepository;
     @Autowired CurationOrchestrationIntegrationTest.ScriptedCuratorClient curator;
@@ -657,6 +674,254 @@ class OfferDecisionLifecycleIntegrationTest {
         assertThat(decisionQueries.findRerollExposure(reroll.offerSetId())).isEmpty();
     }
 
+    @Test
+    void challengeResultsPersistRequiredFieldsOptionalDataAndLiteralCatalogReferences() {
+        long challengeNumber = confirmedChallenge(76_100_060L);
+        long georgia = participantId("GEORGIA");
+        long tobias = participantId("TOBIAS");
+
+        ChallengeResultQueries.ChallengeResultView withoutOptionalData = resultCommands.createChallengeResult(
+                new ChallengeResultCommands.CreateChallengeResult(challengeNumber, georgia,
+                        new ResultData("  Tamari-Ramen  ", "  Brühe und Nudeln.  ", "   ", List.of()), null));
+
+        assertThat(withoutOptionalData.dishName()).isEqualTo("Tamari-Ramen");
+        assertThat(withoutOptionalData.description()).isEqualTo("Brühe und Nudeln.");
+        assertThat(withoutOptionalData.evaluation()).isNull();
+        assertThat(withoutOptionalData.ownIngredients()).isEmpty();
+        assertThat(withoutOptionalData.photoAvailable()).isFalse();
+
+        ResultIngredientCatalogQueries.IngredientConcept miso = resultIngredientCatalogQueries.findUniqueExactMatch("miso")
+                .orElseThrow();
+        ChallengeResultQueries.ChallengeResultView withIngredients = resultCommands.createChallengeResult(
+                new ChallengeResultCommands.CreateChallengeResult(challengeNumber, tobias,
+                        new ResultData("Suppe", "Mit selbst gemachtem Fond.", "Gelungen.", List.of(
+                                new OwnIngredientInput("Miso", null),
+                                new OwnIngredientInput("Frühlingszwiebel", null),
+                                new OwnIngredientInput("Chiliöl", null)
+                        )), null));
+        assertThat(withIngredients.ownIngredients()).hasSize(3)
+                .extracting(ChallengeResultQueries.ResultIngredientView::displayText)
+                .containsExactly("Chiliöl", "Frühlingszwiebel", "Miso");
+
+        ChallengeResultQueries.ResultIngredientView misoIngredient = withIngredients.ownIngredients().stream()
+                .filter(ingredient -> ingredient.displayText().equals("Miso"))
+                .findFirst().orElseThrow();
+        ChallengeResultQueries.ResultIngredientView referenced = resultCommands.setResultIngredientReference(
+                new ChallengeResultCommands.SetResultIngredientReference(misoIngredient.resultIngredientId(), miso.id(),
+                        withIngredients.version()));
+        assertThat(referenced.displayText()).isEqualTo("Miso");
+        assertThat(referenced.ingredientConcept()).extracting(ChallengeResultQueries.IngredientConceptReference::ingredientConceptId)
+                .isEqualTo(miso.id());
+        ChallengeResultQueries.ResultIngredientView unreferenced = resultCommands.setResultIngredientReference(
+                new ChallengeResultCommands.SetResultIngredientReference(misoIngredient.resultIngredientId(), null,
+                        withIngredients.version() + 1));
+        assertThat(unreferenced.displayText()).isEqualTo("Miso");
+        assertThat(unreferenced.ingredientConcept()).isNull();
+
+        String inactiveCode = "RESULT_TEST_INACTIVE";
+        jdbcTemplate.update("""
+                insert into ingredient_concept (
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
+                ) values (?, 'Inactive result test ingredient', false, false, 'OPEN', 1.0000)
+                """, inactiveCode);
+        try {
+            assertThat(resultIngredientCatalogQueries.searchLiterally(inactiveCode.toLowerCase()))
+                    .extracting(ResultIngredientCatalogQueries.IngredientConcept::code)
+                    .contains(inactiveCode);
+        } finally {
+            jdbcTemplate.update("delete from ingredient_concept where code = ?", inactiveCode);
+        }
+
+        assertThatThrownBy(() -> new ResultData("Dish", "Description", null, List.of(
+                new OwnIngredientInput("Lime", null), new OwnIngredientInput(" lime ", null))))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new ResultData("", "Description", null, List.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> resultCommands.createChallengeResult(new ChallengeResultCommands.CreateChallengeResult(
+                challengeNumber, georgia, new ResultData("Other", "Other description", null, List.of()), null)))
+                .isInstanceOf(ChallengeResultAlreadyExistsException.class);
+    }
+
+    @Test
+    void resultPhotoValidationReplacementRemovalAndFreshRepositoryReadPreserveExactBytes() throws Exception {
+        long challengeNumber = confirmedChallenge(76_100_061L);
+        long georgia = participantId("GEORGIA");
+        ChallengeResultQueries.ChallengeResultView result = resultCommands.createChallengeResult(
+                new ChallengeResultCommands.CreateChallengeResult(challengeNumber, georgia,
+                        new ResultData("Bildgericht", "Eine Beschreibung.", null, List.of()), null));
+        byte[] png = image("png", 3, 2, 0xff0066cc);
+        ChallengeResultQueries.ChallengeResultPhotoMetadata pngMetadata = resultCommands.setChallengeResultPhoto(
+                new ChallengeResultCommands.SetChallengeResultPhoto(challengeNumber, georgia,
+                        new ChallengeResultPhotoUpload(png, "image/png", "result.png"), false, null));
+        assertThat(pngMetadata.contentType()).isEqualTo("image/png");
+        assertThat(pngMetadata.width()).isEqualTo(3);
+        assertThat(pngMetadata.height()).isEqualTo(2);
+        assertThat(resultQueries.loadChallengeResultPhoto(challengeNumber, georgia).orElseThrow().contentBytes())
+                .containsExactly(png);
+
+        ChallengeResultQueries.ChallengeResultView updated = resultCommands.updateChallengeResult(
+                new ChallengeResultCommands.UpdateChallengeResult(challengeNumber, georgia, result.version(),
+                        new ResultData("Korrigiertes Bildgericht", "Korrigierte Beschreibung.", null, List.of())));
+        assertThat(updated.photoAvailable()).isTrue();
+        assertThat(resultQueries.findChallengeResultPhotoMetadata(challengeNumber, georgia).orElseThrow().version())
+                .isEqualTo(pngMetadata.version());
+
+        byte[] jpeg = image("jpeg", 4, 3, 0xffcc6600);
+        ChallengeResultQueries.ChallengeResultPhotoMetadata jpegMetadata = resultCommands.setChallengeResultPhoto(
+                new ChallengeResultCommands.SetChallengeResultPhoto(challengeNumber, georgia,
+                        new ChallengeResultPhotoUpload(jpeg, "image/jpeg", "result.jpg"), true, pngMetadata.version()));
+        assertThat(jpegMetadata.contentType()).isEqualTo("image/jpeg");
+        assertThat(jpegMetadata.version()).isEqualTo(pngMetadata.version() + 1);
+
+        assertThatThrownBy(() -> resultCommands.setChallengeResultPhoto(new ChallengeResultCommands.SetChallengeResultPhoto(
+                challengeNumber, georgia, new ChallengeResultPhotoUpload(png, "image/jpeg", "wrong-png.png"), true,
+                jpegMetadata.version())))
+                .isInstanceOf(ChallengeResultPhotoValidationException.class)
+                .hasMessageContaining("declared content type");
+        assertThatThrownBy(() -> resultCommands.setChallengeResultPhoto(new ChallengeResultCommands.SetChallengeResultPhoto(
+                challengeNumber, georgia, new ChallengeResultPhotoUpload(jpeg, "image/png", "wrong-jpeg.jpg"), true,
+                jpegMetadata.version())))
+                .isInstanceOf(ChallengeResultPhotoValidationException.class)
+                .hasMessageContaining("declared content type");
+
+        ChallengeResultQueries restartedQueries = new ChallengeResultsApplicationService(
+                new JdbcChallengeResultRepository(jdbcTemplate), new JdbcResultIngredientCatalogQueries(jdbcTemplate),
+                transactionManager);
+        assertThat(restartedQueries.loadChallengeResultPhoto(challengeNumber, georgia).orElseThrow().contentBytes())
+                .containsExactly(jpeg);
+        assertThat(restartedQueries.findChallengeResultPhotoMetadata(challengeNumber, georgia).orElseThrow().sha256())
+                .isEqualTo(jpegMetadata.sha256());
+
+        assertThatThrownBy(() -> resultCommands.setChallengeResultPhoto(new ChallengeResultCommands.SetChallengeResultPhoto(
+                challengeNumber, georgia, new ChallengeResultPhotoUpload(jpeg, "image/jpeg", "again.jpg"), false,
+                jpegMetadata.version()))).isInstanceOf(ChallengeResultPhotoAlreadyExistsException.class);
+        assertThatThrownBy(() -> resultCommands.setChallengeResultPhoto(new ChallengeResultCommands.SetChallengeResultPhoto(
+                challengeNumber, georgia, new ChallengeResultPhotoUpload(new byte[] {1, 2, 3}, "image/png", "bad.png"),
+                true, jpegMetadata.version()))).isInstanceOf(ChallengeResultPhotoValidationException.class);
+        assertThatThrownBy(() -> resultCommands.setChallengeResultPhoto(new ChallengeResultCommands.SetChallengeResultPhoto(
+                challengeNumber, georgia, new ChallengeResultPhotoUpload(new byte[10 * 1024 * 1024 + 1], "image/png", "large.png"),
+                true, jpegMetadata.version()))).isInstanceOf(ChallengeResultPhotoValidationException.class);
+        assertThatThrownBy(() -> resultCommands.setChallengeResultPhoto(new ChallengeResultCommands.SetChallengeResultPhoto(
+                challengeNumber, georgia, new ChallengeResultPhotoUpload(pathologicalPng(10_000, 10_000), "image/png", "bomb.png"),
+                true, jpegMetadata.version()))).isInstanceOf(ChallengeResultPhotoValidationException.class);
+
+        resultCommands.removeChallengeResultPhoto(new ChallengeResultCommands.RemoveChallengeResultPhoto(challengeNumber,
+                georgia, jpegMetadata.version()));
+        assertThat(resultQueries.findChallengeResultPhotoMetadata(challengeNumber, georgia)).isEmpty();
+        assertThat(resultQueries.findChallengeResult(challengeNumber, georgia).orElseThrow().dishName())
+                .isEqualTo("Korrigiertes Bildgericht");
+    }
+
+    @Test
+    void replaceDeleteAndConcurrentResultAndPhotoWritesCannotSilentlyOverwrite() throws Exception {
+        long challengeNumber = confirmedChallenge(76_100_062L);
+        long georgia = participantId("GEORGIA");
+        ResultData initial = new ResultData("Start", "Startbeschreibung", null,
+                List.of(new OwnIngredientInput("Miso", null)));
+        ChallengeResultQueries.ChallengeResultView created = resultCommands.createChallengeResult(
+                new ChallengeResultCommands.CreateChallengeResult(challengeNumber, georgia, initial, null));
+        byte[] png = image("png", 2, 2, 0xff00aa00);
+        ChallengeResultQueries.ChallengeResultPhotoMetadata photo = resultCommands.setChallengeResultPhoto(
+                new ChallengeResultCommands.SetChallengeResultPhoto(challengeNumber, georgia,
+                        new ChallengeResultPhotoUpload(png, "image/png", "initial.png"), false, null));
+
+        assertThatThrownBy(() -> resultCommands.replaceChallengeResult(new ChallengeResultCommands.ReplaceChallengeResult(
+                challengeNumber, georgia, created.version(), new ResultData("Darf nicht bleiben", "Atomar", null, List.of()),
+                new ChallengeResultCommands.PhotoChange(new ChallengeResultPhotoUpload(png, "image/png", "replacement.png"),
+                        false, null)))).isInstanceOf(ChallengeResultPhotoAlreadyExistsException.class);
+        assertThat(resultQueries.findChallengeResult(challengeNumber, georgia).orElseThrow().dishName()).isEqualTo("Start");
+
+        ChallengeResultQueries.ChallengeResultView afterReplace = resultCommands.replaceChallengeResult(
+                new ChallengeResultCommands.ReplaceChallengeResult(challengeNumber, georgia, created.version(),
+                        new ResultData("Ersetzt", "Neue Beschreibung", "Bewertet", List.of(
+                                new OwnIngredientInput("Chili", null), new OwnIngredientInput("Limette", null))), null));
+        assertThat(afterReplace.ownIngredients()).extracting(ChallengeResultQueries.ResultIngredientView::displayText)
+                .containsExactly("Chili", "Limette");
+        assertThat(afterReplace.photoAvailable()).isTrue();
+
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> concurrent(ready, start, () -> resultCommands.updateChallengeResult(
+                    new ChallengeResultCommands.UpdateChallengeResult(challengeNumber, georgia, afterReplace.version(),
+                            new ResultData("Update eins", "Text eins", null, List.of())))));
+            var second = executor.submit(() -> concurrent(ready, start, () -> resultCommands.updateChallengeResult(
+                    new ChallengeResultCommands.UpdateChallengeResult(challengeNumber, georgia, afterReplace.version(),
+                            new ResultData("Update zwei", "Text zwei", null, List.of())))));
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            List<Object> outcomes = List.of(first.get(), second.get());
+            assertThat(outcomes.stream().filter(ChallengeResultQueries.ChallengeResultView.class::isInstance)).hasSize(1);
+            assertThat(outcomes.stream().filter(ChallengeResultVersionConflictException.class::isInstance)).hasSize(1);
+        }
+        ChallengeResultQueries.ChallengeResultView afterConcurrentText = resultQueries.findChallengeResult(challengeNumber, georgia)
+                .orElseThrow();
+        assertThat(afterConcurrentText.version()).isEqualTo(afterReplace.version() + 1);
+        assertThat(afterConcurrentText.photoAvailable()).isTrue();
+
+        CountDownLatch photoReady = new CountDownLatch(2);
+        CountDownLatch photoStart = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> concurrent(photoReady, photoStart, () -> resultCommands.setChallengeResultPhoto(
+                    new ChallengeResultCommands.SetChallengeResultPhoto(challengeNumber, georgia,
+                            new ChallengeResultPhotoUpload(image("png", 3, 3, 0xff0000ff), "image/png", "one.png"), true,
+                            photo.version()))));
+            var second = executor.submit(() -> concurrent(photoReady, photoStart, () -> resultCommands.setChallengeResultPhoto(
+                    new ChallengeResultCommands.SetChallengeResultPhoto(challengeNumber, georgia,
+                            new ChallengeResultPhotoUpload(image("png", 3, 3, 0xffff0000), "image/png", "two.png"), true,
+                            photo.version()))));
+            assertThat(photoReady.await(5, TimeUnit.SECONDS)).isTrue();
+            photoStart.countDown();
+            List<Object> outcomes = List.of(first.get(), second.get());
+            assertThat(outcomes.stream().filter(ChallengeResultQueries.ChallengeResultPhotoMetadata.class::isInstance)).hasSize(1);
+            assertThat(outcomes.stream().filter(ChallengeResultPhotoVersionConflictException.class::isInstance)).hasSize(1);
+        }
+
+        resultCommands.removeChallengeResult(new ChallengeResultCommands.RemoveChallengeResult(challengeNumber, georgia));
+        assertThat(resultQueries.findChallengeResult(challengeNumber, georgia)).isEmpty();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from challenge_result_ingredient", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from challenge_result_photo", Integer.class)).isZero();
+    }
+
+    @Test
+    void completionIsIdempotentAllowsResultEditsAndSeparatesLatestFromAllActiveChallenges() {
+        long first = confirmedChallenge(76_100_063L);
+        long second = confirmedChallenge(76_100_064L);
+        long third = confirmedChallenge(76_100_065L);
+        long georgia = participantId("GEORGIA");
+        long tobias = participantId("TOBIAS");
+
+        ChallengeCompletionCommands.Completion firstCompletion = completionCommands.completeChallenge(
+                new ChallengeCompletionCommands.CompleteChallenge(first));
+        assertThat(completionCommands.completeChallenge(new ChallengeCompletionCommands.CompleteChallenge(first)).completedAt())
+                .isEqualTo(firstCompletion.completedAt());
+        ChallengeResultQueries.ChallengeResultView secondResult = resultCommands.createChallengeResult(
+                new ChallengeResultCommands.CreateChallengeResult(second, georgia,
+                        new ResultData("Abschlussgericht", "Vor dem Abschluss gespeichert.", null, List.of()), null));
+        completionCommands.completeChallenge(new ChallengeCompletionCommands.CompleteChallenge(second));
+        ChallengeResultQueries.ChallengeResultView changedAfterCompletion = resultCommands.updateChallengeResult(
+                new ChallengeResultCommands.UpdateChallengeResult(second, georgia, secondResult.version(),
+                        new ResultData("Nach Abschluss korrigiert", "Weiterhin erlaubt.", null, List.of())));
+        assertThat(changedAfterCompletion.dishName()).isEqualTo("Nach Abschluss korrigiert");
+        resultCommands.createChallengeResult(new ChallengeResultCommands.CreateChallengeResult(second, tobias,
+                new ResultData("Spätes Ergebnis", "Auch nach Abschluss zulässig.", null, List.of()), null));
+
+        assertThat(archiveQueries.findLatestChallenge().orElseThrow().challengeNumber()).isEqualTo(third);
+        assertThat(archiveQueries.findLatestChallenge().orElseThrow().status())
+                .isEqualTo(ChallengeArchiveQueries.ChallengeStatus.ACTIVE);
+        assertThat(archiveQueries.listActiveChallenges(new ChallengeArchiveQueries.PageRequest(1, 10)).challenges())
+                .extracting(ChallengeArchiveQueries.PublicChallenge::challengeNumber).containsExactly(third);
+        ChallengeArchiveQueries.PublicChallenge archivedSecond = archiveQueries.findChallengeByNumber(second).orElseThrow();
+        assertThat(archivedSecond.status()).isEqualTo(ChallengeArchiveQueries.ChallengeStatus.COMPLETED);
+        assertThat(archivedSecond.completedAt()).isNotNull();
+        assertThat(archivedSecond.resultCount()).isEqualTo(2);
+        assertThat(archivedSecond.results()).extracting(ChallengeResultQueries.ChallengeResultView::dishName)
+                .containsExactly("Nach Abschluss korrigiert", "Spätes Ergebnis");
+        assertThat(archiveQueries.listChallenges(new ChallengeArchiveQueries.PageRequest(1, 10)).challenges())
+                .extracting(ChallengeArchiveQueries.PublicChallenge::resultCount)
+                .containsExactly(0L, 2L, 0L);
+    }
+
     private CurationQueries.OfferSetView offered(int count, long seed) {
         curator.script(CurationOrchestrationIntegrationTest.Script.success(count));
         Generated generated = (Generated) generationCommands.startNewSession(new StartNewSession(
@@ -726,6 +991,63 @@ class OfferDecisionLifecycleIntegrationTest {
             throw new IllegalStateException("No PNG writer is available");
         }
         return output.toByteArray();
+    }
+
+    private long confirmedChallenge(long seed) {
+        CurationQueries.OfferSetView ready = offered(1, seed);
+        decisions.present(new OfferDecisionCommands.PresentOfferSet(ready.offerSetId()));
+        decisions.confirm(new OfferDecisionCommands.ConfirmOffer(ready.offerSetId(), ready.offers().getFirst().offerId()));
+        return archiveQueries.findLatestChallenge().orElseThrow().challengeNumber();
+    }
+
+    private long participantId(String participantCode) {
+        return jdbcTemplate.queryForObject("select id from participant where code = ?", Long.class, participantCode);
+    }
+
+    private static byte[] image(String format, int width, int height, int highlightedPixel) throws Exception {
+        BufferedImage image = new BufferedImage(width, height,
+                format.equalsIgnoreCase("jpeg") ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB);
+        image.setRGB(0, 0, highlightedPixel);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        if (!javax.imageio.ImageIO.write(image, format, output)) {
+            throw new IllegalStateException("No image writer for " + format);
+        }
+        return output.toByteArray();
+    }
+
+    private static byte[] pathologicalPng(int width, int height) {
+        byte[] content = new byte[33];
+        byte[] signature = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
+        System.arraycopy(signature, 0, content, 0, signature.length);
+        content[11] = 13;
+        content[12] = 'I';
+        content[13] = 'H';
+        content[14] = 'D';
+        content[15] = 'R';
+        writeBigEndian(content, 16, width);
+        writeBigEndian(content, 20, height);
+        content[24] = 8;
+        content[25] = 6;
+        return content;
+    }
+
+    private static void writeBigEndian(byte[] target, int offset, int value) {
+        target[offset] = (byte) (value >>> 24);
+        target[offset + 1] = (byte) (value >>> 16);
+        target[offset + 2] = (byte) (value >>> 8);
+        target[offset + 3] = (byte) value;
+    }
+
+    private static <T> Object concurrent(CountDownLatch ready, CountDownLatch start, Callable<T> action) throws Exception {
+        ready.countDown();
+        if (!start.await(5, TimeUnit.SECONDS)) {
+            throw new AssertionError("Concurrent start was not released");
+        }
+        try {
+            return action.call();
+        } catch (RuntimeException exception) {
+            return exception;
+        }
     }
 
     private static <T> Callable<Object> raced(CountDownLatch ready, CountDownLatch start, Callable<T> action) {
