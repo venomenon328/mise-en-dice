@@ -314,6 +314,12 @@ class ChallengeResultsApplicationService implements ChallengeResultCommands, Cha
             throw new ChallengeResultPhotoValidationException("Challenge result photo must not exceed 10 MiB");
         }
         String contentType = actualContentType(content);
+        String declaredContentType = upload.declaredContentType();
+        if (declaredContentType != null && !declaredContentType.isBlank()
+                && !contentType.equalsIgnoreCase(declaredContentType.strip())) {
+            throw new ChallengeResultPhotoValidationException(
+                    "Challenge result photo declared content type does not match the actual image type");
+        }
         String filename = upload.originalFilename() == null ? null : upload.originalFilename().strip();
         if (filename == null || filename.isEmpty()) {
             throw new ChallengeResultPhotoValidationException("Challenge result photo original filename is required");
