@@ -4,7 +4,7 @@ Stand: 21. August 2026
 Issue: #139  
 Folgepakete: #140 und #141
 
-Dieses Dokument ist die verbindliche Fach-, Persistenz- und Adapter-Spezifikation für die erste Erweiterung nach Version 0.1. Es beschreibt ausschließlich die öffentlich abrufbare aktuelle Challenge, die Historie bestätigter Challenges und die optionale Zuordnung einer außerhalb des Bots erzeugten Challenge-Card.
+Dieses Dokument ist die verbindliche Fach-, Persistenz- und Adapter-Spezifikation für die erste Erweiterung nach Version 0.1. Es beschreibt ausschließlich die öffentlich abrufbare letzte Challenge, die Historie bestätigter Challenges und die optionale Zuordnung einer außerhalb des Bots erzeugten Challenge-Card.
 
 Persönliche Konkretisierungen, Zusatz-Zutaten, Kochpläne, Fortschrittsmeldungen, Ergebnisfotos und Bewertungen bleiben ausdrücklich späteren Paketen vorbehalten.
 
@@ -14,7 +14,7 @@ Der private Discord-Channel darf neben der Botbedienung auch für normale Diskus
 
 Jedes Mitglied der konfigurierten Guild soll deshalb jederzeit:
 
-- die aktuelle bestätigte Challenge erneut abrufen,
+- die letzte bestätigte Challenge erneut abrufen,
 - eine kompakte Liste aller bestätigten Challenges sehen,
 - eine bestimmte vergangene Challenge anhand ihrer öffentlichen Nummer anzeigen,
 - und dabei, sofern vorhanden, die zugehörige gestaltete Challenge-Card sehen können.
@@ -70,7 +70,7 @@ Diese bewusst einfache Semantik vermeidet die Behauptung, der Bot wisse bereits,
 
 ### 2.4 Historische Challenge
 
-Alle bestätigten Challenges außer der aktuell höchsten Nummer sind in diesem ersten Stand historische Challenges. Die Historie enthält die aktuelle Challenge ebenfalls in der Gesamtliste und markiert sie sichtbar als aktuell.
+Alle bestätigten Challenges außer der letzten mit der höchsten Nummer sind in diesem ersten Stand historische Challenges. Die Historie enthält die letzte Challenge ebenfalls in der Gesamtliste und markiert sie sichtbar als letzte.
 
 ### 2.5 Challenge-Card
 
@@ -147,7 +147,7 @@ Für Discord gilt verbindlich:
 - zehn Challenges pro Seite,
 - Seitenzählung beginnt bei `1`,
 - Defaultseite ist `1`,
-- die Projektion liefert mindestens Gesamtzahl, aktuelle Nummer, aktuelle Seite, Gesamtseiten und die Einträge,
+- die Projektion liefert mindestens Gesamtzahl, letzte Nummer, aktuelle Seite, Gesamtseiten und die Einträge,
 - jeder Eintrag enthält Nummer, vier kompakte Requirement-Snapshots und `cardAvailable`,
 - kein Card-Blob wird für die Liste geladen.
 
@@ -235,57 +235,72 @@ Semantik:
 Der vorhandene Slash-Command `/challenge` startet weiterhin eine neue Auswahl und behält seine bisherigen Optionen. Da Discord einen Root-Command nicht gleichzeitig mit direkten Optionen und Subcommands mischen soll, erhält das Archiv bewusst einen eigenen pluralischen Root:
 
 ```text
-/challenges aktuell
+/challenges letzte
+/challenges aktiv [seite]
 /challenges liste [seite]
 /challenges anzeigen nummer:<n>
+/challenges abschließen [nummer:<n>]
 /challenges karte-setzen bild:<attachment> [nummer:<n>] [ersetzen:<bool>]
 /challenges karte-entfernen nummer:<n>
 ```
 
-### 7.1 `/challenges aktuell`
+### 7.1 `/challenges letzte`
 
 Zeigt die bestätigte Challenge mit der höchsten öffentlichen Nummer. Existiert noch keine Challenge, erscheint eine kurze verständliche öffentliche Ausgangsmeldung ohne technische Details.
 
-### 7.2 `/challenges liste`
+### 7.2 `/challenges aktiv`
+
+- `seite` ist optional, ganzzahlig und mindestens `1`.
+- Ohne Parameter wird Seite `1` angezeigt.
+- Die Liste enthält zehn `ACTIVE`-Challenges, neueste zuerst, und darf leer sein.
+- Sie lädt keine Card- oder Ergebnisfoto-Bytes.
+
+### 7.3 `/challenges liste`
 
 - `seite` ist optional, ganzzahlig und mindestens `1`.
 - Ohne Parameter wird Seite `1` angezeigt.
 - Die Liste enthält zehn Challenges, neueste zuerst.
-- Die aktuelle Challenge wird sichtbar markiert.
+- Die letzte Challenge wird sichtbar markiert.
 - Vorhandene Cards werden knapp mit `🖼️` markiert.
 - Es gibt im ersten Stand keine Buttons, Selects, Autocomplete- oder zustandsbehaftete Pagination.
 
-### 7.3 `/challenges anzeigen`
+### 7.4 `/challenges anzeigen`
 
 - `nummer` ist erforderlich und positiv.
-- Die Detaildarstellung entspricht exakt der Darstellung von `aktuell`.
+- Die Detaildarstellung entspricht exakt der Darstellung von `letzte`.
 - Eine unbekannte Nummer erzeugt eine kurze verständliche Rückmeldung.
 
-### 7.4 `/challenges karte-setzen`
+### 7.5 `/challenges abschließen`
+
+- `nummer` ist optional; ohne Nummer löst der Adapter nur dann auf, wenn genau eine aktive Challenge existiert.
+- Bei keiner oder mehreren aktiven Challenges wird eine explizite Nummer verlangt.
+- Der idempotente Core-Abschluss wird nach erfolgreicher Mutation mit der aktualisierten öffentlichen Detailansicht bestätigt.
+
+### 7.6 `/challenges karte-setzen`
 
 - `bild` ist genau ein erforderliches Discord-Attachment.
-- `nummer` ist optional; ohne Nummer gilt die aktuelle Challenge.
+- `nummer` ist optional; ohne Nummer gilt die letzte Challenge.
 - `ersetzen` ist optional und standardmäßig `false`.
 - Bei bereits vorhandener Card ist `ersetzen:true` erforderlich.
 - Nach erfolgreichem Setzen oder Ersetzen postet der Bot öffentlich unmittelbar die vollständige Challenge-Detaildarstellung einschließlich Card.
 
-### 7.5 `/challenges karte-entfernen`
+### 7.7 `/challenges karte-entfernen`
 
 - `nummer` ist erforderlich.
-- Eine explizite Nummer verhindert versehentliches Entfernen an einer zwischenzeitlich neu gewordenen aktuellen Challenge.
+- Eine explizite Nummer verhindert versehentliches Entfernen an einer zwischenzeitlich neu gewordenen letzten Challenge.
 - Nach erfolgreicher Entfernung postet der Bot öffentlich die textuelle Challenge-Detaildarstellung ohne Bild.
 
 ## 8. Discord-Berechtigungen
 
 ### 8.1 Guild-weite Lesezugriffe
 
-`aktuell`, `liste` und `anzeigen` dürfen von jedem Mitglied der konfigurierten Guild verwendet werden. Eine Registrierung als Challenge-Teilnehmer oder DB-Identitätszuordnung ist nicht erforderlich.
+`letzte`, `aktiv`, `liste` und `anzeigen` dürfen von jedem Mitglied der konfigurierten Guild verwendet werden. Eine Registrierung als Challenge-Teilnehmer oder DB-Identitätszuordnung ist nicht erforderlich.
 
 In DMs und fremden Guilds wird vor jeder Core-Query abgewiesen.
 
 ### 8.2 Operatorgebundene Schreibzugriffe
 
-`karte-setzen` und `karte-entfernen` dürfen ausschließlich Mitglieder mit der bereits konfigurierten `challenge-operator-role-id` verwenden.
+`abschließen`, `karte-setzen` und `karte-entfernen` dürfen ausschließlich Mitglieder mit der bereits konfigurierten `challenge-operator-role-id` verwenden.
 
 Dabei gilt dieselbe Trennung wie für `/challenge`:
 
@@ -307,11 +322,18 @@ Es werden keine neuen privilegierten Intents und kein allgemeiner Message-Conten
 
 ### 9.1 Detailansicht
 
-`aktuell` und `anzeigen` verwenden denselben Renderer. Verbindlicher Inhalt:
+`letzte` und `anzeigen` verwenden denselben Renderer. Verbindlicher Inhalt:
 
 ```text
 Challenge #12
 Bestätigt am 21. August 2026
+
+Status
+Abgeschlossen
+Abgeschlossen am 23. August 2026, 14:30 Uhr
+
+Ergebnisse
+2 Ergebnisse
 
 Vorgaben
 1. Tempeh
@@ -350,7 +372,7 @@ Beispiel:
 ```text
 Bisherige Challenges · Seite 1/3
 
-#12 · aktuell · 🖼️
+#12 · letzte · abgeschlossen · 2 Ergebnisse · 🖼️
 Tempeh · Mayonnaise · Kohlgemüse (offen) · Essig (offen)
 
 #11
@@ -383,7 +405,7 @@ Der empfohlene Ablauf lautet:
 
 Externe Netzwerkzugriffe finden niemals innerhalb offener Datenbanktransaktionen statt.
 
-Schlägt die Discord-Auslieferung nach einer erfolgreich commiteten Card-Mutation fehl, bleibt der persistierte Core-Zustand autoritativ. Der Adapter darf den Vorgang nicht als fachlich zurückgerollt darstellen. Ein erneuter `aktuell`-/`anzeigen`-Aufruf zeigt den tatsächlichen Zustand; ein sicherer erneuter Upload mit passender Replace-Semantik bleibt möglich.
+Schlägt die Discord-Auslieferung nach einer erfolgreich commiteten Card-Mutation fehl, bleibt der persistierte Core-Zustand autoritativ. Der Adapter darf den Vorgang nicht als fachlich zurückgerollt darstellen. Ein erneuter `letzte`-/`anzeigen`-Aufruf zeigt den tatsächlichen Zustand; ein sicherer erneuter Upload mit passender Replace-Semantik bleibt möglich.
 
 ## 11. Architekturgrenzen
 
@@ -443,7 +465,7 @@ Mindestens:
 2. leere Datenbank beginnt bei Challenge `#1`,
 3. parallele Challenge-Materialisierungen erhalten eindeutige aufeinanderfolgende Nummern,
 4. ein Transaktionsrollback verbraucht keine öffentliche Nummer,
-5. offene Sessions und unbestätigte Offers verändern `aktuell` nicht,
+5. offene Sessions und unbestätigte Offers verändern die letzte Challenge nicht,
 6. Detail- und Listenprojektionen verwenden ausschließlich historische Snapshots,
 7. `OPEN` und fehlende Restriction werden korrekt projiziert,
 8. öffentliche Projektionen enthalten keinerlei Auswahl-/Providerhistorie,
@@ -464,12 +486,12 @@ Mindestens:
 2. guild-weite Reads ohne Teilnehmermapping,
 3. DMs und fremde Guilds werden vor Core-Zugriff abgewiesen,
 4. text-only und Card-Detaildarstellung,
-5. Listenpagination mit aktueller Markierung und Card-Indikator ohne Blob-Read,
+5. Listenpagination mit Markierung der letzten Challenge und Card-Indikator ohne Blob-Read,
 6. keinerlei interne IDs oder Auswahlhistorie im Renderer,
 7. Card-Schreibbefehle ausschließlich mit Operatorrolle,
 8. Operator muss kein Teilnehmer sein,
 9. unautorisierte Aufrufe laden kein Attachment,
-10. Defaultziel aktuelle Challenge und explizites historisches Ziel,
+10. Defaultziel letzte Challenge und explizites historisches Ziel,
 11. Replace- und Remove-Semantik,
 12. nativer JDA-Upload mit stabilem Attachmentnamen,
 13. sichere Abbildung typisierter Core- und Uploadfehler,

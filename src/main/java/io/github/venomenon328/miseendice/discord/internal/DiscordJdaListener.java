@@ -108,13 +108,17 @@ final class DiscordJdaListener extends ListenerAdapter {
     }
 
     static SlashCommandData challengesCommand() {
-        return Commands.slash("challenges", "Bestätigte Challenges und ihre Cards")
+        return Commands.slash("challenges", "Challenge-Status, Ergebnisse und Cards")
                 .addSubcommands(
-                        new SubcommandData("aktuell", "Aktuelle bestätigte Challenge anzeigen"),
+                        new SubcommandData("letzte", "Letzte bestätigte Challenge anzeigen"),
+                        new SubcommandData("aktiv", "Aktive Challenges auflisten")
+                                .addOption(OptionType.INTEGER, "seite", "Seite ab 1", false),
                         new SubcommandData("liste", "Bestätigte Challenges auflisten")
                                 .addOption(OptionType.INTEGER, "seite", "Archivseite ab 1", false),
                         new SubcommandData("anzeigen", "Eine bestätigte Challenge anzeigen")
                                 .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", true),
+                        new SubcommandData("abschließen", "Eine aktive Challenge abschließen")
+                                .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", false),
                         new SubcommandData("karte-setzen", "Challenge-Card setzen oder ersetzen")
                                 .addOption(OptionType.ATTACHMENT, "bild", "PNG-Card mit 1200 × 1200 Pixeln", true)
                                 .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", false)
@@ -272,20 +276,25 @@ final class DiscordJdaListener extends ListenerAdapter {
             return;
         }
         String subcommand = event.getSubcommandName();
-        if ("aktuell".equals(subcommand)) {
-            event.deferReply().queue(hook -> executor.execute(() -> archiveWorkflow.current(
+        if ("letzte".equals(subcommand)) {
+            event.deferReply().queue(hook -> executor.execute(() -> archiveWorkflow.latest(
                     new HookArchiveDelivery(hook, executor), new HookArchiveFeedback(hook))),
                     failure -> log.warn("Discord challenge archive acknowledgement failed", failure));
             return;
         }
-        if ("liste".equals(subcommand)) {
+        if ("aktiv".equals(subcommand) || "liste".equals(subcommand)) {
             int page = event.getOption("seite") == null ? 1 : event.getOption("seite").getAsInt();
             if (page < 1) {
                 ephemeralReply(event, "`seite` muss mindestens 1 sein.");
                 return;
             }
-            event.deferReply().queue(hook -> executor.execute(() -> archiveWorkflow.list(page,
-                    new HookArchiveDelivery(hook, executor), new HookArchiveFeedback(hook))),
+            event.deferReply().queue(hook -> executor.execute(() -> {
+                if ("aktiv".equals(subcommand)) {
+                    archiveWorkflow.active(page, new HookArchiveDelivery(hook, executor), new HookArchiveFeedback(hook));
+                } else {
+                    archiveWorkflow.list(page, new HookArchiveDelivery(hook, executor), new HookArchiveFeedback(hook));
+                }
+            }),
                     failure -> log.warn("Discord challenge archive acknowledgement failed", failure));
             return;
         }
@@ -300,12 +309,25 @@ final class DiscordJdaListener extends ListenerAdapter {
                     failure -> log.warn("Discord challenge archive acknowledgement failed", failure));
             return;
         }
-        if (!"karte-setzen".equals(subcommand) && !"karte-entfernen".equals(subcommand)) {
+        if (!"karte-setzen".equals(subcommand) && !"karte-entfernen".equals(subcommand)
+                && !"abschließen".equals(subcommand)) {
             ephemeralReply(event, "Dieser Challenge-Archiv-Command ist nicht bekannt.");
             return;
         }
         if (!acceptsChallengeCommand(event.getGuild(), event.getMember())) {
             ephemeralReply(event, "Dieser Command ist nur für Mitglieder mit der konfigurierten Challenge-Operator-Rolle verfügbar.");
+            return;
+        }
+        if ("abschließen".equals(subcommand)) {
+            OptionMapping numberOption = event.getOption("nummer");
+            Long challengeNumber = numberOption == null ? null : numberOption.getAsLong();
+            if (challengeNumber != null && challengeNumber < 1) {
+                ephemeralReply(event, "`nummer` muss positiv sein.");
+                return;
+            }
+            event.deferReply(true).queue(hook -> executor.execute(() -> archiveWorkflow.complete(challengeNumber,
+                    new HookArchiveMutationDelivery(hook, executor))),
+                    failure -> log.warn("Discord challenge completion acknowledgement failed", failure));
             return;
         }
         if ("karte-entfernen".equals(subcommand)) {
@@ -544,7 +566,8 @@ final class DiscordJdaListener extends ListenerAdapter {
         @Override
         public void replace(DiscordChallengeArchiveRenderer.RenderedResponse response, Runnable delivered,
                             java.util.function.Consumer<Throwable> failed) {
-            hook.editOriginal(archiveEditMessage(response)).queue(ignored -> executor.execute(delivered), failed);
+            hook.editOriginal(archiveEditMessage(response)).queue(ignored -> publishArchiveFollowUps(hook,
+                    resultFollowUps(response), 0, executor, delivered, failed), failed);
         }
     }
 
@@ -590,13 +613,14 @@ final class DiscordJdaListener extends ListenerAdapter {
         }
 
         @Override
-        public void publish(DiscordChallengeArchiveRenderer.RenderedDetail detail, Runnable delivered,
+        public void publish(DiscordChallengeArchiveRenderer.RenderedChallenge challenge, Runnable delivered,
                             java.util.function.Consumer<Throwable> failed) {
-            hook.editOriginal(ephemeralEdit("Die Card-Änderung wurde gespeichert. Die öffentliche Detailansicht wird gesendet."))
-                    .queue(ignored -> hook.sendMessage(archiveCreateMessage(detail))
+            hook.editOriginal(ephemeralEdit("Die Änderung wurde gespeichert. Die öffentliche Detailansicht wird gesendet."))
+                    .queue(ignored -> hook.sendMessage(archiveCreateMessage(challenge.challenge()))
                                     .setAllowedMentions(List.of())
                                     .setEphemeral(false)
-                                    .queue(message -> executor.execute(delivered), failed),
+                                    .queue(message -> publishArchiveFollowUps(hook, challenge.resultFollowUps(), 0,
+                                            executor, delivered, failed), failed),
                             failed);
         }
 
@@ -607,7 +631,7 @@ final class DiscordJdaListener extends ListenerAdapter {
 
         @Override
         public void persistedButNotPublished(String message) {
-            hook.editOriginal(ephemeralEdit(message + " Die öffentliche Detailansicht konnte jedoch nicht gesendet werden. "
+            hook.editOriginal(ephemeralEdit(message + " Die öffentliche Darstellung konnte jedoch nicht vollständig gesendet werden. "
                     + "Mit `/challenges anzeigen` ist der gespeicherte Stand weiterhin abrufbar.")).queue();
         }
     }
@@ -649,7 +673,9 @@ final class DiscordJdaListener extends ListenerAdapter {
         if (response instanceof DiscordChallengeArchiveRenderer.RenderedText text) {
             return builder.setContent(text.content()).setEmbeds(List.of()).setComponents(List.of()).build();
         }
-        DiscordChallengeArchiveRenderer.RenderedDetail detail = (DiscordChallengeArchiveRenderer.RenderedDetail) response;
+        DiscordChallengeArchiveRenderer.RenderedDetail detail = response instanceof DiscordChallengeArchiveRenderer.RenderedChallenge challenge
+                ? challenge.challenge()
+                : (DiscordChallengeArchiveRenderer.RenderedDetail) response;
         EmbedBuilder embed = new EmbedBuilder().setTitle(detail.title()).setDescription(detail.description());
         if (detail.hasAttachment()) {
             embed.setImage("attachment://" + detail.attachmentFilename());
@@ -666,6 +692,32 @@ final class DiscordJdaListener extends ListenerAdapter {
             builder.setFiles(FileUpload.fromData(detail.attachmentBytes(), detail.attachmentFilename()));
         }
         return builder.setEmbeds(List.of(embed.build())).build();
+    }
+
+    private static List<DiscordChallengeArchiveRenderer.RenderedDetail> resultFollowUps(
+            DiscordChallengeArchiveRenderer.RenderedResponse response
+    ) {
+        return response instanceof DiscordChallengeArchiveRenderer.RenderedChallenge challenge
+                ? challenge.resultFollowUps()
+                : List.of();
+    }
+
+    private static void publishArchiveFollowUps(
+            net.dv8tion.jda.api.interactions.InteractionHook hook,
+            List<DiscordChallengeArchiveRenderer.RenderedDetail> followUps,
+            int index,
+            Executor executor,
+            Runnable delivered,
+            java.util.function.Consumer<Throwable> failed
+    ) {
+        if (index >= followUps.size()) {
+            executor.execute(delivered);
+            return;
+        }
+        hook.sendMessage(archiveCreateMessage(followUps.get(index)))
+                .setAllowedMentions(List.of())
+                .setEphemeral(false)
+                .queue(message -> publishArchiveFollowUps(hook, followUps, index + 1, executor, delivered, failed), failed);
     }
 
     private static net.dv8tion.jda.api.utils.messages.MessageEditData ephemeralEdit(String message) {

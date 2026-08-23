@@ -90,9 +90,9 @@ class DiscordArchiveMutationDeliveryJdaTest {
         Consumer<Throwable> failed = failure -> {
             throw new AssertionError(failure);
         };
-        DiscordChallengeArchiveRenderer.RenderedDetail detail =
+        DiscordChallengeArchiveRenderer.RenderedChallenge detail = new DiscordChallengeArchiveRenderer.RenderedChallenge(
                 new DiscordChallengeArchiveRenderer.RenderedDetail(
-                        "Challenge #4", "Bestätigt am 21. August 2026", null, null);
+                        "Challenge #4", "Bestätigt am 21. August 2026", null, null), List.of());
 
         deliveryCaptor.getValue().publish(detail, delivered, failed);
 

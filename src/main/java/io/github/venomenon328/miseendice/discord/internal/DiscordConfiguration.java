@@ -3,6 +3,8 @@ package io.github.venomenon328.miseendice.discord.internal;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeOfferPreparationCommands;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeArchiveQueries;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeCardCommands;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeCompletionCommands;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultQueries;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionQueries;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantCommands;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantQueries;
@@ -67,9 +69,11 @@ class DiscordConfiguration {
     @ConditionalOnProperty(prefix = "mise-en-dice.discord", name = "enabled", havingValue = "true")
     DiscordChallengeArchiveWorkflow discordChallengeArchiveWorkflow(DiscordProperties properties,
                                                                      ChallengeArchiveQueries archiveQueries,
-                                                                     ChallengeCardCommands cardCommands) {
+                                                                     ChallengeCardCommands cardCommands,
+                                                                     ChallengeCompletionCommands completionCommands,
+                                                                     ChallengeResultQueries resultQueries) {
         properties.validateEnabledConfiguration();
-        return new DiscordChallengeArchiveWorkflow(properties, archiveQueries, cardCommands,
+        return new DiscordChallengeArchiveWorkflow(properties, archiveQueries, cardCommands, completionCommands, resultQueries,
                 new DiscordChallengeArchiveRenderer(properties.effectiveDateZone()));
     }
 

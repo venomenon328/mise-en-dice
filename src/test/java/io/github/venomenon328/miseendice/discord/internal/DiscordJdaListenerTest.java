@@ -388,7 +388,8 @@ class DiscordJdaListenerTest {
 
         assertThat(command.getName()).isEqualTo("challenges");
         assertThat(command.getSubcommands()).extracting(subcommand -> subcommand.getName())
-                .containsExactly("aktuell", "liste", "anzeigen", "karte-setzen", "karte-entfernen");
+                .containsExactly("letzte", "aktiv", "liste", "anzeigen", "abschließen", "karte-setzen", "karte-entfernen")
+                .doesNotContain("aktuell");
         assertThat(command.getSubcommands()).filteredOn(subcommand -> subcommand.getName().equals("karte-setzen"))
                 .singleElement().satisfies(subcommand -> assertThat(subcommand.getOptions()).satisfiesExactly(
                         option -> {
@@ -407,6 +408,19 @@ class DiscordJdaListenerTest {
         assertThat(command.getSubcommands()).filteredOn(subcommand -> subcommand.getName().equals("anzeigen"))
                 .singleElement().satisfies(subcommand -> assertThat(subcommand.getOptions()).singleElement()
                         .satisfies(option -> assertThat(option.isRequired()).isTrue()));
+        assertThat(command.getSubcommands()).filteredOn(subcommand -> subcommand.getName().equals("aktiv"))
+                .singleElement().satisfies(subcommand -> assertThat(subcommand.getOptions()).singleElement()
+                        .satisfies(option -> {
+                            assertThat(option.getName()).isEqualTo("seite");
+                            assertThat(option.isRequired()).isFalse();
+                        }));
+        assertThat(command.getSubcommands()).filteredOn(subcommand -> subcommand.getName().equals("abschließen"))
+                .singleElement().satisfies(subcommand -> assertThat(subcommand.getOptions()).singleElement()
+                        .satisfies(option -> {
+                            assertThat(option.getName()).isEqualTo("nummer");
+                            assertThat(option.getType()).isEqualTo(OptionType.INTEGER);
+                            assertThat(option.isRequired()).isFalse();
+                        }));
     }
 
     @Test
@@ -415,15 +429,73 @@ class DiscordJdaListenerTest {
         var archiveWorkflow = mock(DiscordChallengeArchiveWorkflow.class);
         var event = slashEvent("99999", 99, false);
         when(event.getName()).thenReturn("challenges");
-        when(event.getSubcommandName()).thenReturn("aktuell");
+        when(event.getSubcommandName()).thenReturn("letzte");
         when(archiveWorkflow.acceptsGuild(99)).thenReturn(true);
         ReplyCallbackAction acknowledgement = acknowledgement(event);
 
         archiveListener(challengeWorkflow, archiveWorkflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event).deferReply();
-        org.mockito.Mockito.verify(archiveWorkflow).current(any(), any());
+        org.mockito.Mockito.verify(archiveWorkflow).latest(any(), any());
         org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
+        org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
+    }
+
+    @Test
+    void routesGuildWideActiveReadsWithPaginationWithoutParticipantMapping() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var archiveWorkflow = mock(DiscordChallengeArchiveWorkflow.class);
+        var event = slashEvent("99999", 99, false);
+        var page = mock(OptionMapping.class);
+        when(event.getName()).thenReturn("challenges");
+        when(event.getSubcommandName()).thenReturn("aktiv");
+        when(event.getOption("seite")).thenReturn(page);
+        when(page.getAsInt()).thenReturn(2);
+        when(archiveWorkflow.acceptsGuild(99)).thenReturn(true);
+        acknowledgement(event);
+
+        archiveListener(challengeWorkflow, archiveWorkflow).onSlashCommandInteraction(event);
+
+        org.mockito.Mockito.verify(archiveWorkflow).active(eq(2), any(), any());
+        org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
+    }
+
+    @Test
+    void rejectsChallengeCompletionBeforeItTouchesTheCoreWhenCallerIsNotAnOperator() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var archiveWorkflow = mock(DiscordChallengeArchiveWorkflow.class);
+        var event = slashEvent("99999", 99, false);
+        var reply = mock(ReplyCallbackAction.class);
+        when(event.getName()).thenReturn("challenges");
+        when(event.getSubcommandName()).thenReturn("abschließen");
+        when(archiveWorkflow.acceptsGuild(99)).thenReturn(true);
+        when(event.reply(any(String.class))).thenReturn(reply);
+        when(reply.setEphemeral(true)).thenReturn(reply);
+        when(reply.setAllowedMentions(any())).thenReturn(reply);
+
+        archiveListener(challengeWorkflow, archiveWorkflow).onSlashCommandInteraction(event);
+
+        org.mockito.Mockito.verify(event, never()).getOption("nummer");
+        org.mockito.Mockito.verify(archiveWorkflow, never()).complete(any(), any());
+    }
+
+    @Test
+    void defersOperatorChallengeCompletionEphemerallyWithAnOptionalNumber() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var archiveWorkflow = mock(DiscordChallengeArchiveWorkflow.class);
+        var event = slashEvent("99999", 99, true);
+        var number = mock(OptionMapping.class);
+        when(event.getName()).thenReturn("challenges");
+        when(event.getSubcommandName()).thenReturn("abschließen");
+        when(archiveWorkflow.acceptsGuild(99)).thenReturn(true);
+        when(event.getOption("nummer")).thenReturn(number);
+        when(number.getAsLong()).thenReturn(4L);
+        ReplyCallbackAction acknowledgement = ephemeralAcknowledgement(event);
+
+        archiveListener(challengeWorkflow, archiveWorkflow).onSlashCommandInteraction(event);
+
+        org.mockito.Mockito.verify(event).deferReply(true);
+        org.mockito.Mockito.verify(archiveWorkflow).complete(eq(4L), any());
         org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
     }
 
