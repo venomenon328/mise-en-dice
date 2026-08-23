@@ -66,6 +66,7 @@ final class DiscordResultCaptureJdaListener {
     private static final String INGREDIENTS_ONE = "ingredients-1";
     private static final String INGREDIENTS_TWO = "ingredients-2";
     private static final String CATALOG_SEARCH = "catalog-search";
+    private static final int MIN_PREPARATION_PREVIEW_LIMIT = 600;
     private static final Logger log = LoggerFactory.getLogger(DiscordResultCaptureJdaListener.class);
 
     private final DiscordProperties properties;
@@ -392,7 +393,7 @@ final class DiscordResultCaptureJdaListener {
     static MessageCreateData preparationCreate(Preparation preparation) {
         MessageCreateBuilder builder = new MessageCreateBuilder().setAllowedMentions(List.of())
                 .setContent(preparationContent(preparation)).setComponents(preparationRows(preparation));
-        if (preparation.attachFullText() || preparationPreviewTruncated(preparation)) {
+        if (preparationNeedsFullTextFile(preparation)) {
             builder.setFiles(FileUpload.fromData(preparation.fullTextBytes(), "nachrichtentext.txt"));
         }
         return builder.build();
@@ -408,16 +409,24 @@ final class DiscordResultCaptureJdaListener {
         int previewLimit = preparationPreviewLimit(preparation);
         String displayed = truncate(text, previewLimit);
         boolean previewTruncated = displayed.length() < text.length();
-        boolean fullTextAttached = preparation.attachFullText() || previewTruncated;
+        boolean fullTextAttached = preparationNeedsFullTextFile(preparation);
+        String fullTextMessage;
+        if (fullTextAttached && previewTruncated) {
+            fullTextMessage = "Der vollständige Nachrichtentext ist kopierbar als `nachrichtentext.txt` angehängt; "
+                    + "die Vorschau ist gekennzeichnet gekürzt.\n";
+        } else if (fullTextAttached) {
+            fullTextMessage = "Der vollständige Nachrichtentext ist zusätzlich als `nachrichtentext.txt` angehängt.\n"
+                    + "Vollständiger kopierbarer Nachrichtentext:\n";
+        } else {
+            fullTextMessage = "Vollständiger kopierbarer Nachrichtentext:\n";
+        }
         StringBuilder content = new StringBuilder("**Challenge-Ergebnis vorbereiten**\n")
                 .append("Ergebnis-Person: ").append(preparation.selectedPersonName() == null
                         ? "noch nicht gewählt" : safe(preparation.selectedPersonName())).append('\n')
                 .append("Challenge: ").append(preparation.selectedChallengeNumber() == null
                         ? "ausdrücklich wählen" : "#" + preparation.selectedChallengeNumber()).append('\n')
                 .append("Foto: ").append(safe(cut(selectedPhotoLabel(preparation), 100))).append("\n\n")
-                .append(fullTextAttached
-                        ? "Der vollständige Nachrichtentext ist kopierbar als `nachrichtentext.txt` angehängt; die Vorschau ist gekennzeichnet gekürzt.\n"
-                        : "Vollständiger kopierbarer Nachrichtentext:\n")
+                .append(fullTextMessage)
                 .append("```\n").append(code(displayed)).append("\n```");
         if (preparation.descriptionNeedsCondensing()) {
             content.append("\nDer Text überschreitet 4.000 Zeichen. Bitte verdichte ihn in der Maske; die Anlage bleibt vollständig.");
@@ -640,12 +649,12 @@ final class DiscordResultCaptureJdaListener {
     }
 
     private static int preparationPreviewLimit(Preparation preparation) {
-        return preparation.concretizations().isEmpty() ? 1_200 : 600;
+        return preparation.concretizations().isEmpty() ? 1_200 : MIN_PREPARATION_PREVIEW_LIMIT;
     }
 
-    private static boolean preparationPreviewTruncated(Preparation preparation) {
+    private static boolean preparationNeedsFullTextFile(Preparation preparation) {
         String text = preparation.messageText().isBlank() ? "(kein Nachrichtentext)" : preparation.messageText();
-        return text.length() > preparationPreviewLimit(preparation);
+        return preparation.attachFullText() || text.length() > MIN_PREPARATION_PREVIEW_LIMIT;
     }
 
     private static String selectedPhotoLabel(Preparation preparation) {
