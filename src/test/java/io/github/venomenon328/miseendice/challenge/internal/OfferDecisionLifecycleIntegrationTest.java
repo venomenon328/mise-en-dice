@@ -752,7 +752,7 @@ class OfferDecisionLifecycleIntegrationTest {
         byte[] png = image("png", 3, 2, 0xff0066cc);
         ChallengeResultQueries.ChallengeResultPhotoMetadata pngMetadata = resultCommands.setChallengeResultPhoto(
                 new ChallengeResultCommands.SetChallengeResultPhoto(challengeNumber, georgia,
-                        new ChallengeResultPhotoUpload(png, "text/plain", "result.png"), false, null));
+                        new ChallengeResultPhotoUpload(png, "image/png", "result.png"), false, null));
         assertThat(pngMetadata.contentType()).isEqualTo("image/png");
         assertThat(pngMetadata.width()).isEqualTo(3);
         assertThat(pngMetadata.height()).isEqualTo(2);
@@ -769,9 +769,20 @@ class OfferDecisionLifecycleIntegrationTest {
         byte[] jpeg = image("jpeg", 4, 3, 0xffcc6600);
         ChallengeResultQueries.ChallengeResultPhotoMetadata jpegMetadata = resultCommands.setChallengeResultPhoto(
                 new ChallengeResultCommands.SetChallengeResultPhoto(challengeNumber, georgia,
-                        new ChallengeResultPhotoUpload(jpeg, "image/png", "result.jpg"), true, pngMetadata.version()));
+                        new ChallengeResultPhotoUpload(jpeg, "image/jpeg", "result.jpg"), true, pngMetadata.version()));
         assertThat(jpegMetadata.contentType()).isEqualTo("image/jpeg");
         assertThat(jpegMetadata.version()).isEqualTo(pngMetadata.version() + 1);
+
+        assertThatThrownBy(() -> resultCommands.setChallengeResultPhoto(new ChallengeResultCommands.SetChallengeResultPhoto(
+                challengeNumber, georgia, new ChallengeResultPhotoUpload(png, "image/jpeg", "wrong-png.png"), true,
+                jpegMetadata.version())))
+                .isInstanceOf(ChallengeResultPhotoValidationException.class)
+                .hasMessageContaining("declared content type");
+        assertThatThrownBy(() -> resultCommands.setChallengeResultPhoto(new ChallengeResultCommands.SetChallengeResultPhoto(
+                challengeNumber, georgia, new ChallengeResultPhotoUpload(jpeg, "image/png", "wrong-jpeg.jpg"), true,
+                jpegMetadata.version())))
+                .isInstanceOf(ChallengeResultPhotoValidationException.class)
+                .hasMessageContaining("declared content type");
 
         ChallengeResultQueries restartedQueries = new ChallengeResultsApplicationService(
                 new JdbcChallengeResultRepository(jdbcTemplate), new JdbcResultIngredientCatalogQueries(jdbcTemplate),
