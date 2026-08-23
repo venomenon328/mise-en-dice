@@ -201,7 +201,7 @@ final class DiscordChallengeArchiveWorkflow {
         delivery.replace(renderer.detail(challenge, card, resultPhotos(challenge)), () -> { }, feedback::technicalFailure);
     }
 
-    private void publishPersistedDetail(long challengeNumber, String successMessage, MutationDelivery delivery) {
+    void publishPersistedDetail(long challengeNumber, String successMessage, MutationDelivery delivery) {
         try {
             PublicChallenge challenge = archiveQueries.findChallengeByNumber(challengeNumber)
                     .orElseThrow(() -> new IllegalStateException("Persisted challenge could not be read"));
@@ -214,6 +214,15 @@ final class DiscordChallengeArchiveWorkflow {
         } catch (RuntimeException exception) {
             delivery.persistedButNotPublished(successMessage);
         }
+    }
+
+    DiscordChallengeArchiveRenderer.RenderedChallenge renderedDetail(long challengeNumber) {
+        PublicChallenge challenge = archiveQueries.findChallengeByNumber(challengeNumber)
+                .orElseThrow(() -> new IllegalStateException("Persisted challenge could not be read"));
+        Optional<ChallengeCardBinary> card = challenge.cardAvailable()
+                ? archiveQueries.loadChallengeCard(challengeNumber)
+                : Optional.empty();
+        return renderer.detail(challenge, card, resultPhotos(challenge));
     }
 
     private long exactlyOneActiveChallengeNumber() {

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
+import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -22,12 +23,15 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
+import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.dv8tion.jda.api.requests.restaction.CacheRestAction;
+import net.dv8tion.jda.api.requests.restaction.CommandCreateAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.InteractionCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
@@ -36,6 +40,30 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
 class DiscordJdaListenerTest {
+
+    @Test
+    void readyRegistrationIncludesTheMessageContextCommand() {
+        DiscordProperties properties = new DiscordProperties(true, "token", 99, 77777,
+                ZoneId.of("Europe/Berlin"), Map.of());
+        Guild guild = mock(Guild.class);
+        JDA jda = mock(JDA.class);
+        ReadyEvent event = mock(ReadyEvent.class);
+        CommandCreateAction action = mock(CommandCreateAction.class);
+        when(event.getJDA()).thenReturn(jda);
+        when(jda.getGuildById(99)).thenReturn(guild);
+        when(guild.upsertCommand(any(CommandData.class))).thenReturn(action);
+
+        new DiscordJdaListener(properties, mock(DiscordChallengeWorkflow.class),
+                mock(DiscordIngredientLookupWorkflow.class), mock(DiscordChallengeArchiveWorkflow.class),
+                mock(DiscordParticipantAdministrationWorkflow.class), mock(DiscordResultCaptureJdaListener.class),
+                Runnable::run).onReady(event);
+
+        ArgumentCaptor<CommandData> commands = ArgumentCaptor.forClass(CommandData.class);
+        org.mockito.Mockito.verify(guild, org.mockito.Mockito.times(5)).upsertCommand(commands.capture());
+        assertThat(commands.getAllValues()).extracting(CommandData::getName)
+                .containsExactly("challenge", "zutat", "challenges", "teilnehmer",
+                        DiscordResultCaptureJdaListener.CONTEXT_COMMAND_NAME);
+    }
 
     @Test
     void registersCompleteParticipantAdministrationWithRequiredUserOptions() {
@@ -388,7 +416,8 @@ class DiscordJdaListenerTest {
 
         assertThat(command.getName()).isEqualTo("challenges");
         assertThat(command.getSubcommands()).extracting(subcommand -> subcommand.getName())
-                .containsExactly("letzte", "aktiv", "liste", "anzeigen", "abschließen", "karte-setzen", "karte-entfernen")
+                .containsExactly("letzte", "aktiv", "liste", "anzeigen", "abschließen", "karte-setzen", "karte-entfernen",
+                        "ergebnis-bearbeiten", "ergebnis-entfernen", "ergebnis-foto-setzen", "ergebnis-foto-entfernen")
                 .doesNotContain("aktuell");
         assertThat(command.getSubcommands()).filteredOn(subcommand -> subcommand.getName().equals("karte-setzen"))
                 .singleElement().satisfies(subcommand -> assertThat(subcommand.getOptions()).satisfiesExactly(
@@ -421,6 +450,27 @@ class DiscordJdaListenerTest {
                             assertThat(option.getType()).isEqualTo(OptionType.INTEGER);
                             assertThat(option.isRequired()).isFalse();
                         }));
+        assertThat(command.getSubcommands()).filteredOn(subcommand -> subcommand.getName().startsWith("ergebnis-"))
+                .allSatisfy(subcommand -> assertThat(subcommand.getOptions()).satisfies(options -> {
+                    assertThat(options).anySatisfy(option -> {
+                        assertThat(option.getName()).isEqualTo("nummer");
+                        assertThat(option.getType()).isEqualTo(OptionType.INTEGER);
+                        assertThat(option.isRequired()).isTrue();
+                    });
+                    assertThat(options).anySatisfy(option -> {
+                        assertThat(option.getName()).isEqualTo("person");
+                        assertThat(option.getType()).isEqualTo(OptionType.USER);
+                        assertThat(option.isRequired()).isTrue();
+                    });
+                }));
+        assertThat(command.getSubcommands()).filteredOn(subcommand -> subcommand.getName().equals("ergebnis-foto-setzen"))
+                .singleElement().satisfies(subcommand -> assertThat(subcommand.getOptions()).anySatisfy(option -> {
+                    assertThat(option.getName()).isEqualTo("bild");
+                    assertThat(option.getType()).isEqualTo(OptionType.ATTACHMENT);
+                    assertThat(option.isRequired()).isTrue();
+                }));
+        assertThat(DiscordResultCaptureJdaListener.contextCommand().getName())
+                .isEqualTo("Als Challenge-Ergebnis erfassen");
     }
 
     @Test

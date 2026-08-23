@@ -159,7 +159,7 @@ Das Discord-Modul übersetzt Discord-Interaktionen in Application-Commands und s
 
 Der bestehende Gridwords-Bot wird nicht wiederverwendet. Mise en Dice erhält einen eigenständigen Discord-Bot-Adapter.
 
-Der Adapter ist standardmäßig deaktiviert. Bei Aktivierung kapselt er JDA, Gateway-Lifecycle, Guild-Command-Registrierung, Interaktions-Acknowledgements und Renderer vollständig im `discord`-Modul. Für den Challenge-Lifecycle einschließlich Archivreads und Card-Commands verwendet er ausschließlich `challenge :: api`; die rein lesende Zutatenabfrage verwendet zusätzlich die schmale `catalog :: api`-Projektion `IngredientLookupQueries`. Sie liefert nur aktive Namenssuche und freigegebene aktuelle Profildaten, niemals Administrationsdetails oder Schreibzugriffe. Vor der sichtbaren Vote-Aktivierung meldet der Challenge-Pfad die erfolgreiche Auslieferung an den Phase-11B-Presentation-Handshake zurück. Ein Archiv-Card-Upload wird erst nach Guild-/Operatorprüfung aus Discord geladen und die Card ausschließlich aus der persistierten Core-Projektion wieder ausgeliefert; der Adapter speichert weder CDN-URLs noch Binärdaten. Discord-IDs bleiben opake externe Subjects, nicht Teil des Challenge-Modells.
+Der Adapter ist standardmäßig deaktiviert. Bei Aktivierung kapselt er JDA, Gateway-Lifecycle, Guild-Command-Registrierung, Interaktions-Acknowledgements und Renderer vollständig im `discord`-Modul. Für den Challenge-Lifecycle einschließlich Archivreads, Ergebnis- und Card-Commands verwendet er ausschließlich `challenge :: api`; die lesenden Zutatenpfade verwenden zusätzlich die schmalen `catalog :: api`-Projektionen `IngredientLookupQueries` und `ResultIngredientCatalogQueries`. Sie liefern freigegebene Suchprojektionen, niemals Administrationsdetails oder Schreibzugriffe. Vor der sichtbaren Vote-Aktivierung meldet der Challenge-Pfad die erfolgreiche Auslieferung an den Phase-11B-Presentation-Handshake zurück. Card- und Ergebnisfoto-Uploads werden erst nach Guild-/Operatorprüfung aus Discord geladen und ausschließlich aus der persistierten Core-Projektion wieder ausgeliefert. Der Ergebnis-Kontextflow darf dafür einen hart begrenzten, owner-/guildgebundenen TTL-Zustand ausschließlich im Adapter halten; Restart oder Ablauf invalidiert ihn, und nach erfolgreicher Speicherung werden Ursprungsnachricht und Attachment-Referenzen sofort freigegeben. Der Adapter persistiert weder Message-/Channel-/Jump-/CDN-Daten noch seinen Interaktionsentwurf. Discord-IDs bleiben opake externe Subjects, nicht Teil des Challenge-Modells.
 
 ### 4.5 `bootstrap`
 
@@ -170,7 +170,7 @@ Das Bootstrap-Paket enthält den Anwendungseinstieg und technische Konfiguration
 Folgende Regeln werden durch Struktur, Sichtbarkeit und Spring-Modulith-Tests abgesichert:
 
 1. Adapter verwenden öffentliche Application-APIs und keine internen Persistence-Klassen.
-2. Das Challenge-Modul und die lesende Discord-Zutatenabfrage dürfen die jeweils passende öffentliche Katalog-API verwenden; das Katalogmodul kennt weder Challenge noch Discord.
+2. Das Challenge-Modul und die lesenden Discord-Zutatenpfade dürfen die jeweils passende öffentliche Katalog-API verwenden; das Katalogmodul kennt weder Challenge noch Discord.
 3. Fachlogik kennt weder HTTP-, Discord- noch OpenAI-spezifische Transportobjekte.
 4. Domain- und Application-Code hängt nicht von Thymeleaf, JDA oder konkreten API-Clients ab.
 5. Ausgehende Netzwerkaufrufe erfolgen nicht innerhalb offener Datenbanktransaktionen.

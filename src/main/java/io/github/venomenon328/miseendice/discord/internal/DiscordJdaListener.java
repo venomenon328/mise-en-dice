@@ -11,8 +11,11 @@ import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message.Attachment;
+import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -40,32 +43,42 @@ final class DiscordJdaListener extends ListenerAdapter {
     private final DiscordIngredientLookupWorkflow ingredientLookupWorkflow;
     private final DiscordChallengeArchiveWorkflow archiveWorkflow;
     private final DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow;
+    private final DiscordResultCaptureJdaListener resultCaptureListener;
     private final Executor executor;
 
     DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow, Executor executor) {
-        this(properties, workflow, null, null, null, executor);
+        this(properties, workflow, null, null, null, null, executor);
     }
 
     DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow,
                        DiscordIngredientLookupWorkflow ingredientLookupWorkflow, Executor executor) {
-        this(properties, workflow, ingredientLookupWorkflow, null, null, executor);
+        this(properties, workflow, ingredientLookupWorkflow, null, null, null, executor);
     }
 
     DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow,
                        DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
                        DiscordChallengeArchiveWorkflow archiveWorkflow, Executor executor) {
-        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, null, executor);
+        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, null, null, executor);
     }
 
     DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow,
                        DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
                        DiscordChallengeArchiveWorkflow archiveWorkflow,
                        DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow, Executor executor) {
+        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, participantAdministrationWorkflow, null, executor);
+    }
+
+    DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow,
+                       DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
+                       DiscordChallengeArchiveWorkflow archiveWorkflow,
+                       DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow,
+                       DiscordResultCaptureJdaListener resultCaptureListener, Executor executor) {
         this.properties = properties;
         this.workflow = workflow;
         this.ingredientLookupWorkflow = ingredientLookupWorkflow;
         this.archiveWorkflow = archiveWorkflow;
         this.participantAdministrationWorkflow = participantAdministrationWorkflow;
+        this.resultCaptureListener = resultCaptureListener;
         this.executor = executor;
     }
 
@@ -89,6 +102,10 @@ final class DiscordJdaListener extends ListenerAdapter {
         if (participantAdministrationWorkflow != null) {
             guild.upsertCommand(participantCommand())
                     .queue(null, failure -> log.warn("Discord participant command registration failed", failure));
+        }
+        if (resultCaptureListener != null) {
+            guild.upsertCommand(DiscordResultCaptureJdaListener.contextCommand())
+                    .queue(null, failure -> log.warn("Discord result context command registration failed", failure));
         }
     }
 
@@ -124,7 +141,21 @@ final class DiscordJdaListener extends ListenerAdapter {
                                 .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", false)
                                 .addOption(OptionType.BOOLEAN, "ersetzen", "Bestehende Card ausdrücklich ersetzen", false),
                         new SubcommandData("karte-entfernen", "Challenge-Card entfernen")
-                                .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", true));
+                                .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", true),
+                        new SubcommandData("ergebnis-bearbeiten", "Gespeichertes Ergebnis bearbeiten")
+                                .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", true)
+                                .addOption(OptionType.USER, "person", "Ergebnis-Person", true),
+                        new SubcommandData("ergebnis-entfernen", "Gespeichertes Ergebnis entfernen")
+                                .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", true)
+                                .addOption(OptionType.USER, "person", "Ergebnis-Person", true),
+                        new SubcommandData("ergebnis-foto-setzen", "Ergebnisfoto setzen oder ersetzen")
+                                .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", true)
+                                .addOption(OptionType.USER, "person", "Ergebnis-Person", true)
+                                .addOption(OptionType.ATTACHMENT, "bild", "PNG- oder JPEG-Ergebnisfoto", true)
+                                .addOption(OptionType.BOOLEAN, "ersetzen", "Vorhandenes Foto ausdrücklich ersetzen", false),
+                        new SubcommandData("ergebnis-foto-entfernen", "Ergebnisfoto entfernen")
+                                .addOption(OptionType.INTEGER, "nummer", "Öffentliche Challenge-Nummer", true)
+                                .addOption(OptionType.USER, "person", "Ergebnis-Person", true));
     }
 
     static SlashCommandData participantCommand() {
@@ -146,6 +177,10 @@ final class DiscordJdaListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        if (resultCaptureListener != null && resultCaptureListener.handlesSlash(event)) {
+            resultCaptureListener.onSlashCommandInteraction(event);
+            return;
+        }
         if ("teilnehmer".equals(event.getName())) {
             participantSlash(event);
             return;
@@ -381,6 +416,10 @@ final class DiscordJdaListener extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
+        if (resultCaptureListener != null && resultCaptureListener.handlesButton(event)) {
+            resultCaptureListener.onButtonInteraction(event);
+            return;
+        }
         if (!event.getComponentId().startsWith("med:")) {
             return;
         }
@@ -397,6 +436,10 @@ final class DiscordJdaListener extends ListenerAdapter {
 
     @Override
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
+        if (resultCaptureListener != null && resultCaptureListener.handlesStringSelect(event)) {
+            resultCaptureListener.onStringSelectInteraction(event);
+            return;
+        }
         if (ingredientLookupWorkflow == null) {
             return;
         }
@@ -420,6 +463,27 @@ final class DiscordJdaListener extends ListenerAdapter {
         event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.component(componentId, event.getValues(),
                 userId, new HookIngredientDelivery(hook, executor, userId), new HookIngredientFeedback(hook))),
                 failure -> log.warn("Discord ingredient selection acknowledgement failed", failure));
+    }
+
+    @Override
+    public void onMessageContextInteraction(MessageContextInteractionEvent event) {
+        if (resultCaptureListener != null) {
+            resultCaptureListener.onMessageContextInteraction(event);
+        }
+    }
+
+    @Override
+    public void onEntitySelectInteraction(EntitySelectInteractionEvent event) {
+        if (resultCaptureListener != null && resultCaptureListener.handlesEntitySelect(event)) {
+            resultCaptureListener.onEntitySelectInteraction(event);
+        }
+    }
+
+    @Override
+    public void onModalInteraction(ModalInteractionEvent event) {
+        if (resultCaptureListener != null && resultCaptureListener.handlesModal(event)) {
+            resultCaptureListener.onModalInteraction(event);
+        }
     }
 
     private boolean acceptsChallengeCommand(Guild guild, Member member) {
@@ -702,7 +766,7 @@ final class DiscordJdaListener extends ListenerAdapter {
                 : List.of();
     }
 
-    private static void publishArchiveFollowUps(
+    static void publishArchiveFollowUps(
             net.dv8tion.jda.api.interactions.InteractionHook hook,
             List<DiscordChallengeArchiveRenderer.RenderedDetail> followUps,
             int index,
