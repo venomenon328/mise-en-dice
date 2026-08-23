@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -15,6 +16,7 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeArchiveQueries;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeArchiveQueries.ChallengeStatus;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultQueries;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultQueries.ChallengeResultView;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantCommands;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantQueries;
 import io.github.venomenon328.miseendice.discord.internal.DiscordResultCaptureWorkflow.FormData;
@@ -118,6 +120,116 @@ class DiscordResultCaptureWorkflowTest {
         assertThat(command.getValue().photo()).isNull();
         assertThat(saved.mappingAvailable()).isFalse();
         assertThat(workflow.liveDraftCount()).isZero();
+    }
+
+    @Test
+    void capturesOnlyOpenRequirementConcretizationsInTheirSeparateBoundedModal() {
+        var preparation = workflow.startCapture(OPERATOR, "Text", List.of());
+        preparation = workflow.selectPerson(OPERATOR, preparation.token(), "1001", "Ergebnis-Person");
+        assertThat(preparation.concretizations())
+                .extracting(DiscordResultCaptureWorkflow.ConcretizationField::requirementPosition,
+                        DiscordResultCaptureWorkflow.ConcretizationField::requirementDisplayText)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(3, "C"),
+                        org.assertj.core.groups.Tuple.tuple(4, "D"));
+        var modal = workflow.captureConcretizationModal(OPERATOR, preparation.token());
+        assertThat(modal.fields()).hasSize(2);
+        assertThat(DiscordResultCaptureJdaListener.concretizationModal(modal, "concrete-capture").getComponents())
+                .hasSize(2);
+
+        preparation = workflow.submitCaptureConcretizations(OPERATOR, preparation.token(),
+                Map.of(3, "   ", 4, "  Nata de Coco  "));
+        assertThat(preparation.concretizations().get(1).value()).isEqualTo("Nata de Coco");
+        when(resultCommands.createChallengeResult(any())).thenReturn(result(List.of(), false, 0));
+        workflow.submitCapture(OPERATOR, preparation.token(),
+                new FormData("Gericht", "Beschreibung", "", "Knoblauch", ""), false);
+
+        ArgumentCaptor<ChallengeResultCommands.CreateChallengeResult> command = ArgumentCaptor.forClass(
+                ChallengeResultCommands.CreateChallengeResult.class);
+        verify(resultCommands).createChallengeResult(command.capture());
+        assertThat(command.getValue().result().concretizations()).singleElement().satisfies(concretization -> {
+            assertThat(concretization.requirementPosition()).isEqualTo(4);
+            assertThat(concretization.displayText()).isEqualTo("Nata de Coco");
+        });
+        assertThat(command.getValue().result().ownIngredients()).singleElement()
+                .satisfies(ingredient -> assertThat(ingredient.displayText()).isEqualTo("Knoblauch"));
+    }
+
+    @Test
+    void capturePreparationOmitsConcretizationStepWhenEveryRequirementWasSpecific() {
+        var specific = new ChallengeArchiveQueries.PublicChallenge(CHALLENGE,
+                Instant.parse("2026-08-20T12:00:00Z"), List.of(
+                new ChallengeArchiveQueries.RequirementSnapshot(1, "A", ChallengeArchiveQueries.Specificity.SPECIFIC),
+                new ChallengeArchiveQueries.RequirementSnapshot(2, "B", ChallengeArchiveQueries.Specificity.SPECIFIC),
+                new ChallengeArchiveQueries.RequirementSnapshot(3, "C", ChallengeArchiveQueries.Specificity.SPECIFIC),
+                new ChallengeArchiveQueries.RequirementSnapshot(4, "D", ChallengeArchiveQueries.Specificity.SPECIFIC)),
+                ChallengeArchiveQueries.RestrictionSnapshot.none(), false);
+        when(archiveQueries.listChallenges(any())).thenReturn(page(List.of(specific), 1, 1));
+        when(archiveQueries.listActiveChallenges(any())).thenReturn(page(List.of(specific), 1, 1));
+        when(archiveQueries.findChallengeByNumber(CHALLENGE)).thenReturn(Optional.of(specific));
+
+        var preparation = workflow.startCapture(OPERATOR, "Text", List.of());
+        assertThat(preparation.concretizations()).isEmpty();
+        assertThatThrownBy(() -> workflow.captureConcretizationModal(OPERATOR, preparation.token()))
+                .isInstanceOf(Rejected.class).hasMessageContaining("keine offenen Vorgaben");
+    }
+
+    @Test
+    void editPreparationShowsConcretizationsAndUpdatesThemWithoutUsingTheTextOrPhotoMutation() {
+        var current = result(List.of(ingredient(501, "Knoblauch")), List.of(concretization(3, "Weinbergschnecke")),
+                true, 4);
+        var updated = result(List.of(ingredient(501, "Knoblauch")), List.of(concretization(4, "Nata de Coco")),
+                true, 5);
+        when(resultQueries.findChallengeResult(CHALLENGE, PARTICIPANT)).thenReturn(Optional.of(current));
+        when(resultCommands.updateResultConcretizations(any())).thenReturn(updated);
+
+        var preparation = workflow.startEditPreparation(OPERATOR, CHALLENGE, "1001");
+        assertThat(preparation.concretizations()).extracting(
+                        DiscordResultCaptureWorkflow.ConcretizationField::value)
+                .containsExactly("Weinbergschnecke", "");
+        Saved saved = workflow.submitEditConcretizations(OPERATOR, preparation.token(),
+                Map.of(3, "", 4, "Nata de Coco"));
+
+        ArgumentCaptor<ChallengeResultCommands.UpdateResultConcretizations> command = ArgumentCaptor.forClass(
+                ChallengeResultCommands.UpdateResultConcretizations.class);
+        verify(resultCommands).updateResultConcretizations(command.capture());
+        assertThat(command.getValue().expectedVersion()).isEqualTo(4);
+        assertThat(command.getValue().concretizations()).singleElement()
+                .satisfies(value -> assertThat(value.requirementPosition()).isEqualTo(4));
+        assertThat(saved.mappingAvailable()).isTrue();
+        verify(resultCommands, never()).updateChallengeResult(any());
+        verify(resultCommands, never()).setChallengeResultPhoto(any());
+    }
+
+    @Test
+    void concretizationMappingSearchesOnlyAllowedRefinementsAndCarriesExactTargetAndVersion() {
+        var captured = result(List.of(), List.of(concretization(3, "Weinbergschnecke")), false, 0);
+        var referenced = result(List.of(), List.of(concretization(3, "Weinbergschnecke")), false, 1);
+        var preparation = workflow.startCapture(OPERATOR, "Text", List.of());
+        preparation = workflow.selectPerson(OPERATOR, preparation.token(), "1001", "Ergebnis-Person");
+        preparation = workflow.submitCaptureConcretizations(OPERATOR, preparation.token(), Map.of(3, "Weinbergschnecke"));
+        when(resultQueries.findChallengeResult(CHALLENGE, PARTICIPANT))
+                .thenReturn(Optional.empty(), Optional.of(captured), Optional.of(captured), Optional.of(referenced));
+        when(resultCommands.createChallengeResult(any())).thenReturn(captured);
+        var inactive = new ResultIngredientCatalogQueries.IngredientConcept(901, "SNAIL", "Weinbergschnecke", false);
+        when(catalogQueries.findUniqueExactRefinementMatch(300, "Weinbergschnecke"))
+                .thenReturn(Optional.of(inactive));
+        when(catalogQueries.searchRefinementsLiterally(300, "Weinbergschnecke")).thenReturn(List.of(inactive));
+
+        Saved saved = (Saved) workflow.submitCapture(OPERATOR, preparation.token(),
+                new FormData("Gericht", "Beschreibung", "", "", ""), false);
+        MappingStep step = workflow.startMapping(OPERATOR, saved.mappingToken());
+        assertThat(step.concretization()).isTrue();
+        assertThat(step.requirementDisplayText()).isEqualTo("C");
+        assertThat(step.choices()).singleElement().satisfies(choice -> assertThat(choice.active()).isFalse());
+        assertThat(workflow.assignMapping(OPERATOR, saved.mappingToken(), step.expectedResultVersion(),
+                step.targetKey(), 901L)).isInstanceOf(MappingComplete.class);
+
+        ArgumentCaptor<ChallengeResultCommands.SetResultConcretizationReference> reference = ArgumentCaptor.forClass(
+                ChallengeResultCommands.SetResultConcretizationReference.class);
+        verify(resultCommands).setResultConcretizationReference(reference.capture());
+        assertThat(reference.getValue()).isEqualTo(
+                new ChallengeResultCommands.SetResultConcretizationReference(70, 3, 901L, 0));
+        verify(catalogQueries, never()).searchLiterally(any());
     }
 
     @Test
@@ -328,7 +440,8 @@ class DiscordResultCaptureWorkflowTest {
         assertThat(first.exactSuggestionId()).isEqualTo(11);
         assertThat(first.choices()).singleElement().satisfies(choice -> assertThat(choice.exact()).isTrue());
 
-        MappingStep second = (MappingStep) workflow.assignMapping(OPERATOR, saved.mappingToken(), null);
+        MappingStep second = (MappingStep) workflow.assignMapping(OPERATOR, saved.mappingToken(),
+                first.expectedResultVersion(), first.targetKey(), null);
         assertThat(second.ingredientText()).isEqualTo("Chili-Sauce");
         assertThat(second.choices()).singleElement().satisfies(choice -> assertThat(choice.active()).isFalse());
         ArgumentCaptor<ChallengeResultCommands.SetResultIngredientReference> reference = ArgumentCaptor.forClass(
@@ -357,9 +470,39 @@ class DiscordResultCaptureWorkflowTest {
         MappingStep visible = workflow.startMapping(OPERATOR, saved.mappingToken());
         assertThat(visible.ingredientText()).isEqualTo("Miso");
 
-        assertThatThrownBy(() -> workflow.assignMapping(OPERATOR, saved.mappingToken(), 11L))
+        assertThatThrownBy(() -> workflow.assignMapping(OPERATOR, saved.mappingToken(),
+                visible.expectedResultVersion(), visible.targetKey(), 11L))
                 .isInstanceOf(Rejected.class).hasMessageContaining("zwischenzeitlich geändert");
         verify(resultCommands, never()).setResultIngredientReference(any());
+    }
+
+    @Test
+    void staleVisibleWizardStepCannotApplyItsChoiceOrSearchToTheNextIngredient() {
+        var preparation = workflow.startCapture(OPERATOR, "Text", List.of());
+        preparation = workflow.selectPerson(OPERATOR, preparation.token(), "1001", "Person");
+        List<ChallengeResultQueries.ResultIngredientView> ingredients = List.of(
+                ingredient(501, "Miso"), ingredient(502, "Chili-Sauce"));
+        ChallengeResultView initial = result(ingredients, false, 0);
+        ChallengeResultView afterFirstAssignment = result(ingredients, false, 1);
+        when(resultCommands.createChallengeResult(any())).thenReturn(initial);
+        when(resultQueries.findChallengeResult(CHALLENGE, PARTICIPANT))
+                .thenReturn(Optional.empty(), Optional.of(initial), Optional.of(initial),
+                        Optional.of(afterFirstAssignment));
+
+        Saved saved = (Saved) workflow.submitCapture(OPERATOR, preparation.token(),
+                new FormData("Gericht", "Beschreibung", "", "Miso\nChili-Sauce", ""), false);
+        MappingStep first = workflow.startMapping(OPERATOR, saved.mappingToken());
+        MappingStep second = (MappingStep) workflow.assignMapping(OPERATOR, saved.mappingToken(),
+                first.expectedResultVersion(), first.targetKey(), null);
+        assertThat(second.ingredientText()).isEqualTo("Chili-Sauce");
+
+        assertThatThrownBy(() -> workflow.assignMapping(OPERATOR, saved.mappingToken(),
+                first.expectedResultVersion(), first.targetKey(), 11L))
+                .isInstanceOf(Rejected.class).hasMessageContaining("nicht mehr gültig");
+        assertThatThrownBy(() -> workflow.searchMapping(OPERATOR, saved.mappingToken(),
+                first.expectedResultVersion(), first.targetKey(), "Tofu"))
+                .isInstanceOf(Rejected.class).hasMessageContaining("nicht mehr gültig");
+        verify(resultCommands, times(1)).setResultIngredientReference(any());
     }
 
     @Test
@@ -508,10 +651,21 @@ class DiscordResultCaptureWorkflowTest {
 
     private static ChallengeResultQueries.ChallengeResultView result(
             List<ChallengeResultQueries.ResultIngredientView> ingredients, boolean photo, long version) {
+        return result(ingredients, List.of(), photo, version);
+    }
+
+    private static ChallengeResultQueries.ChallengeResultView result(
+            List<ChallengeResultQueries.ResultIngredientView> ingredients,
+            List<ChallengeResultQueries.ResultConcretizationView> concretizations, boolean photo, long version) {
         return new ChallengeResultQueries.ChallengeResultView(70, CHALLENGE,
                 new ChallengeResultQueries.ParticipantReference(PARTICIPANT, "P-42", "Ergebnis-Person", true),
-                "Gericht", "Beschreibung", null, ingredients, photo, version,
+                "Gericht", "Beschreibung", null, ingredients, concretizations, photo, version,
                 Instant.parse("2026-08-23T08:00:00Z"), Instant.parse("2026-08-23T08:00:00Z"));
+    }
+
+    private static ChallengeResultQueries.ResultConcretizationView concretization(int position, String text) {
+        return new ChallengeResultQueries.ResultConcretizationView(70, position, position == 3 ? 300 : 400,
+                position == 3 ? "C" : "D", text, null);
     }
 
     private static ChallengeResultQueries.ResultIngredientView ingredient(long id, String text) {

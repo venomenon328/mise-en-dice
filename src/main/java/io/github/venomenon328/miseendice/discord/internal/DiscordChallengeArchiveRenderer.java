@@ -22,6 +22,7 @@ final class DiscordChallengeArchiveRenderer {
     private static final int EMBED_TITLE_LIMIT = 256;
     private static final int EMBED_DESCRIPTION_LIMIT = 4_096;
     private static final int RESULT_INGREDIENTS_LIMIT = 900;
+    private static final int RESULT_CONCRETIZATIONS_LIMIT = 900;
     private static final int RESULT_DESCRIPTION_LIMIT = 2_300;
     private static final int RESULT_EVALUATION_LIMIT = 700;
     private static final DateTimeFormatter CONFIRMED_DATE = DateTimeFormatter
@@ -132,7 +133,18 @@ final class DiscordChallengeArchiveRenderer {
                 .reduce((left, right) -> left + "\n" + right)
                 .orElse("Keine angegeben");
 
-        StringBuilder description = new StringBuilder("**Eigene Zutaten**\n")
+        StringBuilder description = new StringBuilder();
+        if (!result.concretizations().isEmpty()) {
+            String concretizations = result.concretizations().stream()
+                    .map(concretization -> "• " + safe(concretization.requirementDisplayText(), 150) + " → "
+                            + safe(concretization.displayText(), 150))
+                    .reduce((left, right) -> left + "\n" + right)
+                    .orElse("");
+            description.append("**Konkretisierungen**\n")
+                    .append(truncate(concretizations, RESULT_CONCRETIZATIONS_LIMIT))
+                    .append("\n\n");
+        }
+        description.append("**Eigene Zutaten**\n")
                 .append(truncate(ingredients, RESULT_INGREDIENTS_LIMIT))
                 .append("\n\n**Gericht / Umsetzung**\n")
                 .append(safe(result.description(), RESULT_DESCRIPTION_LIMIT));

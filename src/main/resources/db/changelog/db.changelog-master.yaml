@@ -69,3 +69,5 @@ databaseChangeLog:
       file: db/changelog/schema/014-participant-electorate-core.sql
   - include:
       file: db/changelog/schema/015-challenge-results-completion-core.sql
+  - include:
+      file: db/changelog/schema/016-result-open-requirement-concretizations.sql

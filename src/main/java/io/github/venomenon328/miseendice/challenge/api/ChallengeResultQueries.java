@@ -23,17 +23,27 @@ public interface ChallengeResultQueries {
             String description,
             String evaluation,
             List<ResultIngredientView> ownIngredients,
+            List<ResultConcretizationView> concretizations,
             boolean photoAvailable,
             long version,
             Instant createdAt,
             Instant updatedAt
     ) {
+        public ChallengeResultView(long resultId, long challengeNumber, ParticipantReference participant,
+                                   String dishName, String description, String evaluation,
+                                   List<ResultIngredientView> ownIngredients, boolean photoAvailable, long version,
+                                   Instant createdAt, Instant updatedAt) {
+            this(resultId, challengeNumber, participant, dishName, description, evaluation, ownIngredients, List.of(),
+                    photoAvailable, version, createdAt, updatedAt);
+        }
+
         public ChallengeResultView {
             if (resultId <= 0 || challengeNumber <= 0 || participant == null || version < 0
                     || createdAt == null || updatedAt == null) {
                 throw new IllegalArgumentException("Challenge result identity and timestamps are required");
             }
             ownIngredients = List.copyOf(ownIngredients);
+            concretizations = List.copyOf(concretizations);
         }
     }
 
@@ -50,6 +60,18 @@ public interface ChallengeResultQueries {
         public ResultIngredientView {
             if (resultIngredientId <= 0 || displayText == null || displayText.isBlank()) {
                 throw new IllegalArgumentException("Result ingredient identity and display text are required");
+            }
+        }
+    }
+
+    record ResultConcretizationView(long resultId, int requirementPosition, long openRequirementConceptId,
+                                    String requirementDisplayText, String displayText,
+                                    IngredientConceptReference ingredientConcept) {
+        public ResultConcretizationView {
+            if (resultId <= 0 || requirementPosition < 1 || requirementPosition > 4 || openRequirementConceptId <= 0
+                    || requirementDisplayText == null || requirementDisplayText.isBlank()
+                    || displayText == null || displayText.isBlank()) {
+                throw new IllegalArgumentException("Result concretization identity and display texts are required");
             }
         }
     }

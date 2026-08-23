@@ -7,6 +7,8 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeArchiveQueries.C
 import io.github.venomenon328.miseendice.challenge.api.ChallengeArchiveQueries.PublicChallenge;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeNotFoundException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultAlreadyExistsException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultConcretizationNotFoundException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultConcretizationValidationException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands.ChallengeResultPhotoUpload;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands.OwnIngredientInput;
@@ -129,6 +131,9 @@ final class DiscordResultCaptureWorkflow {
         if (challengeNumber <= 0 || archiveQueries.findChallengeByNumber(challengeNumber).isEmpty()) {
             throw rejected("Die gewählte Challenge ist nicht mehr verfügbar.");
         }
+        if (!Long.valueOf(challengeNumber).equals(draft.challengeNumber)) {
+            draft.concretizations.clear();
+        }
         draft.challengeNumber = challengeNumber;
         return preparation(token, draft, challengePage(draft.challengePage));
     }
@@ -170,10 +175,21 @@ final class DiscordResultCaptureWorkflow {
         return new ResultModal(token, "Challenge-Ergebnis erfassen", values, draft.messageText.length() > 4000);
     }
 
+    ConcretizationModal captureConcretizationModal(OperatorContext context, String token) {
+        Draft draft = captureDraft(context, token);
+        return concretizationModal(draft, "Konkretisierungen eingeben", false);
+    }
+
+    Preparation submitCaptureConcretizations(OperatorContext context, String token, Map<Integer, String> values) {
+        Draft draft = captureDraft(context, token);
+        storeDraftConcretizations(draft, values);
+        return preparation(token, draft, challengePage(draft.challengePage));
+    }
+
     CaptureSubmission submitCapture(OperatorContext context, String token, FormData form, boolean replaceConfirmed) {
         Draft draft = captureDraft(context, token);
         draft.form = Objects.requireNonNull(form);
-        ResultData data = resultData(form);
+        ResultData data = resultData(form, draftConcretizationInputs(draft));
 
         ParticipantQueries.ParticipantView participant = participantCommands.resolveOrCreateParticipant(
                 new ParticipantCommands.ResolveOrCreateParticipant(DISCORD_PROVIDER, draft.externalSubject,
@@ -240,13 +256,48 @@ final class DiscordResultCaptureWorkflow {
         FormData form = form(result);
         Draft draft = Draft.maintenance(context, Mode.EDIT, challengeNumber, participant, form);
         draft.expectedResultVersion = result.version();
+        result.concretizations().forEach(concretization -> draft.concretizations.put(
+                concretization.requirementPosition(), concretization.displayText()));
         String token = drafts.create(draft);
         return new ResultModal(token, "Challenge-Ergebnis bearbeiten", form, false);
+    }
+
+    EditPreparation startEditPreparation(OperatorContext context, long challengeNumber, String discordUserId) {
+        ResultModal modal = startEdit(context, challengeNumber, discordUserId);
+        Draft draft = draft(context, modal.token(), Mode.EDIT);
+        return editPreparation(draft);
     }
 
     ResultModal editModal(OperatorContext context, String token) {
         Draft draft = draft(context, token, Mode.EDIT);
         return new ResultModal(token, "Challenge-Ergebnis bearbeiten", draft.form, false);
+    }
+
+    ConcretizationModal editConcretizationModal(OperatorContext context, String token) {
+        return concretizationModal(draft(context, token, Mode.EDIT), "Konkretisierungen bearbeiten", true);
+    }
+
+    Saved submitEditConcretizations(OperatorContext context, String token, Map<Integer, String> values) {
+        Draft draft = draft(context, token, Mode.EDIT);
+        storeDraftConcretizations(draft, values);
+        try {
+            ChallengeResultView current = resultQueries.findChallengeResult(draft.challengeNumber, draft.participantId)
+                    .orElseThrow(() -> new ChallengeResultNotFoundException(draft.challengeNumber, draft.participantId));
+            if (current.version() != draft.expectedResultVersion) {
+                throw new ChallengeResultVersionConflictException(draft.challengeNumber, draft.participantId,
+                        draft.expectedResultVersion, current.version());
+            }
+            ChallengeResultView saved = resultCommands.updateResultConcretizations(
+                    new ChallengeResultCommands.UpdateResultConcretizations(draft.challengeNumber, draft.participantId,
+                            draft.expectedResultVersion, concretizationInputsPreservingReferences(draft, current)));
+            return saved(draft, saved, "Die persönlichen Konkretisierungen wurden bearbeitet.");
+        } catch (ChallengeResultNotFoundException exception) {
+            throw rejected("Das Ergebnis existiert nicht mehr.");
+        } catch (ChallengeResultVersionConflictException exception) {
+            throw rejected("Das Ergebnis wurde zwischenzeitlich geändert. Bitte lade die Bearbeitung neu.");
+        } catch (ChallengeResultConcretizationValidationException exception) {
+            throw rejected("Die Konkretisierungen passen nicht mehr zu den offenen Challenge-Vorgaben.");
+        }
     }
 
     Saved submitEdit(OperatorContext context, String token, FormData form) {
@@ -347,38 +398,58 @@ final class DiscordResultCaptureWorkflow {
         return mappingStep(token, draft);
     }
 
-    MappingStep searchMapping(OperatorContext context, String token, String searchTerm) {
+    MappingStep searchMapping(OperatorContext context, String token, long visibleResultVersion,
+                              String visibleTargetKey, String searchTerm) {
         Draft draft = draft(context, token, Mode.MAPPING);
+        requireVisibleMappingStep(draft, visibleResultVersion, visibleTargetKey);
         String normalized = required(searchTerm, "Suchtext");
         draft.catalogSearch = normalized;
         return mappingStep(token, draft);
     }
 
-    MappingProgress assignMapping(OperatorContext context, String token, Long ingredientConceptId) {
+    MappingProgress assignMapping(OperatorContext context, String token, long visibleResultVersion,
+                                  String visibleTargetKey, Long ingredientConceptId) {
         Draft draft = draft(context, token, Mode.MAPPING);
+        requireVisibleMappingStep(draft, visibleResultVersion, visibleTargetKey);
         ChallengeResultView current = currentMappingResult(draft);
         requireMappingSnapshot(draft, current);
-        if (draft.mappingExpectedResultVersion == null || draft.mappingExpectedIngredientId == null) {
+        if (draft.mappingExpectedResultVersion == null || draft.mappingExpectedTargetKey == null) {
             throw rejected("Dieser Zuordnungsschritt ist nicht mehr gültig. Bitte starte die Zuordnung erneut.");
         }
-        long ingredientId = draft.mappingExpectedIngredientId;
+        MappingTarget target = mappingTargets(current).get(draft.mappingIndex);
         long expectedVersion = draft.mappingExpectedResultVersion;
         try {
-            resultCommands.setResultIngredientReference(new ChallengeResultCommands.SetResultIngredientReference(
-                    ingredientId, ingredientConceptId, expectedVersion));
-        } catch (ChallengeResultIngredientNotFoundException | ChallengeResultVersionConflictException exception) {
+            if (target.concretization()) {
+                resultCommands.setResultConcretizationReference(
+                        new ChallengeResultCommands.SetResultConcretizationReference(current.resultId(),
+                                target.requirementPosition(), ingredientConceptId, expectedVersion));
+            } else {
+                resultCommands.setResultIngredientReference(new ChallengeResultCommands.SetResultIngredientReference(
+                        target.ingredientId(), ingredientConceptId, expectedVersion));
+            }
+        } catch (ChallengeResultIngredientNotFoundException | ChallengeResultConcretizationNotFoundException
+                 | ChallengeResultConcretizationValidationException | ChallengeResultVersionConflictException exception) {
             throw rejected("Das Ergebnis wurde zwischenzeitlich geändert. Bitte starte die Zuordnung erneut.");
         }
         draft.mappingIndex++;
         draft.catalogSearch = null;
         clearMappingSnapshot(draft);
         ChallengeResultView refreshed = currentMappingResult(draft);
-        if (draft.mappingIndex >= refreshed.ownIngredients().size()) {
+        if (draft.mappingIndex >= mappingTargets(refreshed).size()) {
             drafts.remove(token);
             return new MappingComplete(draft.challengeNumber,
-                    "Alle Zutatenzuordnungen wurden gespeichert; die Freitexte blieben unverändert.");
+                    "Alle Katalogzuordnungen wurden gespeichert; die Freitexte blieben unverändert.");
         }
         return mappingStep(token, draft);
+    }
+
+    private static void requireVisibleMappingStep(Draft draft, long visibleResultVersion, String visibleTargetKey) {
+        if (visibleResultVersion < 0 || visibleTargetKey == null
+                || draft.mappingExpectedResultVersion == null || draft.mappingExpectedTargetKey == null
+                || draft.mappingExpectedResultVersion != visibleResultVersion
+                || !draft.mappingExpectedTargetKey.equals(visibleTargetKey)) {
+            throw rejected("Dieser Zuordnungsschritt ist nicht mehr gültig. Bitte starte die Zuordnung erneut.");
+        }
     }
 
     void abortMapping(OperatorContext context, String token) {
@@ -402,7 +473,7 @@ final class DiscordResultCaptureWorkflow {
         draft.mappingIndex = 0;
         draft.catalogSearch = null;
         clearMappingSnapshot(draft);
-        boolean mappingAvailable = !saved.ownIngredients().isEmpty();
+        boolean mappingAvailable = !saved.concretizations().isEmpty() || !saved.ownIngredients().isEmpty();
         if (!mappingAvailable) {
             drafts.remove(draft.token);
         }
@@ -412,28 +483,35 @@ final class DiscordResultCaptureWorkflow {
     private MappingStep mappingStep(String token, Draft draft) {
         ChallengeResultView result = currentMappingResult(draft);
         requireMappingSnapshot(draft, result);
-        if (draft.mappingIndex >= result.ownIngredients().size()) {
+        List<MappingTarget> targets = mappingTargets(result);
+        if (draft.mappingIndex >= targets.size()) {
             drafts.remove(token);
-            throw rejected("Für dieses Ergebnis gibt es keine weiteren eigenen Zutaten.");
+            throw rejected("Für dieses Ergebnis gibt es keine weiteren Katalogzuordnungen.");
         }
-        ChallengeResultQueries.ResultIngredientView ingredient = result.ownIngredients().get(draft.mappingIndex);
+        MappingTarget target = targets.get(draft.mappingIndex);
         draft.mappingExpectedResultVersion = result.version();
-        draft.mappingExpectedIngredientId = ingredient.resultIngredientId();
-        Optional<IngredientConcept> exact = catalogQueries.findUniqueExactMatch(ingredient.displayText());
-        String term = draft.catalogSearch == null ? ingredient.displayText() : draft.catalogSearch;
+        draft.mappingExpectedTargetKey = target.key();
+        Optional<IngredientConcept> exact = target.concretization()
+                ? catalogQueries.findUniqueExactRefinementMatch(target.openRequirementConceptId(), target.displayText())
+                : catalogQueries.findUniqueExactMatch(target.displayText());
+        String term = draft.catalogSearch == null ? target.displayText() : draft.catalogSearch;
         Set<Long> seen = new LinkedHashSet<>();
         List<CatalogChoice> choices = new ArrayList<>();
         exact.ifPresent(match -> {
             seen.add(match.id());
             choices.add(choice(match, true));
         });
-        for (IngredientConcept match : catalogQueries.searchLiterally(term)) {
+        List<IngredientConcept> matches = target.concretization()
+                ? catalogQueries.searchRefinementsLiterally(target.openRequirementConceptId(), term)
+                : catalogQueries.searchLiterally(term);
+        for (IngredientConcept match : matches) {
             if (seen.add(match.id()) && choices.size() < MAX_CATALOG_OPTIONS) {
                 choices.add(choice(match, false));
             }
         }
-        return new MappingStep(token, result.challengeNumber(), draft.mappingIndex + 1, result.ownIngredients().size(),
-                ingredient.displayText(), exact.map(IngredientConcept::id).orElse(null), term, List.copyOf(choices));
+        return new MappingStep(token, result.challengeNumber(), draft.mappingIndex + 1, targets.size(),
+                target.displayText(), exact.map(IngredientConcept::id).orElse(null), term, List.copyOf(choices),
+                target.concretization(), target.requirementDisplayText(), result.version(), target.key());
     }
 
     private ChallengeResultView currentMappingResult(Draft draft) {
@@ -442,22 +520,22 @@ final class DiscordResultCaptureWorkflow {
     }
 
     private static void requireMappingSnapshot(Draft draft, ChallengeResultView current) {
-        if (draft.mappingExpectedResultVersion == null && draft.mappingExpectedIngredientId == null) {
+        if (draft.mappingExpectedResultVersion == null && draft.mappingExpectedTargetKey == null) {
             return;
         }
         boolean sameVersion = draft.mappingExpectedResultVersion != null
                 && current.version() == draft.mappingExpectedResultVersion;
-        boolean sameIngredient = draft.mappingExpectedIngredientId != null
-                && draft.mappingIndex < current.ownIngredients().size()
-                && current.ownIngredients().get(draft.mappingIndex).resultIngredientId() == draft.mappingExpectedIngredientId;
-        if (!sameVersion || !sameIngredient) {
+        List<MappingTarget> targets = mappingTargets(current);
+        boolean sameTarget = draft.mappingExpectedTargetKey != null && draft.mappingIndex < targets.size()
+                && targets.get(draft.mappingIndex).key().equals(draft.mappingExpectedTargetKey);
+        if (!sameVersion || !sameTarget) {
             throw rejected("Das Ergebnis wurde zwischenzeitlich geändert. Bitte starte die Zuordnung erneut.");
         }
     }
 
     private static void clearMappingSnapshot(Draft draft) {
         draft.mappingExpectedResultVersion = null;
-        draft.mappingExpectedIngredientId = null;
+        draft.mappingExpectedTargetKey = null;
     }
 
     private void snapshotExpectedPhotoVersion(Draft draft, long participantId) {
@@ -538,10 +616,14 @@ final class DiscordResultCaptureWorkflow {
         }
         boolean ready = draft.externalSubject != null && draft.challengeNumber != null
                 && draft.selectedPhoto != Draft.PHOTO_NOT_SELECTED;
+        List<ConcretizationField> concretizationFields = openRequirements(draft.challengeNumber).stream()
+                .map(requirement -> new ConcretizationField(requirement.position(), requirement.displayText(),
+                        draft.concretizations.getOrDefault(requirement.position(), "")))
+                .toList();
         return new Preparation(token, draft.messageText, draft.messageText.length() > 1500,
                 draft.messageText.getBytes(StandardCharsets.UTF_8), draft.personDisplayName, draft.challengeNumber,
                 List.copyOf(choices.values()), draft.challengePage, draft.challengePages, List.copyOf(photos), ready,
-                draft.messageText.length() > 4000);
+                draft.messageText.length() > 4000, concretizationFields);
     }
 
     private ChallengeArchiveQueries.ChallengePage challengePage(int page) {
@@ -574,10 +656,15 @@ final class DiscordResultCaptureWorkflow {
     }
 
     private static ResultData resultData(FormData form) {
+        return resultData(form, List.of());
+    }
+
+    private static ResultData resultData(FormData form,
+                                         List<ChallengeResultCommands.ResultConcretizationInput> concretizations) {
         try {
             List<OwnIngredientInput> ingredients = ingredientLines(form.ingredientsPartOne(), form.ingredientsPartTwo())
                     .stream().map(line -> new OwnIngredientInput(line, null)).toList();
-            return new ResultData(form.dishName(), form.description(), form.evaluation(), ingredients);
+            return new ResultData(form.dishName(), form.description(), form.evaluation(), ingredients, concretizations);
         } catch (IllegalArgumentException exception) {
             throw rejected("Bitte prüfe die Eingaben: Gerichtsname und Beschreibung sind erforderlich; maximal 25 "
                     + "eindeutige Zutaten mit je 200 Zeichen sind erlaubt.");
@@ -593,7 +680,106 @@ final class DiscordResultCaptureWorkflow {
         return new ResultData(plain.dishName(), plain.description(), plain.evaluation(), plain.ownIngredients().stream()
                 .map(ingredient -> new OwnIngredientInput(ingredient.displayText(),
                         existingReferences.get(ingredient.displayText().toLowerCase(Locale.ROOT))))
+                .toList(), current.concretizations().stream()
+                .map(concretization -> new ChallengeResultCommands.ResultConcretizationInput(
+                        concretization.requirementPosition(), concretization.displayText(),
+                        concretization.ingredientConcept() == null ? null
+                                : concretization.ingredientConcept().ingredientConceptId()))
                 .toList());
+    }
+
+    private ConcretizationModal concretizationModal(Draft draft, String title, boolean editing) {
+        List<ChallengeArchiveQueries.RequirementSnapshot> requirements = openRequirements(draft.challengeNumber);
+        if (requirements.isEmpty()) {
+            throw rejected("Die gewählte Challenge besitzt keine offenen Vorgaben.");
+        }
+        List<ConcretizationField> fields = requirements.stream()
+                .map(requirement -> new ConcretizationField(requirement.position(), requirement.displayText(),
+                        draft.concretizations.getOrDefault(requirement.position(), "")))
+                .toList();
+        return new ConcretizationModal(draft.token, title, fields, editing);
+    }
+
+    private void storeDraftConcretizations(Draft draft, Map<Integer, String> values) {
+        Map<Integer, String> supplied = values == null ? Map.of() : values;
+        List<ChallengeArchiveQueries.RequirementSnapshot> requirements = openRequirements(draft.challengeNumber);
+        Set<Integer> positions = requirements.stream().map(ChallengeArchiveQueries.RequirementSnapshot::position)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        if (!positions.containsAll(supplied.keySet())) {
+            throw rejected("Eine Konkretisierung zielt nicht auf eine offene Vorgabe dieser Challenge.");
+        }
+        draft.concretizations.clear();
+        for (ChallengeArchiveQueries.RequirementSnapshot requirement : requirements) {
+            String value = supplied.get(requirement.position());
+            if (value == null || value.isBlank()) {
+                continue;
+            }
+            String normalized = value.strip();
+            if (normalized.length() > 200) {
+                throw rejected("Konkretisierungen dürfen höchstens 200 Zeichen lang sein.");
+            }
+            draft.concretizations.put(requirement.position(), normalized);
+        }
+    }
+
+    private List<ChallengeResultCommands.ResultConcretizationInput> draftConcretizationInputs(Draft draft) {
+        Set<Integer> openPositions = openRequirements(draft.challengeNumber).stream()
+                .map(ChallengeArchiveQueries.RequirementSnapshot::position)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        if (!openPositions.containsAll(draft.concretizations.keySet())) {
+            throw rejected("Die gewählte Challenge hat sich für diesen Entwurf geändert. Bitte starte erneut.");
+        }
+        return draft.concretizations.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> new ChallengeResultCommands.ResultConcretizationInput(entry.getKey(), entry.getValue(), null))
+                .toList();
+    }
+
+    private List<ChallengeResultCommands.ResultConcretizationInput> concretizationInputsPreservingReferences(
+            Draft draft, ChallengeResultView current) {
+        Map<Integer, ChallengeResultQueries.ResultConcretizationView> existing = current.concretizations().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        ChallengeResultQueries.ResultConcretizationView::requirementPosition,
+                        concretization -> concretization));
+        return draftConcretizationInputs(draft).stream().map(input -> {
+            ChallengeResultQueries.ResultConcretizationView previous = existing.get(input.requirementPosition());
+            Long conceptId = previous != null && previous.displayText().equals(input.displayText())
+                    && previous.ingredientConcept() != null
+                    ? previous.ingredientConcept().ingredientConceptId() : null;
+            return new ChallengeResultCommands.ResultConcretizationInput(input.requirementPosition(),
+                    input.displayText(), conceptId);
+        }).toList();
+    }
+
+    private List<ChallengeArchiveQueries.RequirementSnapshot> openRequirements(Long challengeNumber) {
+        if (challengeNumber == null) {
+            return List.of();
+        }
+        return archiveQueries.findChallengeByNumber(challengeNumber)
+                .map(challenge -> challenge.requirements().stream()
+                        .filter(requirement -> requirement.specificity() == ChallengeArchiveQueries.Specificity.OPEN)
+                        .toList())
+                .orElseThrow(() -> rejected("Die gewählte Challenge ist nicht mehr verfügbar."));
+    }
+
+    private EditPreparation editPreparation(Draft draft) {
+        List<ConcretizationField> fields = openRequirements(draft.challengeNumber).stream()
+                .map(requirement -> new ConcretizationField(requirement.position(), requirement.displayText(),
+                        draft.concretizations.getOrDefault(requirement.position(), "")))
+                .toList();
+        return new EditPreparation(draft.token, draft.challengeNumber, draft.personDisplayName, draft.form.dishName(), fields);
+    }
+
+    private static List<MappingTarget> mappingTargets(ChallengeResultView result) {
+        List<MappingTarget> targets = new ArrayList<>();
+        result.concretizations().forEach(concretization -> targets.add(new MappingTarget(
+                "c-" + concretization.resultId() + "-" + concretization.requirementPosition(), true,
+                null, concretization.requirementPosition(), concretization.openRequirementConceptId(),
+                concretization.requirementDisplayText(), concretization.displayText())));
+        result.ownIngredients().forEach(ingredient -> targets.add(new MappingTarget(
+                "i-" + ingredient.resultIngredientId(), false, ingredient.resultIngredientId(), null, null,
+                null, ingredient.displayText())));
+        return List.copyOf(targets);
     }
 
     private static List<String> ingredientLines(String first, String second) {
@@ -657,11 +843,12 @@ final class DiscordResultCaptureWorkflow {
     record Preparation(String token, String messageText, boolean attachFullText, byte[] fullTextBytes,
                        String selectedPersonName, Long selectedChallengeNumber, List<ChallengeChoice> challenges,
                        int challengePage, int challengePages, List<PhotoChoice> photos, boolean readyForModal,
-                       boolean descriptionNeedsCondensing) {
+                       boolean descriptionNeedsCondensing, List<ConcretizationField> concretizations) {
         Preparation {
             fullTextBytes = fullTextBytes.clone();
             challenges = List.copyOf(challenges);
             photos = List.copyOf(photos);
+            concretizations = List.copyOf(concretizations);
         }
 
         @Override
@@ -690,6 +877,25 @@ final class DiscordResultCaptureWorkflow {
     record ResultModal(String token, String title, FormData values, boolean sourceTextWasLonger) {
     }
 
+    record ConcretizationField(int requirementPosition, String requirementDisplayText, String value) {
+    }
+
+    record ConcretizationModal(String token, String title, List<ConcretizationField> fields, boolean editing) {
+        ConcretizationModal {
+            fields = List.copyOf(fields);
+            if (fields.isEmpty() || fields.size() > 4) {
+                throw new IllegalArgumentException("A concretization modal requires between one and four OPEN requirements");
+            }
+        }
+    }
+
+    record EditPreparation(String token, long challengeNumber, String participantName, String dishName,
+                           List<ConcretizationField> concretizations) {
+        EditPreparation {
+            concretizations = List.copyOf(concretizations);
+        }
+    }
+
     sealed interface CaptureSubmission permits ReplaceConfirmation, Saved {
     }
 
@@ -709,9 +915,14 @@ final class DiscordResultCaptureWorkflow {
 
     record MappingStep(String token, long challengeNumber, int ingredientNumber, int ingredientCount,
                        String ingredientText, Long exactSuggestionId, String searchTerm,
-                       List<CatalogChoice> choices) implements MappingProgress {
+                       List<CatalogChoice> choices, boolean concretization,
+                       String requirementDisplayText, long expectedResultVersion,
+                       String targetKey) implements MappingProgress {
         MappingStep {
             choices = List.copyOf(choices);
+            if (expectedResultVersion < 0 || targetKey == null || targetKey.isBlank()) {
+                throw new IllegalArgumentException("A mapping step requires an expected result version and target key");
+            }
         }
     }
 
@@ -719,6 +930,10 @@ final class DiscordResultCaptureWorkflow {
     }
 
     record CatalogChoice(long conceptId, String code, String displayName, boolean active, boolean exact) {
+    }
+
+    private record MappingTarget(String key, boolean concretization, Long ingredientId, Integer requirementPosition,
+                                 Long openRequirementConceptId, String requirementDisplayText, String displayText) {
     }
 
     static final class Rejected extends RuntimeException {
@@ -758,7 +973,8 @@ final class DiscordResultCaptureWorkflow {
         private int mappingIndex;
         private String catalogSearch;
         private Long mappingExpectedResultVersion;
-        private Long mappingExpectedIngredientId;
+        private String mappingExpectedTargetKey;
+        private final Map<Integer, String> concretizations = new LinkedHashMap<>();
         private Instant expiresAt;
 
         private Draft(long guildId, String ownerUserId, Mode mode) {

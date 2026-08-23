@@ -1,6 +1,6 @@
 # Datenmodell
 
-Stand: 22. August 2026
+Stand: 23. August 2026
 
 Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt als explizit geordnete Liquibase-Changesets vor:
 
@@ -19,6 +19,7 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 - [`013-challenge-archive-core.sql`](../src/main/resources/db/changelog/schema/013-challenge-archive-core.sql) für öffentliche Challenge-Nummern und die optionale Challenge-Card
 - [`014-participant-electorate-core.sql`](../src/main/resources/db/changelog/schema/014-participant-electorate-core.sql) für das persistente Standard-Elektorat, immutable Participant-Codes und die Vor-Generierung-Materialisierung
 - [`015-challenge-results-completion-core.sql`](../src/main/resources/db/changelog/schema/015-challenge-results-completion-core.sql) für Ergebnisdaten, optionale Fotos, Abschlusszeitpunkte und Statusprojektionen
+- [`016-result-open-requirement-concretizations.sql`](../src/main/resources/db/changelog/schema/016-result-open-requirement-concretizations.sql) für persönliche Konkretisierungen historisch offener Challenge-Vorgaben
 
 Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
 
@@ -28,7 +29,7 @@ Die Datenbank persistiert die kuratierte Zutatenbasis, die für die Zufallsauswa
 
 Sie ist ausdrücklich **keine universelle Lebensmittelontologie und keine Rule Engine**. Harte Generierungsregeln wie „vier Vorgaben“, die gewünschte Mischung aus spezifischen und offenen Vorgaben, Redundanzprüfung, Cooldown-Berechnung und die Auswahl von zwölf Kandidaten bleiben in der Anwendung.
 
-Die erste Struktur konzentriert sich auf die Erzeugung von Challenges. Persönliche Konkretisierungen, drei zusätzliche Zutaten, Grundpläne, Fotos und Fazits werden noch nicht modelliert, können später aber an eine gespeicherte `challenge` angehängt werden.
+Neben der Erzeugungs- und Kuratierungshistorie modelliert die Datenbank inzwischen Teilnehmer, Ergebnisse, eigene Zusatz-Zutaten, optionale Fotos und persönliche Konkretisierungen offener Vorgaben. Grundpläne und ein strukturierter Vergleich beider Lösungen bleiben späteren Paketen vorbehalten.
 
 ## 2. Zutatenkonzepte statt Zutat/Kategorie-Dichotomie
 
@@ -65,6 +66,14 @@ Verarbeitungsherkunft allein reicht für eine Kante nicht aus. Getrocknete Chili
 Der Graph ist bewusst **unvollständig**. Fehlt eine denkbare Konkretisierung in der Datenbank, ist sie dadurch nicht automatisch unzulässig. Die Datenbank bildet kuratiertes Systemwissen ab, keine Whitelist sämtlicher Entscheidungen beim Kochen.
 
 Die Migration verhindert Zyklen im Konkretisierungsgraphen per Trigger. Für redaktionelle Writes serialisiert der Catalog-Application-Service zusätzlich sämtliche `ingredient_refinement`-Mutationen sowie Rollen- und Spezifitätsänderungen mit einem stabilen transaktionsgebundenen PostgreSQL-Advisory-Lock, bevor er den resultierenden Graphen liest und validiert. So können weder zwei disjunkte Kanten noch eine Kante zusammen mit einer Rollen- oder Spezifitätsänderung als Write-Skew eine ungültige Struktur erzeugen. Der Lock wird beim Transaktionsende freigegeben; der Zyklus-Trigger bleibt die letzte Sicherung.
+
+### 3.1 Persönliche Konkretisierung eines Ergebnisses
+
+`challenge_result_concretization` ist keine zweite Kataloghierarchie. Eine Zeile gehört über `challenge_result_id` zum Ergebnis und über `requirement_position` genau zu einer der vier historischen Vorgaben des bestätigten Candidate-Snapshots. Zulässig ist sie nur, wenn dessen `challenge_specificity_snapshot = 'OPEN'` lautet; pro Ergebnis und Position existiert höchstens eine Zeile. Fehlende Zeilen sind ausdrücklich gültig.
+
+Der getrimmte `display_text` mit höchstens 200 Zeichen ist die historische fachliche Autorität. Eine nullable `ingredient_concept_id` ist nur eine Auswertungsreferenz und ersetzt diesen Text niemals. Wird sie gesetzt, muss das Konzept ein direkter oder transitiver Nachfahr des damaligen offenen `ingredient_concept_id` im bestehenden `ingredient_refinement`-Graphen sein. Inaktive Konzepte bleiben referenzier- und lesbar; katalogfreier Freitext bleibt immer zulässig.
+
+Davon strikt getrennt speichert `challenge_result_ingredient` eigene Zusatz-Zutaten. Sie erfüllen keine bestimmte Vorgabenposition, besitzen keine Reihenfolge und verbrauchen nach den Challenge-Regeln einen persönlichen Zusatz-Slot. Konkretisierungen erfüllen dagegen eine bereits gesetzte offene Vorgabe und verbrauchen keinen solchen Slot.
 
 ## 4. Funktionale Rollen
 
@@ -401,13 +410,11 @@ Diese Regeln sind absichtlich nicht als konfigurierbare SQL-Regelmaschine modell
 
 Die Struktur soll folgende Erweiterungen ermöglichen, bildet sie aber noch nicht ab:
 
-- persönliche Konkretisierungen offener Vorgaben,
-- drei zusätzliche Zutaten pro Person,
 - optionaler Grundplan,
 - Vergleich und Rückblick auf beide Lösungen,
 - Verwaltungsoberfläche für die Datenpflege.
 
-Für solche Daten kann später auf `challenge`, `participant` und die gespeicherten Challenge-Vorgaben referenziert werden. Freitext beziehungsweise optionale Katalogreferenzen können wie bei manuellen Vorgaben kombiniert werden, sodass die Zutatenbasis auch künftig nicht künstlich vollständig sein muss.
+Grundplan und Vergleich können später auf `challenge`, `participant` und die bereits gespeicherten Ergebnisse referenzieren, ohne persönliche Konkretisierungen oder eigene Zusatz-Zutaten umzudeuten.
 
 ## 16. Datenbank aufsetzen
 

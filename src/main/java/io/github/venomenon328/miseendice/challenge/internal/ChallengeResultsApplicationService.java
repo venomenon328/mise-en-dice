@@ -6,6 +6,8 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeCompletionComman
 import io.github.venomenon328.miseendice.challenge.api.ChallengeCompletionConflictException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeNotFoundException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultAlreadyExistsException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultConcretizationNotFoundException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultConcretizationValidationException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultIngredientConceptNotFoundException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultIngredientNotFoundException;
@@ -61,8 +63,11 @@ class ChallengeResultsApplicationService implements ChallengeResultCommands, Cha
             return writeTransaction.execute(status -> {
                 requireChallenge(command.challengeNumber());
                 requireParticipant(command.participantId());
+                List<JdbcChallengeResultRepository.ConcretizationWrite> concretizations = prepareConcretizations(
+                        command.challengeNumber(), command.result().concretizations());
                 long resultId = repository.insertResult(command.challengeNumber(), command.participantId(), prepared.write());
                 repository.insertIngredients(resultId, prepared.ingredients());
+                repository.insertConcretizations(resultId, concretizations);
                 if (photo != null) {
                     repository.insertPhoto(resultId, photo);
                 }
@@ -84,7 +89,8 @@ class ChallengeResultsApplicationService implements ChallengeResultCommands, Cha
         return writeTransaction.execute(status -> {
             JdbcChallengeResultRepository.ResultRow current = lockResult(command.challengeNumber(), command.participantId());
             requireResultVersion(current, command.expectedVersion());
-            replaceTextAndIngredients(current, command.expectedVersion(), prepared);
+            replaceResultData(current, command.expectedVersion(), prepared,
+                    prepareConcretizations(command.challengeNumber(), command.result().concretizations()));
             if (command.photoChange() != null) {
                 setPhotoLocked(current, photo, command.photoChange().replaceExisting(), command.photoChange().expectedPhotoVersion());
             }
@@ -98,7 +104,22 @@ class ChallengeResultsApplicationService implements ChallengeResultCommands, Cha
         return writeTransaction.execute(status -> {
             JdbcChallengeResultRepository.ResultRow current = lockResult(command.challengeNumber(), command.participantId());
             requireResultVersion(current, command.expectedVersion());
-            replaceTextAndIngredients(current, command.expectedVersion(), prepared);
+            replaceResultData(current, command.expectedVersion(), prepared,
+                    prepareConcretizations(command.challengeNumber(), command.result().concretizations()));
+            return resultView(requireResult(command.challengeNumber(), command.participantId()));
+        });
+    }
+
+    @Override
+    public ChallengeResultView updateResultConcretizations(UpdateResultConcretizations command) {
+        return writeTransaction.execute(status -> {
+            JdbcChallengeResultRepository.ResultRow current = lockResult(command.challengeNumber(), command.participantId());
+            requireResultVersion(current, command.expectedVersion());
+            List<JdbcChallengeResultRepository.ConcretizationWrite> concretizations = prepareConcretizations(
+                    command.challengeNumber(), command.concretizations());
+            repository.deleteConcretizations(current.resultId());
+            repository.insertConcretizations(current.resultId(), concretizations);
+            repository.incrementResultVersion(current.resultId(), command.expectedVersion());
             return resultView(requireResult(command.challengeNumber(), command.participantId()));
         });
     }
@@ -160,6 +181,32 @@ class ChallengeResultsApplicationService implements ChallengeResultCommands, Cha
     }
 
     @Override
+    public ResultConcretizationView setResultConcretizationReference(SetResultConcretizationReference command) {
+        return writeTransaction.execute(status -> {
+            JdbcChallengeResultRepository.ConcretizationForUpdate concretization = repository.lockConcretization(
+                            command.resultId(), command.requirementPosition())
+                    .orElseThrow(() -> new ChallengeResultConcretizationNotFoundException(command.resultId(),
+                            command.requirementPosition()));
+            if (concretization.resultVersion() != command.expectedResultVersion()) {
+                throw new ChallengeResultVersionConflictException(concretization.challengeNumber(),
+                        concretization.participantId(), command.expectedResultVersion(), concretization.resultVersion());
+            }
+            if (command.ingredientConceptId() != null) {
+                requireIngredientConcept(command.ingredientConceptId());
+                requireKnownRefinement(concretization.openRequirementConceptId(), command.ingredientConceptId());
+            }
+            repository.updateConcretizationReference(command.resultId(), command.requirementPosition(),
+                    command.ingredientConceptId());
+            repository.incrementResultVersion(command.resultId(), command.expectedResultVersion());
+            return repository.concretizations(command.resultId()).stream()
+                    .filter(row -> row.requirementPosition() == command.requirementPosition())
+                    .findFirst()
+                    .map(ChallengeResultsApplicationService::concretizationView)
+                    .orElseThrow(() -> new IllegalStateException("Updated challenge result concretization disappeared"));
+        });
+    }
+
+    @Override
     public java.util.Optional<ChallengeResultView> findChallengeResult(long challengeNumber, long participantId) {
         requirePositiveChallengeNumber(challengeNumber);
         requirePositiveParticipantId(participantId);
@@ -203,13 +250,16 @@ class ChallengeResultsApplicationService implements ChallengeResultCommands, Cha
         });
     }
 
-    private void replaceTextAndIngredients(JdbcChallengeResultRepository.ResultRow current, long expectedVersion,
-                                           PreparedResult prepared) {
+    private void replaceResultData(JdbcChallengeResultRepository.ResultRow current, long expectedVersion,
+                                   PreparedResult prepared,
+                                   List<JdbcChallengeResultRepository.ConcretizationWrite> concretizations) {
         if (repository.replaceResult(current, expectedVersion, prepared.write()) != 1) {
             throw new IllegalStateException("Locked challenge result version changed unexpectedly");
         }
         repository.deleteIngredients(current.resultId());
         repository.insertIngredients(current.resultId(), prepared.ingredients());
+        repository.deleteConcretizations(current.resultId());
+        repository.insertConcretizations(current.resultId(), concretizations);
     }
 
     private ChallengeResultPhotoMetadata setPhotoLocked(JdbcChallengeResultRepository.ResultRow result,
@@ -253,6 +303,37 @@ class ChallengeResultsApplicationService implements ChallengeResultCommands, Cha
                 .orElseThrow(() -> new ChallengeResultIngredientConceptNotFoundException(ingredientConceptId));
     }
 
+    private List<JdbcChallengeResultRepository.ConcretizationWrite> prepareConcretizations(
+            long challengeNumber, List<ResultConcretizationInput> inputs) {
+        List<JdbcChallengeResultRepository.RequirementRow> requirements = repository.challengeRequirements(challengeNumber);
+        return inputs.stream().map(input -> {
+            JdbcChallengeResultRepository.RequirementRow requirement = requirements.stream()
+                    .filter(candidate -> candidate.position() == input.requirementPosition())
+                    .findFirst()
+                    .orElseThrow(() -> new ChallengeResultConcretizationValidationException(
+                            "Requirement position " + input.requirementPosition()
+                                    + " does not belong to Challenge #" + challengeNumber));
+            if (!"OPEN".equals(requirement.specificity()) || requirement.ingredientConceptId() == null) {
+                throw new ChallengeResultConcretizationValidationException(
+                        "Requirement position " + input.requirementPosition() + " is not OPEN");
+            }
+            if (input.ingredientConceptId() != null) {
+                requireIngredientConcept(input.ingredientConceptId());
+                requireKnownRefinement(requirement.ingredientConceptId(), input.ingredientConceptId());
+            }
+            return new JdbcChallengeResultRepository.ConcretizationWrite(input.requirementPosition(),
+                    input.displayText(), input.ingredientConceptId());
+        }).toList();
+    }
+
+    private void requireKnownRefinement(long openRequirementConceptId, long ingredientConceptId) {
+        if (!catalogQueries.isKnownRefinement(openRequirementConceptId, ingredientConceptId)) {
+            throw new ChallengeResultConcretizationValidationException(
+                    "Ingredient concept " + ingredientConceptId
+                            + " is not a known refinement of OPEN requirement concept " + openRequirementConceptId);
+        }
+    }
+
     private JdbcChallengeResultRepository.ResultRow lockResult(long challengeNumber, long participantId) {
         return repository.lockResult(challengeNumber, participantId)
                 .orElseThrow(() -> new ChallengeResultNotFoundException(challengeNumber, participantId));
@@ -292,11 +373,18 @@ class ChallengeResultsApplicationService implements ChallengeResultCommands, Cha
         return new ChallengeResultView(row.resultId(), row.challengeNumber(), row.participant(), row.dishName(),
                 row.description(), row.evaluation(), repository.ingredients(row.resultId()).stream()
                         .map(ChallengeResultsApplicationService::ingredientView).toList(),
+                repository.concretizations(row.resultId()).stream()
+                        .map(ChallengeResultsApplicationService::concretizationView).toList(),
                 row.photoAvailable(), row.version(), row.createdAt(), row.updatedAt());
     }
 
     private static ResultIngredientView ingredientView(JdbcChallengeResultRepository.IngredientRow row) {
         return new ResultIngredientView(row.resultIngredientId(), row.displayText(), row.ingredientConcept());
+    }
+
+    private static ResultConcretizationView concretizationView(JdbcChallengeResultRepository.ConcretizationRow row) {
+        return new ResultConcretizationView(row.resultId(), row.requirementPosition(), row.openRequirementConceptId(),
+                row.requirementDisplayText(), row.displayText(), row.ingredientConcept());
     }
 
     private static ChallengeResultPhotoMetadata photoMetadata(JdbcChallengeResultRepository.PhotoRow row) {

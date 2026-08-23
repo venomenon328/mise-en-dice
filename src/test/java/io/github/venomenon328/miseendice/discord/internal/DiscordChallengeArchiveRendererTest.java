@@ -13,6 +13,7 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeArchiveQueries.S
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultQueries.ChallengeResultView;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultQueries.ParticipantReference;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultQueries.ResultIngredientView;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultQueries.ResultConcretizationView;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
@@ -89,6 +90,31 @@ class DiscordChallengeArchiveRendererTest {
         assertThat(followUp.description()).contains("**Eigene Zutaten**", "**Gericht / Umsetzung**", "BBBB",
                 "**Bewertung**", "EEEE", "…");
         assertThat(followUp.description().length()).isLessThanOrEqualTo(4_096);
+    }
+
+    @Test
+    void rendersHistoricalRequirementToConcretizationBeforeOwnIngredientsAndOmitsAnEmptySection() {
+        ChallengeResultView withConcretization = new ChallengeResultView(101, 12,
+                new ParticipantReference(7, "PARTICIPANT_7", "@Georgia", true), "Gericht", "Beschreibung", null,
+                List.of(new ResultIngredientView(1, "Knoblauch", null)),
+                List.of(new ResultConcretizationView(101, 3, 300, "Weichtiere", "@Weinbergschnecke", null)),
+                false, 0, Instant.parse("2026-08-22T12:15:30Z"), Instant.parse("2026-08-22T12:15:30Z"));
+        PublicChallenge challenge = challenge(12, false, standardRequirements(), RestrictionSnapshot.none(),
+                ChallengeStatus.ACTIVE, 1, List.of(withConcretization));
+
+        String rendered = renderer.detail(challenge, Optional.empty(), Map.of()).resultFollowUps().getFirst().description();
+        assertThat(rendered).contains("**Konkretisierungen**", "• Weichtiere → @\u200bWeinbergschnecke",
+                "**Eigene Zutaten**", "• Knoblauch");
+        assertThat(rendered.indexOf("**Konkretisierungen**")).isLessThan(rendered.indexOf("**Eigene Zutaten**"));
+
+        ChallengeResultView withoutConcretization = new ChallengeResultView(102, 12,
+                new ParticipantReference(8, "PARTICIPANT_8", "Tobias", true), "Gericht", "Beschreibung", null,
+                List.of(), false, 0, Instant.parse("2026-08-22T12:15:30Z"),
+                Instant.parse("2026-08-22T12:15:30Z"));
+        PublicChallenge without = challenge(12, false, standardRequirements(), RestrictionSnapshot.none(),
+                ChallengeStatus.ACTIVE, 1, List.of(withoutConcretization));
+        assertThat(renderer.detail(without, Optional.empty(), Map.of()).resultFollowUps().getFirst().description())
+                .doesNotContain("Konkretisierungen");
     }
 
     private static PublicChallenge challenge(long number, boolean cardAvailable, List<RequirementSnapshot> requirements,

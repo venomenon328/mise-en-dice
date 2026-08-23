@@ -12,6 +12,14 @@ public interface ResultIngredientCatalogQueries {
 
     Optional<IngredientConcept> findIngredientConcept(long ingredientConceptId);
 
+    /** Exact literal match restricted to known direct or transitive refinements of one OPEN requirement. */
+    Optional<IngredientConcept> findUniqueExactRefinementMatch(long openRequirementConceptId, String displayTextOrCode);
+
+    /** Literal search restricted to known direct or transitive refinements, including inactive historical concepts. */
+    List<IngredientConcept> searchRefinementsLiterally(long openRequirementConceptId, String searchTerm);
+
+    boolean isKnownRefinement(long openRequirementConceptId, long ingredientConceptId);
+
     record IngredientConcept(long id, String code, String displayName, boolean active) {
         public IngredientConcept {
             if (id <= 0 || code == null || code.isBlank() || displayName == null || displayName.isBlank()) {

@@ -1,6 +1,8 @@
 package io.github.venomenon328.miseendice.discord.internal;
 
 import io.github.venomenon328.miseendice.discord.internal.DiscordResultCaptureWorkflow.CaptureSubmission;
+import io.github.venomenon328.miseendice.discord.internal.DiscordResultCaptureWorkflow.ConcretizationModal;
+import io.github.venomenon328.miseendice.discord.internal.DiscordResultCaptureWorkflow.EditPreparation;
 import io.github.venomenon328.miseendice.discord.internal.DiscordResultCaptureWorkflow.FormData;
 import io.github.venomenon328.miseendice.discord.internal.DiscordResultCaptureWorkflow.MappingComplete;
 import io.github.venomenon328.miseendice.discord.internal.DiscordResultCaptureWorkflow.MappingProgress;
@@ -17,6 +19,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.concurrent.Executor;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
@@ -127,8 +131,9 @@ final class DiscordResultCaptureJdaListener {
         }
         try {
             switch (event.getSubcommandName()) {
-                case "ergebnis-bearbeiten" -> event.replyModal(modal(workflow.startEdit(context, challengeNumber,
-                        person.getId()), "edit")).queue();
+                case "ergebnis-bearbeiten" -> event.reply(editPreparationCreate(
+                        workflow.startEditPreparation(context, challengeNumber, person.getId())))
+                        .setEphemeral(true).queue();
                 case "ergebnis-entfernen" -> {
                     var confirmation = workflow.startRemove(context, challengeNumber, person.getId());
                     event.reply(removalConfirmation(confirmation)).setEphemeral(true).queue();
@@ -174,6 +179,10 @@ final class DiscordResultCaptureJdaListener {
             switch (id[0]) {
                 case "open" -> event.replyModal(modal(workflow.captureModal(context, id[1]), "capture")).queue();
                 case "edit-open" -> event.replyModal(modal(workflow.editModal(context, id[1]), "edit")).queue();
+                case "concrete-capture" -> event.replyModal(concretizationModal(
+                        workflow.captureConcretizationModal(context, id[1]), "concrete-capture")).queue();
+                case "concrete-edit" -> event.replyModal(concretizationModal(
+                        workflow.editConcretizationModal(context, id[1]), "concrete-edit")).queue();
                 case "page" -> edit(event, preparationEdit(workflow.navigateChallenges(context, id[1],
                         Integer.parseInt(id[2]))));
                 case "replace" -> event.deferEdit().queue(hook -> executor.execute(() -> captureSubmission(hook,
@@ -183,7 +192,7 @@ final class DiscordResultCaptureJdaListener {
                                 () -> workflow.confirmRemove(context, id[1]))),
                         failure -> log.warn("Discord result removal acknowledgement failed", failure));
                 case "map" -> edit(event, mappingEdit(workflow.startMapping(context, id[1])));
-                case "map-search" -> event.replyModal(searchModal(id[1])).queue();
+                case "map-search" -> event.replyModal(searchModal(id[1], Long.parseLong(id[2]), id[3])).queue();
                 case "map-abort" -> {
                     workflow.abortMapping(context, id[1]);
                     edit(event, textEdit("Die Zutatenzuordnung wurde beendet. Das gespeicherte Ergebnis bleibt vollständig gültig."));
@@ -217,7 +226,8 @@ final class DiscordResultCaptureJdaListener {
                 case "photo" -> edit(event, preparationEdit(workflow.selectPhoto(context, id[1],
                         Integer.parseInt(value))));
                 case "map-choice" -> event.deferEdit().queue(hook -> executor.execute(() -> mappingProgress(hook,
-                                workflow.assignMapping(context, id[1], "none".equals(value) ? null : Long.valueOf(value)))),
+                                workflow.assignMapping(context, id[1], Long.parseLong(id[2]), id[3],
+                                        "none".equals(value) ? null : Long.valueOf(value)))),
                         failure -> log.warn("Discord ingredient-reference acknowledgement failed", failure));
                 default -> reject(event, "Diese Ergebnis-Auswahl ist nicht mehr gültig.");
             }
@@ -287,9 +297,30 @@ final class DiscordResultCaptureJdaListener {
                     technical(hook, exception);
                 }
             }), failure -> log.warn("Discord result edit modal acknowledgement failed", failure));
+            case "concrete-capture" -> event.deferEdit().queue(hook -> executor.execute(() -> {
+                try {
+                    hook.editOriginal(preparationEdit(workflow.submitCaptureConcretizations(context, id[1],
+                            concretizationValues(event)))).queue();
+                } catch (Rejected rejected) {
+                    hook.editOriginal(textEdit(rejected.getMessage())).queue();
+                } catch (RuntimeException exception) {
+                    technical(hook, exception);
+                }
+            }), failure -> log.warn("Discord result concretization modal acknowledgement failed", failure));
+            case "concrete-edit" -> event.deferEdit().queue(hook -> executor.execute(() -> {
+                try {
+                    publishSaved(hook, workflow.submitEditConcretizations(context, id[1],
+                            concretizationValues(event)));
+                } catch (Rejected rejected) {
+                    hook.editOriginal(textEdit(rejected.getMessage())).queue();
+                } catch (RuntimeException exception) {
+                    technical(hook, exception);
+                }
+            }), failure -> log.warn("Discord result concretization edit acknowledgement failed", failure));
             case "map-query" -> event.deferEdit().queue(hook -> executor.execute(() -> {
                 try {
-                    hook.editOriginal(mappingEdit(workflow.searchMapping(context, id[1], value(event, CATALOG_SEARCH)))).queue();
+                    hook.editOriginal(mappingEdit(workflow.searchMapping(context, id[1], Long.parseLong(id[2]), id[3],
+                            value(event, CATALOG_SEARCH)))).queue();
                 } catch (Rejected rejected) {
                     hook.editOriginal(textEdit(rejected.getMessage())).queue();
                 } catch (RuntimeException exception) {
@@ -375,7 +406,9 @@ final class DiscordResultCaptureJdaListener {
 
     private static String preparationContent(Preparation preparation) {
         String text = preparation.messageText().isBlank() ? "(kein Nachrichtentext)" : preparation.messageText();
-        String displayed = preparation.attachFullText() ? truncate(text, 900) : text;
+        int previewLimit = preparation.concretizations().isEmpty() ? 1_200 : 600;
+        String displayed = truncate(text, previewLimit);
+        boolean previewTruncated = displayed.length() < text.length();
         StringBuilder content = new StringBuilder("**Challenge-Ergebnis vorbereiten**\n")
                 .append("Ergebnis-Person: ").append(preparation.selectedPersonName() == null
                         ? "noch nicht gewählt" : safe(preparation.selectedPersonName())).append('\n')
@@ -384,10 +417,18 @@ final class DiscordResultCaptureJdaListener {
                 .append("Foto: ").append(safe(cut(selectedPhotoLabel(preparation), 100))).append("\n\n")
                 .append(preparation.attachFullText()
                         ? "Der vollständige Nachrichtentext ist kopierbar als `nachrichtentext.txt` angehängt; die Vorschau ist gekennzeichnet gekürzt.\n"
-                        : "Vollständiger kopierbarer Nachrichtentext:\n")
+                        : previewTruncated
+                                ? "Gekürzte Vorschau; der vollständige Text bleibt in der Ursprungsnachricht kopierbar:\n"
+                                : "Vollständiger kopierbarer Nachrichtentext:\n")
                 .append("```\n").append(code(displayed)).append("\n```");
         if (preparation.descriptionNeedsCondensing()) {
             content.append("\nDer Text überschreitet 4.000 Zeichen. Bitte verdichte ihn in der Maske; die Anlage bleibt vollständig.");
+        }
+        if (!preparation.concretizations().isEmpty()) {
+            content.append("\n\n**Persönliche Konkretisierungen (optional)**");
+            preparation.concretizations().forEach(field -> content.append("\n• ")
+                    .append(safe(cut(field.requirementDisplayText(), 100))).append(" → ")
+                    .append(field.value().isBlank() ? "noch nicht angegeben" : safe(cut(field.value(), 200))));
         }
         return truncate(content.toString(), 1990);
     }
@@ -418,6 +459,9 @@ final class DiscordResultCaptureJdaListener {
         }
         buttons.add(Button.primary(id("open", preparation.token()), "Textmaske öffnen")
                 .withDisabled(!preparation.readyForModal()));
+        if (!preparation.concretizations().isEmpty()) {
+            buttons.add(Button.secondary(id("concrete-capture", preparation.token()), "Konkretisierungen eingeben"));
+        }
         rows.add(ActionRow.of(buttons));
         return List.copyOf(rows);
     }
@@ -442,6 +486,37 @@ final class DiscordResultCaptureJdaListener {
                 .build();
     }
 
+    static Modal concretizationModal(ConcretizationModal modal, String kind) {
+        Modal.Builder builder = Modal.create(id(kind, modal.token()), modal.title());
+        for (DiscordResultCaptureWorkflow.ConcretizationField field : modal.fields()) {
+            builder.addComponents(Label.of(cut(field.requirementDisplayText() + " →", 45),
+                    "Optional; erfüllt die offene Vorgabe und ist keine eigene Zusatz-Zutat.",
+                    input(concretizationId(field.requirementPosition()), TextInputStyle.SHORT, false, 0, 200,
+                            field.value())));
+        }
+        return builder.build();
+    }
+
+    private static MessageCreateData editPreparationCreate(EditPreparation preparation) {
+        StringBuilder content = new StringBuilder("**Challenge-Ergebnis bearbeiten**\nChallenge #")
+                .append(preparation.challengeNumber()).append(" · ")
+                .append(safe(preparation.participantName())).append(" · **")
+                .append(safe(preparation.dishName())).append("**");
+        if (!preparation.concretizations().isEmpty()) {
+            content.append("\n\n**Persönliche Konkretisierungen**");
+            preparation.concretizations().forEach(field -> content.append("\n• ")
+                    .append(safe(cut(field.requirementDisplayText(), 100))).append(" → ")
+                    .append(field.value().isBlank() ? "nicht angegeben" : safe(cut(field.value(), 200))));
+        }
+        List<Button> buttons = new ArrayList<>();
+        buttons.add(Button.primary(id("edit-open", preparation.token()), "Text und eigene Zutaten bearbeiten"));
+        if (!preparation.concretizations().isEmpty()) {
+            buttons.add(Button.secondary(id("concrete-edit", preparation.token()), "Konkretisierungen bearbeiten"));
+        }
+        return new MessageCreateBuilder().setAllowedMentions(List.of()).setContent(truncate(content.toString(), 1990))
+                .setComponents(List.of(ActionRow.of(buttons))).build();
+    }
+
     private static TextInput input(String id, TextInputStyle style, boolean required, int minimum, int maximum,
                                    String value) {
         TextInput.Builder builder = TextInput.create(id, style).setRequired(required).setMaxLength(maximum);
@@ -454,8 +529,8 @@ final class DiscordResultCaptureJdaListener {
         return builder.build();
     }
 
-    private static Modal searchModal(String token) {
-        return Modal.create(id("map-query", token), "Katalog durchsuchen")
+    private static Modal searchModal(String token, long expectedResultVersion, String targetKey) {
+        return Modal.create(id("map-query", token, expectedResultVersion, targetKey), "Katalog durchsuchen")
                 .addComponents(Label.of("Literaler Suchtext", TextInput.create(CATALOG_SEARCH, TextInputStyle.SHORT)
                         .setRequiredRange(1, 200).build())).build();
     }
@@ -486,16 +561,22 @@ final class DiscordResultCaptureJdaListener {
         step.choices().forEach(choice -> options.add(SelectOption.of(cut(choice.displayName()
                         + (choice.active() ? "" : " [inaktiv]"), 100), Long.toString(choice.conceptId()))
                 .withDescription(cut(choice.code() + (choice.exact() ? " · exakter Vorschlag" : ""), 100))));
-        String content = "**Katalogreferenzen zuordnen** · Zutat " + step.ingredientNumber() + "/"
-                + step.ingredientCount() + "\nMaßgeblicher Freitext: `" + inline(step.ingredientText()) + "`\nSuche: `"
+        String target = step.concretization() ? "Konkretisierung" : "Eigene Zutat";
+        String content = "**Katalogreferenzen zuordnen** · " + target + " " + step.ingredientNumber() + "/"
+                + step.ingredientCount()
+                + (step.requirementDisplayText() == null ? "" : "\nOffene Vorgabe: `"
+                + inline(step.requirementDisplayText()) + "`")
+                + "\nMaßgeblicher Freitext: `" + inline(step.ingredientText()) + "`\nSuche: `"
                 + inline(step.searchTerm()) + "`" + (step.exactSuggestionId() == null ? ""
                 : "\nEin eindeutiger exakter Treffer ist als Vorschlag markiert.");
         return new MessageEditBuilder().setAllowedMentions(List.of()).setContent(content)
                 .setComponents(List.of(
-                        ActionRow.of(StringSelectMenu.create(id("map-choice", step.token()))
+                        ActionRow.of(StringSelectMenu.create(id("map-choice", step.token(),
+                                        step.expectedResultVersion(), step.targetKey()))
                                 .setPlaceholder("Referenz oder ohne Referenz wählen").setRequiredRange(1, 1)
                                 .addOptions(options).build()),
-                        ActionRow.of(Button.secondary(id("map-search", step.token()), "Andere Treffer suchen"),
+                        ActionRow.of(Button.secondary(id("map-search", step.token(),
+                                        step.expectedResultVersion(), step.targetKey()), "Andere Treffer suchen"),
                                 Button.secondary(id("map-abort", step.token()), "Zuordnung beenden"))))
                 .build();
     }
@@ -534,6 +615,21 @@ final class DiscordResultCaptureJdaListener {
     private static FormData form(ModalInteractionEvent event) {
         return new FormData(value(event, DISH), value(event, DESCRIPTION), value(event, EVALUATION),
                 value(event, INGREDIENTS_ONE), value(event, INGREDIENTS_TWO));
+    }
+
+    private static Map<Integer, String> concretizationValues(ModalInteractionEvent event) {
+        Map<Integer, String> values = new LinkedHashMap<>();
+        for (int position = 1; position <= 4; position++) {
+            ModalMapping mapping = event.getValue(concretizationId(position));
+            if (mapping != null) {
+                values.put(position, mapping.getAsString());
+            }
+        }
+        return Map.copyOf(values);
+    }
+
+    private static String concretizationId(int requirementPosition) {
+        return "concretization-" + requirementPosition;
     }
 
     private static String value(ModalInteractionEvent event, String id) {

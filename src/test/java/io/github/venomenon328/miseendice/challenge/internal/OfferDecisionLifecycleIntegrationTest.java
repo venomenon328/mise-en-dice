@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.doAnswer;
 
 import io.github.venomenon328.miseendice.MiseEnDiceApplication;
@@ -16,6 +17,7 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeCardValidationEx
 import io.github.venomenon328.miseendice.challenge.api.ChallengeNotFoundException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeCompletionCommands;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultAlreadyExistsException;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultConcretizationValidationException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands.ChallengeResultPhotoUpload;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands.OwnIngredientInput;
@@ -743,6 +745,116 @@ class OfferDecisionLifecycleIntegrationTest {
     }
 
     @Test
+    void personalConcretizationsUseOpenSnapshotsConstrainedRefinementsAndResultVersions() throws Exception {
+        long challengeNumber = confirmedChallenge(76_100_066L);
+        long georgia = participantId("GEORGIA");
+        long fish = conceptId("FISH");
+        long cod = conceptId("COD");
+        long rootVegetables = conceptId("ROOT_VEGETABLES");
+        long carrot = conceptId("CARROT");
+        long miso = conceptId("MISO");
+        setRequirement(challengeNumber, 1, fish, "Fisch", "OPEN");
+        setRequirement(challengeNumber, 2, rootVegetables, "Wurzelgemüse", "OPEN");
+        setRequirement(challengeNumber, 3, miso, "Miso", "SPECIFIC");
+
+        assertThat(resultIngredientCatalogQueries.findUniqueExactRefinementMatch(fish, "kabeljau"))
+                .get().extracting(ResultIngredientCatalogQueries.IngredientConcept::id).isEqualTo(cod);
+        assertThat(resultIngredientCatalogQueries.findUniqueExactRefinementMatch(fish, "miso")).isEmpty();
+        assertThat(resultIngredientCatalogQueries.searchRefinementsLiterally(fish, "kabel"))
+                .extracting(ResultIngredientCatalogQueries.IngredientConcept::id).contains(cod).doesNotContain(miso);
+
+        jdbcTemplate.update("update ingredient_concept set active = false where id = ?", cod);
+        try {
+            var created = resultCommands.createChallengeResult(new ChallengeResultCommands.CreateChallengeResult(
+                    challengeNumber, georgia,
+                    new ResultData("Teller", "Beschreibung", null, List.of(new OwnIngredientInput("Knoblauch", null)),
+                            List.of(
+                                    new ChallengeResultCommands.ResultConcretizationInput(1, "  Kabeljaufilet  ", cod),
+                                    new ChallengeResultCommands.ResultConcretizationInput(2, "Karotte", null))),
+                    null));
+
+            assertThat(created.concretizations())
+                    .extracting(ChallengeResultQueries.ResultConcretizationView::requirementPosition,
+                            ChallengeResultQueries.ResultConcretizationView::requirementDisplayText,
+                            ChallengeResultQueries.ResultConcretizationView::displayText)
+                    .containsExactly(tuple(1, "Fisch", "Kabeljaufilet"), tuple(2, "Wurzelgemüse", "Karotte"));
+            assertThat(created.concretizations().getFirst().ingredientConcept())
+                    .satisfies(reference -> {
+                        assertThat(reference.ingredientConceptId()).isEqualTo(cod);
+                        assertThat(reference.active()).isFalse();
+                    });
+
+            byte[] png = image("png", 2, 2, 0xff44aa00);
+            resultCommands.setChallengeResultPhoto(new ChallengeResultCommands.SetChallengeResultPhoto(challengeNumber,
+                    georgia, new ChallengeResultPhotoUpload(png, "image/png", "plate.png"), false, null));
+            assertThat(resultQueries.findChallengeResult(challengeNumber, georgia).orElseThrow().concretizations())
+                    .hasSize(2);
+
+            var referenced = resultCommands.setResultConcretizationReference(
+                    new ChallengeResultCommands.SetResultConcretizationReference(created.resultId(), 2, carrot,
+                            created.version()));
+            assertThat(referenced.displayText()).isEqualTo("Karotte");
+            assertThat(referenced.ingredientConcept().ingredientConceptId()).isEqualTo(carrot);
+            var afterReference = resultQueries.findChallengeResult(challengeNumber, georgia).orElseThrow();
+            assertThat(afterReference.version()).isEqualTo(created.version() + 1);
+
+            assertThatThrownBy(() -> resultCommands.setResultConcretizationReference(
+                    new ChallengeResultCommands.SetResultConcretizationReference(created.resultId(), 1, null,
+                            created.version())))
+                    .isInstanceOf(ChallengeResultVersionConflictException.class);
+            assertThatThrownBy(() -> resultCommands.updateResultConcretizations(
+                    new ChallengeResultCommands.UpdateResultConcretizations(challengeNumber, georgia,
+                            afterReference.version(), List.of(
+                            new ChallengeResultCommands.ResultConcretizationInput(3, "Shiro Miso", null)))))
+                    .isInstanceOf(ChallengeResultConcretizationValidationException.class);
+            assertThatThrownBy(() -> resultCommands.updateResultConcretizations(
+                    new ChallengeResultCommands.UpdateResultConcretizations(challengeNumber, georgia,
+                            afterReference.version(), List.of(
+                            new ChallengeResultCommands.ResultConcretizationInput(1, "Miso", miso)))))
+                    .isInstanceOf(ChallengeResultConcretizationValidationException.class);
+            assertThat(resultQueries.findChallengeResult(challengeNumber, georgia).orElseThrow().concretizations())
+                    .extracting(ChallengeResultQueries.ResultConcretizationView::displayText)
+                    .containsExactly("Kabeljaufilet", "Karotte");
+
+            var replaced = resultCommands.replaceChallengeResult(new ChallengeResultCommands.ReplaceChallengeResult(
+                    challengeNumber, georgia, afterReference.version(),
+                    new ResultData("Ersetzt", "Neue Beschreibung", null, List.of(), List.of(
+                            new ChallengeResultCommands.ResultConcretizationInput(2, "Pastinake", null))), null));
+            assertThat(replaced.concretizations())
+                    .extracting(ChallengeResultQueries.ResultConcretizationView::displayText)
+                    .containsExactly("Pastinake");
+            assertThat(replaced.photoAvailable()).isTrue();
+
+            var updated = resultCommands.updateChallengeResult(new ChallengeResultCommands.UpdateChallengeResult(
+                    challengeNumber, georgia, replaced.version(),
+                    new ResultData("Bearbeitet", "Noch eine Beschreibung", null, List.of(), List.of(
+                            new ChallengeResultCommands.ResultConcretizationInput(1, "Schellfisch", null),
+                            new ChallengeResultCommands.ResultConcretizationInput(2, "Pastinake", null)))));
+            assertThat(updated.concretizations())
+                    .extracting(ChallengeResultQueries.ResultConcretizationView::displayText)
+                    .containsExactly("Schellfisch", "Pastinake");
+            assertThat(updated.photoAvailable()).isTrue();
+
+            assertThatThrownBy(() -> new ResultData("Teller", "Beschreibung", null, List.of(), List.of(
+                    new ChallengeResultCommands.ResultConcretizationInput(1, "Kabeljau", null),
+                    new ChallengeResultCommands.ResultConcretizationInput(1, "Schellfisch", null))))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new ChallengeResultCommands.ResultConcretizationInput(1, "   ", null))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new ChallengeResultCommands.ResultConcretizationInput(1, "x".repeat(201), null))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new ChallengeResultCommands.ResultConcretizationInput(5, "Kabeljau", null))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            resultCommands.removeChallengeResult(new ChallengeResultCommands.RemoveChallengeResult(challengeNumber, georgia));
+            assertThat(jdbcTemplate.queryForObject("select count(*) from challenge_result_concretization", Integer.class))
+                    .isZero();
+        } finally {
+            jdbcTemplate.update("update ingredient_concept set active = true where id = ?", cod);
+        }
+    }
+
+    @Test
     void resultPhotoValidationReplacementRemovalAndFreshRepositoryReadPreserveExactBytes() throws Exception {
         long challengeNumber = confirmedChallenge(76_100_061L);
         long georgia = participantId("GEORGIA");
@@ -1002,6 +1114,24 @@ class OfferDecisionLifecycleIntegrationTest {
 
     private long participantId(String participantCode) {
         return jdbcTemplate.queryForObject("select id from participant where code = ?", Long.class, participantCode);
+    }
+
+    private long conceptId(String code) {
+        return jdbcTemplate.queryForObject("select id from ingredient_concept where code = ?", Long.class, code);
+    }
+
+    private void setRequirement(long challengeNumber, int position, long conceptId, String displayText,
+                                String specificity) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            jdbcTemplate.execute("set local session_replication_role = replica");
+            jdbcTemplate.update("""
+                    update candidate_requirement requirement
+                       set ingredient_concept_id = ?, challenge_specificity_snapshot = ?, display_text_snapshot = ?
+                      from challenge
+                     where challenge.selected_candidate_id = requirement.candidate_id
+                       and challenge.challenge_number = ? and requirement.position = ?
+                    """, conceptId, specificity, displayText, challengeNumber, position);
+        });
     }
 
     private static byte[] image(String format, int width, int height, int highlightedPixel) throws Exception {

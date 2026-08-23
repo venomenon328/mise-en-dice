@@ -15,6 +15,9 @@ public interface ChallengeResultCommands {
     /** Replaces the textual fields and own ingredients while deliberately retaining any current photo. */
     ChallengeResultQueries.ChallengeResultView updateChallengeResult(UpdateChallengeResult command);
 
+    /** Replaces only the optional personal concretizations and deliberately leaves text, own ingredients and photo intact. */
+    ChallengeResultQueries.ChallengeResultView updateResultConcretizations(UpdateResultConcretizations command);
+
     void removeChallengeResult(RemoveChallengeResult command);
 
     ChallengeResultQueries.ChallengeResultPhotoMetadata setChallengeResultPhoto(SetChallengeResultPhoto command);
@@ -22,6 +25,9 @@ public interface ChallengeResultCommands {
     void removeChallengeResultPhoto(RemoveChallengeResultPhoto command);
 
     ChallengeResultQueries.ResultIngredientView setResultIngredientReference(SetResultIngredientReference command);
+
+    ChallengeResultQueries.ResultConcretizationView setResultConcretizationReference(
+            SetResultConcretizationReference command);
 
     record CreateChallengeResult(
             long challengeNumber,
@@ -63,6 +69,16 @@ public interface ChallengeResultCommands {
             if (result == null) {
                 throw new IllegalArgumentException("Challenge result data is required");
             }
+        }
+    }
+
+    record UpdateResultConcretizations(long challengeNumber, long participantId, long expectedVersion,
+                                       List<ResultConcretizationInput> concretizations) {
+        public UpdateResultConcretizations {
+            positiveChallengeNumber(challengeNumber);
+            positiveParticipantId(participantId);
+            nonNegativeVersion(expectedVersion, "Expected result version");
+            concretizations = normalizedConcretizations(concretizations);
         }
     }
 
@@ -111,7 +127,28 @@ public interface ChallengeResultCommands {
         }
     }
 
-    record ResultData(String dishName, String description, String evaluation, List<OwnIngredientInput> ownIngredients) {
+    /** Changes only one optional constrained catalog reference; its authoritative free text remains untouched. */
+    record SetResultConcretizationReference(long resultId, int requirementPosition, Long ingredientConceptId,
+                                            long expectedResultVersion) {
+        public SetResultConcretizationReference {
+            if (resultId <= 0) {
+                throw new IllegalArgumentException("Challenge result ID must be positive");
+            }
+            ChallengeResultCommands.requirementPosition(requirementPosition);
+            if (ingredientConceptId != null && ingredientConceptId <= 0) {
+                throw new IllegalArgumentException("Ingredient concept ID must be positive when present");
+            }
+            nonNegativeVersion(expectedResultVersion, "Expected result version");
+        }
+    }
+
+    record ResultData(String dishName, String description, String evaluation, List<OwnIngredientInput> ownIngredients,
+                      List<ResultConcretizationInput> concretizations) {
+        public ResultData(String dishName, String description, String evaluation,
+                          List<OwnIngredientInput> ownIngredients) {
+            this(dishName, description, evaluation, ownIngredients, List.of());
+        }
+
         public ResultData {
             dishName = requiredText(dishName, "Dish name", 200);
             description = requiredText(description, "Description", 4000);
@@ -126,12 +163,23 @@ public interface ChallengeResultCommands {
                     throw new IllegalArgumentException("Own ingredients must not contain duplicate display text");
                 }
             }
+            concretizations = normalizedConcretizations(concretizations);
         }
     }
 
     record OwnIngredientInput(String displayText, Long ingredientConceptId) {
         public OwnIngredientInput {
             displayText = requiredText(displayText, "Own ingredient display text", 200);
+            if (ingredientConceptId != null && ingredientConceptId <= 0) {
+                throw new IllegalArgumentException("Ingredient concept ID must be positive when present");
+            }
+        }
+    }
+
+    record ResultConcretizationInput(int requirementPosition, String displayText, Long ingredientConceptId) {
+        public ResultConcretizationInput {
+            ChallengeResultCommands.requirementPosition(requirementPosition);
+            displayText = requiredText(displayText, "Result concretization display text", 200);
             if (ingredientConceptId != null && ingredientConceptId <= 0) {
                 throw new IllegalArgumentException("Ingredient concept ID must be positive when present");
             }
@@ -202,6 +250,27 @@ public interface ChallengeResultCommands {
     private static void nullableNonNegativeVersion(Long value, String label) {
         if (value != null) {
             nonNegativeVersion(value, label);
+        }
+    }
+
+    private static List<ResultConcretizationInput> normalizedConcretizations(
+            List<ResultConcretizationInput> concretizations) {
+        List<ResultConcretizationInput> normalized = concretizations == null ? List.of() : List.copyOf(concretizations);
+        if (normalized.size() > 4) {
+            throw new IllegalArgumentException("A challenge result may contain at most four concretizations");
+        }
+        Set<Integer> positions = new HashSet<>();
+        for (ResultConcretizationInput concretization : normalized) {
+            if (concretization == null || !positions.add(concretization.requirementPosition())) {
+                throw new IllegalArgumentException("Result concretizations must target distinct requirement positions");
+            }
+        }
+        return normalized;
+    }
+
+    private static void requirementPosition(int value) {
+        if (value < 1 || value > 4) {
+            throw new IllegalArgumentException("Requirement position must be between 1 and 4");
         }
     }
 }
