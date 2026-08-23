@@ -29,6 +29,19 @@ class DiscordResultPreparationSourceTextTest {
     }
 
     @Test
+    void sourceTextThatCouldBeShortenedAfterChallengeSelectionIsAttachedImmediately() {
+        String fullText = "R".repeat(1_000);
+        Preparation preparation = preparation(fullText, false, List.of());
+
+        var message = DiscordResultCaptureJdaListener.preparationCreate(preparation);
+
+        assertThat(message.getContent()).contains("zusätzlich als `nachrichtentext.txt` angehängt",
+                "Vollständiger kopierbarer Nachrichtentext");
+        assertThat(message.getFiles()).singleElement().satisfies(file ->
+                assertThat(file.getName()).isEqualTo("nachrichtentext.txt"));
+    }
+
+    @Test
     void completeShortPreviewDoesNotAddAnUnnecessarySourceTextFile() {
         String fullText = "R".repeat(500);
         Preparation preparation = preparation(fullText, false,
