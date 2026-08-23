@@ -200,7 +200,7 @@ final class DiscordResultCaptureWorkflow {
         if (existing.isPresent() && !replaceConfirmed) {
             draft.expectedResultVersion = existing.get().version();
             snapshotExpectedPhotoVersion(draft, participant.participantId());
-            return new ReplaceConfirmation(token, draft.challengeNumber, participant.displayName(),
+            return new ReplaceConfirmation(token, draft.challengeNumber, draft.personDisplayName,
                     existing.get().dishName());
         }
         if (replaceConfirmed && (existing.isEmpty() || draft.expectedResultVersion == null
@@ -228,7 +228,7 @@ final class DiscordResultCaptureWorkflow {
                     .orElseThrow(() -> exception);
             draft.expectedResultVersion = raced.version();
             snapshotExpectedPhotoVersion(draft, participant.participantId());
-            return new ReplaceConfirmation(token, draft.challengeNumber, participant.displayName(), raced.dishName());
+            return new ReplaceConfirmation(token, draft.challengeNumber, draft.personDisplayName, raced.dishName());
         } catch (ChallengeResultPhotoValidationException exception) {
             throw rejected("Das gewählte Foto ist kein gültiges PNG/JPEG innerhalb der erlaubten Grenzen.");
         } catch (ChallengeResultVersionConflictException | ChallengeResultPhotoVersionConflictException exception) {
@@ -247,7 +247,7 @@ final class DiscordResultCaptureWorkflow {
         return submitCapture(context, token, draft.form, true);
     }
 
-    ResultModal startEdit(OperatorContext context, long challengeNumber, String discordUserId) {
+    ResultModal startEdit(OperatorContext context, long challengeNumber, String discordUserId, String displayName) {
         requireOperator(context);
         ParticipantQueries.ParticipantView participant = knownParticipant(discordUserId);
         ChallengeResultView result = resultQueries.findChallengeResult(challengeNumber, participant.participantId())
@@ -255,6 +255,7 @@ final class DiscordResultCaptureWorkflow {
                         + " kein Ergebnis gespeichert."));
         FormData form = form(result);
         Draft draft = Draft.maintenance(context, Mode.EDIT, challengeNumber, participant, form);
+        draft.personDisplayName = required(displayName, "Anzeigename");
         draft.expectedResultVersion = result.version();
         result.concretizations().forEach(concretization -> draft.concretizations.put(
                 concretization.requirementPosition(), concretization.displayText()));
@@ -262,10 +263,18 @@ final class DiscordResultCaptureWorkflow {
         return new ResultModal(token, "Challenge-Ergebnis bearbeiten", form, false);
     }
 
-    EditPreparation startEditPreparation(OperatorContext context, long challengeNumber, String discordUserId) {
-        ResultModal modal = startEdit(context, challengeNumber, discordUserId);
+    ResultModal startEdit(OperatorContext context, long challengeNumber, String discordUserId) {
+        return startEdit(context, challengeNumber, discordUserId, knownParticipant(discordUserId).displayName());
+    }
+
+    EditPreparation startEditPreparation(OperatorContext context, long challengeNumber, String discordUserId, String displayName) {
+        ResultModal modal = startEdit(context, challengeNumber, discordUserId, displayName);
         Draft draft = draft(context, modal.token(), Mode.EDIT);
         return editPreparation(draft);
+    }
+
+    EditPreparation startEditPreparation(OperatorContext context, long challengeNumber, String discordUserId) {
+        return startEditPreparation(context, challengeNumber, discordUserId, knownParticipant(discordUserId).displayName());
     }
 
     ResultModal editModal(OperatorContext context, String token) {
@@ -321,15 +330,16 @@ final class DiscordResultCaptureWorkflow {
         }
     }
 
-    RemovalConfirmation startRemove(OperatorContext context, long challengeNumber, String discordUserId) {
+    RemovalConfirmation startRemove(OperatorContext context, long challengeNumber, String discordUserId, String displayName) {
         requireOperator(context);
         ParticipantQueries.ParticipantView participant = knownParticipant(discordUserId);
         ChallengeResultView result = resultQueries.findChallengeResult(challengeNumber, participant.participantId())
                 .orElseThrow(() -> rejected("Für diese Person ist bei Challenge #" + challengeNumber
                         + " kein Ergebnis gespeichert."));
         Draft draft = Draft.maintenance(context, Mode.REMOVE, challengeNumber, participant, null);
+        draft.personDisplayName = required(displayName, "Anzeigename");
         String token = drafts.create(draft);
-        return new RemovalConfirmation(token, challengeNumber, participant.displayName(), result.dishName());
+        return new RemovalConfirmation(token, challengeNumber, draft.personDisplayName, result.dishName());
     }
 
     Saved confirmRemove(OperatorContext context, String token) {
@@ -405,6 +415,10 @@ final class DiscordResultCaptureWorkflow {
         String normalized = required(searchTerm, "Suchtext");
         draft.catalogSearch = normalized;
         return mappingStep(token, draft);
+    }
+
+    RemovalConfirmation startRemove(OperatorContext context, long challengeNumber, String discordUserId) {
+        return startRemove(context, challengeNumber, discordUserId, knownParticipant(discordUserId).displayName());
     }
 
     MappingProgress assignMapping(OperatorContext context, String token, long visibleResultVersion,

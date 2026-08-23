@@ -73,9 +73,11 @@ class DiscordConfiguration {
                                                                      ChallengeArchiveQueries archiveQueries,
                                                                      ChallengeCardCommands cardCommands,
                                                                      ChallengeCompletionCommands completionCommands,
-                                                                     ChallengeResultQueries resultQueries) {
+                                                                     ChallengeResultQueries resultQueries,
+                                                                     ParticipantQueries participantQueries) {
         properties.validateEnabledConfiguration();
         return new DiscordChallengeArchiveWorkflow(properties, archiveQueries, cardCommands, completionCommands, resultQueries,
+                participantQueries,
                 new DiscordChallengeArchiveRenderer(properties.effectiveDateZone()));
     }
 

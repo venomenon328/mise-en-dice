@@ -63,7 +63,8 @@ class DiscordArchiveMutationDeliveryJdaTest {
 
         ArgumentCaptor<DiscordChallengeArchiveWorkflow.MutationDelivery> deliveryCaptor =
                 ArgumentCaptor.forClass(DiscordChallengeArchiveWorkflow.MutationDelivery.class);
-        verify(archiveWorkflow).removeCard(org.mockito.ArgumentMatchers.eq(4L), deliveryCaptor.capture());
+        verify(archiveWorkflow).removeCard(org.mockito.ArgumentMatchers.eq(4L),
+                any(DiscordMemberNameResolver.class), deliveryCaptor.capture());
 
         @SuppressWarnings("unchecked")
         WebhookMessageEditAction<Message> editAction = mock(WebhookMessageEditAction.class);

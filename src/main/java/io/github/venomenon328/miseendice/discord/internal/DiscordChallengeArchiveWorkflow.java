@@ -13,6 +13,7 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeCompletionConfli
 import io.github.venomenon328.miseendice.challenge.api.ChallengeNotFoundException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultQueries;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultQueries.ChallengeResultPhotoBinary;
+import io.github.venomenon328.miseendice.challenge.api.ParticipantQueries;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -28,41 +29,58 @@ final class DiscordChallengeArchiveWorkflow {
     private final ChallengeCardCommands cardCommands;
     private final ChallengeCompletionCommands completionCommands;
     private final ChallengeResultQueries resultQueries;
+    private final ParticipantQueries participantQueries;
     private final DiscordChallengeArchiveRenderer renderer;
 
     DiscordChallengeArchiveWorkflow(DiscordProperties properties, ChallengeArchiveQueries archiveQueries,
                                     ChallengeCardCommands cardCommands, ChallengeCompletionCommands completionCommands,
-                                    ChallengeResultQueries resultQueries, DiscordChallengeArchiveRenderer renderer) {
+                                    ChallengeResultQueries resultQueries, ParticipantQueries participantQueries,
+                                    DiscordChallengeArchiveRenderer renderer) {
         this.properties = properties;
         this.archiveQueries = archiveQueries;
         this.cardCommands = cardCommands;
         this.completionCommands = completionCommands;
         this.resultQueries = resultQueries;
+        this.participantQueries = participantQueries;
         this.renderer = renderer;
+    }
+
+    DiscordChallengeArchiveWorkflow(DiscordProperties properties, ChallengeArchiveQueries archiveQueries,
+                                    ChallengeCardCommands cardCommands, ChallengeCompletionCommands completionCommands,
+                                    ChallengeResultQueries resultQueries, DiscordChallengeArchiveRenderer renderer) {
+        this(properties, archiveQueries, cardCommands, completionCommands, resultQueries, null, renderer);
     }
 
     boolean acceptsGuild(long guildId) {
         return guildId == properties.guildId();
     }
 
-    void latest(Delivery delivery, Feedback feedback) {
+    void latest(DiscordMemberNameResolver memberNames, Delivery delivery, Feedback feedback) {
         try {
             archiveQueries.findLatestChallenge().ifPresentOrElse(
-                    challenge -> detail(challenge, delivery, feedback),
+                    challenge -> detail(challenge, memberNames, delivery, feedback),
                     () -> delivery.replace(renderer.noLatestChallenge(), () -> { }, feedback::technicalFailure));
         } catch (RuntimeException exception) {
             feedback.technicalFailure(exception);
         }
     }
 
-    void show(long challengeNumber, Delivery delivery, Feedback feedback) {
+    void latest(Delivery delivery, Feedback feedback) {
+        latest(DiscordMemberNameResolver.storedFallback(), delivery, feedback);
+    }
+
+    void show(long challengeNumber, DiscordMemberNameResolver memberNames, Delivery delivery, Feedback feedback) {
         try {
             archiveQueries.findChallengeByNumber(challengeNumber).ifPresentOrElse(
-                    challenge -> detail(challenge, delivery, feedback),
+                    challenge -> detail(challenge, memberNames, delivery, feedback),
                     () -> delivery.replace(renderer.unknownChallenge(challengeNumber), () -> { }, feedback::technicalFailure));
         } catch (RuntimeException exception) {
             feedback.technicalFailure(exception);
         }
+    }
+
+    void show(long challengeNumber, Delivery delivery, Feedback feedback) {
+        show(challengeNumber, DiscordMemberNameResolver.storedFallback(), delivery, feedback);
     }
 
     void list(int page, Delivery delivery, Feedback feedback) {
@@ -88,6 +106,7 @@ final class DiscordChallengeArchiveWorkflow {
     }
 
     void setCard(Long requestedChallengeNumber, boolean replaceExisting, CardUploadSource uploadSource,
+                 DiscordMemberNameResolver memberNames,
                  MutationDelivery delivery) {
         if (!validateUploadMetadata(uploadSource, delivery)) {
             return;
@@ -130,10 +149,15 @@ final class DiscordChallengeArchiveWorkflow {
             delivery.technicalFailure(exception);
             return;
         }
-        publishPersistedDetail(challengeNumber, "Die Card wurde gespeichert.", delivery);
+        publishPersistedDetail(challengeNumber, "Die Card wurde gespeichert.", memberNames, delivery);
     }
 
-    void removeCard(long challengeNumber, MutationDelivery delivery) {
+    void setCard(Long requestedChallengeNumber, boolean replaceExisting, CardUploadSource uploadSource,
+                 MutationDelivery delivery) {
+        setCard(requestedChallengeNumber, replaceExisting, uploadSource, DiscordMemberNameResolver.storedFallback(), delivery);
+    }
+
+    void removeCard(long challengeNumber, DiscordMemberNameResolver memberNames, MutationDelivery delivery) {
         try {
             cardCommands.removeChallengeCard(new ChallengeCardCommands.RemoveChallengeCard(challengeNumber));
         } catch (ChallengeCardNotFoundException exception) {
@@ -146,10 +170,14 @@ final class DiscordChallengeArchiveWorkflow {
             delivery.technicalFailure(exception);
             return;
         }
-        publishPersistedDetail(challengeNumber, "Die Card wurde entfernt.", delivery);
+        publishPersistedDetail(challengeNumber, "Die Card wurde entfernt.", memberNames, delivery);
     }
 
-    void complete(Long requestedChallengeNumber, MutationDelivery delivery) {
+    void removeCard(long challengeNumber, MutationDelivery delivery) {
+        removeCard(challengeNumber, DiscordMemberNameResolver.storedFallback(), delivery);
+    }
+
+    void complete(Long requestedChallengeNumber, DiscordMemberNameResolver memberNames, MutationDelivery delivery) {
         long challengeNumber;
         try {
             challengeNumber = requestedChallengeNumber == null
@@ -178,7 +206,11 @@ final class DiscordChallengeArchiveWorkflow {
             delivery.technicalFailure(exception);
             return;
         }
-        publishPersistedDetail(challengeNumber, "Die Challenge wurde abgeschlossen.", delivery);
+        publishPersistedDetail(challengeNumber, "Die Challenge wurde abgeschlossen.", memberNames, delivery);
+    }
+
+    void complete(Long requestedChallengeNumber, MutationDelivery delivery) {
+        complete(requestedChallengeNumber, DiscordMemberNameResolver.storedFallback(), delivery);
     }
 
     private boolean validateUploadMetadata(CardUploadSource uploadSource, MutationDelivery delivery) {
@@ -194,21 +226,23 @@ final class DiscordChallengeArchiveWorkflow {
         return true;
     }
 
-    private void detail(PublicChallenge challenge, Delivery delivery, Feedback feedback) {
+    private void detail(PublicChallenge challenge, DiscordMemberNameResolver memberNames, Delivery delivery, Feedback feedback) {
         Optional<ChallengeCardBinary> card = challenge.cardAvailable()
                 ? archiveQueries.loadChallengeCard(challenge.challengeNumber())
                 : Optional.empty();
-        delivery.replace(renderer.detail(challenge, card, resultPhotos(challenge)), () -> { }, feedback::technicalFailure);
+        delivery.replace(renderer.detail(challenge, card, resultPhotos(challenge), participantNames(challenge, memberNames)),
+                () -> { }, feedback::technicalFailure);
     }
 
-    void publishPersistedDetail(long challengeNumber, String successMessage, MutationDelivery delivery) {
+    void publishPersistedDetail(long challengeNumber, String successMessage, DiscordMemberNameResolver memberNames,
+                                MutationDelivery delivery) {
         try {
             PublicChallenge challenge = archiveQueries.findChallengeByNumber(challengeNumber)
                     .orElseThrow(() -> new IllegalStateException("Persisted challenge could not be read"));
             Optional<ChallengeCardBinary> card = challenge.cardAvailable()
                     ? archiveQueries.loadChallengeCard(challengeNumber)
                     : Optional.empty();
-            delivery.publish(renderer.detail(challenge, card, resultPhotos(challenge)),
+            delivery.publish(renderer.detail(challenge, card, resultPhotos(challenge), participantNames(challenge, memberNames)),
                     () -> delivery.persistedAndPublished(successMessage),
                     failure -> delivery.persistedButNotPublished(successMessage));
         } catch (RuntimeException exception) {
@@ -216,13 +250,23 @@ final class DiscordChallengeArchiveWorkflow {
         }
     }
 
-    DiscordChallengeArchiveRenderer.RenderedChallenge renderedDetail(long challengeNumber) {
+    DiscordChallengeArchiveRenderer.RenderedChallenge renderedDetail(long challengeNumber, DiscordMemberNameResolver memberNames) {
         PublicChallenge challenge = archiveQueries.findChallengeByNumber(challengeNumber)
                 .orElseThrow(() -> new IllegalStateException("Persisted challenge could not be read"));
         Optional<ChallengeCardBinary> card = challenge.cardAvailable()
                 ? archiveQueries.loadChallengeCard(challengeNumber)
                 : Optional.empty();
-        return renderer.detail(challenge, card, resultPhotos(challenge));
+        return renderer.detail(challenge, card, resultPhotos(challenge), participantNames(challenge, memberNames));
+    }
+
+    private java.util.function.LongFunction<String> participantNames(PublicChallenge challenge,
+                                                                       DiscordMemberNameResolver memberNames) {
+        Map<Long, String> names = new LinkedHashMap<>();
+        challenge.results().forEach(result -> names.put(result.participant().participantId(), participantQueries == null
+                ? result.participant().displayName()
+                : DiscordMemberNameResolver.resolveParticipant(participantQueries, result.participant().participantId(),
+                        result.participant().displayName(), memberNames)));
+        return participantId -> names.getOrDefault(participantId, "");
     }
 
     private long exactlyOneActiveChallengeNumber() {

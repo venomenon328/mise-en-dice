@@ -97,6 +97,22 @@ class DiscordParticipantAdministrationWorkflowTest {
         assertThat(delivery.success).anySatisfy(message -> assertThat(message).contains("Aktiv", "deaktiviert", "Standard-Elektorat: ja"));
     }
 
+    @Test
+    void rendersTheCurrentGuildNameInsteadOfTheStoredFallback() {
+        ParticipantCommands commands = mock(ParticipantCommands.class);
+        ParticipantQueries queries = mock(ParticipantQueries.class);
+        ParticipantQueries.ParticipantView participant = participant(6, "PARTICIPANT-1", "Gespeicherter Name", true, true);
+        when(queries.listParticipants()).thenReturn(List.of(participant));
+        when(queries.findExternalIdentity(6, "discord")).thenReturn(java.util.Optional.of(
+                new ParticipantQueries.ExternalIdentityView(6, "discord", "10001")));
+        TestDelivery delivery = new TestDelivery();
+
+        workflow(commands, queries).list((userId, fallback) -> "Guild-Name", delivery);
+
+        assertThat(delivery.success).singleElement().satisfies(message ->
+                assertThat(message).contains("Guild-Name").doesNotContain("Gespeicherter Name"));
+    }
+
     private static DiscordParticipantAdministrationWorkflow workflow(ParticipantCommands commands, ParticipantQueries queries) {
         return new DiscordParticipantAdministrationWorkflow(commands, queries);
     }

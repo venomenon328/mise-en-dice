@@ -548,7 +548,8 @@ class DiscordResultCaptureWorkflowTest {
         assertThat(edited.mappingAvailable()).isTrue();
         verify(resultCommands, never()).setChallengeResultPhoto(any());
 
-        var removal = workflow.startRemove(OPERATOR, CHALLENGE, "1001");
+        var removal = workflow.startRemove(OPERATOR, CHALLENGE, "1001", "Guild-Name");
+        assertThat(removal.participantName()).isEqualTo("Guild-Name");
         Saved removed = workflow.confirmRemove(OPERATOR, removal.token());
         verify(resultCommands).removeChallengeResult(new ChallengeResultCommands.RemoveChallengeResult(CHALLENGE, PARTICIPANT));
         assertThat(removed.message()).contains("entfernt");
