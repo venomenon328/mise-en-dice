@@ -11,6 +11,7 @@ import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands.ChallengeResultPhotoUpload;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands.OwnIngredientInput;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultCommands.ResultData;
+import io.github.venomenon328.miseendice.challenge.api.ChallengeResultIngredientNotFoundException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultNotFoundException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultPhotoAlreadyExistsException;
 import io.github.venomenon328.miseendice.challenge.api.ChallengeResultPhotoNotFoundException;
@@ -182,6 +183,7 @@ final class DiscordResultCaptureWorkflow {
                 participant.participantId());
         if (existing.isPresent() && !replaceConfirmed) {
             draft.expectedResultVersion = existing.get().version();
+            snapshotExpectedPhotoVersion(draft, participant.participantId());
             return new ReplaceConfirmation(token, draft.challengeNumber, participant.displayName(),
                     existing.get().dishName());
         }
@@ -197,10 +199,11 @@ final class DiscordResultCaptureWorkflow {
                 saved = resultCommands.createChallengeResult(new ChallengeResultCommands.CreateChallengeResult(
                         draft.challengeNumber, participant.participantId(), data, photo));
             } else {
+                if (photo != null && !draft.expectedPhotoVersionCaptured) {
+                    throw rejected("Der Fotostand für diese Ersetzung ist nicht mehr eindeutig. Bitte starte die Erfassung erneut.");
+                }
                 ChallengeResultCommands.PhotoChange photoChange = photo == null ? null
-                        : new ChallengeResultCommands.PhotoChange(photo, true,
-                        resultQueries.findChallengeResultPhotoMetadata(draft.challengeNumber, participant.participantId())
-                                .map(ChallengeResultQueries.ChallengeResultPhotoMetadata::version).orElse(null));
+                        : new ChallengeResultCommands.PhotoChange(photo, true, draft.expectedPhotoVersion);
                 saved = resultCommands.replaceChallengeResult(new ChallengeResultCommands.ReplaceChallengeResult(
                         draft.challengeNumber, participant.participantId(), draft.expectedResultVersion, data, photoChange));
             }
@@ -208,6 +211,7 @@ final class DiscordResultCaptureWorkflow {
             ChallengeResultView raced = resultQueries.findChallengeResult(draft.challengeNumber, participant.participantId())
                     .orElseThrow(() -> exception);
             draft.expectedResultVersion = raced.version();
+            snapshotExpectedPhotoVersion(draft, participant.participantId());
             return new ReplaceConfirmation(token, draft.challengeNumber, participant.displayName(), raced.dishName());
         } catch (ChallengeResultPhotoValidationException exception) {
             throw rejected("Das gewählte Foto ist kein gültiges PNG/JPEG innerhalb der erlaubten Grenzen.");
@@ -339,6 +343,7 @@ final class DiscordResultCaptureWorkflow {
         Draft draft = draft(context, token, Mode.MAPPING);
         draft.mappingIndex = 0;
         draft.catalogSearch = null;
+        clearMappingSnapshot(draft);
         return mappingStep(token, draft);
     }
 
@@ -352,19 +357,21 @@ final class DiscordResultCaptureWorkflow {
     MappingProgress assignMapping(OperatorContext context, String token, Long ingredientConceptId) {
         Draft draft = draft(context, token, Mode.MAPPING);
         ChallengeResultView current = currentMappingResult(draft);
-        if (draft.mappingIndex >= current.ownIngredients().size()) {
-            drafts.remove(token);
-            return new MappingComplete(draft.challengeNumber, "Alle eigenen Zutaten wurden bearbeitet.");
+        requireMappingSnapshot(draft, current);
+        if (draft.mappingExpectedResultVersion == null || draft.mappingExpectedIngredientId == null) {
+            throw rejected("Dieser Zuordnungsschritt ist nicht mehr gültig. Bitte starte die Zuordnung erneut.");
         }
-        ChallengeResultQueries.ResultIngredientView ingredient = current.ownIngredients().get(draft.mappingIndex);
+        long ingredientId = draft.mappingExpectedIngredientId;
+        long expectedVersion = draft.mappingExpectedResultVersion;
         try {
             resultCommands.setResultIngredientReference(new ChallengeResultCommands.SetResultIngredientReference(
-                    ingredient.resultIngredientId(), ingredientConceptId, current.version()));
-        } catch (ChallengeResultVersionConflictException exception) {
+                    ingredientId, ingredientConceptId, expectedVersion));
+        } catch (ChallengeResultIngredientNotFoundException | ChallengeResultVersionConflictException exception) {
             throw rejected("Das Ergebnis wurde zwischenzeitlich geändert. Bitte starte die Zuordnung erneut.");
         }
         draft.mappingIndex++;
         draft.catalogSearch = null;
+        clearMappingSnapshot(draft);
         ChallengeResultView refreshed = currentMappingResult(draft);
         if (draft.mappingIndex >= refreshed.ownIngredients().size()) {
             drafts.remove(token);
@@ -389,9 +396,12 @@ final class DiscordResultCaptureWorkflow {
         draft.photos = List.of();
         draft.form = null;
         draft.expectedResultVersion = null;
+        draft.expectedPhotoVersion = null;
+        draft.expectedPhotoVersionCaptured = false;
         draft.participantId = saved.participant().participantId();
         draft.mappingIndex = 0;
         draft.catalogSearch = null;
+        clearMappingSnapshot(draft);
         boolean mappingAvailable = !saved.ownIngredients().isEmpty();
         if (!mappingAvailable) {
             drafts.remove(draft.token);
@@ -401,11 +411,14 @@ final class DiscordResultCaptureWorkflow {
 
     private MappingStep mappingStep(String token, Draft draft) {
         ChallengeResultView result = currentMappingResult(draft);
+        requireMappingSnapshot(draft, result);
         if (draft.mappingIndex >= result.ownIngredients().size()) {
             drafts.remove(token);
             throw rejected("Für dieses Ergebnis gibt es keine weiteren eigenen Zutaten.");
         }
         ChallengeResultQueries.ResultIngredientView ingredient = result.ownIngredients().get(draft.mappingIndex);
+        draft.mappingExpectedResultVersion = result.version();
+        draft.mappingExpectedIngredientId = ingredient.resultIngredientId();
         Optional<IngredientConcept> exact = catalogQueries.findUniqueExactMatch(ingredient.displayText());
         String term = draft.catalogSearch == null ? ingredient.displayText() : draft.catalogSearch;
         Set<Long> seen = new LinkedHashSet<>();
@@ -426,6 +439,37 @@ final class DiscordResultCaptureWorkflow {
     private ChallengeResultView currentMappingResult(Draft draft) {
         return resultQueries.findChallengeResult(draft.challengeNumber, draft.participantId)
                 .orElseThrow(() -> rejected("Das Ergebnis existiert nicht mehr; die Zuordnung wurde beendet."));
+    }
+
+    private static void requireMappingSnapshot(Draft draft, ChallengeResultView current) {
+        if (draft.mappingExpectedResultVersion == null && draft.mappingExpectedIngredientId == null) {
+            return;
+        }
+        boolean sameVersion = draft.mappingExpectedResultVersion != null
+                && current.version() == draft.mappingExpectedResultVersion;
+        boolean sameIngredient = draft.mappingExpectedIngredientId != null
+                && draft.mappingIndex < current.ownIngredients().size()
+                && current.ownIngredients().get(draft.mappingIndex).resultIngredientId() == draft.mappingExpectedIngredientId;
+        if (!sameVersion || !sameIngredient) {
+            throw rejected("Das Ergebnis wurde zwischenzeitlich geändert. Bitte starte die Zuordnung erneut.");
+        }
+    }
+
+    private static void clearMappingSnapshot(Draft draft) {
+        draft.mappingExpectedResultVersion = null;
+        draft.mappingExpectedIngredientId = null;
+    }
+
+    private void snapshotExpectedPhotoVersion(Draft draft, long participantId) {
+        if (draft.selectedPhoto == Draft.NO_PHOTO) {
+            draft.expectedPhotoVersion = null;
+            draft.expectedPhotoVersionCaptured = false;
+            return;
+        }
+        draft.expectedPhotoVersion = resultQueries.findChallengeResultPhotoMetadata(draft.challengeNumber, participantId)
+                .map(ChallengeResultQueries.ChallengeResultPhotoMetadata::version)
+                .orElse(null);
+        draft.expectedPhotoVersionCaptured = true;
     }
 
     private ParticipantQueries.ParticipantView knownParticipant(String discordUserId) {
@@ -482,13 +526,7 @@ final class DiscordResultCaptureWorkflow {
 
     private Preparation preparation(String token, Draft draft, ChallengeArchiveQueries.ChallengePage page) {
         Map<Long, ChallengeChoice> choices = new LinkedHashMap<>();
-        if (draft.challengeNumber != null) {
-            archiveQueries.findChallengeByNumber(draft.challengeNumber)
-                    .map(DiscordResultCaptureWorkflow::challengeChoice)
-                    .ifPresent(choice -> choices.put(choice.challengeNumber(), choice));
-        }
-        page.challenges().stream().map(DiscordResultCaptureWorkflow::challengeChoice)
-                .takeWhile(choice -> choices.size() < CHALLENGE_PAGE_SIZE)
+        page.challenges().stream().limit(CHALLENGE_PAGE_SIZE).map(DiscordResultCaptureWorkflow::challengeChoice)
                 .forEach(choice -> choices.putIfAbsent(choice.challengeNumber(), choice));
         List<PhotoChoice> photos = new ArrayList<>();
         photos.add(new PhotoChoice(Draft.NO_PHOTO, "Kein Foto", draft.selectedPhoto == Draft.NO_PHOTO));
@@ -715,8 +753,12 @@ final class DiscordResultCaptureWorkflow {
         private Long participantId;
         private FormData form;
         private Long expectedResultVersion;
+        private Long expectedPhotoVersion;
+        private boolean expectedPhotoVersionCaptured;
         private int mappingIndex;
         private String catalogSearch;
+        private Long mappingExpectedResultVersion;
+        private Long mappingExpectedIngredientId;
         private Instant expiresAt;
 
         private Draft(long guildId, String ownerUserId, Mode mode) {
@@ -794,7 +836,6 @@ final class DiscordResultCaptureWorkflow {
             if (draft.guildId != guildId || !draft.ownerUserId.equals(ownerUserId)) {
                 throw rejected("Dieser kurzlebige Entwurf gehört zu einem anderen Operator oder einer anderen Guild.");
             }
-            draft.expiresAt = clock.instant().plus(ttl);
             return draft;
         }
 
