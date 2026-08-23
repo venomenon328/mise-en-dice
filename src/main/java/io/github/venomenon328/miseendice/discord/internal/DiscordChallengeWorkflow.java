@@ -179,12 +179,7 @@ final class DiscordChallengeWorkflow {
         Map<Long, String> names = new HashMap<>();
         for (SelectionVotingQueries.ElectorateMemberView member : selection.electorate()) {
             participantQueries.findExternalIdentity(member.participantId(), DiscordProperties.PROVIDER).ifPresent(identity -> {
-                try {
-                    String current = memberNames.resolve(identity.externalSubject(), member.displayName());
-                    names.put(member.participantId(), current == null || current.isBlank() ? member.displayName() : current);
-                } catch (RuntimeException ignored) {
-                    names.put(member.participantId(), member.displayName());
-                }
+                names.put(member.participantId(), memberNames.resolveOrFallback(identity.externalSubject(), member.displayName()));
             });
         }
         return (participantId, storedFallback) -> names.getOrDefault(participantId, storedFallback);

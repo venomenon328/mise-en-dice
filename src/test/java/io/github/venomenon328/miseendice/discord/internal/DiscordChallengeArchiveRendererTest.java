@@ -117,6 +117,21 @@ class DiscordChallengeArchiveRendererTest {
                 .doesNotContain("Konkretisierungen");
     }
 
+    @Test
+    void usesTheAdapterResolvedGuildNameForTheResultTitle() {
+        ChallengeResultView result = new ChallengeResultView(101, 12,
+                new ParticipantReference(7, "PARTICIPANT_7", "Gespeicherter Name", true),
+                "Gericht", "Beschreibung", null, List.of(), false, 0,
+                Instant.parse("2026-08-22T12:15:30Z"), Instant.parse("2026-08-22T12:15:30Z"));
+        PublicChallenge challenge = challenge(12, false, standardRequirements(), RestrictionSnapshot.none(),
+                ChallengeStatus.ACTIVE, 1, List.of(result));
+
+        String title = renderer.detail(challenge, Optional.empty(), Map.of(), participantId -> "Guild-Name")
+                .resultFollowUps().getFirst().title();
+
+        assertThat(title).contains("Guild-Name").doesNotContain("Gespeicherter Name");
+    }
+
     private static PublicChallenge challenge(long number, boolean cardAvailable, List<RequirementSnapshot> requirements,
                                               RestrictionSnapshot restriction) {
         return challenge(number, cardAvailable, requirements, restriction, ChallengeStatus.ACTIVE, 0, List.of());

@@ -125,18 +125,20 @@ final class DiscordResultCaptureJdaListener {
             return;
         }
         Long challengeNumber = positiveLong(event.getOption("nummer"));
-        User person = event.getOption("person") == null ? null : event.getOption("person").getAsUser();
+        OptionMapping personOption = event.getOption("person");
+        User person = personOption == null ? null : personOption.getAsUser();
         if (challengeNumber == null || person == null) {
             reject(event, "`nummer` muss positiv und `person` muss gesetzt sein.");
             return;
         }
+        String personDisplayName = interactionDisplayName(personOption, person);
         try {
             switch (event.getSubcommandName()) {
                 case "ergebnis-bearbeiten" -> event.reply(editPreparationCreate(
-                        workflow.startEditPreparation(context, challengeNumber, person.getId())))
+                        workflow.startEditPreparation(context, challengeNumber, person.getId(), personDisplayName)))
                         .setEphemeral(true).queue();
                 case "ergebnis-entfernen" -> {
-                    var confirmation = workflow.startRemove(context, challengeNumber, person.getId());
+                    var confirmation = workflow.startRemove(context, challengeNumber, person.getId(), personDisplayName);
                     event.reply(removalConfirmation(confirmation)).setEphemeral(true).queue();
                 }
                 case "ergebnis-foto-setzen" -> {
@@ -147,13 +149,13 @@ final class DiscordResultCaptureJdaListener {
                         return;
                     }
                     boolean replace = event.getOption("ersetzen") != null && event.getOption("ersetzen").getAsBoolean();
-                    event.deferReply(true).queue(hook -> executor.execute(() -> directMutation(hook,
+                    event.deferReply(true).queue(hook -> executor.execute(() -> directMutation(hook, memberNames(event.getGuild()),
                             () -> workflow.setPhoto(context, challengeNumber, person.getId(),
                                     new JdaPhotoSource(attachment), replace))),
                             failure -> log.warn("Discord result photo acknowledgement failed", failure));
                 }
                 case "ergebnis-foto-entfernen" -> event.deferReply(true).queue(hook -> executor.execute(() ->
-                                directMutation(hook, () -> workflow.removePhoto(context, challengeNumber, person.getId()))),
+                                directMutation(hook, memberNames(event.getGuild()), () -> workflow.removePhoto(context, challengeNumber, person.getId()))),
                         failure -> log.warn("Discord result photo removal acknowledgement failed", failure));
                 default -> reject(event, "Dieser Ergebnis-Command ist nicht bekannt.");
             }
@@ -186,10 +188,10 @@ final class DiscordResultCaptureJdaListener {
                         workflow.editConcretizationModal(context, id[1]), "concrete-edit")).queue();
                 case "page" -> edit(event, preparationEdit(workflow.navigateChallenges(context, id[1],
                         Integer.parseInt(id[2]))));
-                case "replace" -> event.deferEdit().queue(hook -> executor.execute(() -> captureSubmission(hook,
+                case "replace" -> event.deferEdit().queue(hook -> executor.execute(() -> captureSubmission(hook, memberNames(event.getGuild()),
                                 workflow.confirmCaptureReplacement(context, id[1]))),
                         failure -> log.warn("Discord result replacement acknowledgement failed", failure));
-                case "remove" -> event.deferEdit().queue(hook -> executor.execute(() -> directMutation(hook,
+                case "remove" -> event.deferEdit().queue(hook -> executor.execute(() -> directMutation(hook, memberNames(event.getGuild()),
                                 () -> workflow.confirmRemove(context, id[1]))),
                         failure -> log.warn("Discord result removal acknowledgement failed", failure));
                 case "map" -> edit(event, mappingEdit(workflow.startMapping(context, id[1])));
@@ -257,8 +259,10 @@ final class DiscordResultCaptureJdaListener {
             return;
         }
         try {
-            Member member = event.getGuild() == null ? null : event.getGuild().getMember(selected);
-            String name = member == null ? selected.getName() : member.getEffectiveName();
+            Member selectedMember = event.getMentions().getMembers().stream()
+                    .filter(member -> member.getId().equals(selected.getId()))
+                    .findFirst().orElse(null);
+            String name = selectedMember == null ? selected.getName() : selectedMember.getEffectiveName();
             edit(event, preparationEdit(workflow.selectPerson(context, id[1], selected.getId(), name)));
         } catch (Rejected rejected) {
             reject(event, rejected.getMessage());
@@ -282,7 +286,7 @@ final class DiscordResultCaptureJdaListener {
         switch (id[0]) {
             case "capture" -> event.deferEdit().queue(hook -> executor.execute(() -> {
                 try {
-                    captureSubmission(hook, workflow.submitCapture(context, id[1], form(event), false));
+                    captureSubmission(hook, memberNames(event.getGuild()), workflow.submitCapture(context, id[1], form(event), false));
                 } catch (Rejected rejected) {
                     hook.editOriginal(retryEdit(rejected.getMessage(), "open", id[1])).queue();
                 } catch (RuntimeException exception) {
@@ -291,7 +295,7 @@ final class DiscordResultCaptureJdaListener {
             }), failure -> log.warn("Discord result modal acknowledgement failed", failure));
             case "edit" -> event.deferReply(true).queue(hook -> executor.execute(() -> {
                 try {
-                    publishSaved(hook, workflow.submitEdit(context, id[1], form(event)));
+                    publishSaved(hook, memberNames(event.getGuild()), workflow.submitEdit(context, id[1], form(event)));
                 } catch (Rejected rejected) {
                     hook.editOriginal(retryEdit(rejected.getMessage(), "edit-open", id[1])).queue();
                 } catch (RuntimeException exception) {
@@ -310,7 +314,7 @@ final class DiscordResultCaptureJdaListener {
             }), failure -> log.warn("Discord result concretization modal acknowledgement failed", failure));
             case "concrete-edit" -> event.deferEdit().queue(hook -> executor.execute(() -> {
                 try {
-                    publishSaved(hook, workflow.submitEditConcretizations(context, id[1],
+                    publishSaved(hook, memberNames(event.getGuild()), workflow.submitEditConcretizations(context, id[1],
                             concretizationValues(event)));
                 } catch (Rejected rejected) {
                     hook.editOriginal(textEdit(rejected.getMessage())).queue();
@@ -332,17 +336,17 @@ final class DiscordResultCaptureJdaListener {
         }
     }
 
-    private void captureSubmission(InteractionHook hook, CaptureSubmission submission) {
+    private void captureSubmission(InteractionHook hook, DiscordMemberNameResolver memberNames, CaptureSubmission submission) {
         if (submission instanceof ReplaceConfirmation confirmation) {
             hook.editOriginal(replaceConfirmation(confirmation)).queue();
         } else {
-            publishSaved(hook, (Saved) submission);
+            publishSaved(hook, memberNames, (Saved) submission);
         }
     }
 
-    private void directMutation(InteractionHook hook, Mutation operation) {
+    private void directMutation(InteractionHook hook, DiscordMemberNameResolver memberNames, Mutation operation) {
         try {
-            publishSaved(hook, operation.run());
+            publishSaved(hook, memberNames, operation.run());
         } catch (Rejected rejected) {
             hook.editOriginal(textEdit(rejected.getMessage())).queue();
         } catch (RuntimeException exception) {
@@ -358,24 +362,27 @@ final class DiscordResultCaptureJdaListener {
             hook.editOriginal(textEdit(complete.message())).queue();
         }
     }
-    private void publishSaved(InteractionHook hook, Saved saved) {
+
+    private void publishSaved(InteractionHook hook, DiscordMemberNameResolver memberNames, Saved saved) {
+        DiscordChallengeArchiveRenderer.RenderedChallenge rendered;
+        try {
+            // This method runs on the configured executor. Resolve any uncached Guild members here, before entering
+            // JDA RestAction callbacks where blocking complete() calls are forbidden.
+            rendered = archiveWorkflow.renderedDetail(saved.challengeNumber(), memberNames);
+        } catch (RuntimeException exception) {
+            log.warn("Persisted result could not be rendered publicly", exception);
+            hook.editOriginal(savedEdit(saved, false, true)).queue();
+            return;
+        }
         MessageEditData initial = savedEdit(saved, false, false);
-        hook.editOriginal(initial).queue(ignored -> {
-            DiscordChallengeArchiveRenderer.RenderedChallenge rendered;
-            try {
-                rendered = archiveWorkflow.renderedDetail(saved.challengeNumber());
-            } catch (RuntimeException exception) {
-                log.warn("Persisted result could not be rendered publicly", exception);
-                hook.editOriginal(savedEdit(saved, false, true)).queue();
-                return;
-            }
-            hook.sendMessage(DiscordJdaListener.archiveCreateMessage(rendered.challenge()))
-                    .setAllowedMentions(List.of()).setEphemeral(false)
-                    .queue(message -> DiscordJdaListener.publishArchiveFollowUps(hook, rendered.resultFollowUps(), 0,
-                                    executor, () -> hook.editOriginal(savedEdit(saved, true, false)).queue(),
-                                    failure -> hook.editOriginal(savedEdit(saved, false, true)).queue()),
-                            failure -> hook.editOriginal(savedEdit(saved, false, true)).queue());
-        }, failure -> log.warn("Persisted result status could not be delivered", failure));
+        hook.editOriginal(initial).queue(ignored ->
+                hook.sendMessage(DiscordJdaListener.archiveCreateMessage(rendered.challenge()))
+                        .setAllowedMentions(List.of()).setEphemeral(false)
+                        .queue(message -> DiscordJdaListener.publishArchiveFollowUps(hook, rendered.resultFollowUps(), 0,
+                                        executor, () -> hook.editOriginal(savedEdit(saved, true, false)).queue(),
+                                        failure -> hook.editOriginal(savedEdit(saved, false, true)).queue()),
+                                failure -> hook.editOriginal(savedEdit(saved, false, true)).queue()),
+                failure -> log.warn("Persisted result status could not be delivered", failure));
     }
 
     private void technical(InteractionHook hook, RuntimeException exception) {
@@ -388,6 +395,25 @@ final class DiscordResultCaptureJdaListener {
         boolean operator = guild != null && guild.getIdLong() == properties.guildId() && member != null
                 && member.getRoles().stream().anyMatch(role -> role.getIdLong() == properties.challengeOperatorRoleId());
         return new OperatorContext(guild == null ? 0 : guild.getIdLong(), user.getId(), operator);
+    }
+
+    private DiscordMemberNameResolver memberNames(Guild guild) {
+        if (guild == null) {
+            return DiscordMemberNameResolver.storedFallback();
+        }
+        return (userId, storedFallback) -> {
+            try {
+                return guild.retrieveMemberById(userId).complete().getEffectiveName();
+            } catch (RuntimeException exception) {
+                log.debug("Could not resolve current Discord member display name for user {}", userId, exception);
+                return storedFallback;
+            }
+        };
+    }
+
+    private static String interactionDisplayName(OptionMapping personOption, User person) {
+        Member resolvedMember = personOption == null ? null : personOption.getAsMember();
+        return resolvedMember == null ? person.getName() : resolvedMember.getEffectiveName();
     }
 
     static MessageCreateData preparationCreate(Preparation preparation) {

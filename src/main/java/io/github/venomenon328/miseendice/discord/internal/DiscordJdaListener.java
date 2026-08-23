@@ -229,7 +229,8 @@ final class DiscordJdaListener extends ListenerAdapter {
         }
         String subcommand = event.getSubcommandName();
         if ("liste".equals(subcommand)) {
-            event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.list(
+            Guild guild = event.getGuild();
+            event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.list(memberNames(guild),
                     new HookParticipantAdministrationDelivery(hook))),
                     failure -> log.warn("Discord participant list acknowledgement failed", failure));
             return;
@@ -249,31 +250,31 @@ final class DiscordJdaListener extends ListenerAdapter {
                 return;
             }
             event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.create(
-                    discordUserId, fallbackName, new HookParticipantAdministrationDelivery(hook))),
+                    discordUserId, fallbackName, memberNames(event.getGuild()), new HookParticipantAdministrationDelivery(hook))),
                     failure -> log.warn("Discord participant create acknowledgement failed", failure));
             return;
         }
         if ("aktivieren".equals(subcommand)) {
             event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.activate(
-                    discordUserId, new HookParticipantAdministrationDelivery(hook))),
+                    discordUserId, memberNames(event.getGuild()), new HookParticipantAdministrationDelivery(hook))),
                     failure -> log.warn("Discord participant activation acknowledgement failed", failure));
             return;
         }
         if ("deaktivieren".equals(subcommand)) {
             event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.deactivate(
-                    discordUserId, new HookParticipantAdministrationDelivery(hook))),
+                    discordUserId, memberNames(event.getGuild()), new HookParticipantAdministrationDelivery(hook))),
                     failure -> log.warn("Discord participant deactivation acknowledgement failed", failure));
             return;
         }
         if ("elektorat-hinzufuegen".equals(subcommand)) {
             event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.addToDefaultElectorate(
-                    discordUserId, new HookParticipantAdministrationDelivery(hook))),
+                    discordUserId, memberNames(event.getGuild()), new HookParticipantAdministrationDelivery(hook))),
                     failure -> log.warn("Discord electorate addition acknowledgement failed", failure));
             return;
         }
         if ("elektorat-entfernen".equals(subcommand)) {
             event.deferReply(true).queue(hook -> executor.execute(() -> participantAdministrationWorkflow.removeFromDefaultElectorate(
-                    discordUserId, new HookParticipantAdministrationDelivery(hook))),
+                    discordUserId, memberNames(event.getGuild()), new HookParticipantAdministrationDelivery(hook))),
                     failure -> log.warn("Discord electorate removal acknowledgement failed", failure));
             return;
         }
@@ -312,7 +313,8 @@ final class DiscordJdaListener extends ListenerAdapter {
         }
         String subcommand = event.getSubcommandName();
         if ("letzte".equals(subcommand)) {
-            event.deferReply().queue(hook -> executor.execute(() -> archiveWorkflow.latest(
+            Guild guild = event.getGuild();
+            event.deferReply().queue(hook -> executor.execute(() -> archiveWorkflow.latest(memberNames(guild),
                     new HookArchiveDelivery(hook, executor), new HookArchiveFeedback(hook))),
                     failure -> log.warn("Discord challenge archive acknowledgement failed", failure));
             return;
@@ -339,7 +341,8 @@ final class DiscordJdaListener extends ListenerAdapter {
                 ephemeralReply(event, "`nummer` muss positiv sein.");
                 return;
             }
-            event.deferReply().queue(hook -> executor.execute(() -> archiveWorkflow.show(challengeNumber,
+            Guild guild = event.getGuild();
+            event.deferReply().queue(hook -> executor.execute(() -> archiveWorkflow.show(challengeNumber, memberNames(guild),
                     new HookArchiveDelivery(hook, executor), new HookArchiveFeedback(hook))),
                     failure -> log.warn("Discord challenge archive acknowledgement failed", failure));
             return;
@@ -360,7 +363,8 @@ final class DiscordJdaListener extends ListenerAdapter {
                 ephemeralReply(event, "`nummer` muss positiv sein.");
                 return;
             }
-            event.deferReply(true).queue(hook -> executor.execute(() -> archiveWorkflow.complete(challengeNumber,
+            Guild guild = event.getGuild();
+            event.deferReply(true).queue(hook -> executor.execute(() -> archiveWorkflow.complete(challengeNumber, memberNames(guild),
                     new HookArchiveMutationDelivery(hook, executor))),
                     failure -> log.warn("Discord challenge completion acknowledgement failed", failure));
             return;
@@ -371,7 +375,8 @@ final class DiscordJdaListener extends ListenerAdapter {
                 ephemeralReply(event, "`nummer` muss positiv sein.");
                 return;
             }
-            event.deferReply(true).queue(hook -> executor.execute(() -> archiveWorkflow.removeCard(challengeNumber,
+            Guild guild = event.getGuild();
+            event.deferReply(true).queue(hook -> executor.execute(() -> archiveWorkflow.removeCard(challengeNumber, memberNames(guild),
                     new HookArchiveMutationDelivery(hook, executor))),
                     failure -> log.warn("Discord challenge Card acknowledgement failed", failure));
             return;
@@ -397,8 +402,9 @@ final class DiscordJdaListener extends ListenerAdapter {
             return;
         }
         boolean replaceExisting = event.getOption("ersetzen") != null && event.getOption("ersetzen").getAsBoolean();
+        Guild guild = event.getGuild();
         event.deferReply(true).queue(hook -> executor.execute(() -> archiveWorkflow.setCard(challengeNumber, replaceExisting,
-                new JdaAttachmentSource(attachment), new HookArchiveMutationDelivery(hook, executor))),
+                new JdaAttachmentSource(attachment), memberNames(guild), new HookArchiveMutationDelivery(hook, executor))),
                 failure -> log.warn("Discord challenge Card acknowledgement failed", failure));
     }
 
@@ -500,6 +506,9 @@ final class DiscordJdaListener extends ListenerAdapter {
     }
 
     private DiscordMemberNameResolver memberNames(Guild guild) {
+        if (guild == null) {
+            return DiscordMemberNameResolver.storedFallback();
+        }
         return (userId, storedFallback) -> {
             try {
                 Member member = guild.retrieveMemberById(userId).complete();

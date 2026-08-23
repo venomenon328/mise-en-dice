@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.LongFunction;
 
 /** Pure, bounded presentation mapping for the public challenge archive. */
 final class DiscordChallengeArchiveRenderer {
@@ -50,7 +51,7 @@ final class DiscordChallengeArchiveRenderer {
     }
 
     RenderedChallenge detail(PublicChallenge challenge, Optional<ChallengeCardBinary> card,
-                             Map<Long, ChallengeResultPhotoBinary> resultPhotos) {
+                             Map<Long, ChallengeResultPhotoBinary> resultPhotos, LongFunction<String> participantNames) {
         StringBuilder description = new StringBuilder("Bestätigt am ")
                 .append(CONFIRMED_DATE.withZone(dateZone).format(challenge.confirmedAt()))
                 .append("\n\n**Status**\n")
@@ -69,9 +70,16 @@ final class DiscordChallengeArchiveRenderer {
                 .orElseGet(() -> new RenderedDetail("Challenge #" + challenge.challengeNumber(), description.toString(), null, null));
         List<RenderedDetail> results = java.util.stream.IntStream.range(0, challenge.results().size())
                 .mapToObj(index -> result(challenge.challengeNumber(), index + 1, challenge.results().get(index),
-                        resultPhotos.get(challenge.results().get(index).participant().participantId())))
+                        resultPhotos.get(challenge.results().get(index).participant().participantId()), participantNames))
                 .toList();
         return new RenderedChallenge(challengeDetail, results);
+    }
+
+    RenderedChallenge detail(PublicChallenge challenge, Optional<ChallengeCardBinary> card,
+                             Map<Long, ChallengeResultPhotoBinary> resultPhotos) {
+        return detail(challenge, card, resultPhotos, participantId -> challenge.results().stream()
+                .filter(result -> result.participant().participantId() == participantId)
+                .findFirst().map(result -> result.participant().displayName()).orElse(""));
     }
 
     RenderedText list(ChallengePage page) {
@@ -128,7 +136,7 @@ final class DiscordChallengeArchiveRenderer {
     }
 
     private RenderedDetail result(long challengeNumber, int resultNumber, ChallengeResultView result,
-                                  ChallengeResultPhotoBinary photo) {
+                                  ChallengeResultPhotoBinary photo, LongFunction<String> participantNames) {
         boolean hasConcretizations = !result.concretizations().isEmpty();
         int ingredientsLimit = hasConcretizations
                 ? RESULT_WITH_CONCRETIZATIONS_INGREDIENTS_LIMIT : RESULT_INGREDIENTS_LIMIT;
@@ -163,7 +171,7 @@ final class DiscordChallengeArchiveRenderer {
             description.append("\n\n**Bewertung**\n")
                     .append(safe(result.evaluation(), evaluationLimit));
         }
-        String title = "🍽️ " + safe(result.participant().displayName(), 100) + " – " + safe(result.dishName(), 130);
+        String title = "🍽️ " + safe(participantNames.apply(result.participant().participantId()), 100) + " – " + safe(result.dishName(), 130);
         if (photo == null) {
             return new RenderedDetail(title, description.toString(), null, null);
         }

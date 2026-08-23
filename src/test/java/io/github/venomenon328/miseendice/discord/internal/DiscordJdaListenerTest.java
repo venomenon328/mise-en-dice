@@ -114,7 +114,7 @@ class DiscordJdaListenerTest {
         new DiscordJdaListener(new DiscordProperties(true, "token", 99, 77777, ZoneId.of("Europe/Berlin"), Map.of()),
                 challengeWorkflow, null, null, participantWorkflow, Runnable::run).onSlashCommandInteraction(event);
 
-        org.mockito.Mockito.verify(participantWorkflow).list(any());
+        org.mockito.Mockito.verify(participantWorkflow).list(any(DiscordMemberNameResolver.class), any());
         org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
     }
 
@@ -486,7 +486,7 @@ class DiscordJdaListenerTest {
         archiveListener(challengeWorkflow, archiveWorkflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event).deferReply();
-        org.mockito.Mockito.verify(archiveWorkflow).latest(any(), any());
+        org.mockito.Mockito.verify(archiveWorkflow).latest(any(DiscordMemberNameResolver.class), any(), any());
         org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
         org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
     }
@@ -526,7 +526,7 @@ class DiscordJdaListenerTest {
         archiveListener(challengeWorkflow, archiveWorkflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event, never()).getOption("nummer");
-        org.mockito.Mockito.verify(archiveWorkflow, never()).complete(any(), any());
+        org.mockito.Mockito.verify(archiveWorkflow, never()).complete(any(), any(DiscordMemberNameResolver.class), any());
     }
 
     @Test
@@ -545,7 +545,7 @@ class DiscordJdaListenerTest {
         archiveListener(challengeWorkflow, archiveWorkflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event).deferReply(true);
-        org.mockito.Mockito.verify(archiveWorkflow).complete(eq(4L), any());
+        org.mockito.Mockito.verify(archiveWorkflow).complete(eq(4L), any(DiscordMemberNameResolver.class), any());
         org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
     }
 
@@ -565,7 +565,7 @@ class DiscordJdaListenerTest {
         archiveListener(challengeWorkflow, archiveWorkflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event, never()).getOption("bild");
-        org.mockito.Mockito.verify(archiveWorkflow, never()).setCard(any(), eq(false), any(), any());
+        org.mockito.Mockito.verify(archiveWorkflow, never()).setCard(any(), eq(false), any(), any(DiscordMemberNameResolver.class), any());
     }
 
     @Test
@@ -587,7 +587,8 @@ class DiscordJdaListenerTest {
         archiveListener(challengeWorkflow, archiveWorkflow).onSlashCommandInteraction(event);
 
         org.mockito.Mockito.verify(event).deferReply(true);
-        org.mockito.Mockito.verify(archiveWorkflow).setCard(org.mockito.ArgumentMatchers.isNull(), eq(false), any(), any());
+        org.mockito.Mockito.verify(archiveWorkflow).setCard(org.mockito.ArgumentMatchers.isNull(), eq(false), any(),
+                any(DiscordMemberNameResolver.class), any());
         org.mockito.Mockito.verify(acknowledgement).queue(any(), any());
     }
 
