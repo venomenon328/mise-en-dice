@@ -36,6 +36,12 @@ final class CatalogIngredientSnapshotFactory {
             dimension.put("level", value.level());
             return dimension;
         }).toList());
+        values.put("culinaryCountries", detail.culinaryCountries().stream().map(value -> {
+            Map<String, Object> country = new LinkedHashMap<>();
+            country.put("code", value.code());
+            country.put("displayName", value.displayName());
+            return country;
+        }).toList());
         values.put("availability", detail.availability().stream().map(value -> {
             Map<String, Object> availability = referenceSnapshot(
                     value.participant().code(), value.participant().displayName(), value.participant().description());

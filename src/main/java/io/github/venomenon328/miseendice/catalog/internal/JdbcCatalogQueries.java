@@ -6,6 +6,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvail
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvailabilityValue;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogConceptDetail;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogConceptRelation;
+import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogCountry;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogRelationCandidate;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogDimensionValue;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogFilterOptions;
@@ -145,6 +146,7 @@ public class JdbcCatalogQueries implements CatalogQueries {
                         order by lower(cf.display_name), cf.id
                         """, conceptId),
                 findDimensions(conceptId),
+                findCulinaryCountries(conceptId),
                 findAvailabilityForDetail(conceptId),
                 findSeasonality(conceptId),
                 jdbcTemplate.queryForList("""
@@ -162,7 +164,8 @@ public class JdbcCatalogQueries implements CatalogQueries {
         return new CatalogFilterOptions(
                 findReferences("select code, display_name, description from functional_role order by lower(display_name), id"),
                 findReferences("select code, display_name, description from culinary_flag order by lower(display_name), id"),
-                findReferences("select code, display_name, description from culinary_dimension order by id")
+                findReferences("select code, display_name, description from culinary_dimension order by id"),
+                findCulinaryCountries()
         );
     }
 
@@ -243,6 +246,8 @@ public class JdbcCatalogQueries implements CatalogQueries {
         addReferenceFilter(predicates, arguments, criteria.culinaryFlagCodes(),
                 "ingredient_culinary_flag icf join culinary_flag cf on cf.id = icf.culinary_flag_id",
                 "icf.ingredient_concept_id", "cf.code");
+        addReferenceFilter(predicates, arguments, criteria.culinaryCountryCodes(),
+                "ingredient_culinary_country icc", "icc.ingredient_concept_id", "icc.country_code");
         addAvailabilityFilter(predicates, arguments, "GEORGIA", criteria.georgiaAvailability());
         addAvailabilityFilter(predicates, arguments, "TOBIAS", criteria.tobiasAvailability());
         addNoveltyFilter(predicates, arguments, criteria.novelty());
@@ -430,6 +435,25 @@ public class JdbcCatalogQueries implements CatalogQueries {
                         resultSet.getString("description")
                 ),
                 arguments);
+    }
+
+    private List<CatalogCountry> findCulinaryCountries(long conceptId) {
+        return jdbcTemplate.query("""
+                select cc.code, cc.display_name
+                from ingredient_culinary_country icc
+                join culinary_country cc on cc.code = icc.country_code
+                where icc.ingredient_concept_id = ?
+                order by cc.code
+                """,
+                (resultSet, rowNumber) -> new CatalogCountry(
+                        resultSet.getString("code"), resultSet.getString("display_name")),
+                conceptId);
+    }
+
+    private List<CatalogCountry> findCulinaryCountries() {
+        return jdbcTemplate.query("select code, display_name from culinary_country order by code",
+                (resultSet, rowNumber) -> new CatalogCountry(
+                        resultSet.getString("code"), resultSet.getString("display_name")));
     }
 
     private List<CatalogDimensionValue> findDimensions(long conceptId) {

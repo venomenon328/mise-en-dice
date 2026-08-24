@@ -1,6 +1,6 @@
 # Datenmodell
 
-Stand: 23. August 2026
+Stand: 24. August 2026
 
 Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt als explizit geordnete Liquibase-Changesets vor:
 
@@ -20,8 +20,9 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 - [`014-participant-electorate-core.sql`](../src/main/resources/db/changelog/schema/014-participant-electorate-core.sql) für das persistente Standard-Elektorat, immutable Participant-Codes und die Vor-Generierung-Materialisierung
 - [`015-challenge-results-completion-core.sql`](../src/main/resources/db/changelog/schema/015-challenge-results-completion-core.sql) für Ergebnisdaten, optionale Fotos, Abschlusszeitpunkte und Statusprojektionen
 - [`016-result-open-requirement-concretizations.sql`](../src/main/resources/db/changelog/schema/016-result-open-requirement-concretizations.sql) für persönliche Konkretisierungen historisch offener Challenge-Vorgaben
+- [`017-culinary-country-associations.sql`](../src/main/resources/db/changelog/schema/017-culinary-country-associations.sql) für den Länder-Referenzbestand und explizite kulinarische Länderzuordnungen
 
-Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben.
+Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben. Die redaktionelle Semantik der Länderrelation ist separat in [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md) festgehalten.
 
 ## 1. Ziel und Abgrenzung
 
@@ -111,6 +112,16 @@ Abgestufte Dimensionen verwenden **fünf Stufen**:
 Ein fehlender Wert bedeutet nicht automatisch Stufe 1, sondern „nicht gepflegt beziehungsweise für die aktuelle Nutzung nicht relevant“.
 
 Eigenschaften werden wie Rollen zunächst nicht automatisch vererbt.
+
+### 5.1 Kulinarische Länderzuordnungen
+
+`culinary_country` enthält den migrationsgeführten ISO-3166-1-Alpha-2-Referenzbestand aus stabilem Code und deutschem Anzeigenamen. `ingredient_culinary_country` ordnet einem konkreten `ingredient_concept` null bis beliebig viele Länder zu.
+
+Eine Zuordnung ist eine kuratierte positive Aussage über kulinarische Relevanz und Informationswert für eine nationale Küche. Sie ist keine Herkunfts-, Erfindungs- oder Exklusivitätsbehauptung. Auch global verbreitete Grundzutaten dürfen zugeordnet werden, wenn ihre besondere Bedeutung fachlich ausreichend Signal trägt; eine fehlende Relation bedeutet lediglich, dass keine positive Zuordnung gepflegt wurde.
+
+Die Relation gilt ausschließlich für das konkret gepflegte Konzept. Weder Parent→Child noch Child→Parent wird über `ingredient_refinement` abgeleitet. Eine Deaktivierung löscht vorhandene Länderzuordnungen nicht. Die Relation besitzt im ersten Stand keine Gewichtung, Stärke oder Typisierung.
+
+Die administrationsorientierte Katalogprojektion und das Audit führen Code und Anzeigename. Länderzuordnungen sind ausdrücklich nicht Teil von `CatalogGeneratorProjection`, Generation Context, Candidate-Signatur, Replay, Fingerprints, Kuration oder Challenge-Semantik. Die ausführlichen Redaktionsregeln stehen in [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md).
 
 ## 6. Beschaffbarkeit
 
@@ -374,7 +385,7 @@ Replay verwendet den gespeicherten 1.2-Snapshot und nicht den aktuellen Katalog.
 
 ## 13. Administrationsversionen und Katalog-Audit
 
-`ingredient_concept.version` und `exclusion_rule.version` starten für bestehende und neue Datensätze bei `0`. Sie schützen jeweils das gesamte künftig bearbeitete Verwaltungsaggregat. Ein schreibender Application Service verwendet den erwarteten Versionswert und erhöht die Version nur im selben erfolgreichen Update; ein nicht aktualisierter Datensatz signalisiert einen fachlichen Konkurrenzkonflikt. Zugeordnete Rollen, Eigenschaften, Verfügbarkeiten, Saisonwerte und direkte Konkretisierungsbeziehungen erhalten keine eigenen UI-Versionen. Eine direkte Konkretisierungsänderung prüft die erwarteten Versionen aller betroffenen Zutaten, sperrt diese in deterministischer ID-Reihenfolge und erhöht jede betroffene Version pro erfolgreichem Save genau einmal.
+`ingredient_concept.version` und `exclusion_rule.version` starten für bestehende und neue Datensätze bei `0`. Sie schützen jeweils das gesamte künftig bearbeitete Verwaltungsaggregat. Ein schreibender Application Service verwendet den erwarteten Versionswert und erhöht die Version nur im selben erfolgreichen Update; ein nicht aktualisierter Datensatz signalisiert einen fachlichen Konkurrenzkonflikt. Zugeordnete Rollen, Eigenschaften, Länderzuordnungen, Verfügbarkeiten, Saisonwerte und direkte Konkretisierungsbeziehungen erhalten keine eigenen UI-Versionen. Eine direkte Konkretisierungsänderung prüft die erwarteten Versionen aller betroffenen Zutaten, sperrt diese in deterministischer ID-Reihenfolge und erhöht jede betroffene Version pro erfolgreichem Save genau einmal.
 
 `catalog_audit_entry` hält jede erfolgreiche redaktionelle Änderung dauerhaft fest:
 
@@ -430,3 +441,5 @@ Der Master-Changelog führt die Schemas, Referenzdaten, den initialen Katalog, s
 Die einmalige Finalisierung in `catalog/016-final-catalog-snapshot.sql` bildet dabei eine bewusst enge Upgrade-Brücke: Als Ausgangszustand sind nur die unberührte Repository-Baseline und die dokumentierte Produktions-Fixture vom 13. August 2026 zulässig. Ein kanonischer, codebasierter Precondition-Fingerprint schließt technische IDs, Zeitstempel und Optimistic-Locking-Versionen aus und lehnt jeden anderen fachlichen Zustand vor dem ersten Schreibzugriff sichtbar ab. Beide zulässigen Pfade ergeben denselben normalisierten SHA-256-Snapshot `26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52`; bestehende IDs bleiben beim Upgrade erhalten. Nach der einmaligen Ausführung ist wieder die laufende Datenbank redaktionelle Quelle der Wahrheit.
 
 [`001-seed-sanity.sql`](../src/main/resources/db/changelog/checks/001_seed_sanity.sql) prüft beim ersten Aufbau insbesondere, dass der aktive Ziehungspool ausreichend groß ist und jeder aktive Zieh-Kandidat funktionale Rollen sowie Beschaffbarkeitsdaten für Georgia und Tobias besitzt. Die vollständige Ausführung wird zusätzlich in PostgreSQL-Testcontainers-Integrationstests geprüft.
+
+Die append-only Migration `schema/017-culinary-country-associations.sql` ergänzt anschließend ausschließlich den ISO-Länderreferenzbestand und die leere n:m-Struktur. Sie verändert weder den bestehenden Zutatenkatalog noch Generator-Snapshots. Produktive Zeilen in `ingredient_culinary_country` werden durch Issue #166 ausdrücklich nicht angelegt; ihre spätere Befüllung ist eine eigenständige redaktionelle Datenänderung.
