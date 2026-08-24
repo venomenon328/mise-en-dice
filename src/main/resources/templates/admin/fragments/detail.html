@@ -150,6 +150,20 @@
         </dl>
     </section>
 
+    <section class="detail-section" data-testid="culinary-country-detail">
+        <div class="detail-section-heading">
+            <p class="section-kicker">Katalogwissen</p>
+            <h3>Kulinarische Zuordnung</h3>
+        </div>
+        <ul class="chip-list">
+            <li th:each="country : ${detail.culinaryCountries}" class="property-chip property-chip--accent">
+                <span th:text="${country.displayName}">Deutschland</span>
+                <code th:text="${country.code}">DE</code>
+            </li>
+            <li th:if="${detail.culinaryCountries.isEmpty()}" class="muted-copy">Keine kulinarische Zuordnung gepflegt.</li>
+        </ul>
+    </section>
+
     <section class="detail-section">
         <div class="detail-section-heading">
             <p class="section-kicker">Einkauf</p>
@@ -232,6 +246,7 @@
                     <div th:classappend="${form.curatorNote != (currentDetail.curatorNote ?: '')} ? ' is-different'"><dt>Kuratornotiz</dt><dd th:text="${form.curatorNote.isEmpty() ? 'keine' : form.curatorNote}">keine</dd></div>
                     <div><dt>Rollen</dt><dd th:text="${#strings.listJoin(form.metadata.functionalRoleCodes, ', ')} ?: 'nicht gepflegt'">nicht gepflegt</dd></div>
                     <div><dt>Flags</dt><dd th:text="${#strings.listJoin(form.metadata.culinaryFlagCodes, ', ')} ?: 'keine'">keine</dd></div>
+                    <div><dt>Kulinarische Zuordnung</dt><dd th:text="${#strings.listJoin(form.metadata.culinaryCountryCodes, ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Dimensionen</dt><dd th:text="${form.metadata.culinaryDimensionLevels}">nicht gepflegt</dd></div>
                     <div><dt>Beschaffbarkeit</dt><dd th:text="${form.metadata.availabilityByParticipant}">nicht gepflegt</dd></div>
                     <div><dt>Saison</dt><dd th:text="${form.metadata.seasonalityByMonth}">1.0</dd></div>
@@ -255,6 +270,7 @@
                     <div th:classappend="${form.curatorNote != (currentDetail.curatorNote ?: '')} ? ' is-different'"><dt>Kuratornotiz</dt><dd th:text="${currentDetail.curatorNote ?: 'keine'}">keine</dd></div>
                     <div><dt>Rollen</dt><dd th:text="${#strings.listJoin(currentDetail.functionalRoles.![code], ', ')} ?: 'nicht gepflegt'">nicht gepflegt</dd></div>
                     <div><dt>Flags</dt><dd th:text="${#strings.listJoin(currentDetail.culinaryFlags.![code], ', ')} ?: 'keine'">keine</dd></div>
+                    <div><dt>Kulinarische Zuordnung</dt><dd th:text="${#strings.listJoin(currentDetail.culinaryCountries.![code], ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Dimensionen</dt><dd th:text="${currentDetail.culinaryDimensions}">nicht gepflegt</dd></div>
                     <div><dt>Beschaffbarkeit</dt><dd th:text="${currentDetail.availability}">nicht gepflegt</dd></div>
                     <div><dt>Saison</dt><dd th:text="${currentDetail.seasonality}">1.0</dd></div>
@@ -449,6 +465,19 @@
                     </fieldset>
                 </div>
                 <p th:if="${formErrors != null and formErrors.get('culinaryDimensions') != null}" class="field-error" th:text="${formErrors.get('culinaryDimensions')}">Fehler</p>
+            </section>
+
+            <section class="detail-section" data-testid="culinary-country-editor">
+                <div class="detail-section-heading"><p class="section-kicker">Katalogwissen</p><h3>Kulinarische Zuordnung</h3></div>
+                <label class="textarea-field" for="culinary-country-select">Länder mit kulinarisch relevanter Zuordnung
+                    <select id="culinary-country-select" name="culinaryCountry" multiple size="12" aria-describedby="culinary-country-help culinary-country-error">
+                        <option th:each="country : ${filterOptions.culinaryCountries}" th:value="${country.code}"
+                                th:selected="${form.metadata.hasCulinaryCountry(country.code)}"
+                                th:text="|${country.displayName} (${country.code})|">Deutschland (DE)</option>
+                    </select>
+                </label>
+                <p id="culinary-country-help" class="muted-copy">Mehrere Länder sind möglich. Die Auswahl ersetzt beim gemeinsamen Speichern die vorhandenen Zuordnungen.</p>
+                <p id="culinary-country-error" th:if="${formErrors != null and formErrors.get('culinaryCountries') != null}" class="field-error" th:text="${formErrors.get('culinaryCountries')}">Fehler</p>
             </section>
 
             <section class="detail-section" data-testid="availability-editor">
