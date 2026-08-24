@@ -13,6 +13,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.UpdateIngre
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.SessionParticipant;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
+import io.github.venomenon328.miseendice.catalog.api.CatalogVersionConflictException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvailabilityFilter;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogNoveltyFilter;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogSearchCriteria;
@@ -100,6 +101,13 @@ class CulinaryCountryCatalogIntegrationTest {
                 .extracting(CatalogQueries.CatalogCountry::code, CatalogQueries.CatalogCountry::displayName)
                 .containsExactly(org.assertj.core.groups.Tuple.tuple("PH", "Philippinen"));
         assertThat(catalogQueries.findConcept(child).orElseThrow().culinaryCountries()).isEmpty();
+        assignCountry(child, "TH");
+        assertThat(catalogQueries.findConcept(parent).orElseThrow().culinaryCountries())
+                .extracting(CatalogQueries.CatalogCountry::code)
+                .containsExactly("PH");
+        assertThat(catalogQueries.findConcept(child).orElseThrow().culinaryCountries())
+                .extracting(CatalogQueries.CatalogCountry::code)
+                .containsExactly("TH");
         assertThat(catalogQueries.findFilterOptions().culinaryCountries())
                 .extracting(CatalogQueries.CatalogCountry::code)
                 .contains("CN", "DE", "GB", "GR", "PH", "TH", "VN")
@@ -152,6 +160,14 @@ class CulinaryCountryCatalogIntegrationTest {
         assertThat(latestAudit(created.conceptId()).diff())
                 .filteredOn(diff -> diff.label().equals("Kulinarische Zuordnung"))
                 .hasSize(3);
+
+        assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
+                created.conceptId(), created.version(), "Stale country editor", false, false, "SPECIFIC",
+                BigDecimal.ONE, null, null, ACTOR, true, List.of(), Map.of(), false, metadata(Set.of("PH"))
+        ))).isInstanceOf(CatalogVersionConflictException.class);
+        assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow().culinaryCountries())
+                .extracting(CatalogQueries.CatalogCountry::code)
+                .containsExactly("KR");
 
         assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
                 created.conceptId(), replaced.version(), "Should roll back", true, false, "SPECIFIC",
