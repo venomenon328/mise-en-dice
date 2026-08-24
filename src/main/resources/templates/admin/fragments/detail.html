@@ -292,6 +292,7 @@
                 <input type="hidden" name="version" th:value="${currentDetail.version}">
                 <input th:each="role : ${form.metadata.functionalRoleCodes}" type="hidden" name="functionalRole" th:value="${role}">
                 <input th:each="flag : ${form.metadata.culinaryFlagCodes}" type="hidden" name="culinaryFlag" th:value="${flag}">
+                <input th:each="country : ${form.metadata.culinaryCountryCodes}" type="hidden" name="culinaryCountry" th:value="${country}">
                 <input th:each="dimension : ${form.metadata.culinaryDimensionLevels}" type="hidden" th:name="|dimension[${dimension.key}]|" th:value="${dimension.value}">
                 <input th:each="availability : ${form.metadata.availabilityByParticipant}" type="hidden" th:name="|availability[${availability.key}]|" th:value="${availability.value}">
                 <input th:each="season : ${form.metadata.seasonalityByMonth}" type="hidden" th:name="|seasonality[${season.key}]|" th:value="${season.value}">
