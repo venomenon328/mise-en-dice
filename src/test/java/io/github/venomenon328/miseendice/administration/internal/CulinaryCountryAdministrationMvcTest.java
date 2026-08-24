@@ -224,13 +224,25 @@ class CulinaryCountryAdministrationMvcTest {
                 "Fremder Länderstand", conceptId);
         MockHttpSession session = authenticate();
 
-        mockMvc.perform(update(conceptId, 0)
+        String conflict = mockMvc.perform(update(conceptId, 0)
                         .session(session)
                         .param("displayName", "Mein veralteter Länderstand")
                         .param("culinaryCountry", "IT"))
                 .andExpect(status().isConflict())
                 .andExpect(content().string(containsString("Dein Stand wurde nicht gespeichert")))
-                .andExpect(content().string(containsString("Kulinarische Zuordnung")));
+                .andExpect(content().string(containsString("Kulinarische Zuordnung")))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(conflict).containsPattern("(?s)<input[^>]*name=\"culinaryCountry\"[^>]*value=\"IT\"[^>]*>");
+
+        String continuedEdit = mockMvc.perform(update(conceptId, 1)
+                        .session(session)
+                        .param("displayName", "Mein veralteter Länderstand")
+                        .param("culinaryCountry", "IT")
+                        .param("continueEditing", "true"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(selectElement(continuedEdit, "culinary-country-select"))
+                .containsPattern("(?s)value=\"IT\"\\s+selected=\"selected\"");
 
         assertThat(displayName(conceptId)).isEqualTo("Fremder Länderstand");
         assertThat(countryCodes(conceptId)).containsExactly("DE");
