@@ -1,6 +1,7 @@
 package io.github.venomenon328.miseendice.catalog.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupDimension;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupMatch;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupProfile;
@@ -98,6 +99,7 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
                         order by lower(cd.display_name), cd.id
                         """, (resultSet, rowNumber) -> new IngredientLookupDimension(
                         resultSet.getString("code"), resultSet.getString("display_name"), resultSet.getInt("level")), conceptId),
+                findCulinaryCountries(conceptId),
                 row.curatorNote()
         ));
     }
@@ -144,6 +146,17 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
 
     private List<String> findNames(String query, long conceptId) {
         return jdbcTemplate.queryForList(query, String.class, conceptId);
+    }
+
+    private List<IngredientLookupCountry> findCulinaryCountries(long conceptId) {
+        return jdbcTemplate.query("""
+                select cc.code, cc.display_name
+                from ingredient_culinary_country icc
+                join culinary_country cc on cc.code = icc.country_code
+                where icc.ingredient_concept_id = ?
+                order by cc.code
+                """, (resultSet, rowNumber) -> new IngredientLookupCountry(
+                resultSet.getString("code"), resultSet.getString("display_name")), conceptId);
     }
 
     private SearchRow mapSearchRow(ResultSet resultSet, int rowNumber) throws SQLException {

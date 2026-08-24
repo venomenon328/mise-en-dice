@@ -1,6 +1,7 @@
 package io.github.venomenon328.miseendice.discord.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupDimension;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupProfile;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupRelation;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupSearchResult;
@@ -61,6 +62,9 @@ final class DiscordIngredientLookupRenderer {
         embed.add("🍽️ Geschmacksprofil", profile.culinaryDimensions().isEmpty()
                 ? "keine"
                 : codeBlock(dimensionLines(profile.culinaryDimensions())), false);
+        if (!profile.culinaryCountries().isEmpty()) {
+            embed.add("🌍 Kulinarische Zuordnung", countryFlags(profile.culinaryCountries()), false);
+        }
         if (profile.curatorNote() != null && !profile.curatorNote().isBlank()) {
             embed.addText("💡 Hinweis aus dem Zutatenkatalog", safe(profile.curatorNote()), MAX_CURATOR_NOTE_FIELDS);
         }
@@ -99,6 +103,30 @@ final class DiscordIngredientLookupRenderer {
 
     private static ScaleLine scaleLine(String label, int level, String symbol) {
         return new ScaleLine(label, verbalLevel(level), symbol.repeat(level) + EMPTY_SCALE.repeat(5 - level));
+    }
+
+    static String countryFlag(String isoAlpha2Code) {
+        if (isoAlpha2Code == null || !isoAlpha2Code.matches("[A-Z]{2}")) {
+            throw new IllegalArgumentException("ISO alpha-2 code required");
+        }
+        StringBuilder flag = new StringBuilder(4);
+        for (int index = 0; index < isoAlpha2Code.length(); index++) {
+            flag.appendCodePoint(0x1F1E6 + isoAlpha2Code.charAt(index) - 'A');
+        }
+        return flag.toString();
+    }
+
+    private static String countryFlags(List<IngredientLookupCountry> countries) {
+        List<String> flags = countries.stream().map(country -> countryFlag(country.code())).toList();
+        String separated = String.join(" ", flags);
+        if (separated.length() <= FIELD_VALUE_LIMIT) {
+            return separated;
+        }
+        String compact = String.join("", flags);
+        if (compact.length() > FIELD_VALUE_LIMIT) {
+            throw new IllegalArgumentException("Culinary-country flags exceed the Discord field limit");
+        }
+        return compact;
     }
 
     private static List<String> aligned(List<ScaleLine> lines) {
