@@ -40,6 +40,7 @@ final class CatalogAuditDiffFactory {
             mapCollection(result, before, after, "functionalRoles", "Funktionale Rollen", "code", "displayName", null);
             mapCollection(result, before, after, "culinaryFlags", "Kulinarische Eigenschaften", "code", "displayName", null);
             mapCollection(result, before, after, "culinaryDimensions", "Kulinarische Dimensionen", "code", "displayName", "level");
+            mapCollection(result, before, after, "culinaryCountries", "Kulinarische Zuordnung", "code", "displayName", null);
             mapCollection(result, before, after, "availability", "Beschaffbarkeit", "code", "displayName", "level");
             mapCollection(result, before, after, "seasonality", "Saison", "month", "month", "weightMultiplier");
         } else {

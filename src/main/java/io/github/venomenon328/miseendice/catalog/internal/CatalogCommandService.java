@@ -425,6 +425,9 @@ class CatalogCommandService implements CatalogCommands {
         requireKnownCodes("functionalRoles", metadata.functionalRoleCodes(), "functional_role");
         requireKnownCodes("culinaryFlags", metadata.culinaryFlagCodes(), "culinary_flag");
         requireKnownCodes("culinaryDimensions", metadata.culinaryDimensionLevels().keySet(), "culinary_dimension");
+        if (metadata.culinaryCountryCodes() != null) {
+            requireKnownCodes("culinaryCountries", metadata.culinaryCountryCodes(), "culinary_country");
+        }
         Set<String> participantCodes = metadata.availabilityByParticipant().keySet();
         requireKnownCodes("availability", participantCodes, "participant");
         if (!Set.of("GEORGIA", "TOBIAS").containsAll(participantCodes)) {
@@ -462,6 +465,13 @@ class CatalogCommandService implements CatalogCommands {
                 "insert into ingredient_culinary_dimension (ingredient_concept_id, culinary_dimension_id, level) "
                         + "select ?, id, ? from culinary_dimension where code = ?",
                 conceptId, entry.getValue(), entry.getKey()));
+
+        if (metadata.culinaryCountryCodes() != null) {
+            jdbcTemplate.update("delete from ingredient_culinary_country where ingredient_concept_id = ?", conceptId);
+            metadata.culinaryCountryCodes().stream().sorted().forEach(code -> jdbcTemplate.update(
+                    "insert into ingredient_culinary_country (ingredient_concept_id, country_code) values (?, ?)",
+                    conceptId, code));
+        }
 
         jdbcTemplate.update("delete from ingredient_availability where ingredient_concept_id = ? "
                 + "and participant_id in (select id from participant where code in ('GEORGIA', 'TOBIAS'))", conceptId);

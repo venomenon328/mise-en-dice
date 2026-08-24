@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.catalog.api;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -39,6 +40,7 @@ public interface CatalogQueries {
             String challengeSpecificity,
             Set<String> functionalRoleCodes,
             Set<String> culinaryFlagCodes,
+            Set<String> culinaryCountryCodes,
             CatalogAvailabilityFilter georgiaAvailability,
             CatalogAvailabilityFilter tobiasAvailability,
             CatalogNoveltyFilter novelty,
@@ -47,10 +49,31 @@ public interface CatalogQueries {
             int pageSize
     ) {
 
+        public CatalogSearchCriteria(
+                String searchTerm,
+                CatalogQuickFilter quickFilter,
+                Boolean active,
+                Boolean randomDrawEnabled,
+                String challengeSpecificity,
+                Set<String> functionalRoleCodes,
+                Set<String> culinaryFlagCodes,
+                CatalogAvailabilityFilter georgiaAvailability,
+                CatalogAvailabilityFilter tobiasAvailability,
+                CatalogNoveltyFilter novelty,
+                CatalogSort sort,
+                int page,
+                int pageSize
+        ) {
+            this(searchTerm, quickFilter, active, randomDrawEnabled, challengeSpecificity,
+                    functionalRoleCodes, culinaryFlagCodes, Set.of(), georgiaAvailability,
+                    tobiasAvailability, novelty, sort, page, pageSize);
+        }
+
         public CatalogSearchCriteria {
             searchTerm = escapeLikeLiteral(searchTerm == null ? "" : searchTerm.strip());
             functionalRoleCodes = immutableSet(functionalRoleCodes);
             culinaryFlagCodes = immutableSet(culinaryFlagCodes);
+            culinaryCountryCodes = normalizedCountryCodes(culinaryCountryCodes);
             georgiaAvailability = georgiaAvailability == null ? CatalogAvailabilityFilter.any() : georgiaAvailability;
             tobiasAvailability = tobiasAvailability == null ? CatalogAvailabilityFilter.any() : tobiasAvailability;
             novelty = novelty == null ? CatalogNoveltyFilter.any() : novelty;
@@ -65,7 +88,7 @@ public interface CatalogQueries {
 
         public static CatalogSearchCriteria defaults() {
             return new CatalogSearchCriteria(
-                    "", null, null, null, null, Set.of(), Set.of(),
+                    "", null, null, null, null, Set.of(), Set.of(), Set.of(),
                     CatalogAvailabilityFilter.any(), CatalogAvailabilityFilter.any(), CatalogNoveltyFilter.any(),
                     CatalogSort.DISPLAY_NAME_ASC, 0, 100
             );
@@ -194,10 +217,41 @@ public interface CatalogQueries {
             List<CatalogReferenceValue> functionalRoles,
             List<CatalogReferenceValue> culinaryFlags,
             List<CatalogDimensionValue> culinaryDimensions,
+            List<CatalogCountry> culinaryCountries,
             List<CatalogAvailabilityValue> availability,
             List<CatalogSeasonValue> seasonality,
             List<String> directExclusionRules
     ) {
+
+        public CatalogConceptDetail(
+                long id,
+                String displayName,
+                String code,
+                boolean active,
+                boolean randomDrawEnabled,
+                String challengeSpecificity,
+                BigDecimal baseDrawWeight,
+                Integer noveltyLevel,
+                String curatorNote,
+                long version,
+                OffsetDateTime updatedAt,
+                List<CatalogConceptRelation> directParents,
+                List<CatalogConceptRelation> directChildren,
+                List<CatalogConceptRelation> transitiveAncestors,
+                List<CatalogConceptRelation> transitiveDescendants,
+                List<CatalogReferenceValue> functionalRoles,
+                List<CatalogReferenceValue> culinaryFlags,
+                List<CatalogDimensionValue> culinaryDimensions,
+                List<CatalogAvailabilityValue> availability,
+                List<CatalogSeasonValue> seasonality,
+                List<String> directExclusionRules
+        ) {
+            this(id, displayName, code, active, randomDrawEnabled, challengeSpecificity,
+                    baseDrawWeight, noveltyLevel, curatorNote, version, updatedAt,
+                    directParents, directChildren, transitiveAncestors, transitiveDescendants,
+                    functionalRoles, culinaryFlags, culinaryDimensions, List.of(),
+                    availability, seasonality, directExclusionRules);
+        }
 
         public CatalogConceptDetail {
             directParents = List.copyOf(directParents);
@@ -207,6 +261,7 @@ public interface CatalogQueries {
             functionalRoles = List.copyOf(functionalRoles);
             culinaryFlags = List.copyOf(culinaryFlags);
             culinaryDimensions = List.copyOf(culinaryDimensions);
+            culinaryCountries = List.copyOf(culinaryCountries);
             availability = List.copyOf(availability);
             seasonality = List.copyOf(seasonality);
             directExclusionRules = List.copyOf(directExclusionRules);
@@ -246,6 +301,18 @@ public interface CatalogQueries {
     record CatalogReferenceValue(String code, String displayName, String description) {
     }
 
+    record CatalogCountry(String code, String displayName) {
+
+        public CatalogCountry {
+            if (code == null || !code.matches("[A-Z]{2}")) {
+                throw new IllegalArgumentException("country code must be an ISO alpha-2 code");
+            }
+            if (displayName == null || displayName.isBlank()) {
+                throw new IllegalArgumentException("country displayName is required");
+            }
+        }
+    }
+
     record CatalogDimensionValue(CatalogReferenceValue dimension, Integer level) {
     }
 
@@ -258,13 +325,15 @@ public interface CatalogQueries {
     record CatalogFilterOptions(
             List<CatalogReferenceValue> functionalRoles,
             List<CatalogReferenceValue> culinaryFlags,
-            List<CatalogReferenceValue> culinaryDimensions
+            List<CatalogReferenceValue> culinaryDimensions,
+            List<CatalogCountry> culinaryCountries
     ) {
 
         public CatalogFilterOptions {
             functionalRoles = List.copyOf(functionalRoles);
             culinaryFlags = List.copyOf(culinaryFlags);
             culinaryDimensions = List.copyOf(culinaryDimensions);
+            culinaryCountries = List.copyOf(culinaryCountries);
         }
     }
 
@@ -280,5 +349,18 @@ public interface CatalogQueries {
 
     private static <T> Set<T> immutableSet(Set<T> values) {
         return values == null ? Set.of() : Set.copyOf(values);
+    }
+
+    private static Set<String> normalizedCountryCodes(Set<String> values) {
+        if (values == null || values.isEmpty()) {
+            return Set.of();
+        }
+        Set<String> normalized = new LinkedHashSet<>();
+        values.forEach(value -> {
+            if (value != null && !value.isBlank()) {
+                normalized.add(value.strip().toUpperCase(Locale.ROOT));
+            }
+        });
+        return Set.copyOf(normalized);
     }
 }

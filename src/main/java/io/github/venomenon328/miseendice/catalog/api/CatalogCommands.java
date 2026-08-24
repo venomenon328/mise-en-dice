@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -19,6 +20,7 @@ import java.util.regex.Pattern;
 public interface CatalogCommands {
 
     String INGREDIENT_CONCEPT_CODE_PATTERN = "[A-Z][A-Z0-9_]*";
+    String CULINARY_COUNTRY_CODE_PATTERN = "[A-Z]{2}";
 
     CatalogCommandResult createIngredientConcept(CreateIngredientConceptCommand command);
 
@@ -197,17 +199,32 @@ public interface CatalogCommands {
     }
 
     /**
-     * The complete editable metadata state of one ingredient aggregate. A missing metadata object
-     * keeps the compatibility behaviour of older base-field-only callers; a present object is
-     * persisted as an exact replacement of all four association groups.
+     * The editable metadata state of one ingredient aggregate.
+     *
+     * <p>The five-argument compatibility constructor deliberately leaves culinary countries
+     * unspecified. Existing callers therefore preserve country relations until they explicitly
+     * adopt the country-aware editor contract. A non-null country set, including an empty set,
+     * is an exact replacement.</p>
      */
     record CatalogMetadata(
             Set<String> functionalRoleCodes,
             Set<String> culinaryFlagCodes,
             Map<String, Integer> culinaryDimensionLevels,
             Map<String, CatalogQueries.CatalogAvailability> availabilityByParticipant,
-            Map<Integer, BigDecimal> seasonalityByMonth
+            Map<Integer, BigDecimal> seasonalityByMonth,
+            Set<String> culinaryCountryCodes
     ) {
+
+        public CatalogMetadata(
+                Set<String> functionalRoleCodes,
+                Set<String> culinaryFlagCodes,
+                Map<String, Integer> culinaryDimensionLevels,
+                Map<String, CatalogQueries.CatalogAvailability> availabilityByParticipant,
+                Map<Integer, BigDecimal> seasonalityByMonth
+        ) {
+            this(functionalRoleCodes, culinaryFlagCodes, culinaryDimensionLevels,
+                    availabilityByParticipant, seasonalityByMonth, null);
+        }
 
         public CatalogMetadata {
             functionalRoleCodes = normalizedCodes(functionalRoleCodes);
@@ -215,6 +232,9 @@ public interface CatalogCommands {
             culinaryDimensionLevels = immutableMap(culinaryDimensionLevels);
             availabilityByParticipant = immutableMap(availabilityByParticipant);
             seasonalityByMonth = immutableMap(seasonalityByMonth);
+            culinaryCountryCodes = culinaryCountryCodes == null
+                    ? null
+                    : normalizedCountryCodes(culinaryCountryCodes);
             Map<String, String> errors = new LinkedHashMap<>();
             if (culinaryDimensionLevels.entrySet().stream().anyMatch(entry -> entry.getKey() == null
                     || entry.getKey().isBlank() || entry.getValue() == null || entry.getValue() < 1 || entry.getValue() > 5)) {
@@ -228,6 +248,10 @@ public interface CatalogCommands {
                     || entry.getKey() < 1 || entry.getKey() > 12 || entry.getValue() == null
                     || entry.getValue().signum() <= 0)) {
                 errors.put("seasonality", "Saisonfaktoren müssen für Monate 1 bis 12 größer als 0 sein.");
+            }
+            if (culinaryCountryCodes != null
+                    && culinaryCountryCodes.stream().anyMatch(code -> !Pattern.matches(CULINARY_COUNTRY_CODE_PATTERN, code))) {
+                errors.put("culinaryCountries", "Ländercodes müssen gültige ISO-Alpha-2-Codes sein.");
             }
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);
@@ -243,6 +267,15 @@ public interface CatalogCommands {
             if (normalized.contains("")) {
                 throw new CatalogCommandValidationException(Map.of("metadata", "Referenzcodes dürfen nicht leer sein."));
             }
+            return Set.copyOf(normalized);
+        }
+
+        private static Set<String> normalizedCountryCodes(Set<String> codes) {
+            if (codes.isEmpty()) {
+                return Set.of();
+            }
+            Set<String> normalized = new LinkedHashSet<>();
+            codes.forEach(code -> normalized.add(normalized(code).toUpperCase(Locale.ROOT)));
             return Set.copyOf(normalized);
         }
 
