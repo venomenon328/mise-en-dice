@@ -67,12 +67,12 @@ class PostgresIntegrationTest {
 
     @Test
     void applicationContextStartsWithTheCompleteLiquibaseBaseline() {
-        assertThat(count("databasechangelog")).isEqualTo(38);
-        assertThat(count("ingredient_concept")).isEqualTo(698);
-        assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(651);
+        assertThat(count("databasechangelog")).isEqualTo(39);
+        assertThat(count("ingredient_concept")).isEqualTo(705);
+        assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(658);
         assertThat(countWhere("ingredient_concept", "active and random_draw_enabled and challenge_specificity = 'OPEN'"))
                 .isEqualTo(62);
-        assertThat(count("ingredient_refinement")).isEqualTo(780);
+        assertThat(count("ingredient_refinement")).isEqualTo(790);
         assertThat(countWhere("exclusion_rule", "active")).isEqualTo(22);
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from ingredient_concept where code = 'ALIGUE'", Integer.class))
@@ -81,7 +81,7 @@ class PostgresIntegrationTest {
 
     @Test
     void administrationChangesetInitializesVersionsAndAuditSchema() {
-        assertThat(countWhere("ingredient_concept", "version = 0")).isEqualTo(698);
+        assertThat(countWhere("ingredient_concept", "version = 0")).isEqualTo(705);
         assertThat(countWhere("exclusion_rule", "version = 0")).isEqualTo(count("exclusion_rule"));
         assertThat(jdbcTemplate.queryForList(
                 """
@@ -129,12 +129,12 @@ class PostgresIntegrationTest {
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
 
-            assertThat(count(connection, "databasechangelog")).isEqualTo(38);
-            assertThat(countWhere(connection, "ingredient_concept", "version = 0")).isEqualTo(698);
+            assertThat(count(connection, "databasechangelog")).isEqualTo(39);
+            assertThat(countWhere(connection, "ingredient_concept", "version = 0")).isEqualTo(705);
             assertThat(countWhere(connection, "exclusion_rule", "version = 0"))
                     .isEqualTo(count(connection, "exclusion_rule"));
             assertThat(count(connection, "catalog_audit_entry")).isZero();
-            assertThat(count(connection, "ingredient_refinement")).isEqualTo(780);
+            assertThat(count(connection, "ingredient_refinement")).isEqualTo(790);
         }
     }
 
@@ -229,7 +229,7 @@ class PostgresIntegrationTest {
         assertThat(jdbcTemplate.queryForObject(
                 "select display_name from ingredient_concept where id = ?", String.class, conceptId))
                 .isEqualTo(changedName);
-        assertThat(count("ingredient_concept")).isEqualTo(698);
+        assertThat(count("ingredient_concept")).isEqualTo(705);
     }
 
     @Test

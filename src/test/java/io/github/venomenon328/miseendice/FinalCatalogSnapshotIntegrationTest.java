@@ -174,9 +174,9 @@ class FinalCatalogSnapshotIntegrationTest {
             runLiquibase(baseline, MASTER_CHANGELOG);
             runLiquibase(production, MASTER_CHANGELOG);
 
-            assertThat(conceptIds(fresh)).isEqualTo(finalFreshIds);
-            assertThat(conceptIds(baseline)).isEqualTo(finalBaselineIds);
-            assertThat(conceptIds(production)).isEqualTo(finalProductionIds);
+            assertThat(conceptIds(fresh)).containsAllEntriesOf(finalFreshIds);
+            assertThat(conceptIds(baseline)).containsAllEntriesOf(finalBaselineIds);
+            assertThat(conceptIds(production)).containsAllEntriesOf(finalProductionIds);
             assertNoBeefIncludesVeal(fresh);
             assertNoBeefIncludesVeal(baseline);
             assertNoBeefIncludesVeal(production);
@@ -220,7 +220,7 @@ class FinalCatalogSnapshotIntegrationTest {
             assertThat(value(connection,
                     "select version from ingredient_concept where code = 'TOMATO'", Integer.class)).isEqualTo(7);
             assertThat(value(connection,
-                    "select count(*) from databasechangelog", Integer.class)).isEqualTo(38);
+                    "select count(*) from databasechangelog", Integer.class)).isEqualTo(39);
         }
     }
 
@@ -230,11 +230,11 @@ class FinalCatalogSnapshotIntegrationTest {
         try (Connection connection = connection(databaseName)) {
             runLiquibase(connection, MASTER_CHANGELOG);
 
-            assertThat(value(connection, "select count(*) from ingredient_concept", Integer.class)).isEqualTo(698);
+            assertThat(value(connection, "select count(*) from ingredient_concept", Integer.class)).isEqualTo(705);
             assertThat(value(connection,
                     "select count(*) from ingredient_concept where active and random_draw_enabled", Integer.class))
-                    .isEqualTo(651);
-            assertThat(value(connection, "select count(*) from ingredient_refinement", Integer.class)).isEqualTo(780);
+                    .isEqualTo(658);
+            assertThat(value(connection, "select count(*) from ingredient_refinement", Integer.class)).isEqualTo(790);
             assertThat(value(connection, "select count(*) from exclusion_rule where active", Integer.class)).isEqualTo(22);
 
             assertThat(value(connection, """

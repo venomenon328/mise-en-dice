@@ -70,7 +70,7 @@ class ChallengeResultMigrationIntegrationTest {
             connection.setAutoCommit(true);
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(count(connection, "databasechangelog")).isEqualTo(38);
+            assertThat(count(connection, "databasechangelog")).isEqualTo(39);
             assertThat(value(connection, "select challenge_number from challenge where id = 999991", Long.class))
                     .isEqualTo(42L);
             assertThat(value(connection, "select completed_at from challenge where id = 999991", OffsetDateTime.class))
@@ -81,7 +81,7 @@ class ChallengeResultMigrationIntegrationTest {
             assertThat(count(connection, "challenge_result_concretization")).isZero();
 
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(count(connection, "databasechangelog")).isEqualTo(38);
+            assertThat(count(connection, "databasechangelog")).isEqualTo(39);
             assertThat(value(connection, "select completed_at from challenge where id = 999991", OffsetDateTime.class))
                     .isEqualTo(shownAt);
         }

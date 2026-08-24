@@ -86,7 +86,7 @@ class CulinaryCountryCatalogIntegrationTest {
     @Test
     void loadsStableReferenceDataAndKeepsCountryFilteringExplicit() {
         assertThat(jdbcTemplate.queryForObject("select count(*) from culinary_country", Integer.class)).isEqualTo(249);
-        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_culinary_country", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_culinary_country", Integer.class)).isEqualTo(13);
         assertThat(jdbcTemplate.queryForObject(
                 "select display_name from culinary_country where code = 'PH'", String.class)).isEqualTo("Philippinen");
 
