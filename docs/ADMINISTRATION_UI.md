@@ -1,6 +1,6 @@
 # Spezifikation der privaten Webverwaltung
 
-Stand: 16. August 2026
+Stand: 24. August 2026
 
 Dieses Dokument beschreibt die verbindliche fachliche, gestalterische und technische Spezifikation der privaten Webverwaltung von Mise en Dice. Es konkretisiert die in [`ARCHITECTURE.md`](ARCHITECTURE.md) festgelegten Leitplanken und bildet die Grundlage für die anschließenden Implementierungspakete.
 
@@ -162,6 +162,7 @@ Mindestens verfügbar sind:
 - Spezifität: alle / spezifisch / offen,
 - funktionale Rolle: Mehrfachauswahl,
 - kulinarische Flags: Mehrfachauswahl,
+- kulinarische Zuordnung: Mehrfachauswahl aus dem migrationsgeführten Länder-Referenzbestand,
 - Beschaffbarkeit Georgia: alle vier Stufen plus `nicht gepflegt`,
 - Beschaffbarkeit Tobias: alle vier Stufen plus `nicht gepflegt`,
 - Ungewöhnlichkeitsstufe: 1–5 beziehungsweise `nicht gepflegt`.
@@ -257,10 +258,11 @@ Reihenfolge:
 4. Konkretisierungsbeziehungen,
 5. funktionale Rollen,
 6. kulinarische Eigenschaften,
-7. Beschaffbarkeit,
-8. Saison,
-9. Kuratornotiz,
-10. Referenzen und letzter Änderungsverlauf.
+7. kulinarische Zuordnung,
+8. Beschaffbarkeit,
+9. Saison,
+10. Kuratornotiz,
+11. Referenzen und letzter Änderungsverlauf.
 
 ### 7.1 Kopf und Status
 
@@ -353,7 +355,18 @@ Ein fehlender Wert bleibt semantisch `nicht gepflegt` und ist **nicht** identisc
 
 Jede Dimension verwendet ein lokales Symbol aus `catalog-icons.svg`. Für `SALTINESS` ist `icon-saltiness` hinterlegt; Darstellung und Bearbeitungsformular erzeugen den Sprite-Verweis dynamisch aus dem stabilen Dimensionscode.
 
-### 7.7 Beschaffbarkeit
+### 7.7 Kulinarische Zuordnung
+
+Die Detailansicht enthält einen klar benannten Abschnitt `Kulinarische Zuordnung`.
+
+- Vorhandene Länder erscheinen deterministisch mit deutschem Anzeigenamen und ISO-3166-1-Alpha-2-Code.
+- Ohne gepflegte Relation erscheint der neutrale leere Zustand `Keine kulinarische Zuordnung gepflegt.`; daraus wird keine Herkunfts-, Exklusivitäts- oder Negativaussage abgeleitet.
+- Im Editiermodus steht eine einfache Mehrfachauswahl über den vollständigen migrationsgeführten Referenzbestand bereit. Vorhandene Werte sind vorausgewählt.
+- Das Hinzufügen oder Entfernen ist kein eigener Save und kein Autosave: Die explizit übermittelte Auswahl ersetzt die Ländermenge gemeinsam mit allen übrigen Zutatenmetadaten in derselben Transaktion.
+
+Eine eigene Länder-CRUD-Oberfläche gehört nicht zur Verwaltung. Die fachliche Bedeutung der positiven, bewusst unvollständigen Zuordnung ist in [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md) beschrieben.
+
+### 7.8 Beschaffbarkeit
 
 Georgia und Tobias werden nebeneinander dargestellt.
 
@@ -367,7 +380,7 @@ Je Person:
 
 `nicht gepflegt` ist nur zulässig, solange das Konzept nicht gleichzeitig aktiv und zufällig ziehbar ist.
 
-### 7.8 Saison
+### 7.9 Saison
 
 Die zwölf Monate werden gleichzeitig in einem kompakten Raster dargestellt.
 
@@ -381,11 +394,11 @@ Jan  Feb  Mär  Apr  Mai  Jun  Jul  Aug  Sep  Okt  Nov  Dez
 - `Zurück auf Standard` setzt einen Monat auf 1.0.
 - Monate mit 1.0 sollen bevorzugt **ohne Datenbankzeile** gespeichert werden, weil fehlende Saisonwerte bereits semantisch 1.0 bedeuten.
 
-### 7.9 Kuratornotiz
+### 7.10 Kuratornotiz
 
 `curator_note` ist ein normales mehrzeiliges Textfeld. Es steht nicht in einem versteckten Expertenmenü.
 
-### 7.10 Referenzen
+### 7.11 Referenzen
 
 Read-only sichtbar sind mindestens:
 
@@ -397,7 +410,7 @@ Challenge-Historie kann später ergänzt werden, sobald dafür ein sinnvoller Ve
 
 ## 8. Anlegen eines Zutatenkonzepts
 
-`+ Neue Zutat` ersetzt die rechte Detailansicht durch ein Neuanlageformular; der Katalogkontext links bleibt sichtbar. Basis, Ziehung, Rollen, Eigenschaften, Beschaffbarkeit und Saison werden im selben atomaren Save gepflegt. Direkte Beziehungen stehen erst nach dem ersten Speichern zur Verfügung.
+`+ Neue Zutat` ersetzt die rechte Detailansicht durch ein Neuanlageformular; der Katalogkontext links bleibt sichtbar. Basis, Ziehung, Rollen, Eigenschaften, kulinarische Zuordnungen, Beschaffbarkeit und Saison werden im selben atomaren Save gepflegt. Direkte Beziehungen stehen erst nach dem ersten Speichern zur Verfügung.
 
 Defaults:
 
@@ -408,6 +421,7 @@ Defaults:
 - `novelty_level = nicht gepflegt`,
 - keine Rollen,
 - keine Flags,
+- keine kulinarischen Länderzuordnungen,
 - keine Dimensionen,
 - keine Saisonabweichungen,
 - Beschaffbarkeit zunächst `nicht gepflegt`.
@@ -432,7 +446,7 @@ Vorteile:
 
 ### 9.2 Keine Autosaves
 
-`Speichern` persistiert alle Änderungen des aktuellen Aggregats in **einer Transaktion**.
+`Speichern` persistiert alle Änderungen des aktuellen Aggregats in **einer Transaktion**. Dazu gehört auch die explizit gewählte Menge kulinarischer Länderzuordnungen; sie besitzt keinen separaten Speichern-Button oder Autosave.
 
 `Verwerfen` stellt den zuletzt geladenen Serverzustand wieder her.
 
@@ -631,6 +645,7 @@ Die Stammdaten
 - `functional_role`,
 - `culinary_flag`,
 - `culinary_dimension`,
+- `culinary_country`,
 - `participant`
 
 werden in der ersten Webversion **nicht selbst administrierbar**.
@@ -661,6 +676,7 @@ Die Version eines Zutatenkonzepts schützt **das gesamte in der Weboberfläche b
 - Rollen,
 - Flags,
 - Dimensionen,
+- kulinarischen Länderzuordnungen,
 - Beschaffbarkeit,
 - Saisonwerten.
 
@@ -724,7 +740,7 @@ Auditdaten werden in diesem kleinen privaten System zunächst unbegrenzt aufbewa
 
 ### 16.3 Snapshot-Inhalt
 
-Snapshots sind **fachliche Aggregate-Snapshots**, keine Kopien von HTTP-Formularen. Ein Zutaten-Snapshot enthält die zu diesem Zeitpunkt relevanten editierbaren Werte einschließlich Zuordnungen.
+Snapshots sind **fachliche Aggregate-Snapshots**, keine Kopien von HTTP-Formularen. Ein Zutaten-Snapshot enthält die zu diesem Zeitpunkt relevanten editierbaren Werte einschließlich Zuordnungen, darunter Ländercode und Anzeigename jeder kulinarischen Länderzuordnung.
 
 Passwörter, Sessiondaten oder sonstige Sicherheitsgeheimnisse gelangen niemals in den Audit-Trail.
 
@@ -919,6 +935,8 @@ Benötigt:
 - kompakte Rollen- und Beschaffbarkeitsinformation,
 - Gesamtzahl und Filterfacetten soweit für die UI nötig.
 
+Der Länderfilter verwendet ausschließlich die öffentliche Katalog-Query. Mehrere Ländercodes werden dort mit ODER kombiniert und bleiben mit Suche, Status, Rollen, Flags und allen anderen Filterfamilien per UND verbunden. Seine Codes verbleiben wie die übrigen Filter in der URL und damit im Browser-Navigationszustand.
+
 **Hierarchiewurzeln und direkte Kinder laden**
 
 Benötigt pro Knoten:
@@ -933,7 +951,7 @@ Benötigt pro Knoten:
 
 **Zutatenkonzept anzeigen**
 
-Benötigt die vollständige Detailprojektion einschließlich direkter Beziehungen, transitiver Kontextinformation, Eigenschaften, Beschaffbarkeit, Saison und Reverse-Referenzen aus Ausschlussregeln.
+Benötigt die vollständige Detailprojektion einschließlich direkter Beziehungen, transitiver Kontextinformation, Eigenschaften, kulinarischer Länderzuordnungen, Beschaffbarkeit, Saison und Reverse-Referenzen aus Ausschlussregeln.
 
 **Ausschlussregeln durchsuchen und anzeigen**
 
@@ -947,11 +965,11 @@ Benötigt Listenprojektion, Filter, feldweisen Diff und Entity-bezogene Historie
 
 **Zutatenkonzept anlegen**
 
-Eine Transaktion für Basisdaten und die in diesem Paket bereits implementierten Zuordnungen. Bei Anlage zunächst Version 0; Audit-Eintrag nach erfolgreicher Persistenz in derselben Transaktion.
+Eine Transaktion für Basisdaten und die in diesem Paket bereits implementierten Zuordnungen einschließlich der expliziten Ländermenge. Bei Anlage zunächst Version 0; Audit-Eintrag nach erfolgreicher Persistenz in derselben Transaktion.
 
 **Zutatenkonzept ändern**
 
-Eine Transaktion mit erwartetem Versionswert. Basisfelder, Rollen, Eigenschaften, Beschaffbarkeit, Saison und vorgemerkte direkte Beziehungen werden gegen denselben resultierenden Zustand validiert, atomar gespeichert, genau einmal versioniert und auditiert. Vor dem Graph-Read/Validate/Write-Ablauf serialisiert ein PostgreSQL-Transaktionslock Relations-, Rollen- und Spezifitätsänderungen.
+Eine Transaktion mit erwartetem Versionswert. Basisfelder, Rollen, Eigenschaften, kulinarische Länderzuordnungen, Beschaffbarkeit, Saison und vorgemerkte direkte Beziehungen werden gegen denselben resultierenden Zustand validiert, atomar gespeichert, genau einmal versioniert und auditiert. Vor dem Graph-Read/Validate/Write-Ablauf serialisiert ein PostgreSQL-Transaktionslock Relations-, Rollen- und Spezifitätsänderungen.
 
 **Konkretisierungsbeziehung hinzufügen/entfernen**
 

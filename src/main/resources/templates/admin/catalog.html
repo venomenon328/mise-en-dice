@@ -109,6 +109,13 @@
                         </label>
                     </fieldset>
                     <fieldset>
+                        <legend>Kulinarische Zuordnung</legend>
+                        <label th:each="country : ${filterOptions.culinaryCountries}">
+                            <input name="country" type="checkbox" th:value="${country.code}" th:checked="${state.hasCountry(country.code)}">
+                            <span th:text="|${country.displayName} (${country.code})|">Deutschland (DE)</span>
+                        </label>
+                    </fieldset>
+                    <fieldset>
                         <legend>Beschaffbarkeit Georgia</legend>
                         <label th:each="level : ${availabilityLevels}">
                             <input name="ga" type="checkbox" th:value="${level.name()}" th:checked="${state.hasGeorgiaAvailability(level.name())}">

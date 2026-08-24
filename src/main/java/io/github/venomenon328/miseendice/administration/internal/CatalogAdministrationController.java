@@ -729,6 +729,7 @@ class CatalogAdministrationController {
     record FormMetadata(
             Set<String> functionalRoleCodes,
             Set<String> culinaryFlagCodes,
+            Set<String> culinaryCountryCodes,
             Map<String, String> culinaryDimensionLevels,
             Map<String, String> availabilityByParticipant,
             Map<String, String> seasonalityByMonth,
@@ -738,6 +739,7 @@ class CatalogAdministrationController {
         FormMetadata {
             functionalRoleCodes = normalizedCodes(functionalRoleCodes);
             culinaryFlagCodes = normalizedCodes(culinaryFlagCodes);
+            culinaryCountryCodes = normalizedCodes(culinaryCountryCodes);
             culinaryDimensionLevels = immutableTextMap(culinaryDimensionLevels);
             availabilityByParticipant = immutableTextMap(availabilityByParticipant);
             seasonalityByMonth = immutableTextMap(seasonalityByMonth);
@@ -748,7 +750,7 @@ class CatalogAdministrationController {
             for (int month = 1; month <= 12; month++) {
                 seasonality.put(Integer.toString(month), "1.0");
             }
-            return new FormMetadata(Set.of(), Set.of(), Map.of(), Map.of(), seasonality, false);
+            return new FormMetadata(Set.of(), Set.of(), Set.of(), Map.of(), Map.of(), seasonality, false);
         }
 
         static FormMetadata from(CatalogConceptDetail detail) {
@@ -757,6 +759,9 @@ class CatalogAdministrationController {
                     .collect(java.util.stream.Collectors.toUnmodifiableSet());
             Set<String> flags = detail.culinaryFlags().stream()
                     .map(CatalogQueries.CatalogReferenceValue::code)
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            Set<String> countries = detail.culinaryCountries().stream()
+                    .map(CatalogQueries.CatalogCountry::code)
                     .collect(java.util.stream.Collectors.toUnmodifiableSet());
             Map<String, String> dimensions = new LinkedHashMap<>();
             detail.culinaryDimensions().forEach(value -> dimensions.put(value.dimension().code(),
@@ -767,7 +772,7 @@ class CatalogAdministrationController {
             Map<String, String> seasonality = new LinkedHashMap<>();
             detail.seasonality().forEach(value -> seasonality.put(Integer.toString(value.month()),
                     value.weightMultiplier().toPlainString()));
-            return new FormMetadata(roles, flags, dimensions, availability, seasonality, true);
+            return new FormMetadata(roles, flags, countries, dimensions, availability, seasonality, true);
         }
 
         static FormMetadata from(MultiValueMap<String, String> parameters) {
@@ -775,7 +780,8 @@ class CatalogAdministrationController {
             Map<String, String> availability = indexedValues(parameters, "availability");
             Map<String, String> seasonality = indexedValues(parameters, "seasonality");
             return new FormMetadata(values(parameters, "functionalRole"), values(parameters, "culinaryFlag"),
-                    dimensions, availability, seasonality, hasMetadataFields(parameters));
+                    values(parameters, "culinaryCountry"), dimensions, availability, seasonality,
+                    hasMetadataFields(parameters));
         }
 
         public boolean hasFunctionalRole(String code) {
@@ -784,6 +790,10 @@ class CatalogAdministrationController {
 
         public boolean hasCulinaryFlag(String code) {
             return culinaryFlagCodes.contains(code);
+        }
+
+        public boolean hasCulinaryCountry(String code) {
+            return culinaryCountryCodes.contains(code);
         }
 
         public String dimensionLevel(String code) {
@@ -833,13 +843,15 @@ class CatalogAdministrationController {
                 }
             });
             if (!errors.isEmpty()) {
-                return new CatalogMetadata(Set.of(), Set.of(), Map.of(), Map.of(), Map.of());
+                return new CatalogMetadata(Set.of(), Set.of(), Map.of(), Map.of(), Map.of(), Set.of());
             }
-            return new CatalogMetadata(functionalRoleCodes, culinaryFlagCodes, dimensions, availability, seasonality);
+            return new CatalogMetadata(functionalRoleCodes, culinaryFlagCodes, dimensions, availability, seasonality,
+                    culinaryCountryCodes);
         }
 
         private static boolean hasMetadataFields(MultiValueMap<String, String> parameters) {
             return parameters.containsKey("functionalRole") || parameters.containsKey("culinaryFlag")
+                    || parameters.containsKey("culinaryCountry")
                     || parameters.keySet().stream().anyMatch(name -> name.startsWith("dimension[")
                     || name.startsWith("availability[") || name.startsWith("seasonality["));
         }
@@ -889,6 +901,7 @@ class CatalogAdministrationController {
             String specificity,
             Set<String> roles,
             Set<String> flags,
+            Set<String> countries,
             Set<String> georgiaAvailability,
             Set<String> tobiasAvailability,
             Set<String> novelty,
@@ -904,6 +917,7 @@ class CatalogAdministrationController {
             searchTerm = searchTerm == null ? "" : searchTerm.strip();
             roles = orderedSet(roles);
             flags = orderedSet(flags);
+            countries = orderedSet(countries);
             georgiaAvailability = orderedSet(georgiaAvailability);
             tobiasAvailability = orderedSet(tobiasAvailability);
             novelty = orderedSet(novelty);
@@ -918,7 +932,8 @@ class CatalogAdministrationController {
                     oneOf(first(parameters, "active"), "ACTIVE", "INACTIVE"),
                     oneOf(first(parameters, "draw"), "ENABLED", "DISABLED"),
                     oneOf(first(parameters, "specificity"), "SPECIFIC", "OPEN"),
-                    values(parameters, "role"), values(parameters, "flag"), values(parameters, "ga"), values(parameters, "ta"),
+                    values(parameters, "role"), values(parameters, "flag"), values(parameters, "country"),
+                    values(parameters, "ga"), values(parameters, "ta"),
                     values(parameters, "novelty"), enumValue(CatalogSort.class, first(parameters, "sort")),
                     boundedInt(first(parameters, "page"), 0, Integer.MAX_VALUE, 0),
                     pageSize(first(parameters, "size")), enumValue(CatalogView.class, first(parameters, "view")),
@@ -932,7 +947,8 @@ class CatalogAdministrationController {
             Boolean drawFilter = "ENABLED".equals(draw) ? Boolean.TRUE : "DISABLED".equals(draw) ? Boolean.FALSE : null;
             return new CatalogSearchCriteria(
                     searchTerm, quickFilter, activeFilter, drawFilter,
-                    specificity, roles, flags, availabilityFilter(georgiaAvailability), availabilityFilter(tobiasAvailability),
+                    specificity, roles, flags, countries, availabilityFilter(georgiaAvailability),
+                    availabilityFilter(tobiasAvailability),
                     noveltyFilter(novelty), sort, page, pageSize
             );
         }
@@ -953,6 +969,10 @@ class CatalogAdministrationController {
             return flags.contains(code);
         }
 
+        public boolean hasCountry(String code) {
+            return countries.contains(code);
+        }
+
         public boolean hasGeorgiaAvailability(String value) {
             return georgiaAvailability.contains(value);
         }
@@ -971,7 +991,7 @@ class CatalogAdministrationController {
 
         public String viewUrl(CatalogView view) {
             CatalogState changed = new CatalogState(
-                    searchTerm, quickFilter, active, draw, specificity, roles, flags, georgiaAvailability,
+                    searchTerm, quickFilter, active, draw, specificity, roles, flags, countries, georgiaAvailability,
                     tobiasAvailability, novelty, sort, 0, pageSize, CatalogView.LIST,
                     selectedConceptId, treeParentId
             );
@@ -988,7 +1008,7 @@ class CatalogAdministrationController {
 
         public String sortUrl(CatalogSort requestedSort) {
             CatalogState changed = new CatalogState(
-                    searchTerm, quickFilter, active, draw, specificity, roles, flags, georgiaAvailability,
+                    searchTerm, quickFilter, active, draw, specificity, roles, flags, countries, georgiaAvailability,
                     tobiasAvailability, novelty, requestedSort, 0, pageSize, CatalogView.LIST,
                     selectedConceptId, treeParentId
             );
@@ -997,7 +1017,7 @@ class CatalogAdministrationController {
 
         public String pageSizeUrl(int requestedPageSize) {
             CatalogState changed = new CatalogState(
-                    searchTerm, quickFilter, active, draw, specificity, roles, flags, georgiaAvailability,
+                    searchTerm, quickFilter, active, draw, specificity, roles, flags, countries, georgiaAvailability,
                     tobiasAvailability, novelty, sort, 0, requestedPageSize, CatalogView.LIST,
                     selectedConceptId, treeParentId
             );
@@ -1008,7 +1028,7 @@ class CatalogAdministrationController {
             CatalogState changed = new CatalogState(
                     searchTerm,
                     quickFilter == requestedQuickFilter ? null : requestedQuickFilter,
-                    active, draw, specificity, roles, flags, georgiaAvailability, tobiasAvailability, novelty,
+                    active, draw, specificity, roles, flags, countries, georgiaAvailability, tobiasAvailability, novelty,
                     sort, 0, pageSize, requestedView, selectedConceptId, treeParentId
             );
             return changed.catalogUrl(0);
@@ -1055,6 +1075,7 @@ class CatalogAdministrationController {
             add(builder, "specificity", specificity);
             addAll(builder, "role", roles);
             addAll(builder, "flag", flags);
+            addAll(builder, "country", countries);
             addAll(builder, "ga", georgiaAvailability);
             addAll(builder, "ta", tobiasAvailability);
             addAll(builder, "novelty", novelty);
