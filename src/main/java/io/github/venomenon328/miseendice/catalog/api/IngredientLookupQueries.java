@@ -60,8 +60,27 @@ public interface IngredientLookupQueries {
             List<String> functionalRoles,
             List<String> culinaryFlags,
             List<IngredientLookupDimension> culinaryDimensions,
+            List<IngredientLookupCountry> culinaryCountries,
             String curatorNote
     ) {
+
+        public IngredientLookupProfile(
+                long conceptId,
+                String displayName,
+                boolean randomDrawEnabled,
+                BigDecimal baseDrawWeight,
+                Integer noveltyLevel,
+                List<IngredientLookupRelation> activeDirectParents,
+                List<IngredientLookupRelation> activeDirectChildren,
+                List<String> functionalRoles,
+                List<String> culinaryFlags,
+                List<IngredientLookupDimension> culinaryDimensions,
+                String curatorNote
+        ) {
+            this(conceptId, displayName, randomDrawEnabled, baseDrawWeight, noveltyLevel,
+                    activeDirectParents, activeDirectChildren, functionalRoles, culinaryFlags,
+                    culinaryDimensions, List.of(), curatorNote);
+        }
 
         public IngredientLookupProfile {
             positiveId(conceptId);
@@ -77,6 +96,7 @@ public interface IngredientLookupQueries {
             functionalRoles = List.copyOf(functionalRoles);
             culinaryFlags = List.copyOf(culinaryFlags);
             culinaryDimensions = List.copyOf(culinaryDimensions);
+            culinaryCountries = List.copyOf(culinaryCountries);
         }
     }
 
@@ -88,6 +108,17 @@ public interface IngredientLookupQueries {
             if (level < 1 || level > 5) {
                 throw new IllegalArgumentException("level must be between 1 and 5");
             }
+        }
+    }
+
+    /** Explicit culinary-country association of the displayed ingredient concept. */
+    record IngredientLookupCountry(String code, String displayName) {
+
+        public IngredientLookupCountry {
+            if (code == null || !code.matches("[A-Z]{2}")) {
+                throw new IllegalArgumentException("country code must be an ISO alpha-2 code");
+            }
+            displayName = required(displayName, "displayName");
         }
     }
 

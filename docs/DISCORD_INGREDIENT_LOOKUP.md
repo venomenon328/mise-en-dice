@@ -92,6 +92,7 @@ Das aktive Profil enthält ausschließlich:
 - direkt gepflegte funktionale Rollen,
 - direkt gepflegte kulinarische Flags,
 - direkt gepflegte kulinarische Dimensionen,
+- direkt gepflegte kulinarische Länderzuordnungen mit ISO-Alpha-2-Code und Anzeigename,
 - optionale Kuratornotiz.
 
 Die Relation-ID dient ausschließlich der eindeutigen stateless Discord-Navigation. Sie wird nicht als Nutztext angezeigt. Suchtreffer dürfen für ihre optionale Parent-Beschreibung weiterhin ausschließlich Namen transportieren.
@@ -99,6 +100,8 @@ Die Relation-ID dient ausschließlich der eindeutigen stateless Discord-Navigati
 Nicht Teil der Projektion beziehungsweise Darstellung sind Saison, Beschaffbarkeit, technischer Code, Version, Änderungszeitpunkt, Auditdaten, Challenge-Spezifität, transitive Vorfahren/Nachfahren oder Ausschlussregeln.
 
 Nur direkte und zum Zeitpunkt der Abfrage aktive Beziehungen werden geliefert. Rollen, Flags und Dimensionen werden nicht über den Konkretisierungsgraphen vererbt.
+
+Kulinarische Länderzuordnungen gelten ebenfalls ausschließlich für das konkret angezeigte Konzept. Die Lookup-Projektion liefert sie stabil nach ISO-Code sortiert mit Code und Anzeigename; sie leitet weder Parent→Child noch Child→Parent ab.
 
 ## 5. Gewichtung und Ungewöhnlichkeit
 
@@ -126,14 +129,28 @@ Das fertige Profil ist ein kompaktes Discord-Embed mit einer festen zurückhalte
 2. Basisdaten als Embed-Description ohne separate Überschrift,
 3. `Funktion im Gericht` und `Besondere Eigenschaften` als zwei native Inline-Embed-Felder,
 4. `🍽️ Geschmacksprofil`,
-5. optional `💡 Hinweis aus dem Zutatenkatalog`,
-6. `⬆️ Allgemeinere Begriffe`,
-7. `⬇️ Bekannte Konkretisierungen`,
-8. direkt unter dem Embed die String-Select-Navigation für vorhandene direkte Beziehungen.
+5. optional `🌍 Kulinarische Zuordnung`,
+6. optional `💡 Hinweis aus dem Zutatenkatalog`,
+7. `⬆️ Allgemeinere Begriffe`,
+8. `⬇️ Bekannte Konkretisierungen`,
+9. direkt unter dem Embed die String-Select-Navigation für vorhandene direkte Beziehungen.
 
 Die beiden Inline-Felder werden nicht durch Leerzeichen oder Tabulatoren als Texttabelle simuliert. Lange Werte im linken Feld verschieben daher die rechte Spalte nicht. Mehrere Werte stehen innerhalb ihres Feldes untereinander; leere Listen erscheinen als `keine`. Auf schmalen Clients darf Discord die Felder untereinander stapeln.
 
 Die Hierarchie steht bewusst am Ende, damit zunächst sämtliche Informationen zum konkret angezeigten Konzept zusammenbleiben und erst danach die Katalognavigation folgt.
+
+### 6.1 Kulinarische Länderzuordnung
+
+Hat das angezeigte Konzept mindestens eine explizit gepflegte kulinarische Länderzuordnung, zeigt die Card ein nicht-inline Feld:
+
+```text
+🌍 Kulinarische Zuordnung
+🇵🇭 🇹🇭 🇻🇳
+```
+
+Die zugrunde liegende Lookup-Projektion transportiert weiterhin ISO-Code und ausgeschriebenen Ländernamen. Der Discord-Renderer verwendet jedoch ausschließlich den gültigen ISO-Alpha-2-Code und bildet daraus deterministisch das Regionalindikator-Flag. Die Card zeigt weder Ländernamen noch Codes; die Flaggen sind kein gespeicherter Fachwert.
+
+Der Discord-Adapter besitzt dafür weder einen eigenen Länderreferenzbestand noch Länderfachlogik. Bei sehr vielen Zuordnungen darf er die Flaggen ohne Trennzeichen verdichten, damit das Discord-Field-Limit ohne Weglassen einer Zuordnung eingehalten bleibt. Fehlen Zuordnungen, existiert kein Länderabschnitt. Länder selbst werden nicht navigierbar und erzeugen keine zusätzlichen Commands, Komponenten oder Selects.
 
 ## 7. Skalen und Geschmacksprofil
 
@@ -230,6 +247,7 @@ Discord-Grenzen werden vor dem Senden deterministisch eingehalten. Eine überlan
 - Navigation wird auf maximal 25 Optionen je Richtung beschränkt.
 - Die Hierarchiefelder bleiben auch bei langen Kuratornotizen erhalten.
 - Die gesamte Card bleibt innerhalb der Embed-, Field-, Component-, Label- und `custom_id`-Grenzen.
+- Der Länderabschnitt enthält ausschließlich aus ISO-Codes abgeleitete Flaggen und bleibt auch zusammen mit maximalen übrigen Card-Inhalten innerhalb der Field- und Embed-Grenzen.
 
 ## 11. Modul- und Adaptergrenze
 
@@ -256,6 +274,9 @@ Automatisierte Tests decken mindestens ab:
 - Abweisung von `/zutat` außerhalb der konfigurierten Guild vor Lookup-Arbeit,
 - ziehbare/nicht ziehbare Profile und fehlende Werte,
 - native Inline-Felder mit langen linken Inhalten,
+- Lookup-Profil ohne, mit einer und mit mehreren expliziten Länderzuordnungen in stabiler Code-Reihenfolge ohne Parent-/Child-Vererbung,
+- korrekte deterministische ISO-Alpha-2→Flaggen-Darstellung ohne Ländertexte oder Codes sowie ohne leeren Länderabschnitt,
+- Länderabschnitt zusammen mit maximalen übrigen Card-Inhalten innerhalb der Discord-Limits,
 - verbale Stufen, `○`-Leersymbol und exakt fünf Skalenpositionen,
 - Kuratornotiz- und Längenbegrenzung,
 - 1 bis 25 Beziehungen als Select, leere Richtungen ohne Navigation, mehr als 25 mit sichtbarer Restanzahl,

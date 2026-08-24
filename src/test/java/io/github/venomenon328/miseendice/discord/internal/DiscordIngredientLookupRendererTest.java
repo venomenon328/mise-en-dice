@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.discord.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupDimension;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupProfile;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupRelation;
 import java.math.BigDecimal;
@@ -29,8 +30,25 @@ class DiscordIngredientLookupRendererTest {
         assertThat(field(drawable, "💡 Hinweis aus dem Zutatenkatalog")).contains("@\u200Bhere", "\\*kein Markdown\\*");
         assertThat(drawable.color()).isEqualTo(DiscordIngredientLookupRenderer.CARD_COLOR);
         assertThat(nonDrawable.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
-                .doesNotContain("💡 Hinweis aus dem Zutatenkatalog");
+                .doesNotContain("💡 Hinweis aus dem Zutatenkatalog", "🌍 Kulinarische Zuordnung");
         assertThat(nonDrawable.description()).contains("nicht eigenständig ziehbar", "nicht gepflegt");
+    }
+
+    @Test
+    void rendersOnlyDeterministicFlagsForExplicitCulinaryCountries() {
+        var embed = renderer.profile(profile(true, 2, List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(
+                new IngredientLookupCountry("DE", "Deutschland"),
+                new IngredientLookupCountry("PH", "Philippinen"),
+                new IngredientLookupCountry("TH", "Thailand")
+        )));
+
+        String flags = field(embed, "🌍 Kulinarische Zuordnung");
+
+        assertThat(flags).isEqualTo("🇩🇪 🇵🇭 🇹🇭")
+                .doesNotContain("Deutschland", "Philippinen", "Thailand", "DE", "PH", "TH");
+        assertThat(DiscordIngredientLookupRenderer.countryFlag("DE")).isEqualTo("🇩🇪");
+        assertThat(DiscordIngredientLookupRenderer.countryFlag("PH")).isEqualTo("🇵🇭");
+        assertThat(DiscordIngredientLookupRenderer.countryFlag("TH")).isEqualTo("🇹🇭");
     }
 
     @Test
@@ -123,8 +141,10 @@ class DiscordIngredientLookupRendererTest {
         List<IngredientLookupRelation> parents = java.util.stream.LongStream.rangeClosed(1, 30)
                 .mapToObj(number -> relation(number, "Sehr langer Oberbegriff " + String.format("%02d", number))).toList();
         String note = "@all ".repeat(3_000);
+        List<IngredientLookupCountry> countries = java.util.stream.IntStream.range(0, 249)
+                .mapToObj(ignored -> new IngredientLookupCountry("DE", "Deutschland")).toList();
 
-        var embed = renderer.profile(profile(true, 2, List.of(), note, parents, List.of(), List.of(), List.of()));
+        var embed = renderer.profile(profile(true, 2, List.of(), note, parents, List.of(), List.of(), List.of(), countries));
         var select = (DiscordIngredientLookupRenderer.NavigationSelectRow) embed.navigationRows().getFirst();
 
         assertThat(select.options()).hasSize(25);
@@ -135,6 +155,8 @@ class DiscordIngredientLookupRendererTest {
         assertThat(embed.title().length() + embed.description().length() + embed.fields().stream()
                 .mapToInt(field -> field.name().length() + field.value().length()).sum()).isLessThanOrEqualTo(6_000);
         assertThat(embed.fields()).allSatisfy(field -> assertThat(field.value().length()).isLessThanOrEqualTo(1_024));
+        assertThat(field(embed, "🌍 Kulinarische Zuordnung"))
+                .isEqualTo(DiscordIngredientLookupRenderer.countryFlag("DE").repeat(249));
         assertThat(embed.fields().stream().filter(field -> field.name().startsWith("💡 Hinweis"))
                 .map(DiscordIngredientLookupRenderer.EmbedField::value).reduce("", String::concat)).contains("@\u200Ball");
     }
@@ -142,8 +164,15 @@ class DiscordIngredientLookupRendererTest {
     private static IngredientLookupProfile profile(boolean drawable, Integer novelty, List<IngredientLookupDimension> dimensions,
                                                    String note, List<IngredientLookupRelation> parents,
                                                    List<IngredientLookupRelation> children, List<String> roles, List<String> flags) {
+        return profile(drawable, novelty, dimensions, note, parents, children, roles, flags, List.of());
+    }
+
+    private static IngredientLookupProfile profile(boolean drawable, Integer novelty, List<IngredientLookupDimension> dimensions,
+                                                   String note, List<IngredientLookupRelation> parents,
+                                                   List<IngredientLookupRelation> children, List<String> roles, List<String> flags,
+                                                   List<IngredientLookupCountry> countries) {
         return new IngredientLookupProfile(42, "Testzutat", drawable, new BigDecimal("0.8500"), novelty, parents,
-                children, roles, flags, dimensions, note);
+                children, roles, flags, dimensions, countries, note);
     }
 
     private static IngredientLookupRelation relation(long id, String name) {

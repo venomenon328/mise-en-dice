@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupMatch;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupProfile;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupRelation;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupSearchResult;
@@ -85,7 +86,7 @@ class DiscordIngredientLookupWorkflowTest {
     @Test
     void hierarchyNavigationLoadsTheConceptIdDirectlyForTheCardOwnerWithoutAnyNameSearch() {
         var queries = new FakeQueries();
-        queries.profiles.put(9L, profile(9, "Tempeh"));
+        queries.profiles.put(9L, profile(9, "Tempeh", List.of(new IngredientLookupCountry("ID", "Indonesien"))));
         var workflow = workflow(queries);
         var delivery = new CapturingDelivery();
         var feedback = new CapturingFeedback();
@@ -95,6 +96,9 @@ class DiscordIngredientLookupWorkflowTest {
                 "10001", delivery, feedback);
 
         assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedEmbed.class);
+        var embed = (DiscordIngredientLookupRenderer.RenderedEmbed) delivery.response;
+        assertThat(embed.fields()).filteredOn(field -> field.name().equals("🌍 Kulinarische Zuordnung"))
+                .extracting(DiscordIngredientLookupRenderer.EmbedField::value).containsExactly("🇮🇩");
         assertThat(queries.profileLookups).containsExactly(9L);
         assertThat(queries.searchCalls).isZero();
         assertThat(feedback.messages).isEmpty();
@@ -174,8 +178,12 @@ class DiscordIngredientLookupWorkflowTest {
     }
 
     private static IngredientLookupProfile profile(long id, String displayName) {
+        return profile(id, displayName, List.of());
+    }
+
+    private static IngredientLookupProfile profile(long id, String displayName, List<IngredientLookupCountry> countries) {
         return new IngredientLookupProfile(id, displayName, true, new BigDecimal("1.0000"), null,
-                List.<IngredientLookupRelation>of(), List.<IngredientLookupRelation>of(), List.of(), List.of(), List.of(), null);
+                List.<IngredientLookupRelation>of(), List.<IngredientLookupRelation>of(), List.of(), List.of(), List.of(), countries, null);
     }
 
     private static final class FakeQueries implements IngredientLookupQueries {

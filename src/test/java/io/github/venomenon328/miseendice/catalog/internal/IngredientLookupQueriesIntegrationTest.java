@@ -43,6 +43,8 @@ class IngredientLookupQueriesIntegrationTest {
 
     @AfterEach
     void removeTestCatalogData() {
+        jdbcTemplate.update("delete from ingredient_culinary_country where ingredient_concept_id in "
+                + "(select id from ingredient_concept where code like ?)", PREFIX + "%");
         jdbcTemplate.update("""
                 delete from ingredient_refinement
                 where parent_concept_id in (select id from ingredient_concept where code like ?)
@@ -104,6 +106,8 @@ class IngredientLookupQueriesIntegrationTest {
         assignFlag(selected, "FERMENTED");
         assignDimension(selected, "UMAMI", 4);
         assignDimension(selected, "SALTINESS", 2);
+        assignCountry(activeParentA, "PH");
+        assignCountry(activeChildA, "TH");
         long auditBefore = jdbcTemplate.queryForObject("select count(*) from catalog_audit_entry", Long.class);
 
         var search = queries.searchActiveByDisplayName("profil", 25);
@@ -128,9 +132,24 @@ class IngredientLookupQueriesIntegrationTest {
                 .containsExactlyInAnyOrder(
                         org.assertj.core.groups.Tuple.tuple("SALTINESS", 2),
                         org.assertj.core.groups.Tuple.tuple("UMAMI", 4));
+        assertThat(profile.culinaryCountries()).isEmpty();
         assertThat(profile.curatorNote()).isEqualTo("  Kurator @here *Hinweis*  ");
         assertThat(queries.findActiveProfile(inactiveChild)).isEmpty();
         assertThat(auditAfter).isEqualTo(auditBefore);
+
+        assignCountry(selected, "TH");
+
+        assertThat(queries.findActiveProfile(selected).orElseThrow().culinaryCountries())
+                .extracting(country -> country.code(), country -> country.displayName())
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("TH", "Thailand"));
+
+        assignCountry(selected, "DE");
+
+        assertThat(queries.findActiveProfile(selected).orElseThrow().culinaryCountries())
+                .extracting(country -> country.code(), country -> country.displayName())
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("DE", "Deutschland"),
+                        org.assertj.core.groups.Tuple.tuple("TH", "Thailand"));
     }
 
     private long insertConcept(String suffix, String displayName, boolean active, boolean drawable, Integer noveltyLevel,
@@ -162,5 +181,11 @@ class IngredientLookupQueriesIntegrationTest {
                 insert into ingredient_culinary_dimension (ingredient_concept_id, culinary_dimension_id, level)
                 select ?, id, ? from culinary_dimension where code = ?
                 """, conceptId, level, dimensionCode);
+    }
+
+    private void assignCountry(long conceptId, String countryCode) {
+        jdbcTemplate.update(
+                "insert into ingredient_culinary_country (ingredient_concept_id, country_code) values (?, ?)",
+                conceptId, countryCode);
     }
 }
