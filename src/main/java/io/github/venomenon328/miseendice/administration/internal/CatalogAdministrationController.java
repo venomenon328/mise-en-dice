@@ -317,15 +317,10 @@ class CatalogAdministrationController {
         boolean wouldBeRedundant = direction == RelationDirection.PARENT
                 ? edited.transitiveAncestors().stream().anyMatch(relation -> relation.id() == candidate.id())
                 : edited.transitiveDescendants().stream().anyMatch(relation -> relation.id() == candidate.id());
-        Set<String> editedRoles = edited.functionalRoles().stream()
-                .map(value -> value.displayName())
-                .collect(java.util.stream.Collectors.toSet());
-        boolean roleMismatch = candidate.functionalRoles().stream().noneMatch(editedRoles::contains);
         String reason = alreadyDirect ? "bereits direkte Beziehung"
                 : wouldCycle ? "würde einen Zyklus bilden"
                 : wouldBeRedundant ? "bereits transitiv ableitbar"
-                : specificityInvalid ? "Spezifität nicht zulässig"
-                : roleMismatch ? "keine gemeinsame funktionale Rolle" : null;
+                : specificityInvalid ? "Spezifität nicht zulässig" : null;
         boolean structurallyBlocked = alreadyDirect || wouldCycle || wouldBeRedundant;
         return new RelationPickerItem(candidate, !structurallyBlocked, reason);
     }

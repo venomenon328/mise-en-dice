@@ -223,7 +223,7 @@ Dieses Paket vervollständigt die Zutatenpflege.
 - vollständige Pflichtvalidierung aktiver Ziehkandidaten,
 - `Pflegebedarf`-Filter,
 - gemeinsamer atomarer Save mit Basisfeldern und vorgemerkten Beziehungen,
-- PostgreSQL-Graphlock für Relations-, Rollen- und Spezifitätswrites.
+- PostgreSQL-Graphlock für Relations- und Spezifitätswrites.
 
 Die Stammdaten `functional_role`, `culinary_flag`, `culinary_dimension` und `participant` bleiben in dieser Phase migrationsgeführt und werden nicht selbst per Web administriert.
 

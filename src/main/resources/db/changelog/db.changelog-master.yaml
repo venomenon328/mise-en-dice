@@ -77,3 +77,11 @@ databaseChangeLog:
       file: db/changelog/reference/002-culinary-countries.sql
   - include:
       file: db/changelog/catalog/018-sweden-curation.sql
+  - include:
+      file: db/changelog/catalog/019-poland-curation.sql
+  - include:
+      file: db/changelog/catalog/020-denmark-curation.sql
+  - include:
+      file: db/changelog/catalog/021-netherlands-curation.sql
+  - include:
+      file: db/changelog/catalog/022-belgium-curation.sql

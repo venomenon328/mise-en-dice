@@ -222,9 +222,10 @@ class PersistedGenerationIntegrationTest {
         Generated zero = generated(commands.startNewSession(new StartNewSession(DATE, List.of(), 7_100L, 1, RestrictionMode.AUTO)));
         long firstConcept = conceptId(0);
         Generated one = generated(commands.startNewSession(new StartNewSession(DATE,
-                List.of(new ManualRequirementInput(1, "Miso manual", firstConcept)), 7_101L, 1, RestrictionMode.AUTO)));
+                List.of(new ManualRequirementInput(1, "Synthetic manual requirement", firstConcept)), 7_101L, 1,
+                        RestrictionMode.AUTO)));
         Generated two = generated(commands.startNewSession(new StartNewSession(DATE,
-                List.of(new ManualRequirementInput(1, "Miso manual", firstConcept),
+                List.of(new ManualRequirementInput(1, "Synthetic manual requirement", firstConcept),
                         new ManualRequirementInput(2, "Freitext manual", null)), 7_102L, 1, RestrictionMode.AUTO)));
 
         assertThat(manualCount(zero.attemptId())).isZero();

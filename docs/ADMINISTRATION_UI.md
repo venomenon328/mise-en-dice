@@ -969,7 +969,7 @@ Eine Transaktion für Basisdaten und die in diesem Paket bereits implementierten
 
 **Zutatenkonzept ändern**
 
-Eine Transaktion mit erwartetem Versionswert. Basisfelder, Rollen, Eigenschaften, kulinarische Länderzuordnungen, Beschaffbarkeit, Saison und vorgemerkte direkte Beziehungen werden gegen denselben resultierenden Zustand validiert, atomar gespeichert, genau einmal versioniert und auditiert. Vor dem Graph-Read/Validate/Write-Ablauf serialisiert ein PostgreSQL-Transaktionslock Relations-, Rollen- und Spezifitätsänderungen.
+Eine Transaktion mit erwartetem Versionswert. Basisfelder, Rollen, Eigenschaften, kulinarische Länderzuordnungen, Beschaffbarkeit, Saison und vorgemerkte direkte Beziehungen werden gegen denselben resultierenden Zustand validiert, atomar gespeichert, genau einmal versioniert und auditiert. Vor dem Graph-Read/Validate/Write-Ablauf serialisiert ein PostgreSQL-Transaktionslock Relations- und Spezifitätsänderungen; Rollen bleiben davon unabhängig.
 
 **Konkretisierungsbeziehung hinzufügen/entfernen**
 

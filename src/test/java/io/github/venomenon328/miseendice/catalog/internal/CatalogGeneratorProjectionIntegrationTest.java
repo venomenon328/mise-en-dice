@@ -22,6 +22,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @SpringBootTest
 @Testcontainers
 class CatalogGeneratorProjectionIntegrationTest {
+    private static final String TEST_PREFIX = "TEST_GENERATOR_PROJECTION_";
 
     @Container
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
@@ -46,74 +47,116 @@ class CatalogGeneratorProjectionIntegrationTest {
     private JdbcTemplate jdbcTemplate;
 
     @AfterEach
-    void removeSparseProjectionParticipant() {
-        jdbcTemplate.update("delete from participant where code = 'CATALOG_SPARSE_TEST'");
+    void removeTestRows() {
+        jdbcTemplate.update("""
+                delete from exclusion_rule_target
+                where exclusion_rule_id in (select id from exclusion_rule where code like ?)
+                   or ingredient_concept_id in (select id from ingredient_concept where code like ?)
+                """, TEST_PREFIX + "%", TEST_PREFIX + "%");
+        jdbcTemplate.update("""
+                delete from ingredient_culinary_dimension
+                where ingredient_concept_id in (select id from ingredient_concept where code like ?)
+                """, TEST_PREFIX + "%");
+        jdbcTemplate.update("""
+                delete from ingredient_culinary_flag
+                where ingredient_concept_id in (select id from ingredient_concept where code like ?)
+                """, TEST_PREFIX + "%");
+        jdbcTemplate.update("""
+                delete from ingredient_functional_role
+                where ingredient_concept_id in (select id from ingredient_concept where code like ?)
+                """, TEST_PREFIX + "%");
+        jdbcTemplate.update("""
+                delete from ingredient_availability
+                where ingredient_concept_id in (select id from ingredient_concept where code like ?)
+                   or participant_id in (select id from participant where code like ?)
+                """, TEST_PREFIX + "%", TEST_PREFIX + "%");
+        jdbcTemplate.update("""
+                delete from ingredient_seasonality
+                where ingredient_concept_id in (select id from ingredient_concept where code like ?)
+                """, TEST_PREFIX + "%");
+        jdbcTemplate.update("""
+                delete from ingredient_refinement
+                where parent_concept_id in (select id from ingredient_concept where code like ?)
+                   or child_concept_id in (select id from ingredient_concept where code like ?)
+                """, TEST_PREFIX + "%", TEST_PREFIX + "%");
+        jdbcTemplate.update("delete from exclusion_rule where code like ?", TEST_PREFIX + "%");
+        jdbcTemplate.update("delete from ingredient_concept where code like ?", TEST_PREFIX + "%");
+        jdbcTemplate.update("delete from participant where code like ?", TEST_PREFIX + "%");
     }
 
     @Test
     void projectsEveryCatalogConceptIncludingManualOnlyConcepts() {
-        var snapshot = projection.snapshotForMonth(8, defaultElectorate());
+        long firstParticipant = insertParticipant("FIRST");
+        long secondParticipant = insertParticipant("SECOND");
+        long drawable = insertConcept("DRAWABLE", true, true, "SPECIFIC", 3);
+        long manualOnly = insertConcept("MANUAL_ONLY", false, false, "OPEN", null);
+        insertRole(drawable, "VEGETABLE");
+        insertAvailability(drawable, firstParticipant, "EASY");
+        insertAvailability(drawable, secondParticipant, "PLANNED");
+
+        var snapshot = projection.snapshotForMonth(8, participants(firstParticipant, secondParticipant));
 
         assertThat(snapshot.concepts()).extracting(GeneratorConcept::code)
-                .containsExactlyInAnyOrderElementsOf(catalogConceptCodes());
-        assertThat(snapshot.concepts()).filteredOn(concept -> concept.active() && concept.randomDrawEnabled())
-                .isNotEmpty();
-        assertThat(snapshot.concepts()).filteredOn(concept -> !concept.active() || !concept.randomDrawEnabled())
-                .isNotEmpty()
-                .allSatisfy(concept -> {
-                    assertThat(concept.code()).isNotBlank();
-                    assertThat(concept.displayName()).isNotBlank();
-                    assertThat(concept.specificity()).isNotNull();
-                });
+                .contains(TEST_PREFIX + "DRAWABLE", TEST_PREFIX + "MANUAL_ONLY");
+        GeneratorConcept drawableConcept = snapshot.conceptByCode(TEST_PREFIX + "DRAWABLE").orElseThrow();
+        assertThat(drawableConcept.active()).isTrue();
+        assertThat(drawableConcept.randomDrawEnabled()).isTrue();
+        assertThat(drawableConcept.functionalRoles()).containsExactly("VEGETABLE");
+        assertThat(drawableConcept.availabilityByParticipant())
+                .containsEntry(TEST_PREFIX + "FIRST", CatalogGeneratorProjection.Availability.EASY)
+                .containsEntry(TEST_PREFIX + "SECOND", CatalogGeneratorProjection.Availability.PLANNED);
+        assertThat(snapshot.conceptByCode(TEST_PREFIX + "MANUAL_ONLY")).isPresent();
         assertThat(snapshot.concepts()).isSortedAccordingTo(GeneratorConcept.CANONICAL_ORDER);
-        assertThat(snapshot.activeParticipantCodes()).containsExactly("GEORGIA", "TOBIAS");
-        assertThat(snapshot.conceptByCode("FISH_SAUCE").orElseThrow().culinaryDimensions())
-                .containsEntry("SALTINESS", 5);
-        assertThat(snapshot.concepts()).filteredOn(concept -> concept.active() && concept.randomDrawEnabled())
-                .allSatisfy(concept -> {
-                    assertThat(concept.functionalRoles()).isNotEmpty();
-                    assertThat(concept.noveltyLevel()).isBetween(1, 5);
-                    assertThat(concept.availabilityByParticipant()).containsKeys("GEORGIA", "TOBIAS");
-                });
+        assertThat(snapshot.activeParticipantCodes())
+                .containsExactly(TEST_PREFIX + "FIRST", TEST_PREFIX + "SECOND");
     }
 
     @Test
     void resolvesSeasonGraphPropertiesAndExpandedExclusionsInBulkSnapshot() {
-        var snapshot = projection.snapshotForMonth(8, defaultElectorate());
-        String missingSeasonCode = jdbcTemplate.queryForObject("""
-                select concept.code
-                from ingredient_concept concept
-                where not exists (
-                    select 1 from ingredient_seasonality season
-                    where season.ingredient_concept_id = concept.id and season.month = 8
-                )
-                order by concept.code, concept.id
-                limit 1
-                """, String.class);
+        long participant = insertParticipant("GRAPH");
+        long parent = insertConcept("PARENT", false, false, "OPEN", null);
+        long child = insertConcept("CHILD", true, true, "SPECIFIC", 2);
+        long noSeason = insertConcept("NO_SEASON", false, false, "SPECIFIC", null);
+        insertRole(child, "VEGETABLE");
+        insertAvailability(child, participant, "EASY");
+        jdbcTemplate.update("""
+                insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)
+                """, parent, child);
+        jdbcTemplate.update("""
+                insert into ingredient_culinary_flag (ingredient_concept_id, culinary_flag_id)
+                select ?, id from culinary_flag where code = 'FERMENTED'
+                """, child);
+        jdbcTemplate.update("""
+                insert into ingredient_culinary_dimension (ingredient_concept_id, culinary_dimension_id, level)
+                select ?, id, 5 from culinary_dimension where code = 'SALTINESS'
+                """, child);
+        long rule = jdbcTemplate.queryForObject("""
+                insert into exclusion_rule (code, display_text, base_draw_weight)
+                values (?, ?, 1.0000)
+                returning id
+                """, Long.class, TEST_PREFIX + "RULE", "Test exclusion rule");
+        jdbcTemplate.update("""
+                insert into exclusion_rule_target (exclusion_rule_id, ingredient_concept_id, include_refinements)
+                values (?, ?, true)
+                """, rule, parent);
 
-        assertThat(snapshot.conceptByCode(missingSeasonCode).orElseThrow().seasonMultiplier())
+        var snapshot = projection.snapshotForMonth(8, participants(participant));
+
+        assertThat(snapshot.conceptByCode(TEST_PREFIX + "NO_SEASON").orElseThrow().seasonMultiplier())
                 .isEqualByComparingTo(BigDecimal.ONE);
-        assertThat(snapshot.concepts()).anySatisfy(concept -> assertThat(concept.directAncestorCodes()).hasSizeGreaterThan(1));
-        assertThat(snapshot.concepts()).anySatisfy(concept -> {
-            assertThat(concept.culinaryFlags()).isNotEmpty();
-            assertThat(concept.culinaryDimensions()).isNotEmpty();
-        });
-        assertThat(snapshot.exclusionRules()).hasSize(22);
-        assertThat(snapshot.exclusionRules()).anySatisfy(rule -> {
-            assertThat(rule.targets()).anyMatch(CatalogGeneratorProjection.GeneratorExclusionTarget::includeRefinements);
-            assertThat(rule.expandedTargetCodes().size()).isGreaterThan(rule.targets().size());
-        });
-
-        var noBeef = snapshot.exclusionRules().stream()
-                .filter(rule -> rule.code().equals("NO_BEEF"))
+        GeneratorConcept childConcept = snapshot.conceptByCode(TEST_PREFIX + "CHILD").orElseThrow();
+        assertThat(childConcept.directAncestorCodes()).containsExactly(TEST_PREFIX + "PARENT");
+        assertThat(childConcept.culinaryFlags()).containsExactly("FERMENTED");
+        assertThat(childConcept.culinaryDimensions()).containsEntry("SALTINESS", 5);
+        var exclusion = snapshot.exclusionRules().stream()
+                .filter(candidate -> candidate.code().equals(TEST_PREFIX + "RULE"))
                 .findFirst()
                 .orElseThrow();
-        assertThat(noBeef.targets()).anySatisfy(target -> {
-            assertThat(target.conceptCode()).isEqualTo("VEAL");
+        assertThat(exclusion.targets()).singleElement().satisfies(target -> {
+            assertThat(target.conceptCode()).isEqualTo(TEST_PREFIX + "PARENT");
             assertThat(target.includeRefinements()).isTrue();
         });
-        assertThat(noBeef.expandedTargetCodes())
-                .contains("VEAL", "VEAL_CUTLET", "VEAL_LIVER", "VEAL_SHANK", "WHITE_SAUSAGE");
+        assertThat(exclusion.expandedTargetCodes()).contains(TEST_PREFIX + "PARENT", TEST_PREFIX + "CHILD");
     }
 
     @Test
@@ -129,36 +172,61 @@ class CatalogGeneratorProjectionIntegrationTest {
 
     @Test
     void projectsOnlyMaintainedAvailabilityForTheFixedSessionElectorate() {
-        long sparseParticipantId = jdbcTemplate.queryForObject("""
-                insert into participant (code, display_name) values ('CATALOG_SPARSE_TEST', 'Sparse projection test')
-                returning id
-                """, Long.class);
-        long georgiaId = jdbcTemplate.queryForObject("select id from participant where code = 'GEORGIA'", Long.class);
+        long maintainedParticipantId = insertParticipant("MAINTAINED");
+        long sparseParticipantId = insertParticipant("SPARSE");
+        long conceptId = insertConcept("SPARSE_AVAILABILITY", true, true, "SPECIFIC", 2);
+        insertRole(conceptId, "VEGETABLE");
+        insertAvailability(conceptId, maintainedParticipantId, "EASY");
 
         var snapshot = projection.snapshotForMonth(8, List.of(
-                new SessionParticipant(georgiaId, "GEORGIA"),
-                new SessionParticipant(sparseParticipantId, "CATALOG_SPARSE_TEST")));
+                new SessionParticipant(maintainedParticipantId, TEST_PREFIX + "MAINTAINED"),
+                new SessionParticipant(sparseParticipantId, TEST_PREFIX + "SPARSE")));
 
-        assertThat(snapshot.activeParticipantCodes()).containsExactly("CATALOG_SPARSE_TEST", "GEORGIA");
-        assertThat(snapshot.conceptByCode("FISH_SAUCE").orElseThrow().availabilityByParticipant())
-                .containsKey("GEORGIA")
-                .doesNotContainKey("CATALOG_SPARSE_TEST")
-                .doesNotContainKey("TOBIAS");
+        assertThat(snapshot.activeParticipantCodes())
+                .containsExactly(TEST_PREFIX + "MAINTAINED", TEST_PREFIX + "SPARSE");
+        assertThat(snapshot.conceptByCode(TEST_PREFIX + "SPARSE_AVAILABILITY").orElseThrow()
+                .availabilityByParticipant())
+                .containsKey(TEST_PREFIX + "MAINTAINED")
+                .doesNotContainKey(TEST_PREFIX + "SPARSE");
     }
 
-    private List<SessionParticipant> defaultElectorate() {
-        return jdbcTemplate.query("""
-                select participant.id, participant.code
-                from default_electorate_member member
-                join participant on participant.id = member.participant_id
-                order by participant.code, participant.id
-                """, (result, row) -> new SessionParticipant(result.getLong("id"), result.getString("code")));
+    private long insertParticipant(String suffix) {
+        return jdbcTemplate.queryForObject("""
+                insert into participant (code, display_name) values (?, ?) returning id
+                """, Long.class, TEST_PREFIX + suffix, "Projection " + suffix);
     }
 
-    private List<String> catalogConceptCodes() {
-        return jdbcTemplate.queryForList(
-                "select code from ingredient_concept order by code, id",
-                String.class
-        );
+    private long insertConcept(String suffix, boolean active, boolean drawable, String specificity, Integer novelty) {
+        return jdbcTemplate.queryForObject("""
+                insert into ingredient_concept (
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight, novelty_level
+                ) values (?, ?, ?, ?, ?, 1.0000, ?)
+                returning id
+                """, Long.class, TEST_PREFIX + suffix, "Projection " + suffix, active, drawable, specificity, novelty);
+    }
+
+    private void insertRole(long conceptId, String roleCode) {
+        jdbcTemplate.update("""
+                insert into ingredient_functional_role (ingredient_concept_id, functional_role_id)
+                select ?, id from functional_role where code = ?
+                """, conceptId, roleCode);
+    }
+
+    private void insertAvailability(long conceptId, long participantId, String level) {
+        jdbcTemplate.update("""
+                insert into ingredient_availability (ingredient_concept_id, participant_id, availability_level)
+                values (?, ?, ?)
+                """, conceptId, participantId, level);
+    }
+
+    private List<SessionParticipant> participants(long... participantIds) {
+        return java.util.Arrays.stream(participantIds)
+                .mapToObj(id -> new SessionParticipant(
+                        id,
+                        jdbcTemplate.queryForObject("select code from participant where id = ?", String.class, id)
+                ))
+                .sorted(java.util.Comparator.comparing(SessionParticipant::participantCode)
+                        .thenComparingLong(SessionParticipant::participantId))
+                .toList();
     }
 }

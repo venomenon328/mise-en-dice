@@ -8,6 +8,8 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationExc
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CreateIngredientConceptCommand;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogMetadata;
+import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.RefinementChange;
+import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.RefinementChangeType;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.UpdateIngredientConceptCommand;
 import io.github.venomenon328.miseendice.catalog.api.CatalogDrawWeightWarningException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
@@ -35,6 +37,7 @@ class CatalogCommandServiceIntegrationTest {
 
     private static final String PREFIX = "TEST_ISSUE11_";
     private static final String ACTOR = "issue11-integration-admin";
+    private static final String WEIGHT_WARNING_ROLE = "TEST_ISSUE172_WEIGHT_WARNING_ROLE";
 
     @Container
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
@@ -69,6 +72,11 @@ class CatalogCommandServiceIntegrationTest {
                 where parent_concept_id in (select id from ingredient_concept where code like ?)
                    or child_concept_id in (select id from ingredient_concept where code like ?)
                 """, PREFIX + "%", PREFIX + "%");
+        jdbcTemplate.update("""
+                delete from ingredient_functional_role
+                where functional_role_id in (select id from functional_role where code = ?)
+                """, WEIGHT_WARNING_ROLE);
+        jdbcTemplate.update("delete from functional_role where code = ?", WEIGHT_WARNING_ROLE);
         jdbcTemplate.update("delete from ingredient_concept where code like ?", PREFIX + "%");
     }
 
@@ -183,6 +191,44 @@ class CatalogCommandServiceIntegrationTest {
                 "SPECIFIC", new BigDecimal("0.50"), 5, null, true));
         assertThat(result.version()).isEqualTo(1);
         assertThat(auditCount()).isEqualTo(1);
+    }
+
+    @Test
+    void warnsForAPendingDirectCookingAlcoholParentWithoutPersistingTheSave() {
+        long parent = jdbcTemplate.queryForObject(
+                "select id from ingredient_concept where code = 'COOKING_ALCOHOL'", Long.class);
+        long parentVersion = version(parent);
+        long child = insertConcept("PENDING_COOKING_ALCOHOL", "Issue 172 pending graph", "SPECIFIC", true, false, null);
+        jdbcTemplate.update("insert into functional_role (code, display_name) values (?, ?)",
+                WEIGHT_WARNING_ROLE, "Issue 172 technical role");
+        jdbcTemplate.update("""
+                insert into ingredient_functional_role (ingredient_concept_id, functional_role_id)
+                select concept.id, role.id
+                from ingredient_concept concept
+                cross join functional_role role
+                where concept.id in (?, ?) and role.code = ?
+                """, parent, child, WEIGHT_WARNING_ROLE);
+
+        UpdateIngredientConceptCommand command = new UpdateIngredientConceptCommand(
+                child, 0, "Issue 172 pending graph", true, true, "SPECIFIC", new BigDecimal("0.50"),
+                null, null, ACTOR, false,
+                List.of(new RefinementChange(parent, child, RefinementChangeType.ADD)),
+                Map.of(parent, parentVersion), true
+        );
+
+        assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(command))
+                .isInstanceOf(CatalogDrawWeightWarningException.class)
+                .satisfies(exception -> assertThat(((CatalogDrawWeightWarningException) exception).warnings()).hasSize(1));
+
+        assertThat(jdbcTemplate.queryForObject("""
+                select exists (
+                    select 1 from ingredient_refinement
+                    where parent_concept_id = ? and child_concept_id = ?
+                )
+                """, Boolean.class, parent, child)).isFalse();
+        assertThat(version(child)).isZero();
+        assertThat(version(parent)).isEqualTo(parentVersion);
+        assertThat(auditCount()).isZero();
     }
 
     @Test

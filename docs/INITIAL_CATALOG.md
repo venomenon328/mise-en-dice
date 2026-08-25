@@ -233,7 +233,6 @@ Anschließend reduziert `catalog/014-catalog-consolidation.sql` den Graphen auf 
 - exakt 24 aktive Wurzelkonzepte und `Kaffee` als einziges spezifisches Root-Konzept,
 - exakt 711 direkte Konkretisierungsbeziehungen im ersten konsolidierten Zwischenstand,
 - keine transitiv redundanten Direktkanten,
-- mindestens eine gemeinsame funktionale Rolle je direkter Parent-Child-Beziehung,
 - keine offene Vorgabe unter einem spezifischen Parent,
 - die kanonische Meeresfrüchte-Hierarchie,
 - sowie die festgelegten Gewichtsobergrenzen für ungewöhnliche, schwer beschaffbare und alkoholische Kochzutaten.

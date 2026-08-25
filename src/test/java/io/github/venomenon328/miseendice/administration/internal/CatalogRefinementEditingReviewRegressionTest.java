@@ -80,11 +80,11 @@ class CatalogRefinementEditingReviewRegressionTest {
     }
 
     @Test
-    void pickerKeepsCandidateWithSharedRoleSelectable() throws Exception {
+    void pickerDoesNotUseFunctionalRolesForEligibility() throws Exception {
         MockHttpSession session = authenticate();
         long parent = insertConcept("PARENT", "Issue 21 review parent", "OPEN");
         long child = insertConcept("CHILD", "Issue 21 review child", "SPECIFIC");
-        assignRole(parent);
+        assignRole(parent, "VEGETABLE");
         assignRole(child);
 
         String html = mockMvc.perform(get("/admin/catalog/{id}/relations/picker", child)
@@ -96,24 +96,20 @@ class CatalogRefinementEditingReviewRegressionTest {
 
         String marker = "data-candidate-id=\"" + parent + "\"";
         int markerIndex = html.indexOf(marker);
-        assertTrue(markerIndex >= 0, "expected the shared-role parent in picker results");
+        assertTrue(markerIndex >= 0, "expected the parent in picker results");
         int buttonStart = html.lastIndexOf("<button", markerIndex);
         int buttonEnd = html.indexOf('>', markerIndex);
         assertTrue(buttonStart >= 0 && buttonEnd > markerIndex, "expected a picker action button");
         assertFalse(html.substring(buttonStart, buttonEnd).contains("disabled"),
-                "a candidate with a shared functional role must remain selectable");
+                "functional-role differences must not disable a relation candidate");
     }
 
     @Test
-    void structuralCycleRemainsBlockedEvenWhenTheCandidateAlsoHasARoleMismatch() throws Exception {
+    void structuralCycleRemainsBlocked() throws Exception {
         MockHttpSession session = authenticate();
         long edited = insertConcept("CYCLE_EDITED", "Issue 24 cycle edited", "OPEN");
         long middle = insertConcept("CYCLE_MIDDLE", "Issue 24 cycle middle", "SPECIFIC");
         long candidate = insertConcept("CYCLE_CANDIDATE", "Issue 24 cycle candidate", "SPECIFIC");
-        assignRole(edited, "ANIMAL_PROTEIN");
-        assignRole(middle, "ANIMAL_PROTEIN");
-        assignRole(middle, "VEGETABLE");
-        assignRole(candidate, "VEGETABLE");
         jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", edited, middle);
         jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", middle, candidate);
 
@@ -131,7 +127,7 @@ class CatalogRefinementEditingReviewRegressionTest {
         int buttonEnd = html.indexOf('>', markerIndex);
         assertTrue(buttonStart >= 0 && buttonEnd > markerIndex, "expected a picker action button");
         assertTrue(html.substring(buttonStart, buttonEnd).contains("disabled"),
-                "a structural cycle must remain blocked even if metadata could also change in the pending save");
+                "a structural cycle must remain blocked");
         assertTrue(html.contains("würde einen Zyklus bilden"));
     }
 
