@@ -51,14 +51,15 @@ class CatalogGeneratorProjectionIntegrationTest {
     }
 
     @Test
-    void projectsTheCompleteCanonicalBaselineIncludingManualOnlyConcepts() {
+    void projectsEveryCatalogConceptIncludingManualOnlyConcepts() {
         var snapshot = projection.snapshotForMonth(8, defaultElectorate());
 
-        assertThat(snapshot.concepts()).hasSize(698);
+        assertThat(snapshot.concepts()).extracting(GeneratorConcept::code)
+                .containsExactlyInAnyOrderElementsOf(catalogConceptCodes());
         assertThat(snapshot.concepts()).filteredOn(concept -> concept.active() && concept.randomDrawEnabled())
-                .hasSize(651);
+                .isNotEmpty();
         assertThat(snapshot.concepts()).filteredOn(concept -> !concept.active() || !concept.randomDrawEnabled())
-                .hasSize(47)
+                .isNotEmpty()
                 .allSatisfy(concept -> {
                     assertThat(concept.code()).isNotBlank();
                     assertThat(concept.displayName()).isNotBlank();
@@ -152,5 +153,12 @@ class CatalogGeneratorProjectionIntegrationTest {
                 join participant on participant.id = member.participant_id
                 order by participant.code, participant.id
                 """, (result, row) -> new SessionParticipant(result.getLong("id"), result.getString("code")));
+    }
+
+    private List<String> catalogConceptCodes() {
+        return jdbcTemplate.queryForList(
+                "select code from ingredient_concept order by code, id",
+                String.class
+        );
     }
 }

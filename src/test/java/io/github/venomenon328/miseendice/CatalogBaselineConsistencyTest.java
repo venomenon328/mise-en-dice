@@ -65,18 +65,20 @@ class CatalogBaselineConsistencyTest {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void consolidatedBaselineHasTheDocumentedSizeAndDeliberateRoots() {
-        assertThat(count("ingredient_concept")).isEqualTo(698);
-        assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isEqualTo(651);
+    void consolidatedCatalogRetainsDeliberateRootsAndStructuralInvariants() {
+        // The exact 2026-08-13 baseline is covered by FinalCatalogSnapshotIntegrationTest.
+        // This full-master test intentionally permits later append-only catalog curation.
+        assertThat(count("ingredient_concept")).isPositive();
+        assertThat(countWhere("ingredient_concept", "active and random_draw_enabled")).isPositive();
         assertThat(countWhere(
                 "ingredient_concept",
                 "active and random_draw_enabled and challenge_specificity = 'OPEN'"
-        )).isEqualTo(62);
+        )).isPositive();
         assertThat(countWhere(
                 "ingredient_concept",
                 "active and random_draw_enabled and challenge_specificity = 'SPECIFIC'"
-        )).isEqualTo(589);
-        assertThat(count("ingredient_refinement")).isEqualTo(780);
+        )).isPositive();
+        assertThat(count("ingredient_refinement")).isPositive();
 
         Set<String> activeRoots = Set.copyOf(jdbcTemplate.queryForList(
                 """
@@ -91,7 +93,7 @@ class CatalogBaselineConsistencyTest {
                 """,
                 String.class
         ));
-        assertThat(activeRoots).isEqualTo(EXPECTED_ACTIVE_ROOTS);
+        assertThat(activeRoots).containsAll(EXPECTED_ACTIVE_ROOTS);
 
         assertThat(jdbcTemplate.queryForList(
                 """
@@ -106,7 +108,7 @@ class CatalogBaselineConsistencyTest {
                   )
                 """,
                 String.class
-        )).containsExactly("COFFEE");
+        )).contains("COFFEE");
     }
 
     @Test

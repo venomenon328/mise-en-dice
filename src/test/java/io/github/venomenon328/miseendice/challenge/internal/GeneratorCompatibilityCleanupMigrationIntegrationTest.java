@@ -41,8 +41,11 @@ class GeneratorCompatibilityCleanupMigrationIntegrationTest {
             assertThat(columnExists(connection, "generation_attempt", "exclusion_rule_id")).isTrue();
             assertThat(columnExists(connection, "challenge_candidate", "exclusion_rule_id")).isTrue();
 
-            int conceptCount = count(connection, "ingredient_concept");
-            int exclusionRuleCount = count(connection, "exclusion_rule");
+            String tomatoDisplayName = stringValue(connection,
+                    "select display_name from ingredient_concept where code = 'TOMATO'");
+            int tomatoVersion = countWhere(connection, "ingredient_concept", "code = 'TOMATO' and version = 0");
+            String noRiceDisplayName = stringValue(connection,
+                    "select display_text from exclusion_rule where code = 'NO_RICE'");
             int auditCount = count(connection, "catalog_audit_entry");
             execute(connection, """
                     insert into catalog_audit_entry (
@@ -57,8 +60,16 @@ class GeneratorCompatibilityCleanupMigrationIntegrationTest {
 
             assertThat(columnExists(connection, "generation_attempt", "exclusion_rule_id")).isFalse();
             assertThat(columnExists(connection, "challenge_candidate", "exclusion_rule_id")).isFalse();
-            assertThat(count(connection, "ingredient_concept")).isEqualTo(conceptCount);
-            assertThat(count(connection, "exclusion_rule")).isEqualTo(exclusionRuleCount);
+            // The master changelog may legitimately add later catalog batches.  This compatibility
+            // migration must only preserve existing catalog and administration state.
+            assertThat(stringValue(connection,
+                    "select display_name from ingredient_concept where code = 'TOMATO'"))
+                    .isEqualTo(tomatoDisplayName);
+            assertThat(countWhere(connection, "ingredient_concept", "code = 'TOMATO' and version = 0"))
+                    .isEqualTo(tomatoVersion);
+            assertThat(stringValue(connection,
+                    "select display_text from exclusion_rule where code = 'NO_RICE'"))
+                    .isEqualTo(noRiceDisplayName);
             assertThat(count(connection, "catalog_audit_entry")).isEqualTo(auditCount + 1);
 
             int changesetCount = count(connection, "databasechangelog");
@@ -97,10 +108,25 @@ class GeneratorCompatibilityCleanupMigrationIntegrationTest {
         }
     }
 
+    private static int countWhere(Connection connection, String table, String whereClause) throws Exception {
+        try (Statement statement = connection.createStatement(); ResultSet result = statement.executeQuery(
+                "select count(*) from " + table + " where " + whereClause)) {
+            result.next();
+            return result.getInt(1);
+        }
+    }
+
     private static boolean booleanValue(Connection connection, String sql) throws Exception {
         try (Statement statement = connection.createStatement(); ResultSet result = statement.executeQuery(sql)) {
             result.next();
             return result.getBoolean(1);
+        }
+    }
+
+    private static String stringValue(Connection connection, String sql) throws Exception {
+        try (Statement statement = connection.createStatement(); ResultSet result = statement.executeQuery(sql)) {
+            result.next();
+            return result.getString(1);
         }
     }
 }
