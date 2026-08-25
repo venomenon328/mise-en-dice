@@ -34,6 +34,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +56,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @SpringBootTest
 @Testcontainers
 class GeneratorLaboratoryAdministrationMvcTest {
+    private static final String TEST_PREFIX = "TEST_GENERATOR_LAB_MVC_";
     private static final String PASSWORD = UUID.randomUUID().toString();
     private static final String PASSWORD_HASH = new BCryptPasswordEncoder().encode(PASSWORD);
 
@@ -91,6 +93,12 @@ class GeneratorLaboratoryAdministrationMvcTest {
         jdbcTemplate.update("delete from generation_batch");
         jdbcTemplate.update("delete from generation_attempt");
         jdbcTemplate.update("delete from challenge_session");
+        jdbcTemplate.update("delete from ingredient_concept where code like ?", TEST_PREFIX + "%");
+        jdbcTemplate.update("""
+                insert into ingredient_concept (
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
+                ) values (?, ?, false, false, 'SPECIFIC', 1.0000)
+                """, TEST_PREFIX + "LOOKUP", "Generator laboratory lookup");
     }
 
     @Test
@@ -289,10 +297,15 @@ class GeneratorLaboratoryAdministrationMvcTest {
     void conceptSearchUsesPublicCatalogProjectionForPickerHelp() throws Exception {
         mockMvc.perform(get("/admin/generator/concepts")
                         .param("slot", "manual1ConceptId")
-                        .param("search", "Miso"))
+                        .param("search", TEST_PREFIX + "LOOKUP"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Miso")))
+                .andExpect(content().string(containsString("Generator laboratory lookup")))
                 .andExpect(content().string(containsString("ID")));
+    }
+
+    @AfterEach
+    void removeLookupFixture() {
+        jdbcTemplate.update("delete from ingredient_concept where code like ?", TEST_PREFIX + "%");
     }
 
     private int count(String table) {

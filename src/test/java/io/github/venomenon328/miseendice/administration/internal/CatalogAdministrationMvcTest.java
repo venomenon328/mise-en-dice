@@ -15,12 +15,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -37,6 +39,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class CatalogAdministrationMvcTest {
 
     private static final String ACTOR_KEY = "catalog-mvc-admin";
+    private static final String TEST_PREFIX = "TEST_CATALOG_MVC_";
     private static final String PASSWORD = UUID.randomUUID().toString();
     private static final String PASSWORD_HASH = new BCryptPasswordEncoder().encode(PASSWORD);
 
@@ -63,6 +66,9 @@ class CatalogAdministrationMvcTest {
     @Autowired
     private CatalogQueries catalogQueries;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     private MockMvc mockMvc;
     private long codId;
     private long codParentId;
@@ -80,24 +86,22 @@ class CatalogAdministrationMvcTest {
 
     @BeforeEach
     void setUp() {
+        removeFixtureRows();
+        createFixture();
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
                 .build();
 
-        codId = conceptIdByCode("COD");
+        codId = conceptIdByCode(TEST_PREFIX + "COD");
         var codDetail = catalogQueries.findConcept(codId).orElseThrow();
         codParentId = codDetail.directParents().getFirst().id();
 
-        expandableRootId = catalogQueries.findHierarchyRoots().stream()
-                .filter(node -> node.hasDirectChildren())
-                .findFirst()
-                .orElseThrow()
-                .id();
+        expandableRootId = codParentId;
 
-        scaleConceptId = conceptIdByCode("BEEF_LIVER");
+        scaleConceptId = conceptIdByCode(TEST_PREFIX + "SCALE");
         var scaleDetail = catalogQueries.findConcept(scaleConceptId).orElseThrow();
         assertTrue(scaleDetail.directChildren().isEmpty(),
-                "BEEF_LIVER is expected to remain a hierarchy leaf for this fixture");
+                "The synthetic scale concept must remain a hierarchy leaf for this fixture");
         scaleConceptParentId = scaleDetail.directParents().getFirst().id();
         scaleNoveltyLevel = scaleDetail.noveltyLevel();
         var managedDimension = scaleDetail.culinaryDimensions().stream()
@@ -118,9 +122,9 @@ class CatalogAdministrationMvcTest {
                 .findFirst()
                 .orElseThrow();
 
-        molluscsId = conceptIdByCode("MOLLUSCS");
-        shellfishId = conceptIdByCode("SHELLFISH");
-        bivalvesId = conceptIdByCode("BIVALVES");
+        molluscsId = conceptIdByCode(TEST_PREFIX + "MULTI_PARENT_ONE");
+        shellfishId = conceptIdByCode(TEST_PREFIX + "MULTI_PARENT_TWO");
+        bivalvesId = conceptIdByCode(TEST_PREFIX + "MULTI_CHILD");
         var bivalvesDetail = catalogQueries.findConcept(bivalvesId).orElseThrow();
         assertTrue(bivalvesDetail.directChildren().size() > 0,
                 "BIVALVES must have children for the hierarchy-occurrence regression fixture");
@@ -141,8 +145,8 @@ class CatalogAdministrationMvcTest {
 
         mockMvc.perform(get("/admin/catalog")
                         .session(session)
-                        .param("view", "LIST")
-                        .param("q", "Kabeljau")
+                .param("view", "LIST")
+                        .param("q", "Test Suchtreffer")
                         .param("quick", "DRAWABLE")
                         .param("active", "ACTIVE")
                         .param("draw", "ENABLED")
@@ -169,7 +173,7 @@ class CatalogAdministrationMvcTest {
                 .andExpect(content().string(containsString("regulär nicht verfügbar")))
                 .andExpect(content().string(containsString("Name A–Z")))
                 .andExpect(content().string(containsString("Name Z–A")))
-                .andExpect(content().string(containsString("Kabeljau")))
+                .andExpect(content().string(containsString("Test Suchtreffer")))
                 .andExpect(content().string(containsString("Aggregatversion")));
 
         mockMvc.perform(get("/admin/catalog")
@@ -204,7 +208,7 @@ class CatalogAdministrationMvcTest {
                         .session(session)
                         .header("HX-Request", "true"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Rinderleber")))
+                .andExpect(content().string(containsString("Test Skalenwert")))
                 .andReturn();
         String childrenHtml = childrenResult.getResponse().getContentAsString();
         assertFalse(childrenHtml.contains("data-node-id=\"" + scaleConceptId + "\""),
@@ -219,7 +223,7 @@ class CatalogAdministrationMvcTest {
                         .session(session)
                         .header("HX-Request", "true"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Muscheln")))
+                .andExpect(content().string(containsString("Test Mehrfachkind")))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -228,7 +232,7 @@ class CatalogAdministrationMvcTest {
                         .session(session)
                         .header("HX-Request", "true"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Muscheln")))
+                .andExpect(content().string(containsString("Test Mehrfachkind")))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -283,7 +287,7 @@ class CatalogAdministrationMvcTest {
         mockMvc.perform(get("/admin/catalog/{id}", codId).session(session).header("HX-Request", "true"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-testid=\"catalog-detail\"")))
-                .andExpect(content().string(containsString("Kabeljau")))
+                .andExpect(content().string(containsString("Test Suchtreffer")))
                 .andExpect(content().string(containsString("/admin/catalog/" + codParentId)));
 
         mockMvc.perform(get("/admin/catalog/{id}", scaleConceptId).session(session).header("HX-Request", "true"))
@@ -319,6 +323,96 @@ class CatalogAdministrationMvcTest {
                 .findFirst()
                 .orElseThrow()
                 .id();
+    }
+
+    @AfterEach
+    void tearDown() {
+        removeFixtureRows();
+    }
+
+    private void createFixture() {
+        long codParent = insertConcept("COD_PARENT", "Test Fischgruppe", false, false, "OPEN", null);
+        long cod = insertConcept("COD", "Test Suchtreffer", true, true, "SPECIFIC", 2);
+        long scaleParent = insertConcept("SCALE_PARENT", "Test Skalenfamilie", false, false, "OPEN", null);
+        long scale = insertConcept("SCALE", "Test Skalenwert", true, true, "SPECIFIC", 3);
+        long firstMultiParent = insertConcept("MULTI_PARENT_ONE", "Test Mehrfachgruppe Eins", false, false, "OPEN", null);
+        long secondMultiParent = insertConcept("MULTI_PARENT_TWO", "Test Mehrfachgruppe Zwei", false, false, "OPEN", null);
+        long multiChild = insertConcept("MULTI_CHILD", "Test Mehrfachkind", false, false, "OPEN", null);
+        long multiGrandchild = insertConcept("MULTI_GRANDCHILD", "Test Mehrfachunterkind", false, false, "SPECIFIC", null);
+
+        link(codParent, cod);
+        link(scaleParent, scale);
+        link(firstMultiParent, multiChild);
+        link(secondMultiParent, multiChild);
+        link(multiChild, multiGrandchild);
+
+        assignRole(cod, "ANIMAL_PROTEIN");
+        assignRole(scale, "VEGETABLE");
+        assignAvailability(cod, "GEORGIA", "EASY");
+        assignAvailability(cod, "TOBIAS", "EASY");
+        assignAvailability(scale, "GEORGIA", "EASY");
+        assignAvailability(scale, "TOBIAS", "PLANNED");
+        jdbcTemplate.update("""
+                insert into ingredient_culinary_dimension (ingredient_concept_id, culinary_dimension_id, level)
+                select ?, id, 4 from culinary_dimension where code = 'UMAMI'
+                """, scale);
+    }
+
+    private long insertConcept(
+            String suffix,
+            String displayName,
+            boolean active,
+            boolean randomDrawEnabled,
+            String specificity,
+            Integer noveltyLevel
+    ) {
+        return jdbcTemplate.queryForObject("""
+                insert into ingredient_concept (
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight, novelty_level
+                ) values (?, ?, ?, ?, ?, 1.0000, ?)
+                returning id
+                """, Long.class, TEST_PREFIX + suffix, displayName, active, randomDrawEnabled, specificity, noveltyLevel);
+    }
+
+    private void link(long parentId, long childId) {
+        jdbcTemplate.update("""
+                insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)
+                """, parentId, childId);
+    }
+
+    private void assignRole(long conceptId, String roleCode) {
+        jdbcTemplate.update("""
+                insert into ingredient_functional_role (ingredient_concept_id, functional_role_id)
+                select ?, id from functional_role where code = ?
+                """, conceptId, roleCode);
+    }
+
+    private void assignAvailability(long conceptId, String participantCode, String level) {
+        jdbcTemplate.update("""
+                insert into ingredient_availability (ingredient_concept_id, participant_id, availability_level)
+                select ?, id, ? from participant where code = ?
+                """, conceptId, level, participantCode);
+    }
+
+    private void removeFixtureRows() {
+        jdbcTemplate.update("""
+                delete from ingredient_culinary_dimension
+                where ingredient_concept_id in (select id from ingredient_concept where code like ?)
+                """, TEST_PREFIX + "%");
+        jdbcTemplate.update("""
+                delete from ingredient_functional_role
+                where ingredient_concept_id in (select id from ingredient_concept where code like ?)
+                """, TEST_PREFIX + "%");
+        jdbcTemplate.update("""
+                delete from ingredient_availability
+                where ingredient_concept_id in (select id from ingredient_concept where code like ?)
+                """, TEST_PREFIX + "%");
+        jdbcTemplate.update("""
+                delete from ingredient_refinement
+                where parent_concept_id in (select id from ingredient_concept where code like ?)
+                   or child_concept_id in (select id from ingredient_concept where code like ?)
+                """, TEST_PREFIX + "%", TEST_PREFIX + "%");
+        jdbcTemplate.update("delete from ingredient_concept where code like ?", TEST_PREFIX + "%");
     }
 
     private static String ariaControlsForNode(String html, long nodeId) {

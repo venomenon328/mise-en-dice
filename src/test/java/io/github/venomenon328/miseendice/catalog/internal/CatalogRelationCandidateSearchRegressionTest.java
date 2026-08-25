@@ -47,19 +47,24 @@ class CatalogRelationCandidateSearchRegressionTest {
 
     @Test
     void findsExactTechnicalCodesContainingUnderscoresCaseInsensitively() {
-        assertThat(codes(catalogQueries.searchRelationCandidates("BAMBOO_SHOOTS", 0)))
-                .contains("BAMBOO_SHOOTS");
-        assertThat(codes(catalogQueries.searchRelationCandidates("bamboo_shoots", 0)))
-                .contains("BAMBOO_SHOOTS");
+        insertConcept(TEST_PREFIX + "EXACT_UNDERSCORE", "Picker exact underscore");
+
+        assertThat(codes(catalogQueries.searchRelationCandidates(TEST_PREFIX + "EXACT_UNDERSCORE", 0)))
+                .contains(TEST_PREFIX + "EXACT_UNDERSCORE");
+        assertThat(codes(catalogQueries.searchRelationCandidates(TEST_PREFIX.toLowerCase() + "exact_underscore", 0)))
+                .contains(TEST_PREFIX + "EXACT_UNDERSCORE");
     }
 
     @Test
     void consecutiveDifferentSearchesDoNotReuseThePreviousResult() {
-        assertThat(codes(catalogQueries.searchRelationCandidates("ARTICHOKE", 0)))
-                .contains("ARTICHOKE");
-        assertThat(codes(catalogQueries.searchRelationCandidates("ASPARAGUS", 0)))
-                .contains("ASPARAGUS")
-                .doesNotContain("ARTICHOKE");
+        insertConcept(TEST_PREFIX + "FIRST", "Picker first");
+        insertConcept(TEST_PREFIX + "SECOND", "Picker second");
+
+        assertThat(codes(catalogQueries.searchRelationCandidates(TEST_PREFIX + "FIRST", 0)))
+                .contains(TEST_PREFIX + "FIRST");
+        assertThat(codes(catalogQueries.searchRelationCandidates(TEST_PREFIX + "SECOND", 0)))
+                .contains(TEST_PREFIX + "SECOND")
+                .doesNotContain(TEST_PREFIX + "FIRST");
     }
 
     @Test

@@ -47,6 +47,7 @@ class CatalogExclusionsBulkAuditMvcTest {
     private static final String PASSWORD = UUID.randomUUID().toString();
     private static final String PASSWORD_HASH = new BCryptPasswordEncoder().encode(PASSWORD);
     private static final String RULE_CODE = "TEST_ISSUE30_MVC_RULE";
+    private static final String TARGET_CODE = "TEST_ISSUE30_MVC_TARGET";
     private static final Pattern CONFIRMATION_ID = Pattern.compile("name=\"confirmationId\" value=\"([^\"]+)\"");
 
     @Container
@@ -82,6 +83,8 @@ class CatalogExclusionsBulkAuditMvcTest {
 
     @BeforeEach
     void setUp() {
+        removeTestData();
+        insertConcept("TARGET", false);
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
                 .build();
@@ -97,9 +100,9 @@ class CatalogExclusionsBulkAuditMvcTest {
     @Test
     void rendersExclusionPickerExecutesConfirmedBulkAndShowsAuditDiffThroughPublicCatalogApis() throws Exception {
         MockHttpSession session = authenticate();
-        var cod = catalogQueries.findConcept(conceptId("COD")).orElseThrow();
+        var target = catalogQueries.findConcept(conceptId(TARGET_CODE)).orElseThrow();
         long ruleId = exclusionCommands.createExclusionRule(new CreateExclusionRuleCommand(RULE_CODE, "Issue thirty MVC Ausschluss",
-                true, BigDecimal.ONE, null, List.of(new ExclusionTarget(cod.id(), true)), ACTOR)).exclusionRuleId();
+                true, BigDecimal.ONE, null, List.of(new ExclusionTarget(target.id(), true)), ACTOR)).exclusionRuleId();
         long exclusionAuditId = latestAuditId("EXCLUSION_RULE");
         long bulkConceptId = insertConcept("BULK", true);
         long bulkVersion = catalogQueries.findConcept(bulkConceptId).orElseThrow().version();
@@ -113,9 +116,9 @@ class CatalogExclusionsBulkAuditMvcTest {
                 .andExpect(content().string(containsString("data-testid=\"exclusion-edit-form\"")))
                 .andExpect(content().string(containsString("data-dirty-dialog")))
                 .andExpect(content().string(containsString("data-deactivation-dialog")));
-        mockMvc.perform(get("/admin/exclusions/targets/picker").session(session).param("q", "Kabeljau"))
+        mockMvc.perform(get("/admin/exclusions/targets/picker").session(session).param("q", "Issue thirty MVC TARGET"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Kabeljau")));
+                .andExpect(content().string(containsString("Issue thirty MVC TARGET")));
 
         MvcResult preview = mockMvc.perform(post("/admin/catalog/bulk/preview").session(session).with(csrf())
                         .param("selection", bulkConceptId + ":" + bulkVersion).param("action", "DISABLE_RANDOM_DRAW"))
@@ -147,7 +150,7 @@ class CatalogExclusionsBulkAuditMvcTest {
     @Test
     void exclusionCreationKeepsActiveDefaultWithoutFakeDeactivationAndRequiresCsrf() throws Exception {
         MockHttpSession session = authenticate();
-        var cod = catalogQueries.findConcept(conceptId("COD")).orElseThrow();
+        var target = catalogQueries.findConcept(conceptId(TARGET_CODE)).orElseThrow();
         String code = "TEST_ISSUE30_MVC_CREATE";
 
         mockMvc.perform(get("/admin/exclusions/new").session(session).header("HX-Request", "true"))
@@ -160,7 +163,7 @@ class CatalogExclusionsBulkAuditMvcTest {
                         .param("displayText", "Ohne Fake-Deaktivierung")
                         .param("active", "true")
                         .param("baseDrawWeight", "1.0")
-                        .param("target", cod.id() + ":false"))
+                        .param("target", target.id() + ":false"))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(post("/admin/exclusions").session(session).with(csrf())
@@ -168,7 +171,7 @@ class CatalogExclusionsBulkAuditMvcTest {
                         .param("displayText", "Ohne Fake-Deaktivierung")
                         .param("active", "true")
                         .param("baseDrawWeight", "1.0")
-                        .param("target", cod.id() + ":false"))
+                        .param("target", target.id() + ":false"))
                 .andExpect(status().is3xxRedirection());
         org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
                 "select active from exclusion_rule where code = ?", Boolean.class, code)).isTrue();
@@ -177,13 +180,13 @@ class CatalogExclusionsBulkAuditMvcTest {
     @Test
     void exclusionConflictDoesNotOverwriteAndSaveNoticeDisappearsWithTheNextHtmxDetailSwap() throws Exception {
         MockHttpSession session = authenticate();
-        long cod = conceptId("COD");
+        long target = conceptId(TARGET_CODE);
         long first = exclusionCommands.createExclusionRule(new CreateExclusionRuleCommand(
                 "TEST_ISSUE30_MVC_FIRST", "Erste Regel", true, BigDecimal.ONE, null,
-                List.of(new ExclusionTarget(cod, false)), ACTOR)).exclusionRuleId();
+                List.of(new ExclusionTarget(target, false)), ACTOR)).exclusionRuleId();
         long second = exclusionCommands.createExclusionRule(new CreateExclusionRuleCommand(
                 "TEST_ISSUE30_MVC_SECOND", "Zweite Regel", true, BigDecimal.ONE, null,
-                List.of(new ExclusionTarget(cod, false)), ACTOR)).exclusionRuleId();
+                List.of(new ExclusionTarget(target, false)), ACTOR)).exclusionRuleId();
 
         jdbcTemplate.update("update exclusion_rule set display_text = 'Fremder Stand', version = 1 where id = ?", first);
         mockMvc.perform(post("/admin/exclusions/{id}", first).session(session).with(csrf())
@@ -191,7 +194,7 @@ class CatalogExclusionsBulkAuditMvcTest {
                         .param("active", "true")
                         .param("baseDrawWeight", "1.0")
                         .param("version", "0")
-                        .param("target", cod + ":false"))
+                        .param("target", target + ":false"))
                 .andExpect(status().isConflict())
                 .andExpect(content().string(containsString("Gleichzeitige Änderung")))
                 .andExpect(content().string(containsString("Nichts wurde überschrieben")));

@@ -77,6 +77,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @Testcontainers
 class OfferDecisionLifecycleIntegrationTest {
     private static final LocalDate DATE = LocalDate.of(2026, 8, 17);
+    private static final String TEST_CONCEPT_PREFIX = "TEST_OFFER_RESULT_";
 
     @Container
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
@@ -119,6 +120,12 @@ class OfferDecisionLifecycleIntegrationTest {
         jdbcTemplate.execute("truncate table challenge_card, reroll_offer_exposure_requirement, reroll_offer_exposure, challenge, "
                 + "curated_offer_set, curation_round, generation_batch, generation_attempt, challenge_session cascade");
         jdbcTemplate.update("update challenge_archive_counter set last_challenge_number = 0 where singleton = true");
+        jdbcTemplate.update("""
+                delete from ingredient_refinement
+                where parent_concept_id in (select id from ingredient_concept where code like ?)
+                   or child_concept_id in (select id from ingredient_concept where code like ?)
+                """, TEST_CONCEPT_PREFIX + "%", TEST_CONCEPT_PREFIX + "%");
+        jdbcTemplate.update("delete from ingredient_concept where code like ?", TEST_CONCEPT_PREFIX + "%");
     }
 
     @ParameterizedTest
@@ -692,32 +699,36 @@ class OfferDecisionLifecycleIntegrationTest {
         assertThat(withoutOptionalData.ownIngredients()).isEmpty();
         assertThat(withoutOptionalData.photoAvailable()).isFalse();
 
-        ResultIngredientCatalogQueries.IngredientConcept miso = resultIngredientCatalogQueries.findUniqueExactMatch("miso")
+        long catalogReferenceId = insertResultConcept("OWN_REFERENCE", "Test catalog reference", true, "SPECIFIC");
+        ResultIngredientCatalogQueries.IngredientConcept catalogReference =
+                resultIngredientCatalogQueries.findUniqueExactMatch("test catalog reference")
                 .orElseThrow();
         ChallengeResultQueries.ChallengeResultView withIngredients = resultCommands.createChallengeResult(
                 new ChallengeResultCommands.CreateChallengeResult(challengeNumber, tobias,
                         new ResultData("Suppe", "Mit selbst gemachtem Fond.", "Gelungen.", List.of(
-                                new OwnIngredientInput("Miso", null),
-                                new OwnIngredientInput("Frühlingszwiebel", null),
-                                new OwnIngredientInput("Chiliöl", null)
+                                new OwnIngredientInput("Test catalog reference", null),
+                                new OwnIngredientInput("Test own ingredient one", null),
+                                new OwnIngredientInput("Test own ingredient two", null)
                         )), null));
         assertThat(withIngredients.ownIngredients()).hasSize(3)
                 .extracting(ChallengeResultQueries.ResultIngredientView::displayText)
-                .containsExactly("Chiliöl", "Frühlingszwiebel", "Miso");
+                .containsExactly("Test catalog reference", "Test own ingredient one", "Test own ingredient two");
 
-        ChallengeResultQueries.ResultIngredientView misoIngredient = withIngredients.ownIngredients().stream()
-                .filter(ingredient -> ingredient.displayText().equals("Miso"))
+        ChallengeResultQueries.ResultIngredientView catalogReferenceIngredient = withIngredients.ownIngredients().stream()
+                .filter(ingredient -> ingredient.displayText().equals("Test catalog reference"))
                 .findFirst().orElseThrow();
         ChallengeResultQueries.ResultIngredientView referenced = resultCommands.setResultIngredientReference(
-                new ChallengeResultCommands.SetResultIngredientReference(misoIngredient.resultIngredientId(), miso.id(),
+                new ChallengeResultCommands.SetResultIngredientReference(
+                        catalogReferenceIngredient.resultIngredientId(), catalogReference.id(),
                         withIngredients.version()));
-        assertThat(referenced.displayText()).isEqualTo("Miso");
+        assertThat(catalogReference.id()).isEqualTo(catalogReferenceId);
+        assertThat(referenced.displayText()).isEqualTo("Test catalog reference");
         assertThat(referenced.ingredientConcept()).extracting(ChallengeResultQueries.IngredientConceptReference::ingredientConceptId)
-                .isEqualTo(miso.id());
+                .isEqualTo(catalogReference.id());
         ChallengeResultQueries.ResultIngredientView unreferenced = resultCommands.setResultIngredientReference(
-                new ChallengeResultCommands.SetResultIngredientReference(misoIngredient.resultIngredientId(), null,
+                new ChallengeResultCommands.SetResultIngredientReference(catalogReferenceIngredient.resultIngredientId(), null,
                         withIngredients.version() + 1));
-        assertThat(unreferenced.displayText()).isEqualTo("Miso");
+        assertThat(unreferenced.displayText()).isEqualTo("Test catalog reference");
         assertThat(unreferenced.ingredientConcept()).isNull();
 
         String inactiveCode = "RESULT_TEST_INACTIVE";
@@ -748,39 +759,46 @@ class OfferDecisionLifecycleIntegrationTest {
     void personalConcretizationsUseOpenSnapshotsConstrainedRefinementsAndResultVersions() throws Exception {
         long challengeNumber = confirmedChallenge(76_100_066L);
         long georgia = participantId("GEORGIA");
-        long fish = conceptId("FISH");
-        long cod = conceptId("COD");
-        long rootVegetables = conceptId("ROOT_VEGETABLES");
-        long carrot = conceptId("CARROT");
-        long miso = conceptId("MISO");
-        setRequirement(challengeNumber, 1, fish, "Fisch", "OPEN");
-        setRequirement(challengeNumber, 2, rootVegetables, "Wurzelgemüse", "OPEN");
-        setRequirement(challengeNumber, 3, miso, "Miso", "SPECIFIC");
+        long openOne = insertResultConcept("OPEN_ONE", "Test open requirement one", true, "OPEN");
+        long refinedOne = insertResultConcept("REFINED_ONE", "Test refined ingredient one", true, "SPECIFIC");
+        long openTwo = insertResultConcept("OPEN_TWO", "Test open requirement two", true, "OPEN");
+        long refinedTwo = insertResultConcept("REFINED_TWO", "Test refined ingredient two", true, "SPECIFIC");
+        long unrelated = insertResultConcept("UNRELATED", "Test unrelated ingredient", true, "SPECIFIC");
+        linkResultConcepts(openOne, refinedOne);
+        linkResultConcepts(openTwo, refinedTwo);
+        setRequirement(challengeNumber, 1, openOne, "Test open requirement one", "OPEN");
+        setRequirement(challengeNumber, 2, openTwo, "Test open requirement two", "OPEN");
+        setRequirement(challengeNumber, 3, unrelated, "Test unrelated ingredient", "SPECIFIC");
 
-        assertThat(resultIngredientCatalogQueries.findUniqueExactRefinementMatch(fish, "kabeljau"))
-                .get().extracting(ResultIngredientCatalogQueries.IngredientConcept::id).isEqualTo(cod);
-        assertThat(resultIngredientCatalogQueries.findUniqueExactRefinementMatch(fish, "miso")).isEmpty();
-        assertThat(resultIngredientCatalogQueries.searchRefinementsLiterally(fish, "kabel"))
-                .extracting(ResultIngredientCatalogQueries.IngredientConcept::id).contains(cod).doesNotContain(miso);
+        assertThat(resultIngredientCatalogQueries.findUniqueExactRefinementMatch(openOne, "test refined ingredient one"))
+                .get().extracting(ResultIngredientCatalogQueries.IngredientConcept::id).isEqualTo(refinedOne);
+        assertThat(resultIngredientCatalogQueries.findUniqueExactRefinementMatch(openOne, "test unrelated ingredient"))
+                .isEmpty();
+        assertThat(resultIngredientCatalogQueries.searchRefinementsLiterally(openOne, "refined ingredient one"))
+                .extracting(ResultIngredientCatalogQueries.IngredientConcept::id)
+                .contains(refinedOne).doesNotContain(unrelated);
 
-        jdbcTemplate.update("update ingredient_concept set active = false where id = ?", cod);
+        jdbcTemplate.update("update ingredient_concept set active = false where id = ?", refinedOne);
         try {
             var created = resultCommands.createChallengeResult(new ChallengeResultCommands.CreateChallengeResult(
                     challengeNumber, georgia,
-                    new ResultData("Teller", "Beschreibung", null, List.of(new OwnIngredientInput("Knoblauch", null)),
+                    new ResultData("Teller", "Beschreibung", null, List.of(new OwnIngredientInput("Test own ingredient", null)),
                             List.of(
-                                    new ChallengeResultCommands.ResultConcretizationInput(1, "  Kabeljaufilet  ", cod),
-                                    new ChallengeResultCommands.ResultConcretizationInput(2, "Karotte", null))),
+                                    new ChallengeResultCommands.ResultConcretizationInput(
+                                            1, "  Test refined result one  ", refinedOne),
+                                    new ChallengeResultCommands.ResultConcretizationInput(2, "Test free-text result two", null))),
                     null));
 
             assertThat(created.concretizations())
                     .extracting(ChallengeResultQueries.ResultConcretizationView::requirementPosition,
                             ChallengeResultQueries.ResultConcretizationView::requirementDisplayText,
                             ChallengeResultQueries.ResultConcretizationView::displayText)
-                    .containsExactly(tuple(1, "Fisch", "Kabeljaufilet"), tuple(2, "Wurzelgemüse", "Karotte"));
+                    .containsExactly(
+                            tuple(1, "Test open requirement one", "Test refined result one"),
+                            tuple(2, "Test open requirement two", "Test free-text result two"));
             assertThat(created.concretizations().getFirst().ingredientConcept())
                     .satisfies(reference -> {
-                        assertThat(reference.ingredientConceptId()).isEqualTo(cod);
+                        assertThat(reference.ingredientConceptId()).isEqualTo(refinedOne);
                         assertThat(reference.active()).isFalse();
                     });
 
@@ -791,10 +809,10 @@ class OfferDecisionLifecycleIntegrationTest {
                     .hasSize(2);
 
             var referenced = resultCommands.setResultConcretizationReference(
-                    new ChallengeResultCommands.SetResultConcretizationReference(created.resultId(), 2, carrot,
+                    new ChallengeResultCommands.SetResultConcretizationReference(created.resultId(), 2, refinedTwo,
                             created.version()));
-            assertThat(referenced.displayText()).isEqualTo("Karotte");
-            assertThat(referenced.ingredientConcept().ingredientConceptId()).isEqualTo(carrot);
+            assertThat(referenced.displayText()).isEqualTo("Test free-text result two");
+            assertThat(referenced.ingredientConcept().ingredientConceptId()).isEqualTo(refinedTwo);
             var afterReference = resultQueries.findChallengeResult(challengeNumber, georgia).orElseThrow();
             assertThat(afterReference.version()).isEqualTo(created.version() + 1);
 
@@ -805,16 +823,16 @@ class OfferDecisionLifecycleIntegrationTest {
             assertThatThrownBy(() -> resultCommands.updateResultConcretizations(
                     new ChallengeResultCommands.UpdateResultConcretizations(challengeNumber, georgia,
                             afterReference.version(), List.of(
-                            new ChallengeResultCommands.ResultConcretizationInput(3, "Shiro Miso", null)))))
+                            new ChallengeResultCommands.ResultConcretizationInput(3, "Invalid specific requirement", null)))))
                     .isInstanceOf(ChallengeResultConcretizationValidationException.class);
             assertThatThrownBy(() -> resultCommands.updateResultConcretizations(
                     new ChallengeResultCommands.UpdateResultConcretizations(challengeNumber, georgia,
                             afterReference.version(), List.of(
-                            new ChallengeResultCommands.ResultConcretizationInput(1, "Miso", miso)))))
+                            new ChallengeResultCommands.ResultConcretizationInput(1, "Unrelated reference", unrelated)))))
                     .isInstanceOf(ChallengeResultConcretizationValidationException.class);
             assertThat(resultQueries.findChallengeResult(challengeNumber, georgia).orElseThrow().concretizations())
                     .extracting(ChallengeResultQueries.ResultConcretizationView::displayText)
-                    .containsExactly("Kabeljaufilet", "Karotte");
+                    .containsExactly("Test refined result one", "Test free-text result two");
 
             var replaced = resultCommands.replaceChallengeResult(new ChallengeResultCommands.ReplaceChallengeResult(
                     challengeNumber, georgia, afterReference.version(),
@@ -828,29 +846,29 @@ class OfferDecisionLifecycleIntegrationTest {
             var updated = resultCommands.updateChallengeResult(new ChallengeResultCommands.UpdateChallengeResult(
                     challengeNumber, georgia, replaced.version(),
                     new ResultData("Bearbeitet", "Noch eine Beschreibung", null, List.of(), List.of(
-                            new ChallengeResultCommands.ResultConcretizationInput(1, "Schellfisch", null),
+                            new ChallengeResultCommands.ResultConcretizationInput(1, "Test replacement one", null),
                             new ChallengeResultCommands.ResultConcretizationInput(2, "Pastinake", null)))));
             assertThat(updated.concretizations())
                     .extracting(ChallengeResultQueries.ResultConcretizationView::displayText)
-                    .containsExactly("Schellfisch", "Pastinake");
+                    .containsExactly("Test replacement one", "Pastinake");
             assertThat(updated.photoAvailable()).isTrue();
 
             assertThatThrownBy(() -> new ResultData("Teller", "Beschreibung", null, List.of(), List.of(
-                    new ChallengeResultCommands.ResultConcretizationInput(1, "Kabeljau", null),
-                    new ChallengeResultCommands.ResultConcretizationInput(1, "Schellfisch", null))))
+                    new ChallengeResultCommands.ResultConcretizationInput(1, "First duplicate", null),
+                    new ChallengeResultCommands.ResultConcretizationInput(1, "Second duplicate", null))))
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> new ChallengeResultCommands.ResultConcretizationInput(1, "   ", null))
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> new ChallengeResultCommands.ResultConcretizationInput(1, "x".repeat(201), null))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> new ChallengeResultCommands.ResultConcretizationInput(5, "Kabeljau", null))
+            assertThatThrownBy(() -> new ChallengeResultCommands.ResultConcretizationInput(5, "Out of range", null))
                     .isInstanceOf(IllegalArgumentException.class);
 
             resultCommands.removeChallengeResult(new ChallengeResultCommands.RemoveChallengeResult(challengeNumber, georgia));
             assertThat(jdbcTemplate.queryForObject("select count(*) from challenge_result_concretization", Integer.class))
                     .isZero();
         } finally {
-            jdbcTemplate.update("update ingredient_concept set active = true where id = ?", cod);
+            jdbcTemplate.update("update ingredient_concept set active = true where id = ?", refinedOne);
         }
     }
 
@@ -929,7 +947,7 @@ class OfferDecisionLifecycleIntegrationTest {
         long challengeNumber = confirmedChallenge(76_100_062L);
         long georgia = participantId("GEORGIA");
         ResultData initial = new ResultData("Start", "Startbeschreibung", null,
-                List.of(new OwnIngredientInput("Miso", null)));
+                List.of(new OwnIngredientInput("Test own ingredient", null)));
         ChallengeResultQueries.ChallengeResultView created = resultCommands.createChallengeResult(
                 new ChallengeResultCommands.CreateChallengeResult(challengeNumber, georgia, initial, null));
         byte[] png = image("png", 2, 2, 0xff00aa00);
@@ -1116,8 +1134,19 @@ class OfferDecisionLifecycleIntegrationTest {
         return jdbcTemplate.queryForObject("select id from participant where code = ?", Long.class, participantCode);
     }
 
-    private long conceptId(String code) {
-        return jdbcTemplate.queryForObject("select id from ingredient_concept where code = ?", Long.class, code);
+    private long insertResultConcept(String suffix, String displayName, boolean active, String specificity) {
+        return jdbcTemplate.queryForObject("""
+                insert into ingredient_concept (
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
+                ) values (?, ?, ?, false, ?, 1.0000)
+                returning id
+                """, Long.class, TEST_CONCEPT_PREFIX + suffix, displayName, active, specificity);
+    }
+
+    private void linkResultConcepts(long parentId, long childId) {
+        jdbcTemplate.update("""
+                insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)
+                """, parentId, childId);
     }
 
     private void setRequirement(long challengeNumber, int position, long conceptId, String displayText,

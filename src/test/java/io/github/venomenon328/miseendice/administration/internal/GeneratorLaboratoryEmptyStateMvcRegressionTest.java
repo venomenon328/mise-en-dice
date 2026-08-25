@@ -9,12 +9,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -27,6 +29,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @SpringBootTest
 @Testcontainers
 class GeneratorLaboratoryEmptyStateMvcRegressionTest {
+    private static final String TEST_PREFIX = "TEST_GENERATOR_LAB_EMPTY_";
     private static final String PASSWORD = UUID.randomUUID().toString();
     private static final String PASSWORD_HASH = new BCryptPasswordEncoder().encode(PASSWORD);
 
@@ -50,10 +53,17 @@ class GeneratorLaboratoryEmptyStateMvcRegressionTest {
     @Autowired
     private WebApplicationContext context;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
+        removeFixtureRows();
+        insertConcept("FIRST");
+        insertConcept("SECOND");
+        insertConcept("EXACT_UNDERSCORE");
         mockMvc = MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
                 .build();
@@ -80,18 +90,35 @@ class GeneratorLaboratoryEmptyStateMvcRegressionTest {
     @Test
     @WithMockUser(username = "generator-lab-admin")
     void pickerEndpointSupportsExactTechnicalCodesAndDifferentSequentialSearches() throws Exception {
-        mockMvc.perform(conceptSearch("ARTICHOKE"))
+        mockMvc.perform(conceptSearch(TEST_PREFIX + "FIRST"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("(ARTICHOKE)")));
+                .andExpect(content().string(containsString("(" + TEST_PREFIX + "FIRST)")));
 
-        mockMvc.perform(conceptSearch("ASPARAGUS"))
+        mockMvc.perform(conceptSearch(TEST_PREFIX + "SECOND"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("(ASPARAGUS)")))
-                .andExpect(content().string(not(containsString("(ARTICHOKE)"))));
+                .andExpect(content().string(containsString("(" + TEST_PREFIX + "SECOND)")))
+                .andExpect(content().string(not(containsString("(" + TEST_PREFIX + "FIRST)"))));
 
-        mockMvc.perform(conceptSearch("BAMBOO_SHOOTS"))
+        mockMvc.perform(conceptSearch(TEST_PREFIX.toLowerCase() + "exact_underscore"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("(BAMBOO_SHOOTS)")));
+                .andExpect(content().string(containsString("(" + TEST_PREFIX + "EXACT_UNDERSCORE)")));
+    }
+
+    @AfterEach
+    void tearDown() {
+        removeFixtureRows();
+    }
+
+    private void insertConcept(String suffix) {
+        jdbcTemplate.update("""
+                insert into ingredient_concept (
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
+                ) values (?, ?, false, false, 'SPECIFIC', 1.0000)
+                """, TEST_PREFIX + suffix, "Generator lab " + suffix);
+    }
+
+    private void removeFixtureRows() {
+        jdbcTemplate.update("delete from ingredient_concept where code like ?", TEST_PREFIX + "%");
     }
 
     private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder conceptSearch(String search) {
