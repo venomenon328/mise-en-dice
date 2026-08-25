@@ -89,3 +89,5 @@ databaseChangeLog:
       file: db/changelog/catalog/023-czechia-curation.sql
   - include:
       file: db/changelog/catalog/024-philippines-curation.sql
+  - include:
+      file: db/changelog/catalog/025-germany-curation.sql
