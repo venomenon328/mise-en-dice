@@ -132,7 +132,7 @@ class CatalogRefinementIntegrationTest {
     }
 
     @Test
-    void rejectsCyclesSpecificToOpenEdgesRoleDisjunctionAndTransitiveRedundancy() {
+    void rejectsCyclesSpecificToOpenEdgesAndTransitiveRedundancy() {
         long root = concept("CYCLE_ROOT", "Cycle root", "OPEN", true, false, "ANIMAL_PROTEIN");
         long middle = concept("CYCLE_MIDDLE", "Cycle middle", "OPEN", true, false, "ANIMAL_PROTEIN");
         long leaf = concept("CYCLE_LEAF", "Cycle leaf", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
@@ -144,11 +144,6 @@ class CatalogRefinementIntegrationTest {
         long specificParent = concept("SPEC_PARENT", "Specific parent", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
         long openChild = concept("OPEN_CHILD", "Open child", "OPEN", true, false, "ANIMAL_PROTEIN");
         assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(command(specificParent, List.of(add(specificParent, openChild, 0)), Map.of(openChild, 0L))))
-                .isInstanceOf(CatalogCommandValidationException.class);
-
-        long animal = concept("ANIMAL", "Animal", "OPEN", true, false, "ANIMAL_PROTEIN");
-        long vegetable = concept("VEGETABLE", "Vegetable", "SPECIFIC", true, false, "VEGETABLE");
-        assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(command(animal, List.of(add(animal, vegetable, 0)), Map.of(vegetable, 0L))))
                 .isInstanceOf(CatalogCommandValidationException.class);
 
         long redundantParent = concept("REDUNDANT_PARENT", "Redundant parent", "OPEN", true, false, "ANIMAL_PROTEIN");
@@ -257,58 +252,18 @@ class CatalogRefinementIntegrationTest {
     }
 
     @Test
-    void rejectsRoleRemovalThatWouldMakeAnExistingDirectEdgeRoleDisjointWithoutPartialWrites() {
+    void allowsRoleRemovalWithAnExistingDirectEdge() {
         long parent = concept("ROLE_PARENT", "Role parent", "OPEN", true, false, "ANIMAL_PROTEIN");
         long child = concept("ROLE_CHILD", "Role child", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
         assignRole(parent, "VEGETABLE");
         edge(parent, child);
 
-        assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(metadataCommand(parent, metadata("VEGETABLE"))))
-                .isInstanceOf(CatalogCommandValidationException.class);
+        catalogCommands.updateIngredientConcept(metadataCommand(parent, metadata("VEGETABLE")));
 
-        assertThat(roleCodes(parent)).containsExactlyInAnyOrder("ANIMAL_PROTEIN", "VEGETABLE");
-        assertThat(edgeExists(parent, child)).isTrue();
-        assertThat(version(parent)).isZero();
-        assertThat(auditCount()).isZero();
-    }
-
-    @Test
-    void acceptsCombinedRoleAndRelationSaveAgainstTheResultingGraph() {
-        long parent = concept("COMBINED_PARENT", "Combined parent", "OPEN", true, false, "ANIMAL_PROTEIN");
-        long child = concept("COMBINED_CHILD", "Combined child", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
-        assignRole(parent, "VEGETABLE");
-        edge(parent, child);
-
-        CatalogQueries.CatalogConceptDetail detail = catalogQueries.findConcept(parent).orElseThrow();
-        catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
-                parent, detail.version(), detail.displayName(), detail.active(), detail.randomDrawEnabled(),
-                detail.challengeSpecificity(), detail.baseDrawWeight(), detail.noveltyLevel(), detail.curatorNote(),
-                ACTOR, false, List.of(remove(parent, child, version(child))), Map.of(child, version(child)), false,
-                metadata("VEGETABLE")
-        ));
-
-        assertThat(edgeExists(parent, child)).isFalse();
         assertThat(roleCodes(parent)).containsExactly("VEGETABLE");
+        assertThat(edgeExists(parent, child)).isTrue();
         assertThat(version(parent)).isEqualTo(1);
-        assertThat(version(child)).isEqualTo(1);
-    }
-
-    @Test
-    void serializesParallelDisjointRoleChangesBeforeTheyCanCommitAnInvalidEdge() throws Exception {
-        long parent = concept("ROLE_SKEW_PARENT", "Role skew parent", "OPEN", true, false, "ANIMAL_PROTEIN");
-        long child = concept("ROLE_SKEW_CHILD", "Role skew child", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
-        assignRole(parent, "VEGETABLE");
-        assignRole(child, "VEGETABLE");
-        edge(parent, child);
-
-        List<Object> outcomes = concurrently(
-                () -> capture(() -> catalogCommands.updateIngredientConcept(metadataCommand(parent, metadata("VEGETABLE")))),
-                () -> capture(() -> catalogCommands.updateIngredientConcept(metadataCommand(child, metadata("ANIMAL_PROTEIN"))))
-        );
-
-        assertThat(outcomes).anyMatch(CatalogCommands.CatalogCommandResult.class::isInstance);
-        assertThat(outcomes).anyMatch(CatalogCommandValidationException.class::isInstance);
-        assertThat(intersection(roleCodes(parent), roleCodes(child))).isNotEmpty();
+        assertThat(auditCount()).isEqualTo(1);
     }
 
     @Test
@@ -331,23 +286,6 @@ class CatalogRefinementIntegrationTest {
                 join ingredient_concept child on child.id = edge.child_concept_id
                 where edge.parent_concept_id = ? and edge.child_concept_id = ?
                 """, Boolean.class, parent, child)).isTrue();
-    }
-
-    @Test
-    void serializesARoleChangeWithAnOverlappingRelationWrite() throws Exception {
-        long parent = concept("ROLE_RELATION_PARENT", "Role relation parent", "OPEN", true, false, "ANIMAL_PROTEIN");
-        long child = concept("ROLE_RELATION_CHILD", "Role relation child", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
-
-        List<Object> outcomes = concurrently(
-                () -> capture(() -> catalogCommands.updateIngredientConcept(metadataCommand(parent, metadata("VEGETABLE")))),
-                () -> capture(() -> catalogCommands.updateIngredientConcept(
-                        command(child, List.of(add(parent, child, 0)), Map.of(parent, 0L))))
-        );
-
-        assertThat(outcomes).anyMatch(CatalogCommands.CatalogCommandResult.class::isInstance);
-        assertThat(outcomes).anyMatch(outcome -> outcome instanceof CatalogCommandValidationException
-                || outcome instanceof CatalogVersionConflictException);
-        assertThat(edgeExists(parent, child) && intersection(roleCodes(parent), roleCodes(child)).isEmpty()).isFalse();
     }
 
     @Test
@@ -491,12 +429,6 @@ class CatalogRefinementIntegrationTest {
                 join functional_role fr on fr.id = ifr.functional_role_id
                 where ifr.ingredient_concept_id = ?
                 """, String.class, conceptId));
-    }
-
-    private static Set<String> intersection(Set<String> first, Set<String> second) {
-        Set<String> result = new java.util.HashSet<>(first);
-        result.retainAll(second);
-        return result;
     }
 
     private int auditCount() {

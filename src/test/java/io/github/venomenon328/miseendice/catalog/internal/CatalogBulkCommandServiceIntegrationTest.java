@@ -153,7 +153,7 @@ class CatalogBulkCommandServiceIntegrationTest {
     }
 
     @Test
-    void validatesRoleBulkAgainstTheJointResultingGraphAndGroupsMultiRowAudit() {
+    void allowsRoleBulkWithAnExistingRefinementEdgeAndGroupsMultiRowAudit() {
         long parent = insertConcept("JOINT_PARENT", true, false);
         long child = insertConcept("JOINT_CHILD", true, false);
         assignRoles(parent, "VEGETABLE", "FRUIT");
@@ -177,16 +177,19 @@ class CatalogBulkCommandServiceIntegrationTest {
         BulkOperation removeLastCommonRole = new BulkOperation(
                 List.of(new BulkSelection(parent, 1), new BulkSelection(child, 1)),
                 BulkAction.REMOVE_FUNCTIONAL_ROLE, "FRUIT", null, true, ACTOR);
-        assertThatThrownBy(() -> bulkCommands.execute(removeLastCommonRole))
-                .isInstanceOf(CatalogCommandValidationException.class);
-        assertThat(roleCodes(parent)).containsExactly("FRUIT");
-        assertThat(roleCodes(child)).containsExactly("FRUIT");
-        assertThat(version(parent)).isEqualTo(1);
-        assertThat(version(child)).isEqualTo(1);
+        var disjointResult = bulkCommands.execute(removeLastCommonRole);
+        assertThat(disjointResult.changedConceptIds()).containsExactly(parent, child);
+        assertThat(roleCodes(parent)).isEmpty();
+        assertThat(roleCodes(child)).isEmpty();
+        assertThat(version(parent)).isEqualTo(2);
+        assertThat(version(child)).isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from ingredient_refinement where parent_concept_id = ? and child_concept_id = ?",
+                Integer.class, parent, child)).isEqualTo(1);
     }
 
     @Test
-    void serializesBulkRolesWithSingleAggregateGraphWritesUnderTheSamePostgresqlLock() throws Exception {
+    void allowsConcurrentBulkAndSingleRoleChangesWithAnExistingEdge() throws Exception {
         long parent = insertConcept("GRAPH_PARENT", true, false);
         long child = insertConcept("GRAPH_CHILD", true, false);
         assignRoles(parent, "VEGETABLE", "FRUIT");
@@ -211,17 +214,15 @@ class CatalogBulkCommandServiceIntegrationTest {
             assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
             start.countDown();
 
-            boolean bulkSucceeded = bulk.get(15, TimeUnit.SECONDS);
-            boolean singleSucceeded = single.get(15, TimeUnit.SECONDS);
-            assertThat(bulkSucceeded).isNotEqualTo(singleSucceeded);
+            assertThat(bulk.get(15, TimeUnit.SECONDS)).isTrue();
+            assertThat(single.get(15, TimeUnit.SECONDS)).isTrue();
         } finally {
             executor.shutdownNow();
             executor.awaitTermination(5, TimeUnit.SECONDS);
         }
 
-        Set<String> commonRoles = roleCodes(parent);
-        commonRoles.retainAll(roleCodes(child));
-        assertThat(commonRoles).isNotEmpty();
+        assertThat(roleCodes(parent)).containsExactly("VEGETABLE");
+        assertThat(roleCodes(child)).containsExactly("FRUIT");
     }
 
     @Test

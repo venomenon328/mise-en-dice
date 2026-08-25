@@ -31,10 +31,7 @@ import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Bounded explicit ingredient bulk operations. All validation is performed against the one
- * resulting state; role operations acquire the same PostgreSQL graph lock as single writes.
- */
+/** Bounded explicit ingredient bulk operations against one resulting state. */
 @Service
 class CatalogBulkCommandService implements CatalogBulkCommands {
 
@@ -43,37 +40,24 @@ class CatalogBulkCommandService implements CatalogBulkCommands {
     private final JdbcTemplate jdbcTemplate;
     private final CatalogQueries catalogQueries;
     private final CatalogAuditLog auditLog;
-    private final CatalogGraphLock graphLock;
-    private final CatalogGraphRoleValidator graphRoleValidator;
 
     CatalogBulkCommandService(
             JdbcTemplate jdbcTemplate,
             CatalogQueries catalogQueries,
-            CatalogAuditLog auditLog,
-            CatalogGraphLock graphLock,
-            CatalogGraphRoleValidator graphRoleValidator
+            CatalogAuditLog auditLog
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.catalogQueries = catalogQueries;
         this.auditLog = auditLog;
-        this.graphLock = graphLock;
-        this.graphRoleValidator = graphRoleValidator;
     }
 
     @Override
     @Transactional
     public CatalogBulkPreview preview(BulkOperation operation) {
         validateActionReference(operation);
-        if (isRoleAction(operation.action())) {
-            // A preview of a graph-semantic write must be based on the same coordinated graph state.
-            graphLock.acquire();
-        }
         Map<Long, CatalogConceptDetail> current = loadAndCheckVersions(operation, false);
         Map<Long, BulkState> resulting = apply(operation, current);
         validateResultingDrawability(resulting);
-        if (isRoleAction(operation.action())) {
-            graphRoleValidator.validateResultingRoles(roleReplacements(resulting, current));
-        }
         return preview(operation, current, resulting);
     }
 
@@ -81,16 +65,9 @@ class CatalogBulkCommandService implements CatalogBulkCommands {
     @Transactional
     public CatalogBulkResult execute(BulkOperation operation) {
         validateActionReference(operation);
-        if (isRoleAction(operation.action())) {
-            // Must precede the graph/role reads below, exactly like the single aggregate service.
-            graphLock.acquire();
-        }
         Map<Long, CatalogConceptDetail> before = loadAndCheckVersions(operation, true);
         Map<Long, BulkState> resulting = apply(operation, before);
         validateResultingDrawability(resulting);
-        if (isRoleAction(operation.action())) {
-            graphRoleValidator.validateResultingRoles(roleReplacements(resulting, before));
-        }
         CatalogBulkPreview preview = preview(operation, before, resulting);
         if (!preview.warnings().isEmpty() && !operation.weightWarningsAcknowledged()) {
             throw new CatalogDrawWeightWarningException(preview.warnings());
@@ -201,21 +178,6 @@ class CatalogBulkCommandService implements CatalogBulkCommands {
         }
     }
 
-    private Map<Long, Set<String>> roleReplacements(
-            Map<Long, BulkState> resulting,
-            Map<Long, CatalogConceptDetail> before
-    ) {
-        Map<Long, Set<String>> replacements = new LinkedHashMap<>();
-        resulting.forEach((id, state) -> {
-            Set<String> original = before.get(id).functionalRoles().stream()
-                    .map(CatalogQueries.CatalogReferenceValue::code).collect(java.util.stream.Collectors.toSet());
-            if (!original.equals(state.functionalRoleCodes)) {
-                replacements.put(id, state.functionalRoleCodes);
-            }
-        });
-        return Map.copyOf(replacements);
-    }
-
     private void persistChange(BulkOperation operation, long conceptId, CatalogConceptDetail before, BulkState state) {
         long expectedVersion = before.version();
         switch (operation.action()) {
@@ -306,10 +268,6 @@ class CatalogBulkCommandService implements CatalogBulkCommands {
                     .formatted(detail.displayName()));
         }
         return List.copyOf(warnings);
-    }
-
-    private static boolean isRoleAction(BulkAction action) {
-        return action == BulkAction.ADD_FUNCTIONAL_ROLE || action == BulkAction.REMOVE_FUNCTIONAL_ROLE;
     }
 
     private CatalogConceptDetail findRequired(long id) {

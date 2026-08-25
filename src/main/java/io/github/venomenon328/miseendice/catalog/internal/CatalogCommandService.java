@@ -18,7 +18,6 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogVersionConflictExcep
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -103,32 +102,27 @@ class CatalogCommandService implements CatalogCommands {
         return updateIngredientConceptAggregate(command);
     }
 
-    /**
-     * Saves base fields and a complete pending direct-edge delta as one unit. The advisory lock is
-     * deliberately obtained before even reading the graph: version checks alone cannot prevent a
-     * disjoint write-skew cycle in two application processes.
-     */
+    /** Saves base fields and a complete pending direct-edge delta as one unit. */
     private CatalogCommandResult updateIngredientConceptAggregate(UpdateIngredientConceptCommand command) {
-        graphLock.acquire();
-
         validateMetadataReferences(command.metadata());
         Set<Long> affectedIds = affectedConceptIds(command);
         Map<Long, LockedConcept> locked = lockAndCheckVersions(command, affectedIds);
+        boolean graphSemanticsChange = !command.refinementChanges().isEmpty()
+                || !command.challengeSpecificity().equals(currentSpecificity(command.conceptId()));
+        if (graphSemanticsChange) {
+            // Acquire before reading the graph: row versions alone cannot prevent write-skew.
+            graphLock.acquire();
+        }
         Map<Long, CatalogConceptDetail> before = new LinkedHashMap<>();
         affectedIds.stream().sorted().forEach(id -> before.put(id, findRequired(id)));
-
-        GraphState graph = loadGraph();
-        graph.replace(
-                command.conceptId(), command.displayName(), command.challengeSpecificity(),
-                command.active(), command.randomDrawEnabled()
-        );
-        if (command.metadata() != null) {
-            graph.replaceRoles(command.conceptId(), command.metadata().functionalRoleCodes());
-        }
-        applyPendingRefinements(graph, command);
-        if (!command.refinementChanges().isEmpty()
-                || command.metadata() != null
-                || !command.challengeSpecificity().equals(before.get(command.conceptId()).challengeSpecificity())) {
+        GraphState graph = null;
+        if (graphSemanticsChange) {
+            graph = loadGraph();
+            graph.replace(
+                    command.conceptId(), command.displayName(), command.challengeSpecificity(),
+                    command.active(), command.randomDrawEnabled()
+            );
+            applyPendingRefinements(graph, command);
             validateGraph(graph);
         }
         MetadataState resultingMetadata = command.metadata() == null
@@ -136,14 +130,18 @@ class CatalogCommandService implements CatalogCommands {
                 : MetadataState.from(command.metadata());
         validateDrawability(command.active(), command.randomDrawEnabled(), resultingMetadata);
 
-        List<String> inactiveWarnings = inactiveRelationWarnings(command, graph);
+        List<String> inactiveWarnings = command.refinementChanges().isEmpty()
+                ? List.of()
+                : inactiveRelationWarnings(command, graph);
         if (!inactiveWarnings.isEmpty() && !command.inactiveRelationsAcknowledged()) {
             throw new CatalogRelationWarningException(inactiveWarnings);
         }
         List<String> weightWarnings = drawWeightWarnings(
                 command,
                 resultingMetadata,
-                graph.hasDirectParentCode(command.conceptId(), "COOKING_ALCOHOL")
+                graphSemanticsChange
+                        ? graph.hasDirectParentCode(command.conceptId(), "COOKING_ALCOHOL")
+                        : hasDirectParentCode(command.conceptId(), "COOKING_ALCOHOL")
         );
         if (!weightWarnings.isEmpty() && !command.weightWarningsAcknowledged()) {
             throw new CatalogDrawWeightWarningException(weightWarnings);
@@ -220,6 +218,22 @@ class CatalogCommandService implements CatalogCommands {
         return Map.copyOf(locked);
     }
 
+    private String currentSpecificity(long conceptId) {
+        return jdbcTemplate.queryForObject(
+                "select challenge_specificity from ingredient_concept where id = ?", String.class, conceptId);
+    }
+
+    private boolean hasDirectParentCode(long conceptId, String parentCode) {
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject("""
+                select exists (
+                    select 1
+                    from ingredient_refinement relation
+                    join ingredient_concept parent on parent.id = relation.parent_concept_id
+                    where relation.child_concept_id = ? and parent.code = ?
+                )
+                """, Boolean.class, conceptId, parentCode));
+    }
+
     private GraphState loadGraph() {
         Map<Long, GraphNode> nodes = new LinkedHashMap<>();
         jdbcTemplate.query(
@@ -231,15 +245,10 @@ class CatalogCommandService implements CatalogCommands {
                         resultSet.getString("challenge_specificity"))),
                 new Object[0]
         );
-        Map<Long, Set<String>> roles = new HashMap<>();
-        jdbcTemplate.query("select ifr.ingredient_concept_id, fr.code from ingredient_functional_role ifr "
-                        + "join functional_role fr on fr.id = ifr.functional_role_id",
-                (RowCallbackHandler) resultSet -> roles.computeIfAbsent(resultSet.getLong("ingredient_concept_id"), ignored -> new HashSet<>())
-                        .add(resultSet.getString("code")));
         Map<Edge, Boolean> edges = new LinkedHashMap<>();
         jdbcTemplate.query("select parent_concept_id, child_concept_id from ingredient_refinement order by parent_concept_id, child_concept_id",
                 (RowCallbackHandler) resultSet -> edges.put(new Edge(resultSet.getLong("parent_concept_id"), resultSet.getLong("child_concept_id")), Boolean.TRUE));
-        return new GraphState(nodes, roles, edges.keySet());
+        return new GraphState(nodes, edges.keySet());
     }
 
     private void applyPendingRefinements(GraphState graph, UpdateIngredientConceptCommand command) {
@@ -269,12 +278,6 @@ class CatalogCommandService implements CatalogCommands {
             if ("SPECIFIC".equals(parent.challengeSpecificity()) && "OPEN".equals(child.challengeSpecificity())) {
                 throw relationError("Eine spezifische Zutat darf keine offene direkte Konkretisierung haben: "
                         + graph.edgeName(edge) + ".");
-            }
-            Set<String> commonRoles = new HashSet<>(graph.rolesFor(edge.parentId()));
-            commonRoles.retainAll(graph.rolesFor(edge.childId()));
-            if (commonRoles.isEmpty()) {
-                throw relationError("Die direkte Beziehung " + graph.edgeName(edge)
-                        + " hat keine gemeinsame funktionale Rolle.");
             }
         }
         Edge cycle = graph.firstCycleEdge();
@@ -555,18 +558,11 @@ class CatalogCommandService implements CatalogCommands {
     private static final class GraphState {
 
         private final Map<Long, GraphNode> nodes;
-        private final Map<Long, Set<String>> roles;
         private final Set<Edge> edges;
 
-        private GraphState(Map<Long, GraphNode> nodes, Map<Long, Set<String>> roles, Set<Edge> edges) {
+        private GraphState(Map<Long, GraphNode> nodes, Set<Edge> edges) {
             this.nodes = new LinkedHashMap<>(nodes);
-            this.roles = new HashMap<>();
-            roles.forEach((id, values) -> this.roles.put(id, Set.copyOf(values)));
             this.edges = new LinkedHashSet<>(edges);
-        }
-
-        private Map<Long, GraphNode> nodes() {
-            return nodes;
         }
 
         private Set<Edge> edges() {
@@ -591,14 +587,6 @@ class CatalogCommandService implements CatalogCommands {
                 throw new CatalogConceptNotFoundException(id);
             }
             return node;
-        }
-
-        private Set<String> rolesFor(long conceptId) {
-            return roles.getOrDefault(conceptId, Set.of());
-        }
-
-        private void replaceRoles(long conceptId, Set<String> replacement) {
-            roles.put(conceptId, Set.copyOf(replacement));
         }
 
         private boolean hasDirectParentCode(long childId, String parentCode) {

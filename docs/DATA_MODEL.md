@@ -66,7 +66,7 @@ Verarbeitungsherkunft allein reicht für eine Kante nicht aus. Getrocknete Chili
 
 Der Graph ist bewusst **unvollständig**. Fehlt eine denkbare Konkretisierung in der Datenbank, ist sie dadurch nicht automatisch unzulässig. Die Datenbank bildet kuratiertes Systemwissen ab, keine Whitelist sämtlicher Entscheidungen beim Kochen.
 
-Die Migration verhindert Zyklen im Konkretisierungsgraphen per Trigger. Für redaktionelle Writes serialisiert der Catalog-Application-Service zusätzlich sämtliche `ingredient_refinement`-Mutationen sowie Rollen- und Spezifitätsänderungen mit einem stabilen transaktionsgebundenen PostgreSQL-Advisory-Lock, bevor er den resultierenden Graphen liest und validiert. So können weder zwei disjunkte Kanten noch eine Kante zusammen mit einer Rollen- oder Spezifitätsänderung als Write-Skew eine ungültige Struktur erzeugen. Der Lock wird beim Transaktionsende freigegeben; der Zyklus-Trigger bleibt die letzte Sicherung.
+Die Migration verhindert Zyklen im Konkretisierungsgraphen per Trigger. Für redaktionelle Kanten- und Spezifitätsänderungen serialisiert der Catalog-Application-Service den resultierenden Graph-Read/Validate/Write-Ablauf mit einem stabilen transaktionsgebundenen PostgreSQL-Advisory-Lock. So können gleichzeitige Kanten- oder Spezifitätsänderungen keine ungültige Struktur durch Write-Skew erzeugen. Der Lock wird beim Transaktionsende freigegeben; der Zyklus-Trigger bleibt die letzte Sicherung.
 
 ### 3.1 Persönliche Konkretisierung eines Ergebnisses
 
@@ -93,6 +93,8 @@ Davon strikt getrennt speichert `challenge_result_ingredient` eigene Zusatz-Zuta
 Ein Zutatenkonzept darf mehrere Rollen besitzen.
 
 Rollen werden zunächst explizit auf den jeweils relevanten Konzepten gepflegt und **nicht automatisch über den Konkretisierungsgraphen vererbt**. Falls sich später einzelne Rollen als zuverlässig vererbbar erweisen, kann diese Semantik ergänzt werden, ohne das Grundmodell zu ändern.
+
+Funktionale Rollen und Konkretisierungsgraph sind unabhängig: Eine direkte Kante verlangt keine gemeinsame Rolle von Parent und Child. Rollenänderungen sind deshalb keine Graphmutation und werden weder gegen den Graphen validiert noch durch dessen Advisory-Lock serialisiert.
 
 ## 5. Kulinarische Eigenschaften
 

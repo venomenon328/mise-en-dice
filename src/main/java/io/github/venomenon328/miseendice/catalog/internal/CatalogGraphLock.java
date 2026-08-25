@@ -4,9 +4,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * One transaction-scoped PostgreSQL lock for every catalog write whose resulting graph semantics
- * must be validated. Keeping the key here prevents role bulk writes from silently using a weaker
- * coordination mechanism than relation, role, and specificity saves.
+ * One transaction-scoped PostgreSQL lock for catalog writes whose resulting refinement graph
+ * must be validated. It serializes relation and specificity read/validate/write sequences.
  */
 @Component
 final class CatalogGraphLock {

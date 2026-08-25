@@ -111,22 +111,6 @@ class PostgresIntegrationTest {
     }
 
     @Test
-    void completeLiquibaseBaselineSatisfiesTheDirectRefinementRoleContract() {
-        assertThat(jdbcTemplate.queryForObject("""
-                select count(*)
-                from ingredient_refinement refinement
-                where not exists (
-                    select 1
-                    from ingredient_functional_role parent_role
-                    join ingredient_functional_role child_role
-                      on child_role.functional_role_id = parent_role.functional_role_id
-                    where parent_role.ingredient_concept_id = refinement.parent_concept_id
-                      and child_role.ingredient_concept_id = refinement.child_concept_id
-                )
-                """, Integer.class)).isZero();
-    }
-
-    @Test
     void upgradeFromThePreviousLiquibaseBaselineAppliesAdministrationFoundation() throws Exception {
         String upgradeDatabase = "administration_upgrade_" + UUID.randomUUID().toString().replace("-", "");
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
