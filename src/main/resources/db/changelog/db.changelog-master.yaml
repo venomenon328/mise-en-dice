@@ -81,3 +81,5 @@ databaseChangeLog:
       file: db/changelog/catalog/019-poland-curation.sql
   - include:
       file: db/changelog/catalog/020-denmark-curation.sql
+  - include:
+      file: db/changelog/catalog/021-netherlands-curation.sql
