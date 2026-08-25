@@ -75,3 +75,5 @@ databaseChangeLog:
       file: db/changelog/schema/017-culinary-country-associations.sql
   - include:
       file: db/changelog/reference/002-culinary-countries.sql
+  - include:
+      file: db/changelog/catalog/018-sweden-curation.sql
