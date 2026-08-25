@@ -22,6 +22,7 @@ DECLARE
     obsolete_relations integer;
     missing_expected_targets integer;
     redundant_edges integer;
+    role_disjoint_edges integer;
     specificity_inversions integer;
     missing_roles integer;
     missing_availability integer;
@@ -335,6 +336,22 @@ BEGIN
 
     IF redundant_edges <> 0 THEN
         RAISE EXCEPTION '% transitively redundant direct refinement edges remain', redundant_edges;
+    END IF;
+
+    SELECT count(*)
+      INTO role_disjoint_edges
+      FROM ingredient_refinement relation
+     WHERE NOT EXISTS (
+         SELECT 1
+           FROM ingredient_functional_role parent_role
+           JOIN ingredient_functional_role child_role
+             ON child_role.functional_role_id = parent_role.functional_role_id
+          WHERE parent_role.ingredient_concept_id = relation.parent_concept_id
+            AND child_role.ingredient_concept_id = relation.child_concept_id
+     );
+
+    IF role_disjoint_edges <> 0 THEN
+        RAISE EXCEPTION '% refinement relations lack a shared functional role', role_disjoint_edges;
     END IF;
 
     SELECT count(*)
