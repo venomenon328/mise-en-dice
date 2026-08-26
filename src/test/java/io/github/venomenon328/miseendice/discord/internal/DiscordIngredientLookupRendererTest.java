@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupDimension;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountry;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredient;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredientPage;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupProfile;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupRelation;
 import java.math.BigDecimal;
@@ -165,6 +168,33 @@ class DiscordIngredientLookupRendererTest {
                                                    String note, List<IngredientLookupRelation> parents,
                                                    List<IngredientLookupRelation> children, List<String> roles, List<String> flags) {
         return profile(drawable, novelty, dimensions, note, parents, children, roles, flags, List.of());
+    }
+
+    @Test
+    void rendersCountryPageAndEmptyStateWithoutIngredientDetailsOrTechnicalIds() {
+        var page = new CulinaryCountryIngredientPage(new CulinaryCountry("XA", "Testland Alpha"), 1, 20, 21,
+                java.util.stream.LongStream.rangeClosed(1, 20)
+                        .mapToObj(id -> new CulinaryCountryIngredient(id, "Zutat " + id)).toList());
+
+        var rendered = renderer.countryIngredients(page);
+
+        assertThat(rendered.title()).isEqualTo(DiscordIngredientLookupRenderer.countryFlag("XA") + " Testland Alpha");
+        assertThat(rendered.description()).contains("21 Zutaten", "• Zutat 1", "Seite 1/2")
+                .doesNotContain("Gewichtung", "Ungewöhnlichkeit", "Rolle", "1:");
+        assertThat(rendered.options()).hasSize(20).allSatisfy(option -> {
+            assertThat(option.label()).startsWith("Zutat ");
+            assertThat(option.value()).startsWith("med:v1:ingredient:concept:");
+            assertThat(option.description()).isNull();
+        });
+        assertThat(rendered.hasPreviousPage()).isFalse();
+        assertThat(rendered.hasNextPage()).isTrue();
+
+        var empty = renderer.countryIngredients(new CulinaryCountryIngredientPage(
+                new CulinaryCountry("XB", "Land Testland"), 1, 20, 0, List.of()));
+        assertThat(empty.description()).contains("0 Zutaten", "keine aktiven Zutaten", "Seite 1/1");
+        assertThat(empty.options()).isEmpty();
+        assertThat(empty.hasPreviousPage()).isFalse();
+        assertThat(empty.hasNextPage()).isFalse();
     }
 
     private static IngredientLookupProfile profile(boolean drawable, Integer novelty, List<IngredientLookupDimension> dimensions,

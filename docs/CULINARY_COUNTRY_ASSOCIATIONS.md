@@ -83,6 +83,8 @@ Die administrationsorientierte Katalog-Read-API liefert Länder als Code plus An
 
 Die konkrete Web-Bearbeitung und der sichtbare Filter folgen separat in Issue #167. Die Discord-Ausgabe von `/zutat` folgt separat in Issue #168.
 
+Issue #176 nutzt dieselbe Relation zusätzlich rein lesend über `/zutaten land:<Land>`. Die Liste verwendet ausschließlich aktive Zutatenkonzepte mit einer direkt gepflegten `ingredient_culinary_country`-Zeile, nie abgeleitete Treffer aus `ingredient_refinement`. Sie hat keine redaktionelle Nebenwirkung und führt weder produktive Zuordnungen noch eine eigene Länderfachlichkeit ein; auch ein Land ohne aktive Zuordnung bleibt auswählbar.
+
 ## 7. Ausdrücklich nicht generatorwirksam
 
 Kulinarische Länderzuordnungen gehören im ersten Stand **nicht** zu
@@ -97,7 +99,7 @@ Kulinarische Länderzuordnungen gehören im ersten Stand **nicht** zu
 
 Eine reine Änderung von Länderrelationen darf deshalb keine generierte Challenge verändern. Spätere Länder-Challenges oder Klassifikationen benötigen ein eigenes Feature und ein eigenes Data-Readiness-Gate auf Basis der tatsächlich gepflegten Daten.
 
-## 8. Stand nach Issue #166
+## 8. Stand nach Issue #166 und Issue #176
 
 Issue #166 führt ausschließlich
 

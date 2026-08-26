@@ -41,6 +41,25 @@ class DiscordIngredientComponentIdTest {
     }
 
     @Test
+    void roundTripsCountryBrowseComponentsAndCarriesTheirContextThroughIngredientNavigation() {
+        var context = new DiscordIngredientComponentId.CountryBrowseContext("XA", 2);
+        String select = DiscordIngredientComponentId.countrySelect(context, "123456789");
+        String page = DiscordIngredientComponentId.countryPage(context, "123456789", 3);
+        String back = DiscordIngredientComponentId.countryBack(context, "123456789");
+        String navigation = DiscordIngredientComponentId.navigationSelect("child", "123456789", context);
+
+        assertThat(DiscordIngredientComponentId.parseCountrySelect(select))
+                .isEqualTo(new DiscordIngredientComponentId.CountrySelect("123456789", context));
+        assertThat(DiscordIngredientComponentId.parseCountryPage(page))
+                .isEqualTo(new DiscordIngredientComponentId.CountryPage("123456789",
+                        new DiscordIngredientComponentId.CountryBrowseContext("XA", 3)));
+        assertThat(DiscordIngredientComponentId.parseCountryBack(back))
+                .isEqualTo(new DiscordIngredientComponentId.CountryBack("123456789", context));
+        assertThat(DiscordIngredientComponentId.parseNavigationSelect(navigation).countryContext()).isEqualTo(context);
+        assertThat(navigation).hasSizeLessThanOrEqualTo(100);
+    }
+
+    @Test
     void rejectsMalformedVersionsNamesIdsOwnersAndNavigationDirections() {
         assertThatThrownBy(() -> DiscordIngredientComponentId.parseSelection("med:v0:ingredient:select:123456"))
                 .isInstanceOf(IllegalArgumentException.class);

@@ -51,6 +51,7 @@ class IngredientLookupQueriesIntegrationTest {
                    or child_concept_id in (select id from ingredient_concept where code like ?)
                 """, PREFIX + "%", PREFIX + "%");
         jdbcTemplate.update("delete from ingredient_concept where code like ?", PREFIX + "%");
+        jdbcTemplate.update("delete from culinary_country where code in ('XA', 'XB', 'XC')");
     }
 
     @Test
@@ -183,9 +184,74 @@ class IngredientLookupQueriesIntegrationTest {
                 """, conceptId, level, dimensionCode);
     }
 
+    @Test
+    void searchesResolvesAndPagesOnlyActiveExplicitCountryRelationsUsingTestData() {
+        insertCountry("XA", "Testland Alpha");
+        insertCountry("XB", "Land Testland");
+        insertCountry("XC", "Testland Beta");
+
+        assertThat(queries.searchCulinaryCountries("testland", 25))
+                .extracting(country -> country.code(), country -> country.displayName())
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("XA", "Testland Alpha"),
+                        org.assertj.core.groups.Tuple.tuple("XC", "Testland Beta"),
+                        org.assertj.core.groups.Tuple.tuple("XB", "Land Testland"));
+        assertThat(queries.searchCulinaryCountries("", 2)).hasSize(2);
+        assertThat(queries.resolveCulinaryCountry("xa")).hasValueSatisfying(country ->
+                assertThat(country.displayName()).isEqualTo("Testland Alpha"));
+        assertThat(queries.resolveCulinaryCountry("  testland alpha  ")).hasValueSatisfying(country ->
+                assertThat(country.code()).isEqualTo("XA"));
+        assertThat(queries.resolveCulinaryCountry("Testland")).isEmpty();
+
+        long nonDrawable = insertConcept("COUNTRY_GROUP", "Landzutat 00", true, false, null, null);
+        assignCountry(nonDrawable, "XA");
+        for (int number = 1; number <= 18; number++) {
+            long conceptId = insertConcept("COUNTRY_" + number, "Landzutat " + String.format("%02d", number),
+                    true, true, null, null);
+            assignCountry(conceptId, "XA");
+        }
+        long tieFirst = insertConcept("COUNTRY_TIE_A", "Landzutat Gleich", true, true, null, null);
+        long tieSecond = insertConcept("COUNTRY_TIE_B", "Landzutat Gleich", true, true, null, null);
+        assignCountry(tieFirst, "XA");
+        assignCountry(tieSecond, "XA");
+        long inactive = insertConcept("COUNTRY_INACTIVE", "Landzutat Inaktiv", false, true, null, null);
+        assignCountry(inactive, "XA");
+        long parent = insertConcept("COUNTRY_PARENT", "Landzutat Oberbegriff", true, false, null, null);
+        long child = insertConcept("COUNTRY_CHILD", "Landzutat Unterbegriff", true, true, null, null);
+        jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", parent, child);
+        assignCountry(child, "XA");
+        long multipleCountries = insertConcept("COUNTRY_MULTIPLE", "Landzutat Zwei Länder", true, true, null, null);
+        assignCountry(multipleCountries, "XA");
+        assignCountry(multipleCountries, "XB");
+
+        var firstPage = queries.findActiveByCulinaryCountry("XA", 1, 20).orElseThrow();
+        var lastPage = queries.findActiveByCulinaryCountry("XA", 99, 20).orElseThrow();
+        var secondCountry = queries.findActiveByCulinaryCountry("XB", 1, 20).orElseThrow();
+
+        assertThat(firstPage.totalIngredients()).isEqualTo(23);
+        assertThat(firstPage.page()).isEqualTo(1);
+        assertThat(firstPage.totalPages()).isEqualTo(2);
+        assertThat(firstPage.ingredients()).hasSize(20)
+                .extracting(ingredient -> ingredient.displayName()).doesNotContain("Landzutat Inaktiv", "Landzutat Oberbegriff");
+        assertThat(firstPage.ingredients()).extracting(ingredient -> ingredient.conceptId())
+                .doesNotContain(parent, inactive).contains(nonDrawable);
+        assertThat(lastPage.page()).isEqualTo(2);
+        assertThat(lastPage.ingredients()).hasSize(3);
+        assertThat(queries.findActiveByCulinaryCountry("XA", 1, 25).orElseThrow().ingredients())
+                .filteredOn(ingredient -> ingredient.displayName().equals("Landzutat Gleich"))
+                .extracting(ingredient -> ingredient.conceptId()).containsExactly(tieFirst, tieSecond);
+        assertThat(secondCountry.totalIngredients()).isEqualTo(1);
+        assertThat(secondCountry.ingredients()).singleElement().extracting(ingredient -> ingredient.conceptId())
+                .isEqualTo(multipleCountries);
+    }
+
     private void assignCountry(long conceptId, String countryCode) {
         jdbcTemplate.update(
                 "insert into ingredient_culinary_country (ingredient_concept_id, country_code) values (?, ?)",
                 conceptId, countryCode);
+    }
+
+    private void insertCountry(String code, String displayName) {
+        jdbcTemplate.update("insert into culinary_country (code, display_name) values (?, ?)", code, displayName);
     }
 }

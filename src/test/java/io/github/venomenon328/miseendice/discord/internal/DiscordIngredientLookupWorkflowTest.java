@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupMatch;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountry;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredientPage;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredient;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupProfile;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupRelation;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupSearchResult;
@@ -163,6 +166,88 @@ class DiscordIngredientLookupWorkflowTest {
         assertThat(queries.searchCalls).isZero();
     }
 
+    @Test
+    void countryBrowseResolvesAutocompleteValuesAndExactGermanNamesWithoutAnyLocalCountryList() {
+        var queries = new FakeQueries();
+        queries.countries = List.of(new CulinaryCountry("XA", "Testland Alpha"));
+        queries.countryPages.put("XA:1", countryPage("XA", "Testland Alpha", 1, 1, 7));
+        var delivery = new CapturingDelivery();
+        var feedback = new CapturingFeedback();
+
+        assertThat(workflow(queries).autocompleteCountries("test")).containsExactly(new CulinaryCountry("XA", "Testland Alpha"));
+        workflow(queries).browseCountry("  testland alpha  ", "10001", delivery, feedback);
+
+        assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedCountryIngredients.class);
+        var page = (DiscordIngredientLookupRenderer.RenderedCountryIngredients) delivery.response;
+        assertThat(page.countryContext()).isEqualTo(new DiscordIngredientComponentId.CountryBrowseContext("XA", 1));
+        assertThat(page.options()).singleElement().extracting(DiscordIngredientLookupRenderer.SelectionOption::value)
+                .isEqualTo(DiscordIngredientComponentId.conceptValue(7));
+        assertThat(feedback.messages).isEmpty();
+    }
+
+    @Test
+    void countrySelectionAndHierarchyNavigationKeepTheOriginalCountryContextStatelessly() {
+        var queries = new FakeQueries();
+        queries.countries = List.of(new CulinaryCountry("XA", "Testland Alpha"));
+        queries.countryPages.put("XA:1", countryPage("XA", "Testland Alpha", 1, 1, 7));
+        queries.profiles.put(7L, profile(7, "Ausgangszutat"));
+        queries.profiles.put(9L, profile(9, "Ziel ohne Länderrelation"));
+        var workflow = workflow(queries);
+        var delivery = new CapturingDelivery();
+        var feedback = new CapturingFeedback();
+        var context = new DiscordIngredientComponentId.CountryBrowseContext("XA", 1);
+
+        workflow.countryComponent(DiscordIngredientComponentId.countrySelect(context, "10001"),
+                List.of(DiscordIngredientComponentId.conceptValue(7)), "10001", delivery, feedback);
+        var first = (DiscordIngredientLookupRenderer.RenderedEmbed) delivery.response;
+        assertThat(first.countryOrigin().countryDisplayName()).isEqualTo("Testland Alpha");
+
+        workflow.navigateSelect(DiscordIngredientComponentId.navigationSelect("child", "10001", context),
+                List.of(DiscordIngredientComponentId.conceptValue(9)), "10001", delivery, feedback);
+        var target = (DiscordIngredientLookupRenderer.RenderedEmbed) delivery.response;
+        assertThat(target.countryOrigin().context()).isEqualTo(context);
+        assertThat(target.countryOrigin().countryDisplayName()).isEqualTo("Testland Alpha");
+        assertThat(queries.profileLookups).containsExactly(7L, 9L);
+        assertThat(queries.countryPageLookups).isEqualTo(2);
+    }
+
+    @Test
+    void countryComponentsRejectForeignOwnersBeforeAnyCatalogReadAndStaleProfilesKeepReturnNavigation() {
+        var queries = new FakeQueries();
+        queries.countryPages.put("XA:1", countryPage("XA", "Testland Alpha", 1, 1, 7));
+        var workflow = workflow(queries);
+        var delivery = new CapturingDelivery();
+        var feedback = new CapturingFeedback();
+        var context = new DiscordIngredientComponentId.CountryBrowseContext("XA", 1);
+        String component = DiscordIngredientComponentId.countrySelect(context, "10001");
+
+        workflow.countryComponent(component, List.of(DiscordIngredientComponentId.conceptValue(7)), "10002", delivery, feedback);
+        assertThat(queries.countryPageLookups).isZero();
+        assertThat(queries.profileLookups).isEmpty();
+
+        workflow.countryComponent(component, List.of(DiscordIngredientComponentId.conceptValue(7)), "10001", delivery, feedback);
+        assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedCountryText.class);
+        var stale = (DiscordIngredientLookupRenderer.RenderedCountryText) delivery.response;
+        assertThat(stale.countryOrigin().context()).isEqualTo(context);
+        assertThat(feedback.messages).singleElement().satisfies(message -> assertThat(message).contains("anderen Nutzer"));
+    }
+
+    @Test
+    void countryBackRereadsAndSafelyUsesTheCurrentLastPage() {
+        var queries = new FakeQueries();
+        queries.countryPages.put("XA:2", countryPage("XA", "Testland Alpha", 1, 0));
+        var delivery = new CapturingDelivery();
+        var feedback = new CapturingFeedback();
+        var requested = new DiscordIngredientComponentId.CountryBrowseContext("XA", 2);
+
+        workflow(queries).countryBack(DiscordIngredientComponentId.countryBack(requested, "10001"), "10001", delivery, feedback);
+
+        var page = (DiscordIngredientLookupRenderer.RenderedCountryIngredients) delivery.response;
+        assertThat(page.countryContext()).isEqualTo(new DiscordIngredientComponentId.CountryBrowseContext("XA", 1));
+        assertThat(page.options()).isEmpty();
+        assertThat(queries.countryPageLookups).isEqualTo(1);
+    }
+
     private static DiscordIngredientLookupWorkflow workflow(FakeQueries queries) {
         return new DiscordIngredientLookupWorkflow(new DiscordProperties(true, "token", 99, 77777,
                 ZoneId.of("Europe/Berlin"), Map.of("GEORGIA", "10001", "TOBIAS", "10002")),
@@ -186,11 +271,19 @@ class DiscordIngredientLookupWorkflowTest {
                 List.<IngredientLookupRelation>of(), List.<IngredientLookupRelation>of(), List.of(), List.of(), List.of(), countries, null);
     }
 
+    private static CulinaryCountryIngredientPage countryPage(String code, String displayName, int page, long total, long... ids) {
+        return new CulinaryCountryIngredientPage(new CulinaryCountry(code, displayName), page, 20, total,
+                java.util.Arrays.stream(ids).mapToObj(id -> new CulinaryCountryIngredient(id, "Zutat " + id)).toList());
+    }
+
     private static final class FakeQueries implements IngredientLookupQueries {
         private IngredientLookupSearchResult search = result("", List.of(), 0);
         private final Map<Long, IngredientLookupProfile> profiles = new java.util.HashMap<>();
         private final List<Long> profileLookups = new ArrayList<>();
+        private List<CulinaryCountry> countries = List.of();
+        private final Map<String, CulinaryCountryIngredientPage> countryPages = new java.util.HashMap<>();
         private int searchCalls;
+        private int countryPageLookups;
 
         @Override
         public IngredientLookupSearchResult searchActiveByDisplayName(String searchText, int limit) {
@@ -202,6 +295,24 @@ class DiscordIngredientLookupWorkflowTest {
         public Optional<IngredientLookupProfile> findActiveProfile(long conceptId) {
             profileLookups.add(conceptId);
             return Optional.ofNullable(profiles.get(conceptId));
+        }
+
+        @Override
+        public List<CulinaryCountry> searchCulinaryCountries(String searchText, int limit) {
+            return countries;
+        }
+
+        @Override
+        public Optional<CulinaryCountry> resolveCulinaryCountry(String input) {
+            String normalized = IngredientLookupQueries.normalize(input);
+            return countries.stream().filter(country -> country.code().equalsIgnoreCase(input == null ? "" : input.strip())
+                    || country.displayName().equalsIgnoreCase(normalized)).findFirst();
+        }
+
+        @Override
+        public Optional<CulinaryCountryIngredientPage> findActiveByCulinaryCountry(String countryCode, int page, int pageSize) {
+            countryPageLookups++;
+            return Optional.ofNullable(countryPages.get(countryCode + ":" + page));
         }
     }
 
