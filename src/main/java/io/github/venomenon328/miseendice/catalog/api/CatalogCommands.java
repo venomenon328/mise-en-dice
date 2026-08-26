@@ -52,15 +52,16 @@ public interface CatalogCommands {
             String actorKey
     ) {
 
-        public CreateIngredientConceptCommand(String code, String displayName, String actorKey) {
-            this(code, displayName, true, false, "SPECIFIC", new BigDecimal("1.0000"), null, null, null, false, actorKey);
+        public CreateIngredientConceptCommand(String code, String displayName, String curatorNote, String actorKey) {
+            this(code, displayName, true, false, "SPECIFIC", new BigDecimal("1.0000"), null,
+                    curatorNote, null, false, actorKey);
         }
 
         public CreateIngredientConceptCommand {
             code = normalized(code);
             displayName = normalized(displayName);
             challengeSpecificity = normalized(challengeSpecificity);
-            curatorNote = nullableNormalized(curatorNote);
+            curatorNote = normalized(curatorNote);
             actorKey = normalized(actorKey);
             Map<String, String> errors = new LinkedHashMap<>();
             if (!Pattern.matches(INGREDIENT_CONCEPT_CODE_PATTERN, code)) {
@@ -77,6 +78,9 @@ public interface CatalogCommands {
             }
             if (noveltyLevel != null && (noveltyLevel < 1 || noveltyLevel > 5)) {
                 errors.put("noveltyLevel", "Die Ungewöhnlichkeit muss zwischen 1 und 5 liegen oder leer bleiben.");
+            }
+            if (curatorNote.isEmpty()) {
+                errors.put("curatorNote", "Die Kuratornotiz darf nicht leer sein.");
             }
             if (actorKey.isEmpty()) {
                 errors.put("actorKey", "Für die Auditierung ist ein Administrationsschlüssel erforderlich.");
@@ -147,7 +151,7 @@ public interface CatalogCommands {
         public UpdateIngredientConceptCommand {
             displayName = normalized(displayName);
             challengeSpecificity = normalized(challengeSpecificity);
-            curatorNote = nullableNormalized(curatorNote);
+            curatorNote = normalized(curatorNote);
             actorKey = normalized(actorKey);
             refinementChanges = refinementChanges == null ? List.of() : List.copyOf(refinementChanges);
             expectedRelatedVersions = expectedRelatedVersions == null ? Map.of() : Map.copyOf(expectedRelatedVersions);
@@ -169,6 +173,9 @@ public interface CatalogCommands {
             }
             if (noveltyLevel != null && (noveltyLevel < 1 || noveltyLevel > 5)) {
                 errors.put("noveltyLevel", "Die Ungewöhnlichkeit muss zwischen 1 und 5 liegen oder leer bleiben.");
+            }
+            if (curatorNote.isEmpty()) {
+                errors.put("curatorNote", "Die Kuratornotiz darf nicht leer sein.");
             }
             if (actorKey.isEmpty()) {
                 errors.put("actorKey", "Für die Auditierung ist ein Administrationsschlüssel erforderlich.");
@@ -288,10 +295,5 @@ public interface CatalogCommands {
 
     private static String normalized(String value) {
         return value == null ? "" : value.strip();
-    }
-
-    private static String nullableNormalized(String value) {
-        String normalized = normalized(value);
-        return normalized.isEmpty() ? null : normalized;
     }
 }

@@ -96,8 +96,9 @@ class GeneratorLaboratoryAdministrationMvcTest {
         jdbcTemplate.update("delete from ingredient_concept where code like ?", TEST_PREFIX + "%");
         jdbcTemplate.update("""
                 insert into ingredient_concept (
-                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
-                ) values (?, ?, false, false, 'SPECIFIC', 1.0000)
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                    curator_note
+                ) values (?, ?, false, false, 'SPECIFIC', 1.0000, 'Technische Testnotiz.')
                 """, TEST_PREFIX + "LOOKUP", "Generator laboratory lookup");
     }
 

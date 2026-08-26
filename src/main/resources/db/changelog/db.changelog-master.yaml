@@ -95,3 +95,5 @@ databaseChangeLog:
       file: db/changelog/catalog/026-norway-curation.sql
   - include:
       file: db/changelog/catalog/027-france-curation.sql
+  - include:
+      file: db/changelog/catalog/028-curator-note-completeness.sql

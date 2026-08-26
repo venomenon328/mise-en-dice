@@ -113,7 +113,8 @@ class CatalogAdministrationEditingMvcTest {
                         .session(session)
                         .with(csrf())
                         .param("code", code)
-                        .param("displayName", "Issue eleven created"))
+                        .param("displayName", "Issue eleven created")
+                        .param("curatorNote", "Technische Testnotiz."))
                 .andExpect(status().is3xxRedirection());
         long conceptId = conceptId(code);
         assertTrue(Boolean.TRUE.equals(jdbcTemplate.queryForObject(
@@ -145,6 +146,7 @@ class CatalogAdministrationEditingMvcTest {
                         .param("active", "true")
                         .param("challengeSpecificity", "SPECIFIC")
                         .param("baseDrawWeight", "1.0")
+                        .param("curatorNote", "MVC persistiert")
                         .param("version", "1"))
                 .andExpect(status().isForbidden());
 
@@ -156,9 +158,37 @@ class CatalogAdministrationEditingMvcTest {
                         .param("active", "true")
                         .param("challengeSpecificity", "SPECIFIC")
                         .param("baseDrawWeight", "0.7500")
+                        .param("curatorNote", "MVC persistiert")
                         .param("version", "1"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(containsString("Code ist nach der Anlage unveränderlich")));
+    }
+
+    @Test
+    void rejectsBlankCuratorNotesOnCreationAndUpdate() throws Exception {
+        MockHttpSession session = authenticate();
+
+        mockMvc.perform(post("/admin/catalog")
+                        .session(session)
+                        .with(csrf())
+                        .param("code", PREFIX + "BLANK_CREATE")
+                        .param("displayName", "Issue 178 blank creation")
+                        .param("curatorNote", "   "))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(containsString("Die Kuratornotiz darf nicht leer sein.")));
+
+        long conceptId = insertConcept("BLANK_UPDATE", "Issue 178 blank update", "SPECIFIC", true, false, null);
+        mockMvc.perform(post("/admin/catalog/{id}", conceptId)
+                        .session(session)
+                        .with(csrf())
+                        .param("displayName", "Issue 178 blank update")
+                        .param("active", "true")
+                        .param("challengeSpecificity", "SPECIFIC")
+                        .param("baseDrawWeight", "1.0")
+                        .param("curatorNote", "\t")
+                        .param("version", "0"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(containsString("Die Kuratornotiz darf nicht leer sein.")));
     }
 
     @Test
@@ -175,6 +205,7 @@ class CatalogAdministrationEditingMvcTest {
                         .param("challengeSpecificity", "SPECIFIC")
                         .param("baseDrawWeight", "0.50")
                         .param("noveltyLevel", "5")
+                        .param("curatorNote", "Technische Testnotiz.")
                         .param("version", "0"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(containsString("Gewicht bewusst prüfen")))
@@ -189,6 +220,7 @@ class CatalogAdministrationEditingMvcTest {
                         .param("challengeSpecificity", "SPECIFIC")
                         .param("baseDrawWeight", "0.50")
                         .param("noveltyLevel", "5")
+                        .param("curatorNote", "Technische Testnotiz.")
                         .param("version", "0")
                         .param("weightWarningsAcknowledged", "true"))
                 .andExpect(status().is3xxRedirection());
@@ -201,6 +233,7 @@ class CatalogAdministrationEditingMvcTest {
                         .param("active", "true")
                         .param("challengeSpecificity", "SPECIFIC")
                         .param("baseDrawWeight", "1.0")
+                        .param("curatorNote", "Technische Testnotiz.")
                         .param("functionalRole", "FRUIT")
                         .param("culinaryFlag", "PICKLED")
                         .param("dimension[SWEETNESS]", "5")
@@ -232,6 +265,7 @@ class CatalogAdministrationEditingMvcTest {
                         .param("randomDrawEnabled", "true")
                         .param("challengeSpecificity", "OPEN")
                         .param("baseDrawWeight", "0.75")
+                        .param("curatorNote", "Technische Testnotiz.")
                         .param("functionalRole", "VEGETABLE")
                         .param("functionalRole", "AROMATIC")
                         .param("culinaryFlag", "FERMENTED")
@@ -256,6 +290,7 @@ class CatalogAdministrationEditingMvcTest {
                         .param("active", "true")
                         .param("challengeSpecificity", "OPEN")
                         .param("baseDrawWeight", "0.75")
+                        .param("curatorNote", "Technische Testnotiz.")
                         .param("functionalRole", "FRUIT")
                         .param("dimension[HEAT]", "")
                         .param("availability[GEORGIA]", "")
@@ -298,6 +333,7 @@ class CatalogAdministrationEditingMvcTest {
                         .param("active", "true")
                         .param("challengeSpecificity", "SPECIFIC")
                         .param("baseDrawWeight", "1.0")
+                        .param("curatorNote", "Technische Testnotiz.")
                         .param("version", "0")
                         .param("relationChange", "ADD:" + parent + ":" + child + ":0"))
                 .andExpect(status().is3xxRedirection());
@@ -311,6 +347,7 @@ class CatalogAdministrationEditingMvcTest {
                         .param("active", "true")
                         .param("challengeSpecificity", "SPECIFIC")
                         .param("baseDrawWeight", "1.0")
+                        .param("curatorNote", "Technische Testnotiz.")
                         .param("version", "0")
                         .param("relationChange", "ADD:" + inactiveParent + ":" + inactiveChild + ":0"))
                 .andExpect(status().isUnprocessableEntity())
@@ -323,6 +360,7 @@ class CatalogAdministrationEditingMvcTest {
                         .param("active", "true")
                         .param("challengeSpecificity", "SPECIFIC")
                         .param("baseDrawWeight", "1.0")
+                        .param("curatorNote", "Technische Testnotiz.")
                         .param("version", "0")
                         .param("relationChange", "ADD:" + inactiveParent + ":" + inactiveChild + ":0")
                         .param("inactiveRelationsAcknowledged", "true"))
@@ -338,6 +376,7 @@ class CatalogAdministrationEditingMvcTest {
                         .param("active", "true")
                         .param("challengeSpecificity", "SPECIFIC")
                         .param("baseDrawWeight", "1.0")
+                        .param("curatorNote", "Technische Testnotiz.")
                         .param("version", "0")
                         .param("relationChange", "ADD:" + staleParent + ":" + staleChild + ":0"))
                 .andExpect(status().isConflict())
@@ -356,8 +395,9 @@ class CatalogAdministrationEditingMvcTest {
     private long insertConcept(String suffix, String displayName, String specificity, boolean active, boolean drawable, Integer novelty) {
         return jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (
-                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight, novelty_level
-                ) values (?, ?, ?, ?, ?, 1.0000, ?)
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                    novelty_level, curator_note
+                ) values (?, ?, ?, ?, ?, 1.0000, ?, 'Technische Testnotiz.')
                 returning id
                 """, Long.class, PREFIX + suffix, displayName, active, drawable, specificity, novelty);
     }

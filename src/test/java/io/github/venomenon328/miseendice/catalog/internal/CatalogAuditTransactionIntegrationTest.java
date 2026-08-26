@@ -72,7 +72,8 @@ class CatalogAuditTransactionIntegrationTest {
     @Test
     void rollsBackTheNewConceptWhenWritingItsAuditEntryFails() {
         assertThatThrownBy(() -> catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
-                "TEST_ISSUE11_AUDIT_FAILURE", "Issue eleven audit failure", "issue11-audit-admin"
+                "TEST_ISSUE11_AUDIT_FAILURE", "Issue eleven audit failure", "Technische Testnotiz.",
+                "issue11-audit-admin"
         )))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("deliberate audit failure");
@@ -131,8 +132,9 @@ class CatalogAuditTransactionIntegrationTest {
     private long insertIngredient(String suffix) {
         return jdbcTemplate.queryForObject("""
                 insert into ingredient_concept
-                    (code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight)
-                values (?, ?, true, false, 'SPECIFIC', 1.0000) returning id
+                    (code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                     curator_note)
+                values (?, ?, true, false, 'SPECIFIC', 1.0000, 'Technische Testnotiz.') returning id
                 """, Long.class, "TEST_ISSUE30_AUDIT_" + suffix, "Issue thirty audit " + suffix);
     }
 

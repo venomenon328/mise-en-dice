@@ -80,8 +80,8 @@ class CatalogRelationCandidateSearchRegressionTest {
         jdbcTemplate.update("""
                 insert into ingredient_concept (
                     code, display_name, active, random_draw_enabled, challenge_specificity,
-                    base_draw_weight, novelty_level
-                ) values (?, ?, false, false, 'SPECIFIC', 1.0000, null)
+                    base_draw_weight, novelty_level, curator_note
+                ) values (?, ?, false, false, 'SPECIFIC', 1.0000, null, 'Technische Testnotiz.')
                 """, code, displayName);
     }
 

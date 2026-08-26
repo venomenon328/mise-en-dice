@@ -298,8 +298,9 @@ class CatalogBulkCommandServiceIntegrationTest {
 
     private long insertConcept(String suffix, boolean active, boolean randomDrawEnabled, BigDecimal weight) {
         return jdbcTemplate.queryForObject("""
-                insert into ingredient_concept (code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight)
-                values (?, ?, ?, ?, 'SPECIFIC', ?) returning id
+                insert into ingredient_concept (code, display_name, active, random_draw_enabled,
+                    challenge_specificity, base_draw_weight, curator_note)
+                values (?, ?, ?, ?, 'SPECIFIC', ?, 'Technische Testnotiz.') returning id
                 """, Long.class, PREFIX + suffix, "Issue thirty " + suffix, active, randomDrawEnabled, weight);
     }
 

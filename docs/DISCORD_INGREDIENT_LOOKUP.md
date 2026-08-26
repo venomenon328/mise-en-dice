@@ -100,7 +100,7 @@ Das aktive Profil enthält ausschließlich:
 - direkt gepflegte kulinarische Flags,
 - direkt gepflegte kulinarische Dimensionen,
 - direkt gepflegte kulinarische Länderzuordnungen mit ISO-Alpha-2-Code und Anzeigename,
-- optionale Kuratornotiz.
+- verpflichtende Kuratornotiz.
 
 Die Relation-ID dient ausschließlich der eindeutigen stateless Discord-Navigation. Sie wird nicht als Nutztext angezeigt. Suchtreffer dürfen für ihre optionale Parent-Beschreibung weiterhin ausschließlich Namen transportieren.
 
@@ -202,7 +202,7 @@ Umami     mittel  🍄🍄🍄○○
 
 ## 8. Kuratornotiz und sichere Katalogtexte
 
-Eine nicht leere `curator_note` wird als `💡 Hinweis aus dem Zutatenkatalog` angezeigt. Leere oder nur aus Whitespace bestehende Notizen erzeugen keinen Abschnitt.
+Die verpflichtende `curator_note` wird als `💡 Hinweis aus dem Zutatenkatalog` angezeigt. Der Renderer behandelt einen entgegen der zentralen Datenbankinvariante leeren Wert weiterhin defensiv und erzeugt dafür keinen Abschnitt.
 
 Katalogtexte werden so gerendert, dass sie keine unbeabsichtigten Mentions, Codeblöcke, Links oder Markdown-Strukturen auslösen. Allowed Mentions bleiben vollständig deaktiviert. Unvertrauenswürdiger Katalogtext wird nicht in die ausgerichteten Codeblöcke übernommen.
 

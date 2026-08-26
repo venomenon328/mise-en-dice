@@ -129,7 +129,7 @@ class CulinaryCountryCatalogIntegrationTest {
         CatalogMetadata countries = metadata(Set.of("PH", "TH"));
         var created = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
                 PREFIX + "WRITE", "Country write concept", true, false, "SPECIFIC", BigDecimal.ONE,
-                null, null, countries, true, ACTOR
+                null, "Technische Testnotiz.", countries, true, ACTOR
         ));
 
         assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow().culinaryCountries())
@@ -143,7 +143,8 @@ class CulinaryCountryCatalogIntegrationTest {
         CatalogMetadata legacyMetadata = new CatalogMetadata(Set.of(), Set.of(), Map.of(), Map.of(), Map.of());
         var preserved = catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
                 created.conceptId(), created.version(), "Country write concept", false, false, "SPECIFIC",
-                BigDecimal.ONE, null, null, ACTOR, true, List.of(), Map.of(), false, legacyMetadata
+                BigDecimal.ONE, null, "Technische Testnotiz.", ACTOR, true, List.of(), Map.of(), false,
+                legacyMetadata
         ));
         assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow().culinaryCountries())
                 .extracting(CatalogQueries.CatalogCountry::code)
@@ -151,7 +152,8 @@ class CulinaryCountryCatalogIntegrationTest {
 
         var replaced = catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
                 created.conceptId(), preserved.version(), "Country write concept", false, false, "SPECIFIC",
-                BigDecimal.ONE, null, null, ACTOR, true, List.of(), Map.of(), false, metadata(Set.of("KR"))
+                BigDecimal.ONE, null, "Technische Testnotiz.", ACTOR, true, List.of(), Map.of(), false,
+                metadata(Set.of("KR"))
         ));
         assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow().culinaryCountries())
                 .extracting(CatalogQueries.CatalogCountry::code)
@@ -162,7 +164,8 @@ class CulinaryCountryCatalogIntegrationTest {
 
         assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
                 created.conceptId(), created.version(), "Stale country editor", false, false, "SPECIFIC",
-                BigDecimal.ONE, null, null, ACTOR, true, List.of(), Map.of(), false, metadata(Set.of("PH"))
+                BigDecimal.ONE, null, "Technische Testnotiz.", ACTOR, true, List.of(), Map.of(), false,
+                metadata(Set.of("PH"))
         ))).isInstanceOf(CatalogVersionConflictException.class);
         assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow().culinaryCountries())
                 .extracting(CatalogQueries.CatalogCountry::code)
@@ -170,7 +173,8 @@ class CulinaryCountryCatalogIntegrationTest {
 
         assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
                 created.conceptId(), replaced.version(), "Should roll back", true, false, "SPECIFIC",
-                BigDecimal.ONE, null, null, ACTOR, true, List.of(), Map.of(), false, metadata(Set.of("ZZ"))
+                BigDecimal.ONE, null, "Technische Testnotiz.", ACTOR, true, List.of(), Map.of(), false,
+                metadata(Set.of("ZZ"))
         ))).isInstanceOf(CatalogCommandValidationException.class);
         var afterRejectedUpdate = catalogQueries.findConcept(created.conceptId()).orElseThrow();
         assertThat(afterRejectedUpdate.version()).isEqualTo(replaced.version());
@@ -212,8 +216,9 @@ class CulinaryCountryCatalogIntegrationTest {
     private long insertConcept(String suffix, String displayName, boolean active) {
         return jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (
-                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
-                ) values (?, ?, ?, false, 'SPECIFIC', 1.0000)
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                    curator_note
+                ) values (?, ?, ?, false, 'SPECIFIC', 1.0000, 'Technische Testnotiz.')
                 returning id
                 """, Long.class, PREFIX + suffix, displayName + " " + System.nanoTime(), active);
     }

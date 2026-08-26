@@ -254,7 +254,7 @@ Für Auswahl und Kuratierung relevante Informationen sind unter anderem:
 - optionale Ungewöhnlichkeit,
 - Ziehungsgewicht,
 - Saisonabhängigkeit,
-- kurze sachliche Kuratornotizen,
+- verpflichtende kurze sachliche Kuratornotizen,
 - kuratierte Ausschlussregeln.
 
 Die Datenbasis bleibt bewusst kuratiertes Systemwissen und keine universelle Lebensmittelontologie.

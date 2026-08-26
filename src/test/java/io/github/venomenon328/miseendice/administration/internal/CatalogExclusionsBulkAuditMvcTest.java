@@ -223,8 +223,9 @@ class CatalogExclusionsBulkAuditMvcTest {
 
     private long insertConcept(String suffix, boolean randomDrawEnabled) {
         return jdbcTemplate.queryForObject("""
-                insert into ingredient_concept (code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight)
-                values (?, ?, true, ?, 'SPECIFIC', 1.0000) returning id
+                insert into ingredient_concept (code, display_name, active, random_draw_enabled,
+                    challenge_specificity, base_draw_weight, curator_note)
+                values (?, ?, true, ?, 'SPECIFIC', 1.0000, 'Technische Testnotiz.') returning id
                 """, Long.class, "TEST_ISSUE30_MVC_" + suffix, "Issue thirty MVC " + suffix, randomDrawEnabled);
     }
 
