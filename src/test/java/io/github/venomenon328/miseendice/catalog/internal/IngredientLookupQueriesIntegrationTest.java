@@ -57,9 +57,9 @@ class IngredientLookupQueriesIntegrationTest {
     @Test
     void searchesOnlyActiveDisplayNamesWithLiteralCaseInsensitiveSubstringsAndIncludesNonDrawableConcepts() {
         long drawable = insertConcept("DRAWABLE", "Lookup literal 100%_Aktiv", true, true, 3, "sichtbar");
-        long grouping = insertConcept("GROUPING", "Lookup literal 100%_Gruppe", true, false, null, null);
-        insertConcept("INACTIVE", "Lookup literal 100%_Inaktiv", false, true, 2, null);
-        insertConcept("CODE_ONLY_LOOKUP_LITERAL", "völlig anderer Name", true, true, 2, null);
+        long grouping = insertConcept("GROUPING", "Lookup literal 100%_Gruppe", true, false, null, "Technische Testnotiz.");
+        insertConcept("INACTIVE", "Lookup literal 100%_Inaktiv", false, true, 2, "Technische Testnotiz.");
+        insertConcept("CODE_ONLY_LOOKUP_LITERAL", "völlig anderer Name", true, true, 2, "Technische Testnotiz.");
 
         var result = queries.searchActiveByDisplayName("  100%_  ", 25);
 
@@ -71,11 +71,12 @@ class IngredientLookupQueriesIntegrationTest {
 
     @Test
     void ranksStartsWithBeforeContainsThenAlphabeticallyAndReturnsTheBoundedTotal() {
-        long startsA = insertConcept("START_A", "Alpha Anfang", true, true, 2, null);
-        long startsB = insertConcept("START_B", "alpha Anfang 2", true, true, 2, null);
-        long contains = insertConcept("CONTAINS", "Eine Alpha Ende", true, true, 2, null);
+        long startsA = insertConcept("START_A", "Alpha Anfang", true, true, 2, "Technische Testnotiz.");
+        long startsB = insertConcept("START_B", "alpha Anfang 2", true, true, 2, "Technische Testnotiz.");
+        long contains = insertConcept("CONTAINS", "Eine Alpha Ende", true, true, 2, "Technische Testnotiz.");
         for (int number = 0; number < 25; number++) {
-            insertConcept("LIMIT_" + number, "alpha Zusatz " + String.format("%02d", number), true, true, 2, null);
+            insertConcept("LIMIT_" + number, "alpha Zusatz " + String.format("%02d", number), true, true, 2,
+                    "Technische Testnotiz.");
         }
 
         var result = queries.searchActiveByDisplayName("ALPHA", 25);
@@ -90,13 +91,13 @@ class IngredientLookupQueriesIntegrationTest {
 
     @Test
     void projectsOnlyTheAllowedCurrentDirectFieldsAndNeverWritesAuditData() {
-        long activeParentB = insertConcept("PARENT_ACTIVE_B", "Lookup Oberbegriff Beta", true, false, 1, null);
-        long activeParentA = insertConcept("PARENT_ACTIVE_A", "Lookup Oberbegriff Alpha", true, false, 1, null);
-        long inactiveParent = insertConcept("PARENT_INACTIVE", "Lookup Oberbegriff inaktiv", false, false, 1, null);
+        long activeParentB = insertConcept("PARENT_ACTIVE_B", "Lookup Oberbegriff Beta", true, false, 1, "Technische Testnotiz.");
+        long activeParentA = insertConcept("PARENT_ACTIVE_A", "Lookup Oberbegriff Alpha", true, false, 1, "Technische Testnotiz.");
+        long inactiveParent = insertConcept("PARENT_INACTIVE", "Lookup Oberbegriff inaktiv", false, false, 1, "Technische Testnotiz.");
         long selected = insertConcept("SELECTED", "Lookup Profil", true, true, 4, "  Kurator @here *Hinweis*  ");
-        long activeChildB = insertConcept("CHILD_ACTIVE_B", "Lookup Konkretisierung Beta", true, true, 2, null);
-        long activeChildA = insertConcept("CHILD_ACTIVE_A", "Lookup Konkretisierung Alpha", true, true, 2, null);
-        long inactiveChild = insertConcept("CHILD_INACTIVE", "Lookup Konkretisierung inaktiv", false, true, 2, null);
+        long activeChildB = insertConcept("CHILD_ACTIVE_B", "Lookup Konkretisierung Beta", true, true, 2, "Technische Testnotiz.");
+        long activeChildA = insertConcept("CHILD_ACTIVE_A", "Lookup Konkretisierung Alpha", true, true, 2, "Technische Testnotiz.");
+        long inactiveChild = insertConcept("CHILD_INACTIVE", "Lookup Konkretisierung inaktiv", false, true, 2, "Technische Testnotiz.");
         jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", activeParentB, selected);
         jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", activeParentA, selected);
         jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", inactiveParent, selected);
@@ -203,24 +204,31 @@ class IngredientLookupQueriesIntegrationTest {
                 assertThat(country.code()).isEqualTo("XA"));
         assertThat(queries.resolveCulinaryCountry("Testland")).isEmpty();
 
-        long nonDrawable = insertConcept("COUNTRY_GROUP", "Landzutat 00", true, false, null, null);
+        long nonDrawable = insertConcept(
+                "COUNTRY_GROUP", "Landzutat 00", true, false, null, "Technische Testnotiz.");
         assignCountry(nonDrawable, "XA");
         for (int number = 1; number <= 18; number++) {
             long conceptId = insertConcept("COUNTRY_" + number, "Landzutat " + String.format("%02d", number),
-                    true, true, null, null);
+                    true, true, null, "Technische Testnotiz.");
             assignCountry(conceptId, "XA");
         }
-        long equalPrefixFirst = insertConcept("COUNTRY_EQUAL_PREFIX_A", "Landzutat Gleich Alpha", true, true, null, null);
-        long equalPrefixSecond = insertConcept("COUNTRY_EQUAL_PREFIX_B", "Landzutat Gleich Beta", true, true, null, null);
+        long equalPrefixFirst = insertConcept(
+                "COUNTRY_EQUAL_PREFIX_A", "Landzutat Gleich Alpha", true, true, null, "Technische Testnotiz.");
+        long equalPrefixSecond = insertConcept(
+                "COUNTRY_EQUAL_PREFIX_B", "Landzutat Gleich Beta", true, true, null, "Technische Testnotiz.");
         assignCountry(equalPrefixFirst, "XA");
         assignCountry(equalPrefixSecond, "XA");
-        long inactive = insertConcept("COUNTRY_INACTIVE", "Landzutat Inaktiv", false, true, null, null);
+        long inactive = insertConcept(
+                "COUNTRY_INACTIVE", "Landzutat Inaktiv", false, true, null, "Technische Testnotiz.");
         assignCountry(inactive, "XA");
-        long parent = insertConcept("COUNTRY_PARENT", "Landzutat Oberbegriff", true, false, null, null);
-        long child = insertConcept("COUNTRY_CHILD", "Landzutat Unterbegriff", true, true, null, null);
+        long parent = insertConcept(
+                "COUNTRY_PARENT", "Landzutat Oberbegriff", true, false, null, "Technische Testnotiz.");
+        long child = insertConcept(
+                "COUNTRY_CHILD", "Landzutat Unterbegriff", true, true, null, "Technische Testnotiz.");
         jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", parent, child);
         assignCountry(child, "XA");
-        long multipleCountries = insertConcept("COUNTRY_MULTIPLE", "Landzutat Zwei Länder", true, true, null, null);
+        long multipleCountries = insertConcept(
+                "COUNTRY_MULTIPLE", "Landzutat Zwei Länder", true, true, null, "Technische Testnotiz.");
         assignCountry(multipleCountries, "XA");
         assignCountry(multipleCountries, "XB");
 

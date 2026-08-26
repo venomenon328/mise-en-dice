@@ -12,24 +12,27 @@ class CatalogCommandsTest {
 
     @Test
     void acceptsTheStableUppercaseIngredientCodeConvention() {
-        var command = new CreateIngredientConceptCommand("WHITE_FISH_2", " Weißer Fisch ", "catalog-admin");
+        var command = new CreateIngredientConceptCommand(
+                "WHITE_FISH_2", " Weißer Fisch ", " Sachliche Testnotiz. ", "catalog-admin");
 
         assertThat(command.code()).isEqualTo("WHITE_FISH_2");
         assertThat(command.displayName()).isEqualTo("Weißer Fisch");
+        assertThat(command.curatorNote()).isEqualTo("Sachliche Testnotiz.");
     }
 
     @Test
     void rejectsInvalidCreationAndBaseUpdateValuesWithFieldSpecificFailures() {
-        assertThatThrownBy(() -> new CreateIngredientConceptCommand("white-fish", "", ""))
+        assertThatThrownBy(() -> new CreateIngredientConceptCommand("white-fish", "", " ", ""))
                 .isInstanceOf(CatalogCommandValidationException.class)
                 .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
-                        .containsKeys("code", "displayName", "actorKey"));
+                        .containsKeys("code", "displayName", "curatorNote", "actorKey"));
 
         assertThatThrownBy(() -> new UpdateIngredientConceptCommand(
                 5, 0, "", true, false, "BROKEN", BigDecimal.ZERO, 6, "", "", false
         ))
                 .isInstanceOf(CatalogCommandValidationException.class)
                 .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
-                        .containsKeys("displayName", "challengeSpecificity", "baseDrawWeight", "noveltyLevel", "actorKey"));
+                        .containsKeys("displayName", "challengeSpecificity", "baseDrawWeight", "noveltyLevel",
+                                "curatorNote", "actorKey"));
     }
 }

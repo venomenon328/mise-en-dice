@@ -27,6 +27,7 @@ import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.UncategorizedSQLException;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -108,6 +109,46 @@ class PostgresIntegrationTest {
                 """,
                 Integer.class
         )).isZero();
+    }
+
+    @Test
+    void ingredientConceptCuratorNotesAreCompleteAndDatabaseEnforced() {
+        assertThat(countWhere("ingredient_concept", "curator_note is null or btrim(curator_note) = ''")).isZero();
+        assertThat(jdbcTemplate.queryForObject(
+                """
+                select is_nullable
+                from information_schema.columns
+                where table_schema = 'public'
+                  and table_name = 'ingredient_concept'
+                  and column_name = 'curator_note'
+                """,
+                String.class
+        )).isEqualTo("NO");
+
+        for (String invalidNote : List.of("", "   ")) {
+            String token = UUID.randomUUID().toString().replace("-", "");
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    """
+                    insert into ingredient_concept
+                        (code, display_name, challenge_specificity, base_draw_weight, curator_note)
+                    values (?, ?, 'SPECIFIC', 1.0000, ?)
+                    """,
+                    "TEST_NOTE_" + token,
+                    "Invalid curator note " + token,
+                    invalidNote
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        String token = UUID.randomUUID().toString().replace("-", "");
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                """
+                insert into ingredient_concept
+                    (code, display_name, challenge_specificity, base_draw_weight, curator_note)
+                values (?, ?, 'SPECIFIC', 1.0000, null)
+                """,
+                "TEST_NOTE_" + token,
+                "Invalid curator note " + token
+        )).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
@@ -407,8 +448,8 @@ class PostgresIntegrationTest {
         return insertReturningId(
                 """
                 insert into ingredient_concept
-                    (code, display_name, challenge_specificity, base_draw_weight)
-                values (?, ?, 'SPECIFIC', 1.0000)
+                    (code, display_name, challenge_specificity, base_draw_weight, curator_note)
+                values (?, ?, 'SPECIFIC', 1.0000, 'Technische Testnotiz.')
                 returning id
                 """,
                 "TEST_" + label.toUpperCase() + "_" + token,

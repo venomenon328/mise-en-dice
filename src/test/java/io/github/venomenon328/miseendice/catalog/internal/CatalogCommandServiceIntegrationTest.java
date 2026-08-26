@@ -83,7 +83,7 @@ class CatalogCommandServiceIntegrationTest {
     @Test
     void createsAConservativeConceptAndAuditsTheCompleteInitialAggregate() {
         var result = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
-                PREFIX + "CREATE", "Issue eleven creation", ACTOR
+                PREFIX + "CREATE", "Issue eleven creation", "Technische Testnotiz.", ACTOR
         ));
 
         var detail = catalogQueries.findConcept(result.conceptId()).orElseThrow();
@@ -95,7 +95,8 @@ class CatalogCommandServiceIntegrationTest {
                 CatalogQueries.CatalogConceptDetail::noveltyLevel,
                 CatalogQueries.CatalogConceptDetail::curatorNote,
                 CatalogQueries.CatalogConceptDetail::version
-        ).containsExactly(true, false, "SPECIFIC", new BigDecimal("1.0000"), null, null, 0L);
+        ).containsExactly(true, false, "SPECIFIC", new BigDecimal("1.0000"), null,
+                "Technische Testnotiz.", 0L);
 
         var audit = latestAudit();
         assertThat(audit).extracting(entry -> entry.actorKey(), entry -> entry.entityType(), entry -> entry.action())
@@ -211,7 +212,7 @@ class CatalogCommandServiceIntegrationTest {
 
         UpdateIngredientConceptCommand command = new UpdateIngredientConceptCommand(
                 child, 0, "Issue 172 pending graph", true, true, "SPECIFIC", new BigDecimal("0.50"),
-                null, null, ACTOR, false,
+                null, "Technische Testnotiz.", ACTOR, false,
                 List.of(new RefinementChange(parent, child, RefinementChangeType.ADD)),
                 Map.of(parent, parentVersion), true
         );
@@ -233,14 +234,15 @@ class CatalogCommandServiceIntegrationTest {
 
     @Test
     void classifiesKnownUniqueViolationsButDoesNotMaskAnUnknownDatabaseFailure() {
-        catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(PREFIX + "UNIQUE", "Issue eleven unique", ACTOR));
+        catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                PREFIX + "UNIQUE", "Issue eleven unique", "Technische Testnotiz.", ACTOR));
         assertThatThrownBy(() -> catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
-                PREFIX + "UNIQUE", "Another name", ACTOR
+                PREFIX + "UNIQUE", "Another name", "Technische Testnotiz.", ACTOR
         )))
                 .isInstanceOf(CatalogCommandValidationException.class)
                 .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors()).containsKey("code"));
         assertThatThrownBy(() -> catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
-                PREFIX + "OTHER", "ISSUE ELEVEN UNIQUE", ACTOR
+                PREFIX + "OTHER", "ISSUE ELEVEN UNIQUE", "Technische Testnotiz.", ACTOR
         )))
                 .isInstanceOf(CatalogCommandValidationException.class)
                 .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors()).containsKey("displayName"));
@@ -344,12 +346,12 @@ class CatalogCommandServiceIntegrationTest {
 
         assertThatThrownBy(() -> catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
                 PREFIX + "CREATE_METADATA", "Issue twenty-four creation", true, true, "OPEN", new BigDecimal("0.50"),
-                null, null, metadata, false, ACTOR)))
+                null, "Technische Testnotiz.", metadata, false, ACTOR)))
                 .isInstanceOf(CatalogDrawWeightWarningException.class);
 
         var result = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
                 PREFIX + "CREATE_METADATA", "Issue twenty-four creation", true, true, "OPEN", new BigDecimal("0.50"),
-                null, null, metadata, true, ACTOR));
+                null, "Technische Testnotiz.", metadata, true, ACTOR));
 
         CatalogQueries.CatalogConceptDetail detail = catalogQueries.findConcept(result.conceptId()).orElseThrow();
         assertThat(detail).extracting(CatalogQueries.CatalogConceptDetail::randomDrawEnabled,
@@ -370,9 +372,10 @@ class CatalogCommandServiceIntegrationTest {
             String note,
             boolean acknowledgeWarnings
     ) {
+        String effectiveNote = note == null ? detail.curatorNote() : note;
         return new UpdateIngredientConceptCommand(
                 detail.id(), detail.version(), displayName, active, randomDrawEnabled, specificity,
-                weight, novelty, note, ACTOR, acknowledgeWarnings
+                weight, novelty, effectiveNote, ACTOR, acknowledgeWarnings
         );
     }
 
@@ -392,8 +395,9 @@ class CatalogCommandServiceIntegrationTest {
     private long insertConcept(String suffix, String displayName, String specificity, boolean active, boolean drawable, Integer novelty) {
         return jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (
-                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight, novelty_level
-                ) values (?, ?, ?, ?, ?, 1.0000, ?)
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                    novelty_level, curator_note
+                ) values (?, ?, ?, ?, ?, 1.0000, ?, 'Technische Testnotiz.')
                 returning id
                 """, Long.class, PREFIX + suffix, displayName, active, drawable, specificity, novelty);
     }

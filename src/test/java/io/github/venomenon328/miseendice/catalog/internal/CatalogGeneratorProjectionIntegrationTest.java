@@ -199,8 +199,9 @@ class CatalogGeneratorProjectionIntegrationTest {
     private long insertConcept(String suffix, boolean active, boolean drawable, String specificity, Integer novelty) {
         return jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (
-                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight, novelty_level
-                ) values (?, ?, ?, ?, ?, 1.0000, ?)
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                    novelty_level, curator_note
+                ) values (?, ?, ?, ?, ?, 1.0000, ?, 'Technische Testnotiz.')
                 returning id
                 """, Long.class, TEST_PREFIX + suffix, "Projection " + suffix, active, drawable, specificity, novelty);
     }

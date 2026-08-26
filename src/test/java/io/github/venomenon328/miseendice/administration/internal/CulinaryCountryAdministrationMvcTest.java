@@ -254,6 +254,7 @@ class CulinaryCountryAdministrationMvcTest {
                 .param("active", "true")
                 .param("challengeSpecificity", "SPECIFIC")
                 .param("baseDrawWeight", "1.0000")
+                .param("curatorNote", "Technische Testnotiz.")
                 .param("version", Long.toString(version));
     }
 
@@ -265,8 +266,9 @@ class CulinaryCountryAdministrationMvcTest {
 
     private long insertConcept(String suffix, String displayName, boolean active) {
         return jdbcTemplate.queryForObject("""
-                insert into ingredient_concept (code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight)
-                values (?, ?, ?, false, 'SPECIFIC', 1.0000)
+                insert into ingredient_concept (code, display_name, active, random_draw_enabled,
+                    challenge_specificity, base_draw_weight, curator_note)
+                values (?, ?, ?, false, 'SPECIFIC', 1.0000, 'Technische Testnotiz.')
                 returning id
                 """, Long.class, PREFIX + suffix, displayName, active);
     }

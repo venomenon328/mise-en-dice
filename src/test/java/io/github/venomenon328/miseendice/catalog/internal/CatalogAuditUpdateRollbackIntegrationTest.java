@@ -72,8 +72,9 @@ class CatalogAuditUpdateRollbackIntegrationTest {
     void rollsBackExistingConceptFieldsAndVersionWhenWritingAuditFails() {
         long conceptId = jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (
-                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
-                ) values (?, 'Audit update original', true, false, 'SPECIFIC', 1.0000)
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                    curator_note
+                ) values (?, 'Audit update original', true, false, 'SPECIFIC', 1.0000, 'Technische Testnotiz.')
                 returning id
                 """, Long.class, CODE);
 
@@ -110,7 +111,7 @@ class CatalogAuditUpdateRollbackIntegrationTest {
                 .containsEntry("version", 0L)
                 .containsEntry("base_draw_weight", new BigDecimal("1.0000"))
                 .containsEntry("novelty_level", null)
-                .containsEntry("curator_note", null);
+                .containsEntry("curator_note", "Technische Testnotiz.");
         assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_functional_role where ingredient_concept_id = ?", Integer.class, conceptId)).isZero();
         assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_culinary_flag where ingredient_concept_id = ?", Integer.class, conceptId)).isZero();
         assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_culinary_dimension where ingredient_concept_id = ?", Integer.class, conceptId)).isZero();
@@ -124,7 +125,8 @@ class CatalogAuditUpdateRollbackIntegrationTest {
         long childId = insertRefinementConcept(RELATION_CHILD_CODE, "Audit relation child", "SPECIFIC");
 
         assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
-                childId, 0, "Audit relation child", true, false, "SPECIFIC", BigDecimal.ONE, null, null,
+                childId, 0, "Audit relation child", true, false, "SPECIFIC", BigDecimal.ONE, null,
+                "Technische Testnotiz.",
                 "issue21-audit-update-admin", false,
                 List.of(new CatalogCommands.RefinementChange(parentId, childId, CatalogCommands.RefinementChangeType.ADD)),
                 Map.of(parentId, 0L), false
@@ -141,8 +143,9 @@ class CatalogAuditUpdateRollbackIntegrationTest {
     private long insertRefinementConcept(String code, String displayName, String specificity) {
         long conceptId = jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (
-                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
-                ) values (?, ?, true, false, ?, 1.0000)
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                    curator_note
+                ) values (?, ?, true, false, ?, 1.0000, 'Technische Testnotiz.')
                 returning id
                 """, Long.class, code, displayName, specificity);
         jdbcTemplate.update("""

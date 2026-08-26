@@ -140,8 +140,9 @@ class CatalogPhase8QueryIntegrationTest {
 
     private long insertConcept(String suffix, boolean active) {
         return jdbcTemplate.queryForObject("""
-                insert into ingredient_concept (code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight)
-                values (?, ?, ?, false, 'SPECIFIC', 1.0000) returning id
+                insert into ingredient_concept (code, display_name, active, random_draw_enabled,
+                    challenge_specificity, base_draw_weight, curator_note)
+                values (?, ?, ?, false, 'SPECIFIC', 1.0000, 'Technische Testnotiz.') returning id
                 """, Long.class, PREFIX + suffix, "Issue thirty query " + suffix, active);
     }
 

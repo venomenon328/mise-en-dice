@@ -734,8 +734,10 @@ class OfferDecisionLifecycleIntegrationTest {
         String inactiveCode = "RESULT_TEST_INACTIVE";
         jdbcTemplate.update("""
                 insert into ingredient_concept (
-                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
-                ) values (?, 'Inactive result test ingredient', false, false, 'OPEN', 1.0000)
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                    curator_note
+                ) values (?, 'Inactive result test ingredient', false, false, 'OPEN', 1.0000,
+                    'Technische Testnotiz.')
                 """, inactiveCode);
         try {
             assertThat(resultIngredientCatalogQueries.searchLiterally(inactiveCode.toLowerCase()))
@@ -1137,8 +1139,9 @@ class OfferDecisionLifecycleIntegrationTest {
     private long insertResultConcept(String suffix, String displayName, boolean active, String specificity) {
         return jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (
-                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
-                ) values (?, ?, ?, false, ?, 1.0000)
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                    curator_note
+                ) values (?, ?, ?, false, ?, 1.0000, 'Technische Testnotiz.')
                 returning id
                 """, Long.class, TEST_CONCEPT_PREFIX + suffix, displayName, active, specificity);
     }

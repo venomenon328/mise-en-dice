@@ -198,8 +198,8 @@
             <p class="section-kicker">Redaktion</p>
             <h3>Kuratornotiz</h3>
         </div>
-        <p class="curator-note" th:text="${detail.curatorNote ?: 'Keine Kuratornotiz gepflegt.'}">
-            Keine Kuratornotiz gepflegt.
+        <p class="curator-note" th:text="${detail.curatorNote}">
+            Kuratornotiz
         </p>
     </section>
 
@@ -373,9 +373,10 @@
 
             <section class="detail-section">
                 <div class="detail-section-heading"><p class="section-kicker">Redaktion</p><h3>Kuratornotiz</h3></div>
-                <label class="textarea-field">Sachliche Notiz für die spätere Kuration
-                    <textarea name="curatorNote" rows="4" th:text="${form.curatorNote}"></textarea>
+                <label class="textarea-field">Kurze sachliche Kuratornotiz
+                    <textarea name="curatorNote" rows="4" required th:text="${form.curatorNote}"></textarea>
                 </label>
+                <p th:if="${formErrors != null and formErrors.get('curatorNote') != null}" class="field-error" th:text="${formErrors.get('curatorNote')}">Fehler</p>
             </section>
 
             <section th:if="${detail != null}" class="detail-section" data-refinement-editor th:attr="data-concept-id=${form.conceptId}">

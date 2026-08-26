@@ -147,8 +147,9 @@ class CatalogDeactivationPreservationIntegrationTest {
     private long insertConcept(String suffix, String displayName, String specificity) {
         return jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (
-                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
-                ) values (?, ?, true, false, ?, 1.0000)
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                    curator_note
+                ) values (?, ?, true, false, ?, 1.0000, 'Technische Testnotiz.')
                 returning id
                 """, Long.class, PREFIX + suffix, displayName, specificity);
     }

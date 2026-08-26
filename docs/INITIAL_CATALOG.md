@@ -245,17 +245,20 @@ Die exakten Baseline-Prüfungen werden bewusst übersprungen, sobald bereits ver
 
 ## 13. Pflegeprinzip für neue Zutaten
 
-Für einen neuen zufällig ziehbaren Eintrag sollten mindestens gepflegt werden:
+Für jedes neue Zutatenkonzept müssen mindestens gepflegt werden:
 
 1. Zutatenkonzept mit Spezifität, Ziehungsgewicht und optionaler Ungewöhnlichkeit,
-2. mindestens eine funktionale Rolle,
-3. Beschaffbarkeit für Georgia und Tobias.
+2. kurze sachliche Kuratornotiz mit kulinarischer Identität, sinnvollen Produktformen oder wichtigen Abgrenzungen.
+
+Soll der Eintrag zufällig ziehbar sein, kommen verpflichtend hinzu:
+
+3. mindestens eine funktionale Rolle,
+4. Beschaffbarkeit für Georgia und Tobias.
 
 Optional folgen:
 
 - bekannte Konkretisierungsbeziehungen,
 - kulinarische Flags oder Dimensionen,
-- Saisonfaktoren,
-- kurze Kuratornotiz.
+- Saisonfaktoren.
 
 Damit bleibt die Datenpflege trotz des inzwischen sehr breiten Katalogs handhabbar. Eine Dissertation über die metaphysische Stellung der Steckrübe bleibt freiwillig.

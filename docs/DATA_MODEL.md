@@ -40,6 +40,8 @@ Es gibt bewusst keinen festen Typ `INGREDIENT` oder `CATEGORY`.
 
 `code` dient als stabiler technischer Schlüssel; `display_name` darf sich ändern, ohne technische Referenzen umzubenennen.
 
+Jedes Zutatenkonzept besitzt außerdem eine nicht leere `curator_note`. Sie beschreibt kurz und sachlich die kulinarische Identität, sinnvolle Produktformen oder wichtige Abgrenzungen. Strukturierte Felder wie Ziehbarkeit, Gewicht, Rollen oder Beschaffbarkeit werden dort nicht durch Freitext ersetzt. PostgreSQL verhindert `NULL`, leere und ausschließlich aus Leerraum bestehende Notizen.
+
 Drei voneinander unabhängige Fragen werden getrennt behandelt:
 
 1. **Spezifität als Challenge-Vorgabe** (`challenge_specificity`): `SPECIFIC` oder `OPEN`.

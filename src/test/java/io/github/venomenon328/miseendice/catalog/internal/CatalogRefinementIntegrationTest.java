@@ -378,8 +378,9 @@ class CatalogRefinementIntegrationTest {
     private long concept(String suffix, String displayName, String specificity, boolean active, boolean drawable, String role) {
         long id = jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (
-                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
-                ) values (?, ?, ?, ?, ?, 1.0000) returning id
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                    curator_note
+                ) values (?, ?, ?, ?, ?, 1.0000, 'Technische Testnotiz.') returning id
                 """, Long.class, PREFIX + suffix, displayName, active, drawable, specificity);
         jdbcTemplate.update("""
                 insert into ingredient_functional_role (ingredient_concept_id, functional_role_id)

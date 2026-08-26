@@ -396,7 +396,9 @@ Jan  Feb  Mär  Apr  Mai  Jun  Jul  Aug  Sep  Okt  Nov  Dez
 
 ### 7.10 Kuratornotiz
 
-`curator_note` ist ein normales mehrzeiliges Textfeld. Es steht nicht in einem versteckten Expertenmenü.
+`curator_note` ist ein verpflichtendes mehrzeiliges Textfeld. Es steht nicht in einem versteckten Expertenmenü und akzeptiert keinen leeren oder ausschließlich aus Leerraum bestehenden Inhalt.
+
+Die Notiz bleibt in der Regel bei ein bis zwei kurzen deutschen Sätzen. Sie beschreibt die kulinarische Identität, übliche sinnvolle Produktformen oder wichtige Abgrenzungen, statt strukturierte Metadaten zu wiederholen. Neuanlage und Bearbeitung erzeugen keinen automatischen Platzhalter; die redaktionell verantwortliche Person gibt einen echten Inhalt ein.
 
 ### 7.11 Referenzen
 
@@ -419,6 +421,7 @@ Defaults:
 - `challenge_specificity = SPECIFIC`,
 - `base_draw_weight = 1.0000`,
 - `novelty_level = nicht gepflegt`,
+- Kuratornotiz ohne Default und vor dem ersten Speichern verpflichtend,
 - keine Rollen,
 - keine Flags,
 - keine kulinarischen Länderzuordnungen,

@@ -147,6 +147,7 @@ class CatalogRefinementEditingReviewRegressionTest {
                         .param("active", "true")
                         .param("challengeSpecificity", "SPECIFIC")
                         .param("baseDrawWeight", "1.0")
+                        .param("curatorNote", "Technische Testnotiz.")
                         .param("version", "0")
                         .param("relationChange", "ADD:" + parent + ":" + child + ":0"))
                 .andExpect(status().isConflict())
@@ -167,8 +168,9 @@ class CatalogRefinementEditingReviewRegressionTest {
     private long insertConcept(String suffix, String displayName, String specificity) {
         return jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (
-                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight
-                ) values (?, ?, true, false, ?, 1.0000)
+                    code, display_name, active, random_draw_enabled, challenge_specificity, base_draw_weight,
+                    curator_note
+                ) values (?, ?, true, false, ?, 1.0000, 'Technische Testnotiz.')
                 returning id
                 """, Long.class, PREFIX + suffix, displayName, specificity);
     }
