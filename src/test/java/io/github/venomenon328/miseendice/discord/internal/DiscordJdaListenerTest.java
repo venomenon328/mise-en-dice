@@ -14,8 +14,10 @@ import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.Cul
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredient;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredientPage;
 import java.time.ZoneId;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.JDA;
@@ -24,8 +26,11 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
+import net.dv8tion.jda.api.interactions.AutoCompleteQuery;
+import net.dv8tion.jda.api.interactions.commands.Command.Choice;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
@@ -38,6 +43,7 @@ import net.dv8tion.jda.api.requests.restaction.CommandCreateAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.InteractionCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
+import net.dv8tion.jda.api.requests.restaction.interactions.AutoCompleteCallbackAction;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
@@ -448,6 +454,39 @@ class DiscordJdaListenerTest {
             assertThat(option.isRequired()).isTrue();
             assertThat(option.isAutoComplete()).isTrue();
         });
+    }
+
+    @Test
+    void repliesToCountryAutocompleteOutsideTheBlockedPrimaryDiscordExecutor() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var lookupWorkflow = mock(DiscordIngredientLookupWorkflow.class);
+        var event = mock(CommandAutoCompleteInteractionEvent.class);
+        var guild = mock(Guild.class);
+        var focusedOption = mock(AutoCompleteQuery.class);
+        var reply = mock(AutoCompleteCallbackAction.class);
+        when(event.getName()).thenReturn("zutaten");
+        when(event.getGuild()).thenReturn(guild);
+        when(guild.getIdLong()).thenReturn(99L);
+        when(event.getFocusedOption()).thenReturn(focusedOption);
+        when(focusedOption.getName()).thenReturn("land");
+        when(focusedOption.getValue()).thenReturn("test");
+        when(lookupWorkflow.acceptsGuild(99L)).thenReturn(true);
+        when(lookupWorkflow.autocompleteCountries("test"))
+                .thenReturn(List.of(new CulinaryCountry("XA", "Testland Alpha")));
+        when(event.replyChoices(org.mockito.ArgumentMatchers.<Collection<Choice>>any())).thenReturn(reply);
+        Executor blockedPrimaryExecutor = command -> {
+        };
+
+        new DiscordJdaListener(new DiscordProperties(true, "token", 99, 77777, ZoneId.of("Europe/Berlin"), Map.of()),
+                challengeWorkflow, lookupWorkflow, null, null, null, blockedPrimaryExecutor, Runnable::run)
+                .onCommandAutoCompleteInteraction(event);
+
+        org.mockito.Mockito.verify(lookupWorkflow).autocompleteCountries("test");
+        org.mockito.Mockito.verify(event).replyChoices(org.mockito.ArgumentMatchers.<Collection<Choice>>argThat(choices ->
+                choices.stream().map(choice -> choice.getName()).toList().equals(List.of(
+                        DiscordIngredientLookupRenderer.countryFlag("XA") + " Testland Alpha"))
+                        && choices.stream().map(choice -> choice.getAsString()).toList().equals(List.of("XA"))));
+        org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
     }
 
     @Test

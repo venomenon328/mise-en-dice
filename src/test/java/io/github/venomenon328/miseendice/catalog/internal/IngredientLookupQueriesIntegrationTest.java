@@ -210,10 +210,10 @@ class IngredientLookupQueriesIntegrationTest {
                     true, true, null, null);
             assignCountry(conceptId, "XA");
         }
-        long tieFirst = insertConcept("COUNTRY_TIE_A", "Landzutat Gleich", true, true, null, null);
-        long tieSecond = insertConcept("COUNTRY_TIE_B", "Landzutat Gleich", true, true, null, null);
-        assignCountry(tieFirst, "XA");
-        assignCountry(tieSecond, "XA");
+        long equalPrefixFirst = insertConcept("COUNTRY_EQUAL_PREFIX_A", "Landzutat Gleich Alpha", true, true, null, null);
+        long equalPrefixSecond = insertConcept("COUNTRY_EQUAL_PREFIX_B", "Landzutat Gleich Beta", true, true, null, null);
+        assignCountry(equalPrefixFirst, "XA");
+        assignCountry(equalPrefixSecond, "XA");
         long inactive = insertConcept("COUNTRY_INACTIVE", "Landzutat Inaktiv", false, true, null, null);
         assignCountry(inactive, "XA");
         long parent = insertConcept("COUNTRY_PARENT", "Landzutat Oberbegriff", true, false, null, null);
@@ -238,8 +238,8 @@ class IngredientLookupQueriesIntegrationTest {
         assertThat(lastPage.page()).isEqualTo(2);
         assertThat(lastPage.ingredients()).hasSize(3);
         assertThat(queries.findActiveByCulinaryCountry("XA", 1, 25).orElseThrow().ingredients())
-                .filteredOn(ingredient -> ingredient.displayName().equals("Landzutat Gleich"))
-                .extracting(ingredient -> ingredient.conceptId()).containsExactly(tieFirst, tieSecond);
+                .filteredOn(ingredient -> ingredient.displayName().startsWith("Landzutat Gleich"))
+                .extracting(ingredient -> ingredient.conceptId()).containsExactly(equalPrefixFirst, equalPrefixSecond);
         assertThat(secondCountry.totalIngredients()).isEqualTo(1);
         assertThat(secondCountry.ingredients()).singleElement().extracting(ingredient -> ingredient.conceptId())
                 .isEqualTo(multipleCountries);

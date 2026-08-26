@@ -15,20 +15,22 @@ final class DiscordJdaLifecycle implements SmartLifecycle {
     private final DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow;
     private final DiscordResultCaptureWorkflow resultCaptureWorkflow;
     private final Executor executor;
+    private final Executor autocompleteExecutor;
     private volatile JDA jda;
     private volatile boolean running;
 
     DiscordJdaLifecycle(DiscordProperties properties, DiscordChallengeWorkflow workflow,
                         DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
                         DiscordChallengeArchiveWorkflow archiveWorkflow, Executor executor) {
-        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, null, executor);
+        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, null, null, executor, executor);
     }
 
     DiscordJdaLifecycle(DiscordProperties properties, DiscordChallengeWorkflow workflow,
                         DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
                         DiscordChallengeArchiveWorkflow archiveWorkflow,
                         DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow, Executor executor) {
-        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, participantAdministrationWorkflow, null, executor);
+        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, participantAdministrationWorkflow, null, executor,
+                executor);
     }
 
     DiscordJdaLifecycle(DiscordProperties properties, DiscordChallengeWorkflow workflow,
@@ -36,6 +38,15 @@ final class DiscordJdaLifecycle implements SmartLifecycle {
                         DiscordChallengeArchiveWorkflow archiveWorkflow,
                         DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow,
                         DiscordResultCaptureWorkflow resultCaptureWorkflow, Executor executor) {
+        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, participantAdministrationWorkflow,
+                resultCaptureWorkflow, executor, executor);
+    }
+
+    DiscordJdaLifecycle(DiscordProperties properties, DiscordChallengeWorkflow workflow,
+                        DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
+                        DiscordChallengeArchiveWorkflow archiveWorkflow,
+                        DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow,
+                        DiscordResultCaptureWorkflow resultCaptureWorkflow, Executor executor, Executor autocompleteExecutor) {
         this.properties = properties;
         this.workflow = workflow;
         this.ingredientLookupWorkflow = ingredientLookupWorkflow;
@@ -43,6 +54,7 @@ final class DiscordJdaLifecycle implements SmartLifecycle {
         this.participantAdministrationWorkflow = participantAdministrationWorkflow;
         this.resultCaptureWorkflow = resultCaptureWorkflow;
         this.executor = executor;
+        this.autocompleteExecutor = autocompleteExecutor;
     }
 
     @Override
@@ -55,7 +67,7 @@ final class DiscordJdaLifecycle implements SmartLifecycle {
                 : new DiscordResultCaptureJdaListener(properties, resultCaptureWorkflow, archiveWorkflow, executor);
         jda = JDABuilder.createLight(properties.token(), GatewayIntent.GUILD_MESSAGES)
                 .addEventListeners(new DiscordJdaListener(properties, workflow, ingredientLookupWorkflow, archiveWorkflow,
-                        participantAdministrationWorkflow, resultListener, executor)).build();
+                        participantAdministrationWorkflow, resultListener, executor, autocompleteExecutor)).build();
         running = true;
     }
 

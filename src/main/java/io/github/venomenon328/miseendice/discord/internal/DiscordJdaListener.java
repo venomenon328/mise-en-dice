@@ -47,6 +47,7 @@ final class DiscordJdaListener extends ListenerAdapter {
     private final DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow;
     private final DiscordResultCaptureJdaListener resultCaptureListener;
     private final Executor executor;
+    private final Executor autocompleteExecutor;
 
     DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow, Executor executor) {
         this(properties, workflow, null, null, null, null, executor);
@@ -75,6 +76,15 @@ final class DiscordJdaListener extends ListenerAdapter {
                        DiscordChallengeArchiveWorkflow archiveWorkflow,
                        DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow,
                        DiscordResultCaptureJdaListener resultCaptureListener, Executor executor) {
+        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, participantAdministrationWorkflow,
+                resultCaptureListener, executor, executor);
+    }
+
+    DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow,
+                       DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
+                       DiscordChallengeArchiveWorkflow archiveWorkflow,
+                       DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow,
+                       DiscordResultCaptureJdaListener resultCaptureListener, Executor executor, Executor autocompleteExecutor) {
         this.properties = properties;
         this.workflow = workflow;
         this.ingredientLookupWorkflow = ingredientLookupWorkflow;
@@ -82,6 +92,7 @@ final class DiscordJdaListener extends ListenerAdapter {
         this.participantAdministrationWorkflow = participantAdministrationWorkflow;
         this.resultCaptureListener = resultCaptureListener;
         this.executor = executor;
+        this.autocompleteExecutor = autocompleteExecutor;
     }
 
     @Override
@@ -346,7 +357,9 @@ final class DiscordJdaListener extends ListenerAdapter {
             return;
         }
         String searchText = event.getFocusedOption().getValue();
-        executor.execute(() -> {
+        // Discord does not permit deferring autocomplete interactions. Keep this bounded read independent from
+        // deferred, potentially long-running commands on the primary Discord executor.
+        autocompleteExecutor.execute(() -> {
             try {
                 List<Choice> choices = ingredientLookupWorkflow.autocompleteCountries(searchText).stream()
                         .map(country -> new Choice(DiscordIngredientLookupRenderer.countryFlag(country.code()) + " "

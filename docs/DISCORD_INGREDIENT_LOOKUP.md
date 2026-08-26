@@ -20,13 +20,17 @@ Discord bleibt Transport und Darstellung. Suche und Detailprojektion gehören al
 
 ## 2. Command und Zugriff
 
-Der Guild-Slash-Command lautet:
+Die Guild-Slash-Commands lauten:
 
 ```text
 /zutat suche:<Suchtext>
+/zutaten land:<Land>
 ```
 
-`suche` ist genau ein erforderlicher String-Parameter. Autocomplete, Modals oder weitere Filter gehören nicht zum aktuellen Stand.
+`suche` ist genau ein erforderlicher String-Parameter von `/zutat`; für diesen Command gibt es weiterhin kein
+Autocomplete, keine Modals und keine weiteren Filter. `/zutaten` verwendet dagegen den ebenfalls erforderlichen
+String-Parameter `land` mit Autocomplete für den migrationsgeführten Länderreferenzbestand. Die abweichende
+Länderlisten-, Auswahl- und Rücknavigationssemantik steht in Abschnitt 12.
 
 Für `/zutat` gilt bewusst eine andere Zugriffspolitik als für `/challenge`:
 
@@ -80,6 +84,9 @@ Die initiale Mehrdeutigkeitsauswahl bleibt an den Nutzer gebunden, der `/zutat` 
 ```text
 searchActiveByDisplayName(searchText, limit)
 findActiveProfile(conceptId)
+searchCulinaryCountries(searchText, limit)
+resolveCulinaryCountry(input)
+findActiveByCulinaryCountry(countryCode, page, pageSize)
 ```
 
 Das aktive Profil enthält ausschließlich:
@@ -150,7 +157,7 @@ Hat das angezeigte Konzept mindestens eine explizit gepflegte kulinarische Länd
 
 Die zugrunde liegende Lookup-Projektion transportiert weiterhin ISO-Code und ausgeschriebenen Ländernamen. Der Discord-Renderer verwendet jedoch ausschließlich den gültigen ISO-Alpha-2-Code und bildet daraus deterministisch das Regionalindikator-Flag. Die Card zeigt weder Ländernamen noch Codes; die Flaggen sind kein gespeicherter Fachwert.
 
-Der Discord-Adapter besitzt dafür weder einen eigenen Länderreferenzbestand noch Länderfachlogik. Bei sehr vielen Zuordnungen darf er die Flaggen ohne Trennzeichen verdichten, damit das Discord-Field-Limit ohne Weglassen einer Zuordnung eingehalten bleibt. Fehlen Zuordnungen, existiert kein Länderabschnitt. Länder selbst werden nicht navigierbar und erzeugen keine zusätzlichen Commands, Komponenten oder Selects.
+Der Discord-Adapter besitzt dafür weder einen eigenen Länderreferenzbestand noch Länderfachlogik. Bei sehr vielen Zuordnungen darf er die Flaggen ohne Trennzeichen verdichten, damit das Discord-Field-Limit ohne Weglassen einer Zuordnung eingehalten bleibt. Fehlen Zuordnungen, existiert kein Länderabschnitt. Die Flaggen auf einer `/zutat`-Card selbst bleiben nicht navigierbar; die davon getrennte Länderübersicht wird ausschließlich mit `/zutaten` gemäß Abschnitt 12 geöffnet.
 
 ## 7. Skalen und Geschmacksprofil
 
@@ -260,6 +267,11 @@ Discord-Grenzen werden vor dem Senden deterministisch eingehalten. Eine überlan
 
 `DiscordIngredientLookupRenderer` besitzt ein transportneutrales Render-Modell für Embed-Description, Inline-Felder, String-Select-Navigation und die kompakte Länderliste. Erst `DiscordJdaListener` mappt dieses Modell auf JDA-Embeds, native String Selects und die für Länderpaging/Rückkehr nötigen Buttons und bindet dabei sämtliche Navigationskomponenten an den Card-Owner. Die bestehende Eltern-/Kindnavigation bleibt bewusst selectbasiert.
 
+Die nicht deferbare `/zutaten`-Autocomplete-Antwort nutzt ausschließlich einen eigenen, kleinen Discord-Executor für
+ihren begrenzten Katalogread. Dadurch kann sie nicht hinter einem längeren, bereits bestätigten Workflow auf dem
+bestehenden Single-Thread-Executor bis zum Discord-Timeout warten. Das ist keine allgemeine Executor- oder
+Workflow-Umstellung; alle anderen Discord-Arbeiten bleiben auf dem bisherigen Executor.
+
 Die `/challenge`-Startautorisierung verwendet separat `mise-en-dice.discord.challenge-operator-role-id`. Sie ist kein Ersatz für Participant-Identitäten und verleiht keine Stimme in einem Electorate. Umgekehrt berechtigt eine DB-Teilnehmeridentität nicht zum Start einer Challenge.
 
 ## 12. Länderliste, Detail- und Rücknavigation
@@ -297,6 +309,10 @@ Automatisierte Tests decken mindestens ab:
 - Stale-Verhalten nach Deaktivierung sowie für alte ungebundene Navigationskomponenten,
 - stateless Component-Parsing,
 - JDA-Routing der Zutaten-Navigation als String Select,
+- `/zutaten`-Autocomplete mit höchstens 25 Ländern aus der öffentlichen Katalogprojektion und einer Antwort, die nicht
+  hinter Arbeiten des primären Discord-Executors wartet,
+- Länderauflösung per ISO-Code oder exaktem deutschen Namen, aktive explizite Relation, Pagination, Leerzustand,
+  Rücknavigation und fremde Owner-Interaktionen ohne Katalogabfrage,
 - `/challenge`-Start nur mit Operator-Rolle und unabhängig von einer Teilnehmeridentität,
 - bestehende Challenge-Interaktions-/Voting-Regressionen.
 

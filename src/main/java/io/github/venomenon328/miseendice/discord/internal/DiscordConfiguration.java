@@ -15,6 +15,7 @@ import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
 import io.github.venomenon328.miseendice.catalog.api.ResultIngredientCatalogQueries;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -28,6 +29,13 @@ class DiscordConfiguration {
     ExecutorService discordChallengeExecutor(DiscordProperties properties) {
         properties.validateEnabledConfiguration();
         return Executors.newSingleThreadExecutor(Thread.ofPlatform().name("discord-challenge-", 0).factory());
+    }
+
+    @Bean(destroyMethod = "shutdown")
+    @ConditionalOnProperty(prefix = "mise-en-dice.discord", name = "enabled", havingValue = "true")
+    ExecutorService discordIngredientAutocompleteExecutor(DiscordProperties properties) {
+        properties.validateEnabledConfiguration();
+        return Executors.newSingleThreadExecutor(Thread.ofPlatform().name("discord-ingredient-autocomplete-", 0).factory());
     }
 
     @Bean
@@ -102,8 +110,11 @@ class DiscordConfiguration {
                                             DiscordChallengeArchiveWorkflow archiveWorkflow,
                                             DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow,
                                             DiscordResultCaptureWorkflow resultCaptureWorkflow,
-                                            ExecutorService discordChallengeExecutor) {
+                                            @Qualifier("discordChallengeExecutor") ExecutorService discordChallengeExecutor,
+                                            @Qualifier("discordIngredientAutocompleteExecutor")
+                                            ExecutorService discordIngredientAutocompleteExecutor) {
         return new DiscordJdaLifecycle(properties, workflow, ingredientLookupWorkflow, archiveWorkflow,
-                participantAdministrationWorkflow, resultCaptureWorkflow, discordChallengeExecutor);
+                participantAdministrationWorkflow, resultCaptureWorkflow, discordChallengeExecutor,
+                discordIngredientAutocompleteExecutor);
     }
 }
