@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.discord.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupDimension;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredientPage;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupProfile;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupRelation;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupSearchResult;
@@ -52,6 +53,10 @@ final class DiscordIngredientLookupRenderer {
     }
 
     RenderedEmbed profile(IngredientLookupProfile profile) {
+        return profile(profile, null);
+    }
+
+    RenderedEmbed profile(IngredientLookupProfile profile, CountryBrowseOrigin countryOrigin) {
         List<IngredientLookupRelation> parents = sortedRelations(profile.activeDirectParents());
         List<IngredientLookupRelation> children = sortedRelations(profile.activeDirectChildren());
         String title = "🥢 " + oneLine(profile.displayName(), TITLE_LIMIT - 3);
@@ -71,7 +76,7 @@ final class DiscordIngredientLookupRenderer {
         embed.addRelationList("⬆️ Allgemeinere Begriffe", parents);
         embed.addRelationList("⬇️ Bekannte Konkretisierungen", children);
 
-        return embed.toRendered(navigationRows(parents, children));
+        return embed.toRendered(navigationRows(parents, children), countryOrigin);
     }
 
     RenderedText noMatches() {
@@ -80,6 +85,32 @@ final class DiscordIngredientLookupRenderer {
 
     RenderedText staleSelection() {
         return new RenderedText("Diese Auswahl ist nicht mehr aktuell. Bitte suche die Zutat erneut.");
+    }
+
+    RenderedCountryText staleCountrySelection(CountryBrowseOrigin countryOrigin) {
+        return new RenderedCountryText("Diese Zutat ist nicht mehr aktiv. Du kannst zur ursprünglichen Länderliste zurückkehren.",
+                countryOrigin);
+    }
+
+    RenderedCountryIngredients countryIngredients(CulinaryCountryIngredientPage page) {
+        String title = countryFlag(page.country().code()) + " " + oneLine(page.country().displayName(), TITLE_LIMIT - 5);
+        String amount = page.totalIngredients() == 1 ? "1 Zutat" : page.totalIngredients() + " Zutaten";
+        String content = page.ingredients().isEmpty()
+                ? amount + "\n\nDerzeit sind diesem Land keine aktiven Zutaten zugeordnet."
+                : amount + "\n\n" + page.ingredients().stream()
+                .map(ingredient -> "• " + oneLine(ingredient.displayName(), 100))
+                .collect(java.util.stream.Collectors.joining("\n"))
+                + "\n\nSeite " + page.page() + "/" + page.totalPages();
+        if (page.ingredients().isEmpty()) {
+            content += "\n\nSeite " + page.page() + "/" + page.totalPages();
+        }
+        List<SelectionOption> options = page.ingredients().stream()
+                .map(ingredient -> new SelectionOption(label(ingredient.displayName()),
+                        DiscordIngredientComponentId.conceptValue(ingredient.conceptId()), null))
+                .toList();
+        return new RenderedCountryIngredients(title, content,
+                new DiscordIngredientComponentId.CountryBrowseContext(page.country().code(), page.page()), options,
+                page.hasPreviousPage(), page.hasNextPage());
     }
 
     private static List<String> baseLines(IngredientLookupProfile profile) {
@@ -256,13 +287,31 @@ final class DiscordIngredientLookupRenderer {
         return value + " ".repeat(Math.max(0, width - value.length()));
     }
 
-    sealed interface RenderedResponse permits RenderedText, RenderedSelection, RenderedEmbed {
+    sealed interface RenderedResponse permits RenderedText, RenderedSelection, RenderedEmbed, RenderedCountryText,
+            RenderedCountryIngredients {
     }
 
     record RenderedText(String content) implements RenderedResponse {
         RenderedText {
             if (content == null || content.isBlank() || content.length() > 2_000) {
                 throw new IllegalArgumentException("Discord text must be non-empty and at most 2000 characters");
+            }
+        }
+    }
+
+    record CountryBrowseOrigin(DiscordIngredientComponentId.CountryBrowseContext context, String countryDisplayName) {
+        CountryBrowseOrigin {
+            if (context == null || countryDisplayName == null || countryDisplayName.isBlank()) {
+                throw new IllegalArgumentException("Country browse origin requires context and display name");
+            }
+        }
+    }
+
+    record RenderedCountryText(String content, CountryBrowseOrigin countryOrigin)
+            implements RenderedResponse {
+        RenderedCountryText {
+            if (content == null || content.isBlank() || content.length() > 2_000 || countryOrigin == null) {
+                throw new IllegalArgumentException("Invalid country ingredient stale response");
             }
         }
     }
@@ -287,7 +336,13 @@ final class DiscordIngredientLookupRenderer {
     }
 
     record RenderedEmbed(String title, String description, int color, List<EmbedField> fields,
-                         List<NavigationRow> navigationRows) implements RenderedResponse {
+                         List<NavigationRow> navigationRows,
+                         CountryBrowseOrigin countryOrigin) implements RenderedResponse {
+        RenderedEmbed(String title, String description, int color, List<EmbedField> fields,
+                      List<NavigationRow> navigationRows) {
+            this(title, description, color, fields, navigationRows, null);
+        }
+
         RenderedEmbed {
             fields = List.copyOf(fields);
             navigationRows = List.copyOf(navigationRows);
@@ -296,6 +351,26 @@ final class DiscordIngredientLookupRenderer {
             if (title.isBlank() || title.length() > TITLE_LIMIT || description.isBlank() || description.length() > DESCRIPTION_LIMIT
                     || fields.isEmpty() || fields.size() > MAX_FIELDS || navigationRows.size() > 2 || length > EMBED_TOTAL_LIMIT) {
                 throw new IllegalArgumentException("Invalid Discord ingredient embed length");
+            }
+        }
+    }
+
+    record RenderedCountryIngredients(
+            String title,
+            String description,
+            DiscordIngredientComponentId.CountryBrowseContext countryContext,
+            List<SelectionOption> options,
+            boolean hasPreviousPage,
+            boolean hasNextPage
+    ) implements RenderedResponse {
+        RenderedCountryIngredients {
+            if (title == null || title.isBlank() || title.length() > TITLE_LIMIT || description == null || description.isBlank()
+                    || description.length() > DESCRIPTION_LIMIT || countryContext == null || options.size() > 20) {
+                throw new IllegalArgumentException("Invalid culinary-country ingredient response");
+            }
+            options = List.copyOf(options);
+            if (options.isEmpty() && (hasPreviousPage || hasNextPage)) {
+                throw new IllegalArgumentException("Empty country ingredient pages cannot paginate");
             }
         }
     }
@@ -416,8 +491,8 @@ final class DiscordIngredientLookupRenderer {
             }
         }
 
-        private RenderedEmbed toRendered(List<NavigationRow> navigationRows) {
-            return new RenderedEmbed(title, description, CARD_COLOR, fields, navigationRows);
+        private RenderedEmbed toRendered(List<NavigationRow> navigationRows, CountryBrowseOrigin countryOrigin) {
+            return new RenderedEmbed(title, description, CARD_COLOR, fields, navigationRows, countryOrigin);
         }
     }
 }

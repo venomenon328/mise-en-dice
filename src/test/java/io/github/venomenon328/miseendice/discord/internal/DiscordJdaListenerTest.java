@@ -10,9 +10,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountry;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredient;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredientPage;
 import java.time.ZoneId;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.JDA;
@@ -21,8 +26,11 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
+import net.dv8tion.jda.api.interactions.AutoCompleteQuery;
+import net.dv8tion.jda.api.interactions.commands.Command.Choice;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
@@ -35,6 +43,7 @@ import net.dv8tion.jda.api.requests.restaction.CommandCreateAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.InteractionCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
+import net.dv8tion.jda.api.requests.restaction.interactions.AutoCompleteCallbackAction;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
@@ -59,9 +68,9 @@ class DiscordJdaListenerTest {
                 Runnable::run).onReady(event);
 
         ArgumentCaptor<CommandData> commands = ArgumentCaptor.forClass(CommandData.class);
-        org.mockito.Mockito.verify(guild, org.mockito.Mockito.times(5)).upsertCommand(commands.capture());
+        org.mockito.Mockito.verify(guild, org.mockito.Mockito.times(6)).upsertCommand(commands.capture());
         assertThat(commands.getAllValues()).extracting(CommandData::getName)
-                .containsExactly("challenge", "zutat", "challenges", "teilnehmer",
+                .containsExactly("challenge", "zutat", "zutaten", "challenges", "teilnehmer",
                         DiscordResultCaptureJdaListener.CONTEXT_COMMAND_NAME);
     }
 
@@ -408,6 +417,76 @@ class DiscordJdaListenerTest {
         org.mockito.Mockito.verify(workflow).start(eq(1), eq(RestrictionMode.AUTO),
                 any(DiscordMemberNameResolver.class), any(), any());
         org.mockito.Mockito.verify(workflow, never()).accepts(99, "99999");
+    }
+
+    @Test
+    void countryIngredientMessageUsesBoundSelectAndCorrectPaginationButtons() {
+        var renderer = new DiscordIngredientLookupRenderer();
+        var response = renderer.countryIngredients(new CulinaryCountryIngredientPage(
+                new CulinaryCountry("XA", "Testland Alpha"), 1, 20, 21,
+                java.util.stream.LongStream.rangeClosed(1, 20)
+                        .mapToObj(id -> new CulinaryCountryIngredient(id, "Zutat " + id)).toList()));
+
+        var message = DiscordJdaListener.ingredientMessage(response, "10001");
+
+        assertThat(message.getAllowedMentions()).isEmpty();
+        assertThat(message.getEmbeds()).singleElement().satisfies(embed ->
+                assertThat(embed.getTitle()).contains("Testland Alpha"));
+        assertThat(message.getComponents()).hasSize(2);
+        var select = (StringSelectMenu) message.getComponents().getFirst().asActionRow().getComponents().getFirst();
+        assertThat(select.getPlaceholder()).isEqualTo("🥢 Zutat anzeigen …");
+        assertThat(select.getCustomId()).isEqualTo(DiscordIngredientComponentId.countrySelect(
+                new DiscordIngredientComponentId.CountryBrowseContext("XA", 1), "10001"));
+        var buttons = message.getComponents().get(1).asActionRow().getButtons();
+        assertThat(buttons).extracting(button -> button.getLabel(), button -> button.isDisabled())
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("◀ Zurück", true),
+                        org.assertj.core.groups.Tuple.tuple("Weiter ▶", false));
+    }
+
+    @Test
+    void registersCountryIngredientBrowseWithRequiredAutocompleteCountry() {
+        var command = DiscordJdaListener.ingredientsCommand();
+
+        assertThat(command.getName()).isEqualTo("zutaten");
+        assertThat(command.getOptions()).singleElement().satisfies(option -> {
+            assertThat(option.getName()).isEqualTo("land");
+            assertThat(option.getType()).isEqualTo(OptionType.STRING);
+            assertThat(option.isRequired()).isTrue();
+            assertThat(option.isAutoComplete()).isTrue();
+        });
+    }
+
+    @Test
+    void repliesToCountryAutocompleteOutsideTheBlockedPrimaryDiscordExecutor() {
+        var challengeWorkflow = mock(DiscordChallengeWorkflow.class);
+        var lookupWorkflow = mock(DiscordIngredientLookupWorkflow.class);
+        var event = mock(CommandAutoCompleteInteractionEvent.class);
+        var guild = mock(Guild.class);
+        var focusedOption = mock(AutoCompleteQuery.class);
+        var reply = mock(AutoCompleteCallbackAction.class);
+        when(event.getName()).thenReturn("zutaten");
+        when(event.getGuild()).thenReturn(guild);
+        when(guild.getIdLong()).thenReturn(99L);
+        when(event.getFocusedOption()).thenReturn(focusedOption);
+        when(focusedOption.getName()).thenReturn("land");
+        when(focusedOption.getValue()).thenReturn("test");
+        when(lookupWorkflow.acceptsGuild(99L)).thenReturn(true);
+        when(lookupWorkflow.autocompleteCountries("test"))
+                .thenReturn(List.of(new CulinaryCountry("XA", "Testland Alpha")));
+        when(event.replyChoices(org.mockito.ArgumentMatchers.<Collection<Choice>>any())).thenReturn(reply);
+        Executor blockedPrimaryExecutor = command -> {
+        };
+
+        new DiscordJdaListener(new DiscordProperties(true, "token", 99, 77777, ZoneId.of("Europe/Berlin"), Map.of()),
+                challengeWorkflow, lookupWorkflow, null, null, null, blockedPrimaryExecutor, Runnable::run)
+                .onCommandAutoCompleteInteraction(event);
+
+        org.mockito.Mockito.verify(lookupWorkflow).autocompleteCountries("test");
+        org.mockito.Mockito.verify(event).replyChoices(org.mockito.ArgumentMatchers.<Collection<Choice>>argThat(choices ->
+                choices.stream().map(choice -> choice.getName()).toList().equals(List.of(
+                        DiscordIngredientLookupRenderer.countryFlag("XA") + " Testland Alpha"))
+                        && choices.stream().map(choice -> choice.getAsString()).toList().equals(List.of("XA"))));
+        org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
     }
 
     @Test

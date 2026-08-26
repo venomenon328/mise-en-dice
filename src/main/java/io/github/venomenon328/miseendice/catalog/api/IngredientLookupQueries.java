@@ -17,6 +17,21 @@ public interface IngredientLookupQueries {
 
     Optional<IngredientLookupProfile> findActiveProfile(long conceptId);
 
+    /**
+     * Searches the migration-managed culinary-country reference data for Discord autocomplete.
+     * The returned values are presentation-independent catalog facts, not a Discord-owned list.
+     */
+    List<CulinaryCountry> searchCulinaryCountries(String searchText, int limit);
+
+    /** Resolves either an ISO alpha-2 value or an exact German display name from the reference data. */
+    Optional<CulinaryCountry> resolveCulinaryCountry(String input);
+
+    /**
+     * Returns active concepts with an explicit association to the given culinary country.
+     * No refinement-graph inference is applied.
+     */
+    Optional<CulinaryCountryIngredientPage> findActiveByCulinaryCountry(String countryCode, int page, int pageSize);
+
     record IngredientLookupSearchResult(String searchText, List<IngredientLookupMatch> matches, long totalMatches) {
 
         public IngredientLookupSearchResult {
@@ -97,6 +112,55 @@ public interface IngredientLookupQueries {
             culinaryFlags = List.copyOf(culinaryFlags);
             culinaryDimensions = List.copyOf(culinaryDimensions);
             culinaryCountries = List.copyOf(culinaryCountries);
+        }
+    }
+
+    record CulinaryCountry(String code, String displayName) {
+
+        public CulinaryCountry {
+            if (code == null || !code.matches("[A-Z]{2}")) {
+                throw new IllegalArgumentException("country code must be an ISO alpha-2 code");
+            }
+            displayName = required(displayName, "displayName");
+        }
+    }
+
+    record CulinaryCountryIngredient(long conceptId, String displayName) {
+
+        public CulinaryCountryIngredient {
+            positiveId(conceptId);
+            displayName = required(displayName, "displayName");
+        }
+    }
+
+    record CulinaryCountryIngredientPage(
+            CulinaryCountry country,
+            int page,
+            int pageSize,
+            long totalIngredients,
+            List<CulinaryCountryIngredient> ingredients
+    ) {
+
+        public CulinaryCountryIngredientPage {
+            if (country == null) {
+                throw new IllegalArgumentException("country is required");
+            }
+            if (page < 1 || pageSize < 1 || pageSize > 25 || totalIngredients < ingredients.size()) {
+                throw new IllegalArgumentException("Invalid culinary-country ingredient page");
+            }
+            ingredients = List.copyOf(ingredients);
+        }
+
+        public int totalPages() {
+            return Math.max(1, (int) Math.ceil((double) totalIngredients / pageSize));
+        }
+
+        public boolean hasPreviousPage() {
+            return page > 1;
+        }
+
+        public boolean hasNextPage() {
+            return page < totalPages();
         }
     }
 

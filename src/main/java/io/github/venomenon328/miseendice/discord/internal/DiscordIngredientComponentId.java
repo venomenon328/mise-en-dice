@@ -6,6 +6,11 @@ final class DiscordIngredientComponentId {
     private static final String SEARCH_SELECTION_PREFIX = PREFIX + "select:";
     private static final String NAVIGATION_SELECT_PREFIX = PREFIX + "navigate-select:";
     private static final String OWNED_NAVIGATION_SELECT_PREFIX = "med:v2:ingredient:navigate-select:";
+    private static final String OWNED_COUNTRY_NAVIGATION_SELECT_PREFIX = "med:v3:ingredient:navigate-select:";
+    private static final String COUNTRY_PREFIX = "med:v1:country-ingredients:";
+    private static final String COUNTRY_SELECT_PREFIX = COUNTRY_PREFIX + "select:";
+    private static final String COUNTRY_PAGE_PREFIX = COUNTRY_PREFIX + "page:";
+    private static final String COUNTRY_BACK_PREFIX = COUNTRY_PREFIX + "back:";
 
     private DiscordIngredientComponentId() {
     }
@@ -27,6 +32,11 @@ final class DiscordIngredientComponentId {
         return OWNED_NAVIGATION_SELECT_PREFIX + validDirection(direction) + ":" + validUserId(invokerUserId);
     }
 
+    static String navigationSelect(String direction, String invokerUserId, CountryBrowseContext countryContext) {
+        return OWNED_COUNTRY_NAVIGATION_SELECT_PREFIX + validDirection(direction) + ":" + validUserId(invokerUserId)
+                + ":" + countryContext.countryCode() + ":" + countryContext.page();
+    }
+
     static String bindNavigationOwner(String customId, String invokerUserId) {
         if (customId == null || !customId.startsWith(NAVIGATION_SELECT_PREFIX)) {
             throw new IllegalArgumentException("Ingredient navigation template expected");
@@ -36,9 +46,22 @@ final class DiscordIngredientComponentId {
         return navigationSelect(direction, invokerUserId);
     }
 
+    static String bindNavigationOwner(String customId, String invokerUserId, CountryBrowseContext countryContext) {
+        if (countryContext == null) {
+            return bindNavigationOwner(customId, invokerUserId);
+        }
+        if (customId == null || !customId.startsWith(NAVIGATION_SELECT_PREFIX)) {
+            throw new IllegalArgumentException("Ingredient navigation template expected");
+        }
+        String direction = customId.substring(NAVIGATION_SELECT_PREFIX.length());
+        validateNavigationSelect(customId);
+        return navigationSelect(direction, invokerUserId, countryContext);
+    }
+
     static boolean isNavigationSelect(String customId) {
         return customId != null && (customId.startsWith(NAVIGATION_SELECT_PREFIX)
-                || customId.startsWith(OWNED_NAVIGATION_SELECT_PREFIX));
+                || customId.startsWith(OWNED_NAVIGATION_SELECT_PREFIX)
+                || customId.startsWith(OWNED_COUNTRY_NAVIGATION_SELECT_PREFIX));
     }
 
     static String conceptValue(long conceptId) {
@@ -55,7 +78,10 @@ final class DiscordIngredientComponentId {
 
     static NavigationSelect parseNavigationSelect(String customId) {
         if (customId == null || !customId.startsWith(OWNED_NAVIGATION_SELECT_PREFIX)) {
-            throw new IllegalArgumentException("Ingredient navigation is not bound to a user");
+            if (customId == null || !customId.startsWith(OWNED_COUNTRY_NAVIGATION_SELECT_PREFIX)) {
+                throw new IllegalArgumentException("Ingredient navigation is not bound to a user");
+            }
+            return parseCountryNavigationSelect(customId);
         }
         String payload = customId.substring(OWNED_NAVIGATION_SELECT_PREFIX.length());
         int separator = payload.indexOf(':');
@@ -64,7 +90,7 @@ final class DiscordIngredientComponentId {
         }
         String direction = validDirection(payload.substring(0, separator));
         String userId = validUserId(payload.substring(separator + 1));
-        return new NavigationSelect(direction, userId);
+        return new NavigationSelect(direction, userId, null);
     }
 
     static void validateNavigationSelect(String customId) {
@@ -79,7 +105,50 @@ final class DiscordIngredientComponentId {
             parseNavigationSelect(customId);
             return;
         }
+        if (customId.startsWith(OWNED_COUNTRY_NAVIGATION_SELECT_PREFIX)) {
+            parseNavigationSelect(customId);
+            return;
+        }
         throw new IllegalArgumentException("Unknown ingredient navigation select");
+    }
+
+    static String countrySelect(CountryBrowseContext context, String invokerUserId) {
+        return COUNTRY_SELECT_PREFIX + validUserId(invokerUserId) + ":" + context.countryCode() + ":" + context.page();
+    }
+
+    static boolean isCountrySelect(String customId) {
+        return customId != null && customId.startsWith(COUNTRY_SELECT_PREFIX);
+    }
+
+    static CountrySelect parseCountrySelect(String customId) {
+        String[] fields = countryPayload(customId, COUNTRY_SELECT_PREFIX, "country ingredient selection");
+        return new CountrySelect(validUserId(fields[0]), new CountryBrowseContext(fields[1], parsePage(fields[2])));
+    }
+
+    static String countryPage(CountryBrowseContext context, String invokerUserId, int targetPage) {
+        return COUNTRY_PAGE_PREFIX + validUserId(invokerUserId) + ":" + context.countryCode() + ":" + positivePage(targetPage);
+    }
+
+    static boolean isCountryPage(String customId) {
+        return customId != null && customId.startsWith(COUNTRY_PAGE_PREFIX);
+    }
+
+    static CountryPage parseCountryPage(String customId) {
+        String[] fields = countryPayload(customId, COUNTRY_PAGE_PREFIX, "country ingredient page");
+        return new CountryPage(validUserId(fields[0]), new CountryBrowseContext(fields[1], parsePage(fields[2])));
+    }
+
+    static String countryBack(CountryBrowseContext context, String invokerUserId) {
+        return COUNTRY_BACK_PREFIX + validUserId(invokerUserId) + ":" + context.countryCode() + ":" + context.page();
+    }
+
+    static boolean isCountryBack(String customId) {
+        return customId != null && customId.startsWith(COUNTRY_BACK_PREFIX);
+    }
+
+    static CountryBack parseCountryBack(String customId) {
+        String[] fields = countryPayload(customId, COUNTRY_BACK_PREFIX, "country ingredient return");
+        return new CountryBack(validUserId(fields[0]), new CountryBrowseContext(fields[1], parsePage(fields[2])));
     }
 
     static long parseConceptValue(String value) {
@@ -95,6 +164,27 @@ final class DiscordIngredientComponentId {
             throw new IllegalArgumentException("Unknown ingredient navigation direction");
         }
         return direction;
+    }
+
+    private static NavigationSelect parseCountryNavigationSelect(String customId) {
+        String payload = customId.substring(OWNED_COUNTRY_NAVIGATION_SELECT_PREFIX.length());
+        String[] fields = payload.split(":", -1);
+        if (fields.length != 4) {
+            throw new IllegalArgumentException("Malformed ingredient country navigation select");
+        }
+        return new NavigationSelect(validDirection(fields[0]), validUserId(fields[1]),
+                new CountryBrowseContext(fields[2], parsePage(fields[3])));
+    }
+
+    private static String[] countryPayload(String customId, String prefix, String label) {
+        if (customId == null || !customId.startsWith(prefix)) {
+            throw new IllegalArgumentException("Unknown " + label);
+        }
+        String[] fields = customId.substring(prefix.length()).split(":", -1);
+        if (fields.length != 3) {
+            throw new IllegalArgumentException("Malformed " + label);
+        }
+        return fields;
     }
 
     private static String validUserId(String userId) {
@@ -123,9 +213,45 @@ final class DiscordIngredientComponentId {
         }
     }
 
+    private static int parsePage(String value) {
+        try {
+            return positivePage(Integer.parseInt(value));
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Malformed country ingredient page", exception);
+        }
+    }
+
+    private static int positivePage(int page) {
+        if (page < 1) {
+            throw new IllegalArgumentException("page must be positive");
+        }
+        return page;
+    }
+
     record Selection(String invokerUserId) {
     }
 
-    record NavigationSelect(String direction, String invokerUserId) {
+    record NavigationSelect(String direction, String invokerUserId, CountryBrowseContext countryContext) {
+        NavigationSelect(String direction, String invokerUserId) {
+            this(direction, invokerUserId, null);
+        }
+    }
+
+    record CountryBrowseContext(String countryCode, int page) {
+        CountryBrowseContext {
+            if (countryCode == null || !countryCode.matches("[A-Z]{2}")) {
+                throw new IllegalArgumentException("countryCode must be an ISO alpha-2 code");
+            }
+            positivePage(page);
+        }
+    }
+
+    record CountrySelect(String invokerUserId, CountryBrowseContext context) {
+    }
+
+    record CountryPage(String invokerUserId, CountryBrowseContext context) {
+    }
+
+    record CountryBack(String invokerUserId, CountryBrowseContext context) {
     }
 }

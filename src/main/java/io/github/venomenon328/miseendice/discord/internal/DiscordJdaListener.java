@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message.Attachment;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
@@ -20,6 +21,7 @@ import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionE
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
+import net.dv8tion.jda.api.interactions.commands.Command.Choice;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
@@ -45,6 +47,7 @@ final class DiscordJdaListener extends ListenerAdapter {
     private final DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow;
     private final DiscordResultCaptureJdaListener resultCaptureListener;
     private final Executor executor;
+    private final Executor autocompleteExecutor;
 
     DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow, Executor executor) {
         this(properties, workflow, null, null, null, null, executor);
@@ -73,6 +76,15 @@ final class DiscordJdaListener extends ListenerAdapter {
                        DiscordChallengeArchiveWorkflow archiveWorkflow,
                        DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow,
                        DiscordResultCaptureJdaListener resultCaptureListener, Executor executor) {
+        this(properties, workflow, ingredientLookupWorkflow, archiveWorkflow, participantAdministrationWorkflow,
+                resultCaptureListener, executor, executor);
+    }
+
+    DiscordJdaListener(DiscordProperties properties, DiscordChallengeWorkflow workflow,
+                       DiscordIngredientLookupWorkflow ingredientLookupWorkflow,
+                       DiscordChallengeArchiveWorkflow archiveWorkflow,
+                       DiscordParticipantAdministrationWorkflow participantAdministrationWorkflow,
+                       DiscordResultCaptureJdaListener resultCaptureListener, Executor executor, Executor autocompleteExecutor) {
         this.properties = properties;
         this.workflow = workflow;
         this.ingredientLookupWorkflow = ingredientLookupWorkflow;
@@ -80,6 +92,7 @@ final class DiscordJdaListener extends ListenerAdapter {
         this.participantAdministrationWorkflow = participantAdministrationWorkflow;
         this.resultCaptureListener = resultCaptureListener;
         this.executor = executor;
+        this.autocompleteExecutor = autocompleteExecutor;
     }
 
     @Override
@@ -94,6 +107,8 @@ final class DiscordJdaListener extends ListenerAdapter {
         if (ingredientLookupWorkflow != null) {
             guild.upsertCommand(ingredientCommand())
                     .queue(null, failure -> log.warn("Discord ingredient lookup command registration failed", failure));
+            guild.upsertCommand(ingredientsCommand())
+                    .queue(null, failure -> log.warn("Discord country ingredient browse command registration failed", failure));
         }
         if (archiveWorkflow != null) {
             guild.upsertCommand(challengesCommand())
@@ -122,6 +137,11 @@ final class DiscordJdaListener extends ListenerAdapter {
     static SlashCommandData ingredientCommand() {
         return Commands.slash("zutat", "Aktive Zutat im Katalog nachschlagen")
                 .addOption(OptionType.STRING, "suche", "Name der Zutat", true);
+    }
+
+    static SlashCommandData ingredientsCommand() {
+        return Commands.slash("zutaten", "Aktive Zutaten eines kulinarischen Landes anzeigen")
+                .addOptions(new OptionData(OptionType.STRING, "land", "Kulinarisches Land", true, true));
     }
 
     static SlashCommandData challengesCommand() {
@@ -187,6 +207,10 @@ final class DiscordJdaListener extends ListenerAdapter {
         }
         if ("zutat".equals(event.getName())) {
             ingredientSlash(event);
+            return;
+        }
+        if ("zutaten".equals(event.getName())) {
+            ingredientsSlash(event);
             return;
         }
         if ("challenges".equals(event.getName())) {
@@ -300,6 +324,54 @@ final class DiscordJdaListener extends ListenerAdapter {
         event.deferReply().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.search(searchText, ownerUserId,
                 new HookIngredientDelivery(hook, executor, ownerUserId), new HookIngredientFeedback(hook))),
                 failure -> log.warn("Discord ingredient lookup acknowledgement failed", failure));
+    }
+
+    private void ingredientsSlash(SlashCommandInteractionEvent event) {
+        if (ingredientLookupWorkflow == null) {
+            return;
+        }
+        if (!ingredientLookupWorkflow.acceptsGuild(event.getGuild() == null ? 0 : event.getGuild().getIdLong())) {
+            ephemeralReply(event, "Dieser Command ist nur in der konfigurierten Guild verfügbar.");
+            return;
+        }
+        OptionMapping option = event.getOption("land");
+        String country = option == null ? "" : option.getAsString();
+        if (country.strip().isEmpty()) {
+            ephemeralReply(event, "`land` darf nicht leer sein.");
+            return;
+        }
+        String ownerUserId = event.getUser().getId();
+        event.deferReply().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.browseCountry(country, ownerUserId,
+                new HookIngredientDelivery(hook, executor, ownerUserId), new HookIngredientFeedback(hook))),
+                failure -> log.warn("Discord country ingredient browse acknowledgement failed", failure));
+    }
+
+    @Override
+    public void onCommandAutoCompleteInteraction(CommandAutoCompleteInteractionEvent event) {
+        if (ingredientLookupWorkflow == null || !"zutaten".equals(event.getName())
+                || !"land".equals(event.getFocusedOption().getName())) {
+            return;
+        }
+        if (!ingredientLookupWorkflow.acceptsGuild(event.getGuild() == null ? 0 : event.getGuild().getIdLong())) {
+            event.replyChoices(List.of()).queue();
+            return;
+        }
+        String searchText = event.getFocusedOption().getValue();
+        // Discord does not permit deferring autocomplete interactions. Keep this bounded read independent from
+        // deferred, potentially long-running commands on the primary Discord executor.
+        autocompleteExecutor.execute(() -> {
+            try {
+                List<Choice> choices = ingredientLookupWorkflow.autocompleteCountries(searchText).stream()
+                        .map(country -> new Choice(DiscordIngredientLookupRenderer.countryFlag(country.code()) + " "
+                                + country.displayName(), country.code()))
+                        .toList();
+                event.replyChoices(choices).queue(null,
+                        failure -> log.warn("Discord culinary-country autocomplete response failed", failure));
+            } catch (RuntimeException exception) {
+                log.warn("Discord culinary-country autocomplete failed", exception);
+                event.replyChoices(List.of()).queue();
+            }
+        });
     }
 
     private void archiveSlash(SlashCommandInteractionEvent event) {
@@ -426,6 +498,24 @@ final class DiscordJdaListener extends ListenerAdapter {
             resultCaptureListener.onButtonInteraction(event);
             return;
         }
+        if (ingredientLookupWorkflow != null && (DiscordIngredientComponentId.isCountryPage(event.getComponentId())
+                || DiscordIngredientComponentId.isCountryBack(event.getComponentId()))) {
+            if (!ingredientLookupWorkflow.acceptsGuild(event.getGuild() == null ? 0 : event.getGuild().getIdLong())) {
+                event.reply("Diese Zutaten-Navigation ist hier nicht erlaubt.").setEphemeral(true).queue();
+                return;
+            }
+            String userId = event.getUser().getId();
+            event.deferEdit().queue(hook -> executor.execute(() -> {
+                if (DiscordIngredientComponentId.isCountryPage(event.getComponentId())) {
+                    ingredientLookupWorkflow.countryPage(event.getComponentId(), userId,
+                            new HookIngredientDelivery(hook, executor, userId), new HookIngredientFeedback(hook));
+                } else {
+                    ingredientLookupWorkflow.countryBack(event.getComponentId(), userId,
+                            new HookIngredientDelivery(hook, executor, userId), new HookIngredientFeedback(hook));
+                }
+            }), failure -> log.warn("Discord country ingredient component acknowledgement failed", failure));
+            return;
+        }
         if (!event.getComponentId().startsWith("med:")) {
             return;
         }
@@ -451,7 +541,8 @@ final class DiscordJdaListener extends ListenerAdapter {
         }
         String componentId = event.getComponentId();
         if (!DiscordIngredientComponentId.isSelection(componentId)
-                && !DiscordIngredientComponentId.isNavigationSelect(componentId)) {
+                && !DiscordIngredientComponentId.isNavigationSelect(componentId)
+                && !DiscordIngredientComponentId.isCountrySelect(componentId)) {
             return;
         }
         if (!ingredientLookupWorkflow.acceptsGuild(event.getGuild() == null ? 0 : event.getGuild().getIdLong())) {
@@ -464,6 +555,13 @@ final class DiscordJdaListener extends ListenerAdapter {
                     event.getValues(), userId, new HookIngredientDelivery(hook, executor, userId),
                     new HookIngredientFeedback(hook))),
                     failure -> log.warn("Discord ingredient navigation acknowledgement failed", failure));
+            return;
+        }
+        if (DiscordIngredientComponentId.isCountrySelect(componentId)) {
+            event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.countryComponent(componentId,
+                    event.getValues(), userId, new HookIngredientDelivery(hook, executor, userId),
+                    new HookIngredientFeedback(hook))),
+                    failure -> log.warn("Discord country ingredient selection acknowledgement failed", failure));
             return;
         }
         event.deferEdit().queue(hook -> executor.execute(() -> ingredientLookupWorkflow.component(componentId, event.getValues(),
@@ -816,9 +914,31 @@ final class DiscordJdaListener extends ListenerAdapter {
         if (response instanceof DiscordIngredientLookupRenderer.RenderedText text) {
             return builder.setContent(text.content()).setEmbeds(List.of()).setComponents(List.of()).build();
         }
+        if (response instanceof DiscordIngredientLookupRenderer.RenderedCountryText text) {
+            return builder.setContent(text.content()).setEmbeds(List.of())
+                    .setComponents(List.of(ActionRow.of(countryBackButton(text.countryOrigin(), ownerUserId)))).build();
+        }
         if (response instanceof DiscordIngredientLookupRenderer.RenderedSelection selection) {
             return builder.setContent(selection.content()).setEmbeds(List.of())
                     .setComponents(List.of(ActionRow.of(selectMenu(selection.customId(), "Zutat auswählen", selection.options())))).build();
+        }
+        if (response instanceof DiscordIngredientLookupRenderer.RenderedCountryIngredients countryPage) {
+            EmbedBuilder countryEmbed = new EmbedBuilder().setTitle(countryPage.title()).setDescription(countryPage.description())
+                    .setColor(DiscordIngredientLookupRenderer.CARD_COLOR);
+            List<ActionRow> actionRows = new java.util.ArrayList<>();
+            if (!countryPage.options().isEmpty()) {
+                actionRows.add(ActionRow.of(selectMenu(DiscordIngredientComponentId.countrySelect(countryPage.countryContext(), ownerUserId),
+                        "🥢 Zutat anzeigen …", countryPage.options())));
+            }
+            if (countryPage.hasPreviousPage() || countryPage.hasNextPage()) {
+                int page = countryPage.countryContext().page();
+                Button previous = Button.secondary(DiscordIngredientComponentId.countryPage(countryPage.countryContext(), ownerUserId,
+                        Math.max(1, page - 1)), "◀ Zurück").withDisabled(!countryPage.hasPreviousPage());
+                Button next = Button.secondary(DiscordIngredientComponentId.countryPage(countryPage.countryContext(), ownerUserId,
+                        page + 1), "Weiter ▶").withDisabled(!countryPage.hasNextPage());
+                actionRows.add(ActionRow.of(previous, next));
+            }
+            return builder.setContent("").setEmbeds(List.of(countryEmbed.build())).setComponents(actionRows).build();
         }
         DiscordIngredientLookupRenderer.RenderedEmbed embed = (DiscordIngredientLookupRenderer.RenderedEmbed) response;
         EmbedBuilder embedBuilder = new EmbedBuilder()
@@ -827,18 +947,35 @@ final class DiscordJdaListener extends ListenerAdapter {
                 .setColor(embed.color());
         embed.fields().forEach(field -> embedBuilder.addField(field.name(), field.value(), field.inline()));
         return builder.setContent("").setEmbeds(List.of(embedBuilder.build()))
-                .setComponents(ingredientRows(embed.navigationRows(), ownerUserId)).build();
+                .setComponents(ingredientRows(embed.navigationRows(), ownerUserId, embed.countryOrigin())).build();
     }
 
     private static List<ActionRow> ingredientRows(List<DiscordIngredientLookupRenderer.NavigationRow> rows,
-                                                  String ownerUserId) {
-        return rows.stream().map(row -> {
+                                                  String ownerUserId,
+                                                  DiscordIngredientLookupRenderer.CountryBrowseOrigin countryOrigin) {
+        List<ActionRow> actionRows = new java.util.ArrayList<>(rows.stream().map(row -> {
             DiscordIngredientLookupRenderer.NavigationSelectRow select =
                     (DiscordIngredientLookupRenderer.NavigationSelectRow) row;
             String customId = ownerUserId == null ? select.customId()
-                    : DiscordIngredientComponentId.bindNavigationOwner(select.customId(), ownerUserId);
+                    : DiscordIngredientComponentId.bindNavigationOwner(select.customId(), ownerUserId,
+                    countryOrigin == null ? null : countryOrigin.context());
             return ActionRow.of(selectMenu(customId, select.placeholder(), select.options()));
-        }).toList();
+        }).toList());
+        if (countryOrigin != null) {
+            actionRows.add(ActionRow.of(countryBackButton(countryOrigin, ownerUserId)));
+        }
+        return List.copyOf(actionRows);
+    }
+
+    private static Button countryBackButton(DiscordIngredientLookupRenderer.CountryBrowseOrigin origin, String ownerUserId) {
+        if (ownerUserId == null) {
+            throw new IllegalArgumentException("Country return navigation requires an owner");
+        }
+        String label = "↩ Zurück zu " + origin.countryDisplayName();
+        if (label.length() > 80) {
+            label = label.substring(0, 79).stripTrailing() + "…";
+        }
+        return Button.secondary(DiscordIngredientComponentId.countryBack(origin.context(), ownerUserId), label);
     }
 
     private static StringSelectMenu selectMenu(String customId, String placeholder,

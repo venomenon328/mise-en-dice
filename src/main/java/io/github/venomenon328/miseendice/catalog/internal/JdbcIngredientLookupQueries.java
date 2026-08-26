@@ -2,6 +2,9 @@ package io.github.venomenon328.miseendice.catalog.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountry;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredient;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredientPage;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupDimension;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupMatch;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupProfile;
@@ -14,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Locale;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Repository;
@@ -104,6 +108,94 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
         ));
     }
 
+    @Override
+    public List<CulinaryCountry> searchCulinaryCountries(String searchText, int limit) {
+        String normalized = IngredientLookupQueries.normalize(searchText);
+        if (limit < 1 || limit > 25) {
+            throw new IllegalArgumentException("limit must be between 1 and 25");
+        }
+        return jdbcTemplate.query("""
+                select code, display_name
+                from culinary_country
+                where ? = '' or position(? in lower(display_name)) > 0
+                order by case when ? = '' or position(? in lower(display_name)) = 1 then 0 else 1 end,
+                         lower(display_name), code
+                limit ?
+                """, this::mapCulinaryCountry, normalized, normalized, normalized, normalized, limit);
+    }
+
+    @Override
+    public Optional<CulinaryCountry> resolveCulinaryCountry(String input) {
+        String normalized = IngredientLookupQueries.normalize(input);
+        if (normalized.isEmpty()) {
+            return Optional.empty();
+        }
+        String code = input == null ? "" : input.strip().toUpperCase(Locale.ROOT);
+        List<CulinaryCountry> matches = jdbcTemplate.query("""
+                select code, display_name
+                from culinary_country
+                where code = ? or lower(display_name) = ?
+                order by code
+                """, this::mapCulinaryCountry, code, normalized);
+        return matches.size() == 1 ? Optional.of(matches.getFirst()) : Optional.empty();
+    }
+
+    @Override
+    public Optional<CulinaryCountryIngredientPage> findActiveByCulinaryCountry(String countryCode, int page, int pageSize) {
+        if (countryCode == null || !countryCode.matches("[A-Z]{2}")) {
+            throw new IllegalArgumentException("countryCode must be an ISO alpha-2 code");
+        }
+        if (page < 1 || pageSize < 1 || pageSize > 25) {
+            throw new IllegalArgumentException("Invalid culinary-country page request");
+        }
+        List<CulinaryCountry> countries = jdbcTemplate.query("""
+                select code, display_name
+                from culinary_country
+                where code = ?
+                """, this::mapCulinaryCountry, countryCode);
+        if (countries.isEmpty()) {
+            return Optional.empty();
+        }
+        long totalIngredients = countActiveCountryIngredients(countryCode);
+        int totalPages = Math.max(1, (int) Math.ceil((double) totalIngredients / pageSize));
+        int actualPage = Math.min(page, totalPages);
+        List<CulinaryCountryIngredient> ingredients = findActiveCountryIngredients(countryCode, actualPage, pageSize);
+        if (ingredients.isEmpty() && totalIngredients > 0) {
+            totalIngredients = countActiveCountryIngredients(countryCode);
+            totalPages = Math.max(1, (int) Math.ceil((double) totalIngredients / pageSize));
+            actualPage = Math.min(page, totalPages);
+            ingredients = totalIngredients == 0 ? List.of() : findActiveCountryIngredients(countryCode, actualPage, pageSize);
+        }
+        if (ingredients.isEmpty()) {
+            totalIngredients = 0;
+            actualPage = 1;
+        }
+        return Optional.of(new CulinaryCountryIngredientPage(countries.getFirst(), actualPage, pageSize,
+                totalIngredients, ingredients));
+    }
+
+    private long countActiveCountryIngredients(String countryCode) {
+        return jdbcTemplate.queryForObject("""
+                select count(*)
+                from ingredient_culinary_country icc
+                join ingredient_concept ic on ic.id = icc.ingredient_concept_id
+                where icc.country_code = ? and ic.active
+                """, Long.class, countryCode);
+    }
+
+    private List<CulinaryCountryIngredient> findActiveCountryIngredients(String countryCode, int page, int pageSize) {
+        return jdbcTemplate.query("""
+                select ic.id, ic.display_name
+                from ingredient_culinary_country icc
+                join ingredient_concept ic on ic.id = icc.ingredient_concept_id
+                where icc.country_code = ? and ic.active
+                order by lower(ic.display_name), ic.id
+                limit ? offset ?
+                """, (resultSet, rowNumber) -> new CulinaryCountryIngredient(
+                resultSet.getLong("id"), resultSet.getString("display_name")), countryCode, pageSize,
+                (page - 1) * pageSize);
+    }
+
     private Map<Long, List<String>> findActiveDirectParentNames(List<Long> conceptIds) {
         if (conceptIds.isEmpty()) {
             return Map.of();
@@ -157,6 +249,10 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
                 order by cc.code
                 """, (resultSet, rowNumber) -> new IngredientLookupCountry(
                 resultSet.getString("code"), resultSet.getString("display_name")), conceptId);
+    }
+
+    private CulinaryCountry mapCulinaryCountry(ResultSet resultSet, int rowNumber) throws SQLException {
+        return new CulinaryCountry(resultSet.getString("code"), resultSet.getString("display_name"));
     }
 
     private SearchRow mapSearchRow(ResultSet resultSet, int rowNumber) throws SQLException {
