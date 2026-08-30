@@ -25,7 +25,7 @@ VALUES
         'Spanische Rundkorn-Reissorte Bomba mit hoher Flüssigkeits- und Geschmacksaufnahme; nicht Synonym für beliebigen Paella-Reis und nicht synonym mit der Herkunftsbezeichnung Calasparra.'),
     ('MEMBRILLO', 'Quittenpaste', true, true, 'SPECIFIC', 0.3500, 3,
         'Feste bis schnittfähige süße Quittenpaste (dulce de membrillo) aus eingekochter Quitte; nicht frische Quitte, Quittengelee oder beliebige Fruchtkonfitüre.'),
-    ('MORCILLA', 'Morcilla', true, true, 'OPEN', 0.3000, 4,
+    ('MORCILLA', 'Morcilla', true, true, 'SPECIFIC', 0.3000, 4,
         'Spanische Blutwurstfamilie mit regional stark variierenden Rezepturen, etwa mit Zwiebel, Reis oder Nüssen; Schweineblut ist charakteristisch. Nicht generisch jede Blutwurst und nicht auf Morcilla de Burgos beschränkt.'),
     ('SOBRASADA', 'Sobrasada', true, true, 'SPECIFIC', 0.2500, 4,
         'Streichfähige, mit Paprika gewürzte luftgereifte Rohwurst der Balearen, typischerweise aus Schweinefleisch; nicht Chorizo und nicht ’Nduja.'),
