@@ -101,3 +101,7 @@ databaseChangeLog:
       file: db/changelog/catalog/029-spain-curation.sql
   - include:
       file: db/changelog/catalog/030-veal-concept-expansion.sql
+  - include:
+      file: db/changelog/catalog/031-vietnam-curation.sql
+  - include:
+      file: db/changelog/catalog/032-thailand-curation.sql
