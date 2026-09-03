@@ -4,153 +4,219 @@ Stand: 3. September 2026
 
 Issue: #188, Tracking: #186
 
-Status: **Getrennte Beschaffbarkeitsdurchgänge für Georgia und Tobias vollständig vorgeschlagen; 815 Nicht-Anker warten auf menschliche Freigabe. Keine produktive Katalogübernahme.**
+Status: **Die getrennten Beschaffbarkeitsdurchgänge für Georgia und Tobias sind vollständig vorgeschlagen. 815 Nicht-Anker warten auf menschliche Freigabe. Vier personbezogene Änderungen an drei bereits freigegebenen Ankern sind gesondert ausgewiesen und benötigen erneut menschliche Freigabe. Es erfolgt keine produktive Katalogübernahme.**
 
-## 1. Umfang und Trennung der Bewertungen
+## 1. Umfang und Trennung
 
 Maßgeblich ist der gemeinsame Stand von `main` und Arbeitsbranch vor dieser Tranche am Commit
-`f8855121af336a7c13cd799cafede5f9b9420f28`. Bewertet wurden alle 860 eingefrorenen Katalogcodes: 853
-anwendbare Konzepte und die sieben bereits freigegebenen reinen Strukturknoten.
+`f8855121af336a7c13cd799cafede5f9b9420f28`. Bewertet wurden alle 860 eingefrorenen Katalogcodes:
+853 anwendbare Konzepte und sieben bereits freigegebene reine Strukturknoten.
 
 Für jede Person wurde aus dem geblendeten Kataloginput eine eigene Arbeitsprojektion erzeugt. Sie enthält nur
 Konzeptidentität, Taxonomie, Kuratornotiz, Anwendbarkeit, Produktformkontext und das Profil der jeweils bewerteten
 Person. Insbesondere fehlen:
 
 - bisherige Georgia-/Tobias-Beschaffbarkeit,
-- der Vorschlag oder das Ergebnis der anderen Person,
+- Vorschlag oder Ergebnis der anderen Person,
 - Kochungewöhnlichkeit und deren Reviewvorschlag,
 - `base_draw_weight` und Generatorwerte.
 
-Georgia und Tobias wurden in zwei getrennten Funktionen und zwei getrennten Reviewdateien bewertet. Erst nachdem
-beide vollständigen Ergebnislisten fixiert waren, wurden das gemeinsame Review- und das Vergleichsartefakt erzeugt.
-Die 39 menschlich freigegebenen Referenzanker blieben Invarianten. Preis, Kochrolle und bloße Ähnlichkeit eines
-Ersatzprodukts wurden nicht als Beschaffbarkeitskriterien verwendet.
+Georgia und Tobias werden in zwei getrennten Funktionen bewertet. Erst danach entstehen gemeinsames Review und
+Vergleich. Preis, Kochrolle und bloße Ähnlichkeit eines Ersatzprodukts sind keine Beschaffbarkeitskriterien.
+
+`EASY` ist kein Restwert mehr. Für jede der 577 Entscheidungen je Person existiert ein eigener positiver
+Auditdatensatz. Der Generator verlangt für jeden anwendbaren Code genau eine explizite Bewertungsmenge und bricht
+bei fehlender oder mehrfacher Zuordnung ab.
 
 ## 2. Artefakte
 
 - [`availability-novelty-availability-input-georgia-20260903.csv`](availability-novelty-availability-input-georgia-20260903.csv)
   und [`availability-novelty-availability-input-tobias-20260903.csv`](availability-novelty-availability-input-tobias-20260903.csv):
-  personbezogene geblendete Arbeitsprojektionen ohne Altwerte, anderes Personenergebnis, Novelty oder Gewicht,
+  personbezogene geblendete Arbeitsprojektionen,
+- [`availability-novelty-availability-easy-decisions-20260903.csv`](availability-novelty-availability-easy-decisions-20260903.csv):
+  1.154 explizite positive `EASY`-Entscheidungen mit Person, Code, Entscheidungsbasis und Auditstatus,
 - [`availability-novelty-availability-review-georgia-20260903.tsv`](availability-novelty-availability-review-georgia-20260903.tsv)
   und [`availability-novelty-availability-review-tobias-20260903.tsv`](availability-novelty-availability-review-tobias-20260903.tsv):
-  separat fixierte Vollreviews mit Produktformbasis, persönlicher Notiz, Evidenzverweisen und Freigabestatus,
+  separat fixierte Vollreviews,
 - [`availability-novelty-availability-review-20260903.tsv`](availability-novelty-availability-review-20260903.tsv):
-  erst danach zusammengeführtes Review für alle 860 Codes,
+  nachgelagertes gemeinsames Review,
 - [`availability-novelty-availability-comparison-20260903.tsv`](availability-novelty-availability-comparison-20260903.tsv):
-  nachgelagerter Vergleich beider Personen und des eingefrorenen Altstands,
+  nachgelagerter Personen- und Altstandsvergleich,
 - [`availability-novelty-availability-evidence-20260903.csv`](availability-novelty-availability-evidence-20260903.csv):
-  37 am Stichtag geprüfte Produkt-, Händler-, Versand-, Form- und Negativsuchbelege,
+  91 Evidenzeinträge mit exaktem Konzeptscope, Personenbezug, Evidenzrolle, unterstützter Bewertung, URL,
+  Suchbegriffen, Befund und Einschränkungen,
+- [`availability-novelty-availability-anchor-deltas-20260903.csv`](availability-novelty-availability-anchor-deltas-20260903.csv):
+  gesonderte Wiedervorlage bereits freigegebener Anchorwerte,
 - [`generate-availability-novelty-availability-review-20260903.ps1`](generate-availability-novelty-availability-review-20260903.ps1):
-  reproduzierbare Erzeugung der getrennten Inputs/Reviews sowie der nachgelagerten Zusammenführung,
+  reproduzierbare Erzeugung,
 - [`validate-availability-novelty-availability-review-20260903.ps1`](validate-availability-novelty-availability-review-20260903.ps1):
-  Vollständigkeits-, Trennungs-, Anker-, Evidenz-, Vergleichs- und Immutabilitätsprüfung.
+  Vollständigkeits-, EASY-, Anker-, Evidenz-, Vergleichs- und Immutabilitätsprüfung.
 
-Die Freeze-, Anker- und Novelty-Artefakte aus Tranche 1 und 2 bleiben unverändert als Auditspur erhalten.
+Die Freeze-, Anker- und Cooking-Novelty-Artefakte aus Tranche 1 und 2 bleiben unverändert.
 
 ## 3. Availability-Verteilungen
 
 | Availability | Georgia | Anteil | Tobias | Anteil |
 |---|---:|---:|---:|---:|
-| `EASY` | 637 | 74,7 % | 637 | 74,7 % |
-| `PLANNED` | 156 | 18,3 % | 147 | 17,2 % |
-| `SPECIALTY` | 47 | 5,5 % | 52 | 6,1 % |
-| `DIFFICULT` | 11 | 1,3 % | 15 | 1,8 % |
+| `EASY` | 577 | 67,6 % | 577 | 67,6 % |
+| `PLANNED` | 213 | 25,0 % | 201 | 23,6 % |
+| `SPECIALTY` | 49 | 5,7 % | 60 | 7,0 % |
+| `DIFFICULT` | 12 | 1,4 % | 13 | 1,5 % |
 | `UNAVAILABLE` | 2 | 0,2 % | 2 | 0,2 % |
 | **Summe anwendbar** | **853** | **100,0 %** | **853** | **100,0 %** |
 | `NOT_APPLICABLE_STRUCTURE` | 7 | – | 7 | – |
 
-`SPECIALTY` wurde damit erstmals als eigenständige fachliche Stufe genutzt. Die Stufe trennt verlässliche
-Spezialbeschaffung von wirklich unsicheren, saisonalen oder kühlkettenkritischen Wegen.
+Gegenüber dem bisherigen Tranche-3-Entwurf wurden **120 fälschlich als Restwert entstandene
+`EASY`-Personenwerte** korrigiert:
+
+- Georgia: 60 Korrekturen, davon 57 zu `PLANNED`, zwei zu `SPECIALTY` und eine zu `DIFFICULT`,
+- Tobias: 60 Korrekturen, davon 55 zu `PLANNED`, vier zu `SPECIALTY` und eine zu `DIFFICULT`.
+
+Kein bisheriger Nicht-`EASY`-Wert wurde zum Ausgleich auf `EASY` gesetzt.
 
 ## 4. Personenunterschiede
 
-Bei **23 von 853** anwendbaren Konzepten unterscheiden sich Georgia und Tobias. Für alle 23 enthält jede
-Personendatei eine konkrete, nicht-generische Begründung.
+Bei **23 von 853** anwendbaren Konzepten unterscheiden sich Georgia und Tobias. Jede Abweichung besitzt in beiden
+Personendateien eine konkrete Profilbegründung.
 
 Georgia liegt bei 18 Konzepten auf der leichteren Stufe:
 
-- persönliche beziehungsweise regionale philippinisch-/asiatische Wege: `BAGOONG`, `BAGOONG_ISDA`,
-  `BANANA_LEAVES`, `CALAMANSI`, `CURRY_LEAVES`, `GIO_LUA`, `LONGGANISA`, `MACAPUNO`, `NATTO`, `PLA_RA`,
-  `SALTED_DUCK_EGG`, `UBE` und `WATER_SPINACH`,
-- stärkeres türkisch-/arabisches Umfeld in Bornheim: `DATE_SYRUP`, `HARISSA`, `PUL_BIBER`, `SUMAC` und `ZAATAR`.
+- philippinische beziehungsweise asiatische Wege:
+  `BAGOONG`, `BAGOONG_ALAMANG`, `BANANA_LEAVES`, `CURRY_LEAVES`, `GIO_LUA`,
+  `LONGGANISA`, `MACAPUNO`, `NATTO`, `PLA_RA`, `SALTED_DUCK_EGG` und `UBE`,
+- Rheinland- beziehungsweise Kühlversandnähe:
+  `FRANKFURT_GREEN_SAUCE` und `GARLIC_CHIVES`,
+- stärkeres türkisch-/arabisches Bornheimer Umfeld:
+  `DATE_SYRUP`, `HARISSA`, `PUL_BIBER`, `SUMAC` und `ZAATAR`.
 
 Tobias liegt bei fünf Konzepten auf der leichteren Stufe:
 
-- stärkeres übliches Rostocker Fischsortiment: `EEL`, `HADDOCK`, `NORTH_SEA_SHRIMP` und `SMOKED_TROUT`,
-- stärkeres russisch-/osteuropäisches Sortiment: `TWAROG`.
+- stärkeres übliches Rostocker Fischsortiment:
+  `EEL`, `HADDOCK`, `NORTH_SEA_SHRIMP` und `SMOKED_TROUT`,
+- stärkeres russisch-/osteuropäisches Sortiment:
+  `TWAROG`.
 
-Keine Differenz wurde aus dem Altstand oder nachträglich aus der Verteilung abgeleitet. Eine Georgienreise wurde
-nur dort als möglicher Zusatzweg berücksichtigt, wo die exakte Ware haltbar und transportfähig wäre; sie begründet
-keine der 23 Abweichungen.
+Die gezielte Neuauditierung fügt gegenüber dem vorigen Entwurf Unterschiede bei `BAGOONG_ALAMANG`,
+`FRANKFURT_GREEN_SAUCE` und `GARLIC_CHIVES` hinzu. Die bisherigen Unterschiede bei `CALAMANSI` und
+`BAGOONG_ISDA` entfallen. Der zunächst angenommene Unterschied bei `WATER_SPINACH` entfällt ebenfalls, nachdem ein
+belastbarer deutschlandweiter Expressweg bestätigt wurde.
 
-## 5. Vergleich zum Altstand
+## 5. Verpflichtende Korrekturen und Anchor-Deltas
 
-Der Altstand kannte nur `EASY`, `PLANNED` und `DIFFICULT`; `READY_CURRY_PASTE` hatte noch keinen Personenwert.
+Die im Review ausdrücklich benannten Korrekturen und die beim anschließenden fail-closed Evidenzrecheck besonders
+hervorgetretenen Fälle sind:
 
-| Vergleich | Georgia | Tobias |
-|---|---:|---:|
-| unverändert | 643 | 583 |
-| auf leichtere Stufe korrigiert | 148 | 235 |
-| auf schwierigere Stufe korrigiert | 61 | 34 |
-| zuvor nicht gepflegt, jetzt bewertet | 1 | 1 |
-| **Änderungen gesamt** | **210** | **270** |
+- `LA_LOT_LEAVES`: Georgia `SPECIALTY`, Tobias `SPECIALTY`,
+- `SEA_SNAILS`: Georgia `SPECIALTY`, Tobias `SPECIALTY`,
+- `CALAMANSI`: Georgia `SPECIALTY`, Tobias `SPECIALTY`,
+- `BAGOONG_ALAMANG`: Georgia `PLANNED`, Tobias `SPECIALTY`,
+- zusätzlich nach dem fail-closed Evidenzrecheck `BAGOONG_ISDA`: Georgia `SPECIALTY`, Tobias `SPECIALTY`,
+- `TOMATILLO`: Georgia `SPECIALTY`, Tobias `SPECIALTY`; eine aktuelle exakte Frischproduktseite ersetzt den
+  bisherigen Formmismatch-Beleg,
+- `WATER_SPINACH`: Georgia `SPECIALTY`, Tobias `SPECIALTY`; der genaue Frische-Expressweg ersetzt die vorherige
+  pauschale Kühlkettenannahme für Tobias,
+- `DAING`, `GREEN_RICE_FLAKES` und `MILKFISH`: jeweils Georgia und Tobias `DIFFICULT`, weil exakte Form
+  beziehungsweise belastbare Kühlkette nicht bestätigt sind; die Einzelgrenzen sind in Abschnitt 7 ausgewiesen.
 
-Die vielen Tobias-Absenkungen entstehen vor allem dadurch, dass der alte dreistufige Stand zahlreiche planbare
-Alltags- und Versandwege pauschal als `DIFFICULT` führte. Umgekehrt werden mit `SPECIALTY` spezialisierte, aber
-verlässliche Wege nicht länger mit unsicherer Beschaffung zusammengelegt.
+Von diesen Werten verändern vier Personenentscheidungen bereits freigegebener Anchors:
 
-## 6. `SPECIALTY+` und wichtige Grenzfälle
+| Konzept | Person | Freigegebener Wert | Neuer Vorschlag | Status |
+|---|---|---|---|---|
+| `BAGOONG_ISDA` | Tobias | `DIFFICULT` | `SPECIALTY` | `REQUIRES_HUMAN_REAPPROVAL` |
+| `CALAMANSI` | Tobias | `DIFFICULT` | `SPECIALTY` | `REQUIRES_HUMAN_REAPPROVAL` |
+| `SEA_SNAILS` | Georgia | `DIFFICULT` | `SPECIALTY` | `REQUIRES_HUMAN_REAPPROVAL` |
+| `SEA_SNAILS` | Tobias | `DIFFICULT` | `SPECIALTY` | `REQUIRES_HUMAN_REAPPROVAL` |
 
-Georgia besitzt **47 `SPECIALTY`**, **11 `DIFFICULT`** und **2 `UNAVAILABLE`**; Tobias besitzt **52 `SPECIALTY`**,
-**15 `DIFFICULT`** und **2 `UNAVAILABLE`**.
+Die freigegebenen Baselines bleiben in der Anchor-Datei unverändert. In den Reviewdateien tragen die drei
+betroffenen Konzeptzeilen `PROPOSED_ANCHOR_DELTA_FOR_HUMAN_REAPPROVAL`. Diese Tranche erteilt keine Freigabe.
+
+## 6. Fail-closed Evidenzzuordnung
+
+Evidenz wird nur für `SPECIALTY`, `DIFFICULT` und `UNAVAILABLE` zugeordnet. Jede Zuordnung muss gleichzeitig
+Konzeptcode, Person, Bewertung und erforderliche Rolle exakt abdecken:
+
+- `SPECIALTY` verlangt `EXACT_RETAIL`,
+- `DIFFICULT` und `UNAVAILABLE` verlangen `DECISION_LIMITATION`,
+- `CONTEXT_ONLY` darf niemals als Bewertungsbeleg referenziert werden.
+
+Fehlt eine exakte Zuordnung, bricht der Generator ab. Es gibt keinen generischen Fallback. Der Validator prüft
+außerdem, dass jede bewertungstragende Evidenz tatsächlich referenziert wird.
+
+Korrigierte Fehlzuordnungen:
+
+- `EV10` gilt nur noch als Kontext für `THAI_BASIL`; `HOLY_BASIL` verwendet die exakte Produktseite `EV38`.
+- `EV18` belegt ausschließlich `OLOMOUC_TVARUZKY`; `KOLACHE` verwendet `EV66` und `PICKLED_SAUSAGE` `EV43`.
+- Die generische Fleischkategorie `EV22` ist nur Kontext; `MOOSE`, `REINDEER`, `MORCILLA` und `SOBRASADA`
+  verwenden `EV44` bis `EV47`.
+- Der Handelskatalog `EV24` ist nur Kontext; `COCKLES`, `RAZOR_CLAMS` und `SEA_SNAILS` verwenden
+  Endkundenbelege `EV48`, `EV49` und `EV40`.
+- `EV31` belegt ausschließlich `VIETNAMESE_CORIANDER`; `LA_LOT_LEAVES` verwendet `EV39` und
+  `RICE_PADDY_HERB` den negativen exakten Audit `EV64`.
+- `EV37` gilt nur für den Formmismatch bei `NORWEGIAN_WAFFLE` und ist kein Fallback.
+- Der generische Egusi-Händlerbeleg `EV14` wurde durch eine vorrätige Einzelproduktseite ersetzt.
+- Der frühere norwegische Sammelbeleg `EV15` trägt nur noch `BRUNOST`; `FENALAR`, `FLATBROD`, `LEFSE`,
+  `PINNEKJOTT`, `KLIPPFISH` und `ROD_POLSE` verwenden die scope-genauen Einzelproduktbelege `EV90` sowie
+  `EV85` bis `EV89`.
+- Veraltete oder tote Einzelproduktlinks für `OLOMOUC_TVARUZKY`, `VIETNAMESE_CORIANDER`, `PERILLA_LEAVES`,
+  `SALTED_DUCK_EGG`, `FRANKFURT_GREEN_SAUCE` und `KLIPPFISH` wurden durch aktuelle exakte Endkundenwege ersetzt.
+- `BAGOONG_ISDA` für Tobias referenziert mit `EV68|EV80` zwei exakte deutsche Endkundenwege; die daraus folgende
+  Anchoränderung bleibt trotzdem unfreigegeben.
+- `EV59` belegt einen deutschlandweiten Expressweg für exakten frischen `WATER_SPINACH`; der Haftungsausschluss
+  eines zweiten Standardversands in `EV69` bleibt nur Kontext und kann den exakten Weg nicht fail-open überstimmen.
+- `EV05`, `EV26`, `EV53` und `EV64` dokumentieren nun jeweils den konkreten ausverkauften Artikel, die konkrete
+  Fehlform oder die konkrete nicht als Lebensmittel ausgewiesene Route statt einer pauschalen Kategoriesuche.
+- `EV34` bleibt auf den weiter unbelegten frischen `POBLANO` begrenzt; `TOMATILLO` verwendet mit `EV91` eine
+  vorrätige frische Einzelproduktseite samt deutschlandweitem Versand.
+
+## 7. Grenzfälle
 
 Die `DIFFICULT`-Mengen sind:
 
-- Georgia: `ALIGUE`, `LA_LOT_LEAVES`, `LUTEFISK`, `NIPA_PALM_VINEGAR`, `NORWEGIAN_WAFFLE`, `POBLANO`,
-  `RICE_PADDY_HERB`, `SEA_SNAILS`, `STOCKFISH`, `TAI_PLA`, `TOMATILLO`,
-- Tobias: dieselben elf sowie `BAGOONG_ISDA`, `CALAMANSI`, `UBE` und `WATER_SPINACH`.
+- Georgia: `ALIGUE`, `DAING`, `DUMPLING_DOUGH`, `GREEN_RICE_FLAKES`, `LUTEFISK`, `MILKFISH`,
+  `NIPA_PALM_VINEGAR`, `NORWEGIAN_WAFFLE`, `POBLANO`, `RICE_PADDY_HERB`, `STOCKFISH` und `TAI_PLA`,
+- Tobias: dieselben 12 sowie `UBE`.
 
-Für beide `UNAVAILABLE` sind `COM_ME` und `RAKFISK`. Bei `COM_ME` ergab die exakte Suche keinen wiederholbaren
-deutschen Retailweg; sichtbare Reisessige und andere Reisfermente erfüllen die Produktform nicht. Rakfisk blieb auf
-saisonale gekühlte Herkunftslandwege begrenzt und ist damit für eine zufällige Challenge nicht realistisch.
+Für beide `UNAVAILABLE` sind `COM_ME` und `RAKFISK`.
 
-Weitere Grenzentscheidungen:
+Verbleibende bewusst konservative beziehungsweise stichtagsabhängige Fälle:
 
-- `GAC_FRUIT` ist für beide `SPECIALTY`, weil aktuell exaktes TK-Gấc-Fruchtfleisch bei einem deutschen
-  Asia-Spezialversand gelistet ist.
-- `CLOUDBERRY` ist für beide `SPECIALTY`, weil ungesüßte TK-Moltebeeren mit Vorbestellfenster und Isobox in
-  Deutschland bestellbar sind; Konfitüre und Likör waren als Ersatz ausgeschlossen.
-- `LUTEFISK` bleibt für beide `DIFFICULT`: Es existiert eine exakte deutsche Produktseite, die Ware war bei Prüfung
-  jedoch nicht auf Lager und ausdrücklich kühlversandpflichtig.
-- `STOCKFISH` bleibt für beide `DIFFICULT`: Der geprüfte Tørrfisk-Händler listet die Produktart, sein vollständiges
-  Sortiment war jedoch ausverkauft; gesalzener Klippfisch ist kein Ersatz.
-- `NIPA_PALM_VINEGAR` bleibt für beide `DIFFICULT`, weil aktuelle Treffer die Basis widersprüchlich als Kokos,
-  Zuckerrohr oder bloß weißen Gewürzessig beschreiben.
-- `NORWEGIAN_WAFFLE` bleibt für beide `DIFFICULT`: Deutsche Treffer sind schwedische TK-Herzwaffeln oder
-  norwegische Backmischungen und damit nicht die geforderte fertige weiche Kardamomwaffel.
-- Frische `POBLANO` und `TOMATILLO` bleiben für beide `DIFFICULT`: Fachhändler belegen getrockneten Ancho oder
-  Konserven, nicht den verlässlichen Bezug der geforderten Frischform.
-- `CALAMANSI` und `UBE` übernehmen die freigegebene persönliche Differenz. Gesüßtes Calamansi-Konzentrat,
-  Ube-Pulver und gesüßte Ube-Zubereitung wurden nicht als formgerechter Tobias-Weg gewertet.
+- `DUMPLING_DOUGH`: bestellbar sind zugeschnittene Wrapper, nicht die geforderte ungeschnittene Teigform.
+- `GREEN_RICE_FLAKES`: das deutsche Produkt enthält Pandanextrakt und ist nicht als Form aus jungen grünen
+  Reiskörnern bestätigt.
+- `DAING`: lieferbare Treffer sind allgemeiner getrockneter Fisch oder abweichend marinierter Bangus.
+- `MILKFISH`: ein exaktes TK-Produkt ist gelistet, aber die durchgehende Tiefkühlzustellung wird nicht garantiert.
+- `CORIANDER_ROOT`: exakte Produktseite und technische Bestellbarkeit sind vorhanden, die sichtbare
+  Bestandsdarstellung ist widersprüchlich.
+- `PEA_EGGPLANT`: eine exakte frische `Solanum torvum`-Verbraucherroute ist bestätigt, aber derzeit nur über einen
+  Anbieter; deshalb `SPECIALTY`.
+- `SEA_SNAILS`: der exakte Endkundenweg ist eine gewürzte Wellhornschnecken-Konserve; die offene Produktform
+  erlaubt sie, die Anchoränderung bleibt dennoch freigabepflichtig.
+- `BAGOONG_ISDA`: Zwei deutsche Shops belegen die exakte haltbare Fischform. Tobias wird deshalb als `SPECIALTY`
+  vorgeschlagen; der bisherige `DIFFICULT`-Anchor bleibt bis zur menschlichen Re-Freigabe die Baseline.
+- `UBE`: die unterschiedliche Einstufung beruht auf den ausdrücklich getrennten persönlichen Routen und den für
+  Tobias belegten Formmismatches.
+- `WATER_SPINACH`: der genaue Expressweg trägt nun für beide Personen `SPECIALTY`; Frischebestand und Zustelltag
+  bleiben vor einer konkreten Bestellung zu prüfen.
+- `TOMATILLO`: der konkrete Frischeweg trägt nun für beide Personen `SPECIALTY`; zwei bis sechs Werktage Versand
+  und schwankende Frischequalität bleiben als Bestellrisiko sichtbar.
 
-## 7. Vollständigkeit, Status und Abgrenzung
+## 8. Vergleich, Status und Abgrenzung
 
-Die maschinelle Prüfung bestätigt:
+| Vergleich zum eingefrorenen Altstand | Georgia | Tobias |
+|---|---:|---:|
+| unverändert | 685 | 621 |
+| auf leichtere Stufe korrigiert | 97 | 192 |
+| auf schwierigere Stufe korrigiert | 70 | 39 |
+| zuvor nicht gepflegt, jetzt bewertet | 1 | 1 |
+| **Änderungen gesamt** | **168** | **232** |
 
-- 860 eindeutige bekannte Codes in beiden Inputs, beiden Personenreviews, Zusammenführung und Vergleich,
-- exakt 853 anwendbare Konzepte und sieben freigegebene Strukturknoten,
-- **853/853 personbezogene Notizen je Person** und **23/23 konkret begründete Unterschiede**,
-- Evidenzverweise für **60/60 Georgia-** und **69/69 Tobias-Bewertungen auf `SPECIALTY+`**,
-- 37 vollständige Evidenzzeilen mit Prüfdatum, URL und Befund,
-- alle 38 numerischen Availability-Anker und der eine Strukturanker unverändert,
-- konsistente nachgelagerte Altstands- und Personenvergleiche,
-- unveränderte Tranche-2-Novelty-Artefakte über feste SHA-256-Prüfsummen.
+Freigabestatus im kombinierten Review:
 
-Freigabestatus:
+- 815 Nicht-Anker: `PROPOSED_FOR_HUMAN_REVIEW`,
+- 35 unveränderte numerische Anchorzeilen: `APPROVED_REFERENCE_ANCHOR`,
+- drei Konzeptzeilen mit insgesamt vier Personen-Deltas: `PROPOSED_ANCHOR_DELTA_FOR_HUMAN_REAPPROVAL`,
+- sieben Strukturknoten: `APPROVED_NOT_APPLICABLE`.
 
-- 38 numerische Referenzanker: `APPROVED_REFERENCE_ANCHOR`,
-- sieben Strukturknoten: `APPROVED_NOT_APPLICABLE`,
-- 815 neue Vollreview-Vorschläge: `PROPOSED_FOR_HUMAN_REVIEW`.
-
-Diese Tranche genehmigt oder ändert keinen der 815 Novelty-Vorschläge. Sie enthält keine produktiven
-Katalog-, Migrations-, Schema-, Java-, UI-, Generator- oder Gewichtsanpassungen und zieht #189 oder #190 nicht vor.
+Diese Tranche ändert keine produktiven Katalog-, Migrations-, Schema-, Java-, UI-, Runtime- oder Gewichtswerte.
+Sie zieht weder #189 noch #190 vor. Die vorhandenen Cooking-Novelty-Artefakte bleiben bytegenau unverändert und
+werden vom Availability-Validator zusätzlich über zeilenendenkanonische SHA-256-Prüfsummen geschützt.
