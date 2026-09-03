@@ -109,6 +109,7 @@ class PersistedGenerationIntegrationTest {
         assertThat(attempt.batchNumbers()).containsExactly(1);
         assertThat(attempt.nextAction()).isEqualTo(GenerationQueries.NextAction.AWAIT_CURATION);
         assertThat(context.configurationSnapshotJson()).isNotBlank();
+        assertThat(context.configurationSnapshotJson()).contains("SPECIALTY", "0.15");
         assertThat(context.catalogSnapshotJson()).isNotBlank();
         assertThat(context.requestSnapshotJson()).isNotBlank();
         assertThat(context.visibleHistorySnapshotJson()).isNotBlank();

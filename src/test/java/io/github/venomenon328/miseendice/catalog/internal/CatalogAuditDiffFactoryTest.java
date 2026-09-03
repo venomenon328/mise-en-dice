@@ -29,7 +29,7 @@ class CatalogAuditDiffFactoryTest {
         }).anySatisfy(diff -> {
             assertThat(diff.label()).isEqualTo("Beschaffbarkeit");
             assertThat(diff.kind()).isEqualTo(ChangeKind.CHANGED);
-            assertThat(diff.afterValue()).contains("Georgia", "DIFFICULT");
+            assertThat(diff.afterValue()).contains("Georgia", "Schwer beschaffbar");
         });
 
         var exclusionBefore = new CatalogAggregateSnapshot(Map.of("displayText", "ohne X", "targets",
@@ -54,7 +54,7 @@ class CatalogAuditDiffFactoryTest {
         beforeAvailability.put("description", null);
         beforeAvailability.put("level", "EASY");
         Map<String, Object> afterAvailability = new LinkedHashMap<>(beforeAvailability);
-        afterAvailability.put("level", "DIFFICULT");
+        afterAvailability.put("level", "SPECIALTY");
 
         var before = new CatalogAggregateSnapshot(Map.of("availability", List.of(beforeAvailability)));
         var after = new CatalogAggregateSnapshot(Map.of("availability", List.of(afterAvailability)));
@@ -63,8 +63,8 @@ class CatalogAuditDiffFactoryTest {
                 .singleElement()
                 .satisfies(diff -> {
                     assertThat(diff.label()).isEqualTo("Beschaffbarkeit");
-                    assertThat(diff.beforeValue()).contains("Georgia", "EASY");
-                    assertThat(diff.afterValue()).contains("Georgia", "DIFFICULT");
+                    assertThat(diff.beforeValue()).contains("Georgia", "Spontan beschaffbar");
+                    assertThat(diff.afterValue()).contains("Georgia", "Spezialbeschaffung");
                 });
     }
 }

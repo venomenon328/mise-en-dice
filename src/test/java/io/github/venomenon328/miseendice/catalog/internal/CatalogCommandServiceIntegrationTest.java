@@ -266,7 +266,7 @@ class CatalogCommandServiceIntegrationTest {
         CatalogMetadata first = new CatalogMetadata(
                 Set.of("VEGETABLE", "AROMATIC"), Set.of("FERMENTED", "SMOKED"),
                 Map.of("DOMINANCE", 4, "HEAT", 2),
-                Map.of("GEORGIA", CatalogQueries.CatalogAvailability.EASY,
+                Map.of("GEORGIA", CatalogQueries.CatalogAvailability.SPECIALTY,
                         "TOBIAS", CatalogQueries.CatalogAvailability.DIFFICULT),
                 Map.of(1, new BigDecimal("1.2"), 2, new BigDecimal("1.0")));
         CatalogQueries.CatalogConceptDetail before = catalogQueries.findConcept(concept).orElseThrow();
@@ -279,6 +279,7 @@ class CatalogCommandServiceIntegrationTest {
         assertThat(jdbcTemplate.queryForMap("select level from ingredient_culinary_dimension idim join culinary_dimension dim on dim.id = idim.culinary_dimension_id where idim.ingredient_concept_id = ? and dim.code = 'DOMINANCE'", concept))
                 .containsEntry("level", 4);
         assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_culinary_dimension where ingredient_concept_id = ?", Integer.class, concept)).isEqualTo(2);
+        assertThat(availability(concept, "GEORGIA")).isEqualTo("SPECIALTY");
         assertThat(availability(concept, "TOBIAS")).isEqualTo("DIFFICULT");
         assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_seasonality where ingredient_concept_id = ?", Integer.class, concept)).isEqualTo(1);
         assertThat(latestAudit().afterState().values()).containsKeys(

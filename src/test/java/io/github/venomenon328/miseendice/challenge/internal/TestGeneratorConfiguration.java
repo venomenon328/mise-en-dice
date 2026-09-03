@@ -31,7 +31,8 @@ final class TestGeneratorConfiguration {
                 "1.2.0", "2026-08-18.1", RngAlgorithm.SPLITMIX64_V1, 1,
                 12, 144, 72, 36, 5_000, 1_000_000_000L, bd("0.20"),
                 Map.of(Availability.EASY, bd("1.00"), Availability.PLANNED, bd("0.65"),
-                        Availability.DIFFICULT, bd("0.20"), Availability.UNAVAILABLE, bd("0.00")),
+                        Availability.SPECIALTY, bd("0.40"), Availability.DIFFICULT, bd("0.20"),
+                        Availability.UNAVAILABLE, bd("0.00")),
                 new CooldownConfiguration(6, 9, 12, 16, bd("0.25"), bd("0.50"), bd("0.75")),
                 new ExclusionConfiguration(4, 7, bd("0.35")),
                 new NoveltyConfiguration(Map.of(1, 0, 2, 1, 3, 2, 4, 4, 5, 7), Map.of(

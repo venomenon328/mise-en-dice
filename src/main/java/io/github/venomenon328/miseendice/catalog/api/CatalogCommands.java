@@ -77,7 +77,7 @@ public interface CatalogCommands {
                 errors.put("baseDrawWeight", "Das Ziehungsgewicht muss größer als 0 sein.");
             }
             if (noveltyLevel != null && (noveltyLevel < 1 || noveltyLevel > 5)) {
-                errors.put("noveltyLevel", "Die Ungewöhnlichkeit muss zwischen 1 und 5 liegen oder leer bleiben.");
+                errors.put("noveltyLevel", "Die Kochungewöhnlichkeit muss zwischen 1 und 5 liegen oder leer bleiben.");
             }
             if (curatorNote.isEmpty()) {
                 errors.put("curatorNote", "Die Kuratornotiz darf nicht leer sein.");
@@ -172,7 +172,7 @@ public interface CatalogCommands {
                 errors.put("baseDrawWeight", "Das Ziehungsgewicht muss größer als 0 sein.");
             }
             if (noveltyLevel != null && (noveltyLevel < 1 || noveltyLevel > 5)) {
-                errors.put("noveltyLevel", "Die Ungewöhnlichkeit muss zwischen 1 und 5 liegen oder leer bleiben.");
+                errors.put("noveltyLevel", "Die Kochungewöhnlichkeit muss zwischen 1 und 5 liegen oder leer bleiben.");
             }
             if (curatorNote.isEmpty()) {
                 errors.put("curatorNote", "Die Kuratornotiz darf nicht leer sein.");

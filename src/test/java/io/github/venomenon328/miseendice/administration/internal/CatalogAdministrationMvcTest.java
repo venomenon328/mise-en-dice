@@ -167,10 +167,11 @@ class CatalogAdministrationMvcTest {
                 .andExpect(content().string(containsString("value=\"DRAWABLE\"")))
                 .andExpect(content().string(containsString("/admin/assets/catalog.css")))
                 .andExpect(content().string(containsString("/admin/assets/catalog.js")))
-                .andExpect(content().string(containsString("einfach")))
-                .andExpect(content().string(containsString("gezielter Einkauf")))
-                .andExpect(content().string(containsString("schwierig")))
-                .andExpect(content().string(containsString("regulär nicht verfügbar")))
+                .andExpect(content().string(containsString("Spontan beschaffbar")))
+                .andExpect(content().string(containsString("Gezielt beschaffbar")))
+                .andExpect(content().string(containsString("Spezialbeschaffung")))
+                .andExpect(content().string(containsString("Schwer beschaffbar")))
+                .andExpect(content().string(containsString("Praktisch nicht beschaffbar")))
                 .andExpect(content().string(containsString("Name A–Z")))
                 .andExpect(content().string(containsString("Name Z–A")))
                 .andExpect(content().string(containsString("Test Suchtreffer")))
@@ -262,7 +263,8 @@ class CatalogAdministrationMvcTest {
         assertEquals(5, occurrences(noveltyScale, "data-scale-step="));
         assertEquals(scaleNoveltyLevel, occurrences(noveltyScale, "data-scale-state=\"active\""));
         assertEquals(5 - scaleNoveltyLevel, occurrences(noveltyScale, "data-scale-state=\"inactive\""));
-        assertTrue(noveltyScale.contains("aria-label=\"Ungewöhnlichkeit: " + scaleNoveltyLevel + " von 5\""));
+        assertTrue(noveltyScale.contains("aria-label=\"Kochungewöhnlichkeit: "
+                + noveltyLabel(scaleNoveltyLevel) + "\""));
 
         String dimensionScale = elementByTestId(detailHtml, "dimension-scale-" + managedDimensionCode);
         assertEquals(5, occurrences(dimensionScale, "data-scale-step="));
@@ -276,8 +278,20 @@ class CatalogAdministrationMvcTest {
         assertTrue(detailHtml.contains(localizedAvailabilityLabel));
         assertFalse(detailHtml.contains(">EASY<"));
         assertFalse(detailHtml.contains(">PLANNED<"));
+        assertFalse(detailHtml.contains(">SPECIALTY<"));
         assertFalse(detailHtml.contains(">DIFFICULT<"));
         assertFalse(detailHtml.contains(">UNAVAILABLE<"));
+
+        String editHtml = mockMvc.perform(get("/admin/catalog/{id}/edit", scaleConceptId)
+                        .session(authenticate())
+                        .header("HX-Request", "true"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertTrue(editHtml.contains("data-testid=\"availability-level-help\""));
+        assertTrue(editHtml.contains("data-testid=\"novelty-level-help\""));
+        assertTrue(editHtml.contains("Außergewöhnlichkeit als Kochzutat"));
     }
 
     @Test
@@ -350,7 +364,7 @@ class CatalogAdministrationMvcTest {
         assignRole(scale, "VEGETABLE");
         assignAvailability(cod, "GEORGIA", "EASY");
         assignAvailability(cod, "TOBIAS", "EASY");
-        assignAvailability(scale, "GEORGIA", "EASY");
+        assignAvailability(scale, "GEORGIA", "SPECIALTY");
         assignAvailability(scale, "TOBIAS", "PLANNED");
         jdbcTemplate.update("""
                 insert into ingredient_culinary_dimension (ingredient_concept_id, culinary_dimension_id, level)
@@ -436,11 +450,17 @@ class CatalogAdministrationMvcTest {
     }
 
     private static String availabilityLabel(CatalogQueries.CatalogAvailability availability) {
-        return switch (availability) {
-            case EASY -> "einfach";
-            case PLANNED -> "gezielter Einkauf";
-            case DIFFICULT -> "schwierig";
-            case UNAVAILABLE -> "regulär nicht verfügbar";
+        return availability.displayName();
+    }
+
+    private static String noveltyLabel(int level) {
+        return switch (level) {
+            case 1 -> "Standardverwendung";
+            case 2 -> "Vertraute Verwendung";
+            case 3 -> "Kontextgebundene Verwendung";
+            case 4 -> "Ungewöhnliche Verwendung";
+            case 5 -> "Ausgefallene Verwendung";
+            default -> throw new IllegalArgumentException("Novelty level must be between 1 and 5");
         };
     }
 

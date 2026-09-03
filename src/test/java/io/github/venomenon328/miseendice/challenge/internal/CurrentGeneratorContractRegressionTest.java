@@ -32,6 +32,8 @@ class CurrentGeneratorContractRegressionTest {
 
         GenerationSnapshotCodec.EncodedContext encoded = fixture.codec().encode(request, prepared);
 
+        assertThat(encoded.configurationSnapshot()).contains("\"SPECIALTY\":0.40");
+        assertThat(encoded.catalogSnapshot()).contains("\"SPECIALTY\"");
         assertThat(encoded.requestSnapshot()).contains("\"rerollBlockedConceptCodes\":[]");
         assertThat(encoded.preparedAttemptSnapshot()).contains("\"exclusionRuleEvaluations\"")
                 .doesNotContain("\"restrictionRuleEvaluations\"");
@@ -73,7 +75,7 @@ class CurrentGeneratorContractRegressionTest {
     private GenerationAttemptRequest request(GeneratorConfiguration configuration) {
         var catalog = CandidateSetTestData.catalog(List.of(CandidateSetTestData.concept(
                 1L, "VEGETABLE_A", Specificity.SPECIFIC, 1, Set.of("VEGETABLE"), Set.of(), Map.of(),
-                Set.of(), Set.of(), Availability.EASY)));
+                Set.of(), Set.of(), Availability.SPECIALTY)));
         return new GenerationAttemptRequest(AttemptType.INITIAL, DATE, 8, catalog, VisibleHistorySnapshot.empty(),
                 List.of(), configuration, 97_001L, RestrictionMode.AUTO);
     }

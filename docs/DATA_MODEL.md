@@ -129,12 +129,15 @@ Die administrationsorientierte Katalogprojektion und das Audit führen Code und 
 
 ## 6. Beschaffbarkeit
 
-`ingredient_availability` wird pro Zutatenkonzept und Teilnehmer direkt gepflegt. Vorgesehen sind vier qualitative Zustände:
+`ingredient_availability` wird pro Zutatenkonzept und Teilnehmer direkt gepflegt. Vorgesehen sind fünf geordnete qualitative Zustände:
 
-- `EASY`: problemlos realistisch beschaffbar
-- `PLANNED`: mit gezieltem Einkauf beziehungsweise Planung realistisch beschaffbar
-- `DIFFICULT`: schwierig, aber grundsätzlich möglich
-- `UNAVAILABLE`: regulär nicht realistisch beschaffbar
+- `EASY`: spontan beschaffbar
+- `PLANNED`: gezielt beschaffbar
+- `SPECIALTY`: Spezialbeschaffung
+- `DIFFICULT`: schwer beschaffbar
+- `UNAVAILABLE`: praktisch nicht beschaffbar
+
+Die verbindlichen Abgrenzungen, die vollständigen deutschen Hilfetexte und die Trennung von Kochungewöhnlichkeit stehen in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md). Ein fehlender Datensatz bedeutet `nicht gepflegt`, nicht eine sechste Stufe.
 
 Die Bezugsart wird nicht gespeichert.
 
@@ -142,17 +145,19 @@ Die Beschaffbarkeit eines allgemeineren Konzepts wird **nicht aus seinen bekannt
 
 Für einen erzeugten Session-Snapshot werden ausschließlich vorhandene Werte seiner Elektoratsmitglieder ausgewertet. Fehlt ein Wert, bleibt er neutral; ein vorhandenes `UNAVAILABLE` einer dieser Personen blockiert weiterhin. Werte von Personen außerhalb des Snapshots bleiben wirkungslos. Manuelle Vorgaben ignorieren Beschaffbarkeitsdaten vollständig.
 
-## 7. Ziehungsgewicht, Ungewöhnlichkeit und Saison
+## 7. Ziehungsgewicht, Kochungewöhnlichkeit und Saison
 
 Drei unterschiedliche Konzepte bleiben getrennt:
 
 - `base_draw_weight`: Wie stark soll ein Eintrag grundsätzlich in der Zufallsauswahl gewichtet werden?
-- `novelty_level`: Wie ungewöhnlich ist die Vorgabe? Optionale fünfstufige Klassifikation.
+- `novelty_level`: Wie außergewöhnlich ist die Vorgabe als Kochzutat? Optionale fünfstufige Klassifikation.
 - `ingredient_seasonality.weight_multiplier`: Monatlicher Faktor, der die Ziehungswahrscheinlichkeit verändert.
 
 Ein fehlender Saisonwert bedeutet Faktor `1.0`. Saisonfaktoren müssen größer als null sein; echte Nichtverfügbarkeit gehört in die Beschaffbarkeit.
 
 Das effektive Ziehungsgewicht wird nicht persistiert, sondern zur Laufzeit berechnet.
+
+`novelty_level` ist weder Beschaffbarkeit, Preis noch Vorrat. Seine Bezeichnungen und die redaktionelle Auslegung sind verbindlich in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md) festgelegt.
 
 ## 8. Cooldown, Sichtbarkeit und Wiederholungen
 

@@ -94,7 +94,7 @@ Das aktive Profil enthält ausschließlich:
 - Konzept-ID als opake interne Interaktionsreferenz,
 - sichtbaren Namen,
 - Ziehbarkeit und Gewichtung,
-- Ungewöhnlichkeit,
+- Kochungewöhnlichkeit,
 - aktive direkte Eltern und Kinder als `IngredientLookupRelation(conceptId, displayName)`,
 - direkt gepflegte funktionale Rollen,
 - direkt gepflegte kulinarische Flags,
@@ -110,7 +110,7 @@ Nur direkte und zum Zeitpunkt der Abfrage aktive Beziehungen werden geliefert. R
 
 Kulinarische Länderzuordnungen gelten ebenfalls ausschließlich für das konkret angezeigte Konzept. Die Lookup-Projektion liefert sie stabil nach ISO-Code sortiert mit Code und Anzeigename; sie leitet weder Parent→Child noch Child→Parent ab.
 
-## 5. Gewichtung und Ungewöhnlichkeit
+## 5. Gewichtung und Kochungewöhnlichkeit
 
 Bei einem aktiven ziehbaren Konzept wird die gespeicherte Gewichtung deutsch formatiert angezeigt, beispielsweise:
 
@@ -126,7 +126,7 @@ Bei einem aktiven, aber nicht eigenständig ziehbaren Konzept wird stattdessen a
 Gewichtung        nicht eigenständig ziehbar
 ```
 
-Die Ungewöhnlichkeit verwendet dieselbe fünfstufige verbale Skala wie das Datenmodell. Ein fehlender Wert erscheint ausdrücklich als `nicht gepflegt`; er wird weder als Stufe 0 noch als Stufe 1 interpretiert.
+Die Kochungewöhnlichkeit beschreibt ausschließlich die Außergewöhnlichkeit als Kochzutat und verwendet dieselbe fünfstufige verbale Skala wie das Datenmodell. Ein fehlender Wert erscheint ausdrücklich als `nicht gepflegt`; er wird weder als Stufe 0 noch als Stufe 1 interpretiert. Die verbindliche Begriffsabgrenzung steht in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md); Beschaffbarkeit bleibt ausdrücklich nicht Teil dieses Discord-Profils.
 
 ## 6. Zutaten-Card
 
@@ -175,7 +175,7 @@ Die verbale Fünfer-Skala lautet:
 
 Symbolik:
 
-- Ungewöhnlichkeit: `✨`
+- Kochungewöhnlichkeit: `✨`
 - Dominanz: `📣`
 - Süße: `🍯`
 - Säure: `🍋`
@@ -192,7 +192,7 @@ Beispiel:
 
 ```text
 Gewichtung        0,75
-Ungewöhnlichkeit  niedrig  ✨✨○○○
+Kochungewöhnlichkeit  niedrig  ✨✨○○○
 ```
 
 ```text

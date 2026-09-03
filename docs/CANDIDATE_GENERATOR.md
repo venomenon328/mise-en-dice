@@ -233,6 +233,7 @@ Maßgeblich ist der restriktivste vorhandene Beschaffbarkeitswert des vorab mate
 |---|---:|
 | `EASY` | 1,00 |
 | `PLANNED` | 0,45 |
+| `SPECIALTY` | 0,15 |
 | `DIFFICULT` | 0,03 |
 | `UNAVAILABLE` | 0,00 |
 | kein Wert vorhanden | 1,00 (neutral) |
@@ -654,6 +655,7 @@ Pro zufälligem Requirement:
 
 - `EASY = 100`,
 - `PLANNED = 65`,
+- `SPECIALTY = 40`,
 - `DIFFICULT = 20`.
 
 Die Komponente ist der Mittelwert. Gematchte manuelle Vorgaben werden angezeigt, aber nicht gegen den autoritativen Request bewertet.
@@ -944,6 +946,7 @@ Die Implementierung bildet sämtliche Defaults in einem unveränderlichen fachli
 | Ausschluss-Hardcooldown | 4 Challenges | 0 bis 52 |
 | Ausschluss-Abklinggrenze | 7 Challenges | größer als Hardcooldown, höchstens 104 |
 | `PLANNED`-Faktor | 0,45 | größer als `DIFFICULT`, höchstens 1 |
+| `SPECIALTY`-Faktor | 0,15 | größer als `DIFFICULT`, kleiner als `PLANNED` |
 | `DIFFICULT`-Faktor | 0,03 | größer 0, kleiner als `PLANNED` |
 | Stufe-5-Cap | 1 | 0 bis 4 |
 | Stufe-4/5-Cap | 2 | mindestens Stufe-5-Cap, höchstens 4 |
@@ -972,7 +975,7 @@ Die vollständigen Faktor-, Punkte-, Profil- und Quotentabellen aus den vorangeh
 Mindestens enthalten:
 
 - `generatorVersion = 1.2.0`,
-- `configurationVersion = 2026-08-22.1`,
+- `configurationVersion = 2026-09-03.1`,
 - `rngAlgorithm = SPLITMIX64_V1`,
 - `candidateSetSize = 12`,
 - Reservoir- und Versuchslimits,
@@ -988,7 +991,7 @@ Mindestens enthalten:
 - alle Fallbackstufen.
 
 Der produktive Default für neue Sessions ist `generatorVersion = 1.2.0`,
-`configurationVersion = 2026-08-22.1`, `candidateRestrictionProbability = 0.20` und eine vollständige
+`configurationVersion = 2026-09-03.1`, `candidateRestrictionProbability = 0.20` und eine vollständige
 `RESTRICTION`-Ähnlichkeitsgewichtung.
 
 Fail-fast-Validierung mindestens für:
@@ -1052,6 +1055,7 @@ Reason-Codes sind stabile maschinenlesbare Großschreibungswerte. Freitext ist e
 - `NOVELTY_TARGET_MATCH`
 - `NOVELTY_TARGET_MISMATCH`
 - `PLANNED_AVAILABILITY_LOAD`
+- `SPECIALTY_AVAILABILITY_LOAD`
 - `DIFFICULT_AVAILABILITY_LOAD`
 - `RECENT_SEMANTIC_FAMILY`
 - `KNOWN_INTENSITY_STACKING`

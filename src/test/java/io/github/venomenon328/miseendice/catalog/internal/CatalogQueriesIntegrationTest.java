@@ -115,7 +115,7 @@ class CatalogQueriesIntegrationTest {
         assignRole(curated, "ANIMAL_PROTEIN");
         assignFlag(curated, "FERMENTED");
         assignAvailability(curated, "GEORGIA", "EASY");
-        assignAvailability(curated, "TOBIAS", "DIFFICULT");
+        assignAvailability(curated, "TOBIAS", "SPECIALTY");
         long incomplete = insertConcept("INCOMPLETE", "Query incomplete open", "OPEN", true, true, null);
         long completeOpenWithoutChild = insertConcept("OPEN_COMPLETE", "Query complete open", "OPEN", true, true, null);
         assignRole(completeOpenWithoutChild, "VEGETABLE");
@@ -131,7 +131,7 @@ class CatalogQueriesIntegrationTest {
         var filters = catalogQueries.search(criteria(
                 "query", null, Set.of("ANIMAL_PROTEIN", "FRUIT"), Set.of("FERMENTED"),
                 new CatalogAvailabilityFilter(Set.of(CatalogAvailability.EASY), false),
-                new CatalogAvailabilityFilter(Set.of(CatalogAvailability.DIFFICULT), false),
+                new CatalogAvailabilityFilter(Set.of(CatalogAvailability.SPECIALTY), false),
                 new CatalogNoveltyFilter(Set.of(4), false), 0, 100
         ));
         assertThat(filters.items()).extracting(item -> item.id()).containsExactly(curated);

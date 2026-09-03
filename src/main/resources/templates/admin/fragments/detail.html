@@ -43,11 +43,11 @@
         <dl class="detail-list">
             <div><dt>Gewicht</dt><dd class="numeric-value" th:text="${detail.baseDrawWeight}">1.0000</dd></div>
             <div>
-                <dt>Ungewöhnlichkeit</dt>
+                <dt>Kochungewöhnlichkeit</dt>
                 <dd>
                     <span th:if="${detail.noveltyLevel != null}" class="metric-scale metric-scale--novelty"
                           data-testid="novelty-scale" role="img"
-                          th:aria-label="|Ungewöhnlichkeit: ${detail.noveltyLevel} von 5|">
+                          th:aria-label="|Kochungewöhnlichkeit: ${noveltyLabels.get(detail.noveltyLevel)}|">
                         <svg th:each="step : ${#numbers.sequence(1, 5)}" class="metric-icon"
                              th:classappend="${step <= detail.noveltyLevel} ? ' is-active' : ' is-inactive'"
                              th:attr="data-scale-step=${step},data-scale-state=${step <= detail.noveltyLevel ? 'active' : 'inactive'}"
@@ -55,6 +55,7 @@
                             <use href="/admin/assets/catalog-icons.svg#icon-novelty"></use>
                         </svg>
                     </span>
+                    <span th:if="${detail.noveltyLevel != null}" th:text="${noveltyLabels.get(detail.noveltyLevel)}">Standardverwendung</span>
                     <span th:if="${detail.noveltyLevel == null}" class="unmanaged-value"
                           data-testid="novelty-unmanaged">nicht gepflegt</span>
                 </dd>
@@ -242,13 +243,13 @@
                     <div th:classappend="${form.randomDrawEnabled != currentDetail.randomDrawEnabled} ? ' is-different'"><dt>Ziehbar</dt><dd th:text="${form.randomDrawEnabled ? 'Ja' : 'Nein'}">Nein</dd></div>
                     <div th:classappend="${form.challengeSpecificity != currentDetail.challengeSpecificity} ? ' is-different'"><dt>Spezifität</dt><dd th:text="${form.challengeSpecificity == 'OPEN' ? 'Offen' : 'Spezifisch'}">Spezifisch</dd></div>
                     <div th:classappend="${form.baseDrawWeight != currentDetail.baseDrawWeight.toPlainString()} ? ' is-different'"><dt>Gewicht</dt><dd th:text="${form.baseDrawWeight}">1.0000</dd></div>
-                    <div th:classappend="${form.noveltyLevel != (currentDetail.noveltyLevel == null ? '' : currentDetail.noveltyLevel.toString())} ? ' is-different'"><dt>Ungewöhnlichkeit</dt><dd th:text="${form.noveltyLevel.isEmpty() ? 'nicht gepflegt' : form.noveltyLevel}">nicht gepflegt</dd></div>
+                    <div th:classappend="${form.noveltyLevel != (currentDetail.noveltyLevel == null ? '' : currentDetail.noveltyLevel.toString())} ? ' is-different'"><dt>Kochungewöhnlichkeit</dt><dd th:text="${form.noveltyLevel.isEmpty() ? 'nicht gepflegt' : noveltyLabels.get(T(java.lang.Integer).valueOf(form.noveltyLevel))}">nicht gepflegt</dd></div>
                     <div th:classappend="${form.curatorNote != (currentDetail.curatorNote ?: '')} ? ' is-different'"><dt>Kuratornotiz</dt><dd th:text="${form.curatorNote.isEmpty() ? 'keine' : form.curatorNote}">keine</dd></div>
                     <div><dt>Rollen</dt><dd th:text="${#strings.listJoin(form.metadata.functionalRoleCodes, ', ')} ?: 'nicht gepflegt'">nicht gepflegt</dd></div>
                     <div><dt>Flags</dt><dd th:text="${#strings.listJoin(form.metadata.culinaryFlagCodes, ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Kulinarische Zuordnung</dt><dd th:text="${#strings.listJoin(form.metadata.culinaryCountryCodes, ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Dimensionen</dt><dd th:text="${form.metadata.culinaryDimensionLevels}">nicht gepflegt</dd></div>
-                    <div><dt>Beschaffbarkeit</dt><dd th:text="${form.metadata.availabilityByParticipant}">nicht gepflegt</dd></div>
+                    <div><dt>Beschaffbarkeit</dt><dd th:text="${form.metadata.availabilitySummary()}">nicht gepflegt</dd></div>
                     <div><dt>Saison</dt><dd th:text="${form.metadata.seasonalityByMonth}">1.0</dd></div>
                 </dl>
                 <div th:if="${pendingRelationSummaries != null and !pendingRelationSummaries.isEmpty()}" class="conflict-relations" data-testid="pending-relation-conflict-summary">
@@ -266,13 +267,13 @@
                     <div th:classappend="${form.randomDrawEnabled != currentDetail.randomDrawEnabled} ? ' is-different'"><dt>Ziehbar</dt><dd th:text="${currentDetail.randomDrawEnabled ? 'Ja' : 'Nein'}">Nein</dd></div>
                     <div th:classappend="${form.challengeSpecificity != currentDetail.challengeSpecificity} ? ' is-different'"><dt>Spezifität</dt><dd th:text="${currentDetail.challengeSpecificity == 'OPEN' ? 'Offen' : 'Spezifisch'}">Spezifisch</dd></div>
                     <div th:classappend="${form.baseDrawWeight != currentDetail.baseDrawWeight.toPlainString()} ? ' is-different'"><dt>Gewicht</dt><dd th:text="${currentDetail.baseDrawWeight}">1.0000</dd></div>
-                    <div th:classappend="${form.noveltyLevel != (currentDetail.noveltyLevel == null ? '' : currentDetail.noveltyLevel.toString())} ? ' is-different'"><dt>Ungewöhnlichkeit</dt><dd th:text="${currentDetail.noveltyLevel ?: 'nicht gepflegt'}">nicht gepflegt</dd></div>
+                    <div th:classappend="${form.noveltyLevel != (currentDetail.noveltyLevel == null ? '' : currentDetail.noveltyLevel.toString())} ? ' is-different'"><dt>Kochungewöhnlichkeit</dt><dd th:text="${currentDetail.noveltyLevel == null ? 'nicht gepflegt' : noveltyLabels.get(currentDetail.noveltyLevel)}">nicht gepflegt</dd></div>
                     <div th:classappend="${form.curatorNote != (currentDetail.curatorNote ?: '')} ? ' is-different'"><dt>Kuratornotiz</dt><dd th:text="${currentDetail.curatorNote ?: 'keine'}">keine</dd></div>
                     <div><dt>Rollen</dt><dd th:text="${#strings.listJoin(currentDetail.functionalRoles.![code], ', ')} ?: 'nicht gepflegt'">nicht gepflegt</dd></div>
                     <div><dt>Flags</dt><dd th:text="${#strings.listJoin(currentDetail.culinaryFlags.![code], ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Kulinarische Zuordnung</dt><dd th:text="${#strings.listJoin(currentDetail.culinaryCountries.![code], ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Dimensionen</dt><dd th:text="${currentDetail.culinaryDimensions}">nicht gepflegt</dd></div>
-                    <div><dt>Beschaffbarkeit</dt><dd th:text="${currentDetail.availability}">nicht gepflegt</dd></div>
+                    <div><dt>Beschaffbarkeit</dt><dd th:text="${#strings.listJoin(currentDetail.availability.![participant.displayName + ': ' + (level == null ? 'nicht gepflegt' : availabilityLabels.get(level))], ', ')}">nicht gepflegt</dd></div>
                     <div><dt>Saison</dt><dd th:text="${currentDetail.seasonality}">1.0</dd></div>
                     <div><dt>Direkte Eltern</dt><dd th:text="${#strings.listJoin(currentDetail.directParents.![displayName], ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Direkte Kinder</dt><dd th:text="${#strings.listJoin(currentDetail.directChildren.![displayName], ', ')} ?: 'keine'">keine</dd></div>
@@ -361,12 +362,13 @@
                     <p th:if="${formErrors != null and formErrors.get('challengeSpecificity') != null}" class="field-error" th:text="${formErrors.get('challengeSpecificity')}">Fehler</p>
                     <label> Ziehungsgewicht <input name="baseDrawWeight" inputmode="decimal" required th:value="${form.baseDrawWeight}"></label>
                     <p th:if="${formErrors != null and formErrors.get('baseDrawWeight') != null}" class="field-error" th:text="${formErrors.get('baseDrawWeight')}">Fehler</p>
-                    <label> Ungewöhnlichkeit
+                    <label> Kochungewöhnlichkeit
                         <select name="noveltyLevel">
                             <option value="" th:selected="${form.noveltyLevel.isEmpty()}">nicht gepflegt</option>
-                            <option th:each="level : ${#numbers.sequence(1, 5)}" th:value="${level}" th:selected="${form.noveltyLevel == level.toString()}" th:text="|Stufe ${level}|">Stufe 1</option>
+                            <option th:each="level : ${#numbers.sequence(1, 5)}" th:value="${level}" th:selected="${form.noveltyLevel == level.toString()}" th:text="${noveltyLabels.get(level)}">Standardverwendung</option>
                         </select>
                     </label>
+                    <div class="muted-copy" data-testid="novelty-level-help"><p>Außergewöhnlichkeit als Kochzutat – nicht Beschaffung, Preis oder Vorrat.</p><p th:each="level : ${#numbers.sequence(1, 5)}" th:text="|${noveltyLabels.get(level)}: ${noveltyDescriptions.get(level)}|">Standardverwendung: Erklärung</p></div>
                     <p th:if="${formErrors != null and formErrors.get('noveltyLevel') != null}" class="field-error" th:text="${formErrors.get('noveltyLevel')}">Fehler</p>
                 </div>
             </section>
@@ -500,6 +502,7 @@
                         </select>
                     </label>
                 </div>
+                <div class="muted-copy" data-testid="availability-level-help"><p>Beschaffbarkeit wird pro Person und unabhängig von der Kochungewöhnlichkeit gepflegt.</p><p th:each="level : ${availabilityLevels}" th:text="|${availabilityLabels.get(level)}: ${availabilityDescriptions.get(level)}|">Spontan beschaffbar: Erklärung</p></div>
                 <p th:if="${formErrors != null and formErrors.get('availabilityGeorgia') != null}" class="field-error" th:text="${formErrors.get('availabilityGeorgia')}">Fehler</p>
                 <p th:if="${formErrors != null and formErrors.get('availabilityTobias') != null}" class="field-error" th:text="${formErrors.get('availabilityTobias')}">Fehler</p>
                 <p th:if="${formErrors != null and formErrors.get('availability') != null}" class="field-error" th:text="${formErrors.get('availability')}">Fehler</p>

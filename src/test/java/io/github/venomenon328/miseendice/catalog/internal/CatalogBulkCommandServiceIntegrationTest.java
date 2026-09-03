@@ -88,13 +88,13 @@ class CatalogBulkCommandServiceIntegrationTest {
         execute(enabled, BulkAction.ENABLE_RANDOM_DRAW, null, null);
         execute(enabled, BulkAction.ADD_FUNCTIONAL_ROLE, "FRUIT", null);
         execute(enabled, BulkAction.REMOVE_FUNCTIONAL_ROLE, "FRUIT", null);
-        execute(enabled, BulkAction.SET_GEORGIA_AVAILABILITY, null, CatalogQueries.CatalogAvailability.DIFFICULT);
+        execute(enabled, BulkAction.SET_GEORGIA_AVAILABILITY, null, CatalogQueries.CatalogAvailability.SPECIALTY);
         execute(enabled, BulkAction.SET_TOBIAS_AVAILABILITY, null, CatalogQueries.CatalogAvailability.PLANNED);
 
         assertThat(active(inactive)).isFalse();
         assertThat(randomDrawEnabled(enabled)).isTrue();
         assertThat(roleCodes(enabled)).containsExactly("VEGETABLE");
-        assertThat(availability(enabled, "GEORGIA")).isEqualTo("DIFFICULT");
+        assertThat(availability(enabled, "GEORGIA")).isEqualTo("SPECIALTY");
         assertThat(availability(enabled, "TOBIAS")).isEqualTo("PLANNED");
         assertThat(auditCount()).isEqualTo(8);
         assertThat(jdbcTemplate.queryForObject("select count(distinct change_group_id) from catalog_audit_entry where actor_key = ?", Integer.class, ACTOR))

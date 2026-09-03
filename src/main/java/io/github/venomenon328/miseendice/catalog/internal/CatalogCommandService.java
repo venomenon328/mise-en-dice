@@ -407,7 +407,7 @@ class CatalogCommandService implements CatalogCommands {
                 default -> null;
             };
             if (cap != null && weight.compareTo(cap) > 0) {
-                warnings.add("Die Ungewöhnlichkeit Stufe %d hat in der Baseline einen Richtwert von höchstens %s."
+                warnings.add("Die Kochungewöhnlichkeit Stufe %d hat in der Baseline einen Richtwert von höchstens %s."
                         .formatted(noveltyLevel, cap));
             }
         }

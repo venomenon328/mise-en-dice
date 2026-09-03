@@ -237,7 +237,7 @@ class CatalogAdministrationEditingMvcTest {
                         .param("functionalRole", "FRUIT")
                         .param("culinaryFlag", "PICKLED")
                         .param("dimension[SWEETNESS]", "5")
-                        .param("availability[GEORGIA]", "PLANNED")
+                        .param("availability[GEORGIA]", "SPECIALTY")
                         .param("availability[TOBIAS]", "EASY")
                         .param("seasonality[1]", "1.3")
                         .param("version", "0"))
@@ -248,6 +248,7 @@ class CatalogAdministrationEditingMvcTest {
                 .andExpect(content().string(containsString("Rollen")))
                 .andExpect(content().string(containsString("Dimensionen")))
                 .andExpect(content().string(containsString("Beschaffbarkeit")))
+                .andExpect(content().string(containsString("Spezialbeschaffung")))
                 .andExpect(content().string(containsString("Saison")));
         assertTrue(jdbcTemplate.queryForObject(
                 "select display_name = 'Changed elsewhere' from ingredient_concept where id = ?", Boolean.class, conflictConcept
@@ -272,7 +273,7 @@ class CatalogAdministrationEditingMvcTest {
                         .param("dimension[HEAT]", "4")
                         .param("dimension[UMAMI]", "2")
                         .param("availability[GEORGIA]", "EASY")
-                        .param("availability[TOBIAS]", "PLANNED")
+                        .param("availability[TOBIAS]", "SPECIALTY")
                         .param("seasonality[1]", "1.3")
                         .param("seasonality[2]", "1.0")
                         .param("version", "0"))
@@ -282,6 +283,7 @@ class CatalogAdministrationEditingMvcTest {
         assertTrue(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_functional_role ifr join functional_role fr on fr.id = ifr.functional_role_id where ifr.ingredient_concept_id = ? and fr.code = 'AROMATIC')", Boolean.class, concept));
         assertTrue(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_culinary_flag icf join culinary_flag cf on cf.id = icf.culinary_flag_id where icf.ingredient_concept_id = ? and cf.code = 'FERMENTED')", Boolean.class, concept));
         assertTrue(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_culinary_dimension idim join culinary_dimension dim on dim.id = idim.culinary_dimension_id where idim.ingredient_concept_id = ? and dim.code = 'HEAT' and idim.level = 4)", Boolean.class, concept));
+        assertTrue(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_availability ia join participant p on p.id = ia.participant_id where ia.ingredient_concept_id = ? and p.code = 'TOBIAS' and ia.availability_level = 'SPECIALTY')", Boolean.class, concept));
         assertTrue(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_seasonality where ingredient_concept_id = ? and month = 1 and weight_multiplier = 1.3)", Boolean.class, concept));
         assertFalse(jdbcTemplate.queryForObject("select exists (select 1 from ingredient_seasonality where ingredient_concept_id = ? and month = 2)", Boolean.class, concept));
 

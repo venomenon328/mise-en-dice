@@ -30,6 +30,7 @@ public interface CatalogGeneratorProjection {
     enum Availability {
         EASY,
         PLANNED,
+        SPECIALTY,
         DIFFICULT,
         UNAVAILABLE
     }

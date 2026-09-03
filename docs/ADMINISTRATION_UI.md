@@ -97,7 +97,7 @@ Der linke Bereich belegt ungefähr 40 %, der rechte ungefähr 60 % der verfügba
 │ ▾ Fisch                       │                                               │
 │   ▾ weißfleischiger Fisch     │ ZIEHUNG                                       │
 │     ● Kabeljau                 │ Gewicht          1.0000                       │
-│     ○ Seelachs                │ Ungewöhnlich     2                            │
+│     ○ Seelachs                │ Kochungewöhnlich 2                            │
 │   ▸ fettreicher Fisch         │                                               │
 │ ▾ Meeresfrüchte               │ BEZIEHUNGEN                                   │
 │ ...                           │ Eltern: Fisch, weißfleischiger Fisch          │
@@ -163,9 +163,9 @@ Mindestens verfügbar sind:
 - funktionale Rolle: Mehrfachauswahl,
 - kulinarische Flags: Mehrfachauswahl,
 - kulinarische Zuordnung: Mehrfachauswahl aus dem migrationsgeführten Länder-Referenzbestand,
-- Beschaffbarkeit Georgia: alle vier Stufen plus `nicht gepflegt`,
-- Beschaffbarkeit Tobias: alle vier Stufen plus `nicht gepflegt`,
-- Ungewöhnlichkeitsstufe: 1–5 beziehungsweise `nicht gepflegt`.
+- Beschaffbarkeit Georgia: alle fünf Stufen plus `nicht gepflegt`,
+- Beschaffbarkeit Tobias: alle fünf Stufen plus `nicht gepflegt`,
+- Kochungewöhnlichkeitsstufe: 1–5 beziehungsweise `nicht gepflegt`.
 
 Filter kombinieren sich mit UND; Mehrfachwerte innerhalb desselben Filters verwenden ODER.
 
@@ -176,7 +176,7 @@ In der Listenansicht sind mindestens verfügbar:
 - Anzeigename auf-/absteigend,
 - zuletzt geändert,
 - Ziehungsgewicht,
-- Ungewöhnlichkeit.
+- Kochungewöhnlichkeit.
 
 Die Hierarchie sortiert Kinder alphabetisch nach Anzeigename. Eine fachliche manuelle Sortierreihenfolge wird nicht eingeführt.
 
@@ -305,7 +305,7 @@ Darstellung:
 
 - Spezifität als klare Zweierauswahl `spezifisch` / `offen`,
 - Gewicht als positive Dezimalzahl, Standard `1.0000`,
-- Ungewöhnlichkeit als Stufen 1–5 plus `nicht gepflegt`.
+- Kochungewöhnlichkeit als Stufen 1–5 plus `nicht gepflegt`, mit verständlichen Stufenbezeichnungen und Hilfetexten.
 
 `active = false` übersteuert die operative Ziehbarkeit. `random_draw_enabled` wird bei Deaktivierung **nicht automatisch verändert**, damit eine spätere Reaktivierung den vorherigen Zustand wiederherstellen kann.
 
@@ -372,13 +372,16 @@ Georgia und Tobias werden nebeneinander dargestellt.
 
 Je Person:
 
-- `EASY` – einfach,
-- `PLANNED` – gezielter Einkauf,
-- `DIFFICULT` – schwierig,
-- `UNAVAILABLE` – regulär nicht verfügbar,
+- `EASY` – Spontan beschaffbar,
+- `PLANNED` – Gezielt beschaffbar,
+- `SPECIALTY` – Spezialbeschaffung,
+- `DIFFICULT` – Schwer beschaffbar,
+- `UNAVAILABLE` – Praktisch nicht beschaffbar,
 - `nicht gepflegt`.
 
 `nicht gepflegt` ist nur zulässig, solange das Konzept nicht gleichzeitig aktiv und zufällig ziehbar ist.
+
+Die Detail-, Editier-, Filter-, Bulk- und Konfliktansicht verwenden diese Bezeichnungen statt technischer Codes. Die Fünfer-Skala, der Unterschied zu Kochungewöhnlichkeit und die verbindlichen Hilfetexte sind in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md) festgelegt.
 
 ### 7.9 Saison
 
@@ -1064,7 +1067,7 @@ Die Implementierung wird nach dieser Spezifikation in sechs fachlich getrennte P
 - Ziehbarkeit,
 - Spezifität,
 - Gewicht,
-- Ungewöhnlichkeit,
+- Kochungewöhnlichkeit,
 - Kuratornotiz,
 - optimistisches Locking und Audit in produktiven Schreibflows.
 

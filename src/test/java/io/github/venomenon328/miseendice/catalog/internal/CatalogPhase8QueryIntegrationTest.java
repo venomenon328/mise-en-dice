@@ -129,7 +129,7 @@ class CatalogPhase8QueryIntegrationTest {
                 .anySatisfy(diff -> assertThat(diff.label()).isEqualTo("Anzeigename"))
                 .anySatisfy(diff -> {
                     assertThat(diff.label()).isEqualTo("Beschaffbarkeit");
-                    assertThat(diff.afterValue()).contains("Georgia", "DIFFICULT");
+                    assertThat(diff.afterValue()).contains("Georgia", "Schwer beschaffbar");
                 });
 
         var entityFiltered = auditQueries.search(new CatalogAuditSearchCriteria(

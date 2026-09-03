@@ -147,10 +147,27 @@ public interface CatalogQueries {
     }
 
     enum CatalogAvailability {
-        EASY,
-        PLANNED,
-        DIFFICULT,
-        UNAVAILABLE
+        EASY("Spontan beschaffbar", "In einer alltäglichen nahe gelegenen Bezugsquelle zuverlässig erhältlich."),
+        PLANNED("Gezielt beschaffbar", "Ein gut sortierter Markt, bekannter Spezialladen oder regulärer Onlinehandel ist nötig."),
+        SPECIALTY("Spezialbeschaffung", "Spezialisierter Handel, eine Fahrt in eine größere Stadt oder spezialisierter Onlinehandel ist nötig."),
+        DIFFICULT("Schwer beschaffbar", "Auch Spezialgeschäfte sind unsicher; mehrere Versuche oder längere Planung können nötig sein."),
+        UNAVAILABLE("Praktisch nicht beschaffbar", "Es gibt keinen realistischen, wiederholbaren Bezugsweg.");
+
+        private final String displayName;
+        private final String shortDescription;
+
+        CatalogAvailability(String displayName, String shortDescription) {
+            this.displayName = displayName;
+            this.shortDescription = shortDescription;
+        }
+
+        public String displayName() {
+            return displayName;
+        }
+
+        public String shortDescription() {
+            return shortDescription;
+        }
     }
 
     record CatalogSearchResult(List<CatalogListItem> items, long totalItems, int page, int pageSize) {

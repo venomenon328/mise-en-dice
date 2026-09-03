@@ -251,7 +251,7 @@ Für Auswahl und Kuratierung relevante Informationen sind unter anderem:
 - funktionale Rollen,
 - kulinarische Eigenschaften,
 - individuelle Beschaffbarkeit für Georgia und Tobias,
-- optionale Ungewöhnlichkeit,
+- optionale Kochungewöhnlichkeit,
 - Ziehungsgewicht,
 - Saisonabhängigkeit,
 - verpflichtende kurze sachliche Kuratornotizen,
@@ -263,7 +263,7 @@ Die Datenbasis bleibt bewusst kuratiertes Systemwissen und keine universelle Leb
 
 Eine Zutat muss nicht in jedem Discounter liegen. Asia-Läden, Spezialgeschäfte und gegebenenfalls Online-Beschaffung sind legitim, sofern die Beschaffung für beide realistisch bleibt.
 
-Beschaffbarkeit wird individuell gepflegt, da die Einkaufsmöglichkeiten in Rostock und im Raum Bornheim/Köln unterschiedlich sein können.
+Beschaffbarkeit wird individuell gepflegt, da die Einkaufsmöglichkeiten in Rostock und im Raum Bornheim/Köln unterschiedlich sein können. Die verbindliche Fünfer-Skala und ihre Abgrenzung von der Kochungewöhnlichkeit stehen in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md).
 
 Außergewöhnliche Zutaten dürfen Teil des Pools sein, sollten aber nur aktiviert werden, wenn ihre tatsächliche Beschaffbarkeit plausibel bestätigt ist.
 
@@ -279,7 +279,7 @@ Sie dient insbesondere für:
 - den Konkretisierungsgraphen hierarchisch navigieren und direkte Beziehungen pflegen,
 - Rollen und kulinarische Eigenschaften zuordnen,
 - individuelle Beschaffbarkeit verwalten,
-- Ziehungsgewichte, Ungewöhnlichkeit und Saisonfaktoren pflegen,
+- Ziehungsgewichte, Kochungewöhnlichkeit und Saisonfaktoren pflegen,
 - Ausschlussregeln verwalten,
 - spätere redaktionelle Änderungen über einen Audit-Trail nachvollziehen.
 

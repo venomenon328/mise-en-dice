@@ -24,7 +24,9 @@ class DiscordIngredientLookupRendererTest {
                 List.of(), List.of(), List.of(), List.of()));
 
         assertThat(drawable.title()).isEqualTo("🥢 Testzutat");
-        assertThat(drawable.description()).contains("Gewichtung        0,85", "Ungewöhnlichkeit  hoch", "✨✨✨✨▫️");
+        assertThat(drawable.description()).contains(
+                "Gewichtung            0,85", "Kochungewöhnlichkeit  hoch", "✨✨✨✨▫️",
+                "Einordnung            Außergewöhnlichkeit als Kochzutat");
         assertThat(drawable.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
                 .doesNotContain("Basisdaten")
                 .endsWith("⬆️ Allgemeinere Begriffe", "⬇️ Bekannte Konkretisierungen");
