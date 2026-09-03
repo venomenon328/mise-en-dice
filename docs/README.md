@@ -6,6 +6,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 
 - [`VISION.md`](VISION.md): Produktidee, Challenge-Regeln, Ziele und Nicht-Ziele
 - [`DATA_MODEL.md`](DATA_MODEL.md): fachliche Entscheidungen des PostgreSQL-Datenmodells
+- [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md): verbindliche Ziel- und Redaktionssemantik für die getrennte Bewertung von personenspezifischer Beschaffbarkeit und gemeinsamer Kochungewöhnlichkeit einschließlich des katalogweiten Reviewprozesses
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
 - [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md): redaktionelle Semantik und technische Pflege der expliziten kulinarischen Länderzuordnungen
 - [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md): verbindliche Bedien-, Interaktions-, Locking-, Audit- und Sicherheitsentscheidungen für die private Katalogverwaltung
@@ -57,3 +58,14 @@ Die neuen Funktionen sind bewusst in folgende Pakete getrennt:
 #151 und #152 bauen auf #150 auf und können danach unabhängig voneinander umgesetzt werden. #153 benötigt #150, aber nicht zwingend #151 oder #152. #154 folgt auf #153; #155 folgt auf #151, #153 und #154. Issue #145 zum Challenge-Card-Produktionsworkflow bleibt davon unabhängig.
 
 Entwicklung und automatisierte Tests bleiben weiterhin vollständig ohne echte Discord- oder OpenAI-Verbindungen.
+
+## Metadatenprogramm ab #186
+
+Die vollständige Trennung und Neukalibrierung von Beschaffbarkeit und Kochungewöhnlichkeit ist in vier Folgepakete geteilt:
+
+1. #187 – technische Fünfer-Skala und Begriffsschärfung,
+2. #188 – katalogweiter fachlicher Vollreview mit menschlicher Freigabe,
+3. #189 – migrationsgeführte Übernahme der freigegebenen Werte und Entkopplung pauschaler Gewichtswarnungen,
+4. #190 – breite reproduzierbare Generator-Neukalibrierung auf dem revidierten Katalog.
+
+#188 kann nach Freigabe der Spezifikation parallel zu #187 vorbereitet werden. #189 benötigt beide abgeschlossenen Vorgänger; #190 folgt auf #189. Produktive redaktionelle Einzelwerte werden dabei nicht als automatisiertes Test-Oracle dupliziert.
