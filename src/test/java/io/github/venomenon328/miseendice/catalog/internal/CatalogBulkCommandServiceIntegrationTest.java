@@ -102,6 +102,26 @@ class CatalogBulkCommandServiceIntegrationTest {
     }
 
     @Test
+    void rendersHumanReadableAvailabilityAndCookingNoveltyInBulkPreview() {
+        long concept = insertConcept("PREVIEW_LABELS", true, true, new BigDecimal("0.8000"));
+        assignRoles(concept, "VEGETABLE");
+        assignAvailability(concept, "GEORGIA", "EASY");
+        assignAvailability(concept, "TOBIAS", "EASY");
+        jdbcTemplate.update("update ingredient_concept set novelty_level = 4 where id = ?", concept);
+
+        BulkOperation operation = new BulkOperation(
+                List.of(new BulkSelection(concept, 0)), BulkAction.SET_GEORGIA_AVAILABILITY,
+                null, CatalogQueries.CatalogAvailability.SPECIALTY, true, ACTOR);
+        var preview = bulkCommands.preview(operation);
+
+        assertThat(preview.items()).singleElement().satisfies(item ->
+                assertThat(item.effects()).containsExactly("Georgia: Spezialbeschaffung"));
+        assertThat(preview.items().getFirst().effects()).allMatch(effect -> !effect.contains("SPECIALTY"));
+        assertThat(preview.warnings()).anyMatch(warning -> warning.contains("Kochungewöhnlichkeit Stufe 4"));
+        assertThat(preview.warnings()).noneMatch(warning -> warning.contains("Ungewöhnlichkeit Stufe 4"));
+    }
+
+    @Test
     void leavesNoOpsUnversionedAndRollsTheWholeSelectionBackOnAStaleVersion() {
         long first = insertConcept("STALE_FIRST", true, false);
         long second = insertConcept("STALE_SECOND", true, false);
@@ -178,6 +198,7 @@ class CatalogBulkCommandServiceIntegrationTest {
                 List.of(new BulkSelection(parent, 1), new BulkSelection(child, 1)),
                 BulkAction.REMOVE_FUNCTIONAL_ROLE, "FRUIT", null, true, ACTOR);
         var disjointResult = bulkCommands.execute(removeLastCommonRole);
+
         assertThat(disjointResult.changedConceptIds()).containsExactly(parent, child);
         assertThat(roleCodes(parent)).isEmpty();
         assertThat(roleCodes(child)).isEmpty();
