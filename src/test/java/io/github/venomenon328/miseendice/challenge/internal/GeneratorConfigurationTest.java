@@ -19,15 +19,17 @@ class GeneratorConfigurationTest {
         GeneratorConfiguration valid = TestGeneratorConfiguration.defaults();
         Map<Availability, BigDecimal> calibratedFactors = Map.of(
                 Availability.EASY, new BigDecimal("1.00"), Availability.PLANNED, new BigDecimal("0.45"),
-                Availability.DIFFICULT, new BigDecimal("0.03"), Availability.UNAVAILABLE, new BigDecimal("0.00"));
+                Availability.SPECIALTY, new BigDecimal("0.15"), Availability.DIFFICULT, new BigDecimal("0.03"),
+                Availability.UNAVAILABLE, new BigDecimal("0.00"));
         GeneratorConfiguration calibrated = copyWithAvailability(valid, calibratedFactors);
         assertThat(calibrated.availabilityFactors().get(Availability.EASY)).isEqualByComparingTo("1.00");
         assertThat(calibrated.availabilityFactors().get(Availability.PLANNED)).isEqualByComparingTo("0.45");
+        assertThat(calibrated.availabilityFactors().get(Availability.SPECIALTY)).isEqualByComparingTo("0.15");
         assertThat(calibrated.availabilityFactors().get(Availability.DIFFICULT)).isEqualByComparingTo("0.03");
         assertThat(calibrated.availabilityFactors().get(Availability.UNAVAILABLE)).isEqualByComparingTo("0.00");
 
         Map<Availability, BigDecimal> invalid = new EnumMap<>(calibrated.availabilityFactors());
-        invalid.put(Availability.DIFFICULT, new BigDecimal("0.45"));
+        invalid.put(Availability.SPECIALTY, new BigDecimal("0.45"));
         assertThatThrownBy(() -> copyWithAvailability(valid, invalid))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Availability factors");

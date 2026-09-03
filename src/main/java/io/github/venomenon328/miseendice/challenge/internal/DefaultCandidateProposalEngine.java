@@ -377,10 +377,13 @@ final class DefaultCandidateProposalEngine implements CandidateProposalEngine {
         List<Availability> randomAvailability = requirements.stream().filter(r -> r.source() == RequirementSource.RANDOM)
                 .map(r -> worstAvailability(r.concept(), context)).filter(java.util.Objects::nonNull).toList();
         int availability = randomAvailability.isEmpty() ? 100 : (int) Math.round(randomAvailability.stream()
-                .mapToInt(value -> value == Availability.EASY ? 100 : value == Availability.PLANNED ? 65 : 20)
+                .mapToInt(value -> value == Availability.EASY ? 100
+                        : value == Availability.PLANNED ? 65
+                        : value == Availability.SPECIALTY ? 40 : 20)
                 .average().orElse(100));
         scores.put(ScoreComponent.AVAILABILITY_LOAD, decimal(availability));
         if (randomAvailability.contains(Availability.PLANNED)) reasons.add(GeneratorReasonCode.PLANNED_AVAILABILITY_LOAD);
+        if (randomAvailability.contains(Availability.SPECIALTY)) reasons.add(GeneratorReasonCode.SPECIALTY_AVAILABILITY_LOAD);
         if (randomAvailability.contains(Availability.DIFFICULT)) reasons.add(GeneratorReasonCode.DIFFICULT_AVAILABILITY_LOAD);
 
         int freshness = historyFreshness(requirements, profile, context, reasons);

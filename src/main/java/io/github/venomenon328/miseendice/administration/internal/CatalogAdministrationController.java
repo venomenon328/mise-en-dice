@@ -700,7 +700,7 @@ class CatalogAdministrationController {
             try {
                 return Integer.valueOf(text(value));
             } catch (NumberFormatException ignored) {
-                errors.put("noveltyLevel", "Die Ungewöhnlichkeit muss zwischen 1 und 5 liegen oder leer bleiben.");
+                errors.put("noveltyLevel", "Die Kochungewöhnlichkeit muss zwischen 1 und 5 liegen oder leer bleiben.");
                 return null;
             }
         }
@@ -797,6 +797,32 @@ class CatalogAdministrationController {
 
         public String availability(String participantCode) {
             return availabilityByParticipant.getOrDefault(participantCode, "");
+        }
+
+        public String availabilitySummary() {
+            return availabilityByParticipant.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .map(entry -> participantLabel(entry.getKey()) + ": " + availabilityLabel(entry.getValue()))
+                    .collect(java.util.stream.Collectors.joining(", "));
+        }
+
+        private static String participantLabel(String code) {
+            return switch (code) {
+                case "GEORGIA" -> "Georgia";
+                case "TOBIAS" -> "Tobias";
+                default -> code;
+            };
+        }
+
+        private static String availabilityLabel(String value) {
+            if (value == null || value.isBlank()) {
+                return "nicht gepflegt";
+            }
+            try {
+                return CatalogAvailability.valueOf(value).displayName();
+            } catch (IllegalArgumentException exception) {
+                return value;
+            }
         }
 
         public String seasonality(int month) {

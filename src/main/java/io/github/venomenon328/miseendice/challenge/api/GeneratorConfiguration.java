@@ -301,12 +301,14 @@ public record GeneratorConfiguration(
     private static void validateAvailabilityFactors(Map<Availability, BigDecimal> factors) {
         BigDecimal easy = factors.get(Availability.EASY);
         BigDecimal planned = factors.get(Availability.PLANNED);
+        BigDecimal specialty = factors.get(Availability.SPECIALTY);
         BigDecimal difficult = factors.get(Availability.DIFFICULT);
         BigDecimal unavailable = factors.get(Availability.UNAVAILABLE);
         if (easy.compareTo(ONE) != 0 || unavailable.signum() != 0 || difficult.signum() <= 0
-                || planned.compareTo(difficult) <= 0 || planned.compareTo(ONE) > 0) {
+                || specialty.compareTo(difficult) <= 0 || planned.compareTo(specialty) <= 0
+                || planned.compareTo(ONE) > 0) {
             throw new IllegalArgumentException(
-                    "Availability factors require EASY=1, UNAVAILABLE=0, and 0<DIFFICULT<PLANNED<=1");
+                    "Availability factors require EASY=1, UNAVAILABLE=0, and 0<DIFFICULT<SPECIALTY<PLANNED<=1");
         }
     }
 

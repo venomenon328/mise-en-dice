@@ -69,10 +69,51 @@ class PostgresIntegrationTest {
     void applicationContextStartsWithTheCompleteLiquibaseBaseline() {
         assertThat(count("databasechangelog")).isPositive();
         assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from databasechangelog where id = '018-five-level-availability'", Integer.class
+        )).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from information_schema.tables where table_schema = 'public' "
                         + "and table_name in ('ingredient_concept', 'ingredient_refinement', 'exclusion_rule')",
                 Integer.class
         )).isEqualTo(3);
+    }
+
+    @Test
+    void availabilityConstraintAcceptsAllFiveLevelsAndRejectsUnknownLevels() {
+        long conceptId = insertConcept("five-level-availability");
+        long participantId = insertReturningId(
+                "insert into participant (code, display_name) values (?, ?) returning id",
+                "TEST_FIVE_LEVEL_PARTICIPANT_" + UUID.randomUUID().toString().replace("-", ""),
+                "Test five-level participant"
+        );
+        try {
+            jdbcTemplate.update("""
+                    insert into ingredient_availability (ingredient_concept_id, participant_id, availability_level)
+                    values (?, ?, 'EASY')
+                    """, conceptId, participantId);
+            for (String level : List.of("EASY", "PLANNED", "SPECIALTY", "DIFFICULT", "UNAVAILABLE")) {
+                jdbcTemplate.update("""
+                        update ingredient_availability
+                        set availability_level = ?
+                        where ingredient_concept_id = ? and participant_id = ?
+                        """, level, conceptId, participantId);
+                assertThat(jdbcTemplate.queryForObject("""
+                        select availability_level from ingredient_availability
+                        where ingredient_concept_id = ? and participant_id = ?
+                        """, String.class, conceptId, participantId)).isEqualTo(level);
+            }
+
+            assertThatThrownBy(() -> jdbcTemplate.update("""
+                    update ingredient_availability
+                    set availability_level = 'NOT_A_LEVEL'
+                    where ingredient_concept_id = ? and participant_id = ?
+                    """, conceptId, participantId))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        } finally {
+            jdbcTemplate.update("delete from ingredient_availability where ingredient_concept_id = ?", conceptId);
+            jdbcTemplate.update("delete from participant where id = ?", participantId);
+            jdbcTemplate.update("delete from ingredient_concept where id = ?", conceptId);
+        }
     }
 
     @Test

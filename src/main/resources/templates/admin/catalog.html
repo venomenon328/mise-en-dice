@@ -132,10 +132,10 @@
                         <label><input name="ta" type="checkbox" value="UNMANAGED" th:checked="${state.hasTobiasAvailability('UNMANAGED')}"> nicht gepflegt</label>
                     </fieldset>
                     <fieldset>
-                        <legend>Ungewöhnlichkeit</legend>
+                        <legend>Kochungewöhnlichkeit</legend>
                         <label th:each="level : ${#numbers.sequence(1, 5)}">
                             <input name="novelty" type="checkbox" th:value="${level}" th:checked="${state.hasNovelty(level.toString())}">
-                            <span th:text="|Stufe ${level}|">Stufe</span>
+                            <span th:text="${noveltyLabels.get(level)}">Stufe</span>
                         </label>
                         <label><input name="novelty" type="checkbox" value="UNMANAGED" th:checked="${state.hasNovelty('UNMANAGED')}"> nicht gepflegt</label>
                     </fieldset>

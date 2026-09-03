@@ -118,8 +118,9 @@ final class DiscordIngredientLookupRenderer {
         lines.add(new ScaleLine("Gewichtung", profile.randomDrawEnabled()
                 ? GERMAN_WEIGHT.format(profile.baseDrawWeight()) : "nicht eigenständig ziehbar", null));
         lines.add(profile.noveltyLevel() == null
-                ? new ScaleLine("Ungewöhnlichkeit", "nicht gepflegt", null)
-                : scaleLine("Ungewöhnlichkeit", profile.noveltyLevel(), "✨"));
+                ? new ScaleLine("Kochungewöhnlichkeit", "nicht gepflegt", null)
+                : scaleLine("Kochungewöhnlichkeit", profile.noveltyLevel(), "✨"));
+        lines.add(new ScaleLine("Einordnung", "Außergewöhnlichkeit als Kochzutat", null));
         return aligned(lines);
     }
 

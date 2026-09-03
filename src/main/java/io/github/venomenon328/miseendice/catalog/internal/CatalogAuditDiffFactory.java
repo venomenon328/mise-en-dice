@@ -4,6 +4,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogAggregateSnapshot;
 import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.CatalogAuditEntityType;
 import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.CatalogAuditFieldDiff;
 import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.ChangeKind;
+import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvailability;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,7 +34,7 @@ final class CatalogAuditDiffFactory {
             scalar(result, before, after, "randomDrawEnabled", "Ziehbar");
             scalar(result, before, after, "challengeSpecificity", "Challenge-Spezifität");
             scalar(result, before, after, "baseDrawWeight", "Ziehungsgewicht");
-            scalar(result, before, after, "noveltyLevel", "Ungewöhnlichkeit");
+            scalar(result, before, after, "noveltyLevel", "Kochungewöhnlichkeit");
             scalar(result, before, after, "curatorNote", "Kuratornotiz");
             mapCollection(result, before, after, "directParents", "Direkte Oberbegriffe", "code", "displayName", null);
             mapCollection(result, before, after, "directChildren", "Direkte Konkretisierungen", "code", "displayName", null);
@@ -140,7 +141,7 @@ final class CatalogAuditDiffFactory {
             return Boolean.TRUE.equals(value) ? " · bekannte Konkretisierungen eingeschlossen" : " · nur dieses Ziel";
         }
         if ("level".equals(field)) {
-            return " · " + render(value);
+            return " · " + availabilityLabel(value);
         }
         if ("weightMultiplier".equals(field)) {
             return " · Faktor " + render(value);
@@ -160,5 +161,13 @@ final class CatalogAuditDiffFactory {
             return bool ? "ja" : "nein";
         }
         return String.valueOf(value);
+    }
+
+    private static String availabilityLabel(Object value) {
+        try {
+            return CatalogAvailability.valueOf(String.valueOf(value)).displayName();
+        } catch (IllegalArgumentException exception) {
+            return render(value);
+        }
     }
 }

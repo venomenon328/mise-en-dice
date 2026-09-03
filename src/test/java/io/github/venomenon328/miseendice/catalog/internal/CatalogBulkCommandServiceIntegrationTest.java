@@ -88,17 +88,37 @@ class CatalogBulkCommandServiceIntegrationTest {
         execute(enabled, BulkAction.ENABLE_RANDOM_DRAW, null, null);
         execute(enabled, BulkAction.ADD_FUNCTIONAL_ROLE, "FRUIT", null);
         execute(enabled, BulkAction.REMOVE_FUNCTIONAL_ROLE, "FRUIT", null);
-        execute(enabled, BulkAction.SET_GEORGIA_AVAILABILITY, null, CatalogQueries.CatalogAvailability.DIFFICULT);
+        execute(enabled, BulkAction.SET_GEORGIA_AVAILABILITY, null, CatalogQueries.CatalogAvailability.SPECIALTY);
         execute(enabled, BulkAction.SET_TOBIAS_AVAILABILITY, null, CatalogQueries.CatalogAvailability.PLANNED);
 
         assertThat(active(inactive)).isFalse();
         assertThat(randomDrawEnabled(enabled)).isTrue();
         assertThat(roleCodes(enabled)).containsExactly("VEGETABLE");
-        assertThat(availability(enabled, "GEORGIA")).isEqualTo("DIFFICULT");
+        assertThat(availability(enabled, "GEORGIA")).isEqualTo("SPECIALTY");
         assertThat(availability(enabled, "TOBIAS")).isEqualTo("PLANNED");
         assertThat(auditCount()).isEqualTo(8);
         assertThat(jdbcTemplate.queryForObject("select count(distinct change_group_id) from catalog_audit_entry where actor_key = ?", Integer.class, ACTOR))
                 .isEqualTo(8);
+    }
+
+    @Test
+    void rendersHumanReadableAvailabilityAndCookingNoveltyInBulkPreview() {
+        long concept = insertConcept("PREVIEW_LABELS", true, true, new BigDecimal("0.8000"));
+        assignRoles(concept, "VEGETABLE");
+        assignAvailability(concept, "GEORGIA", "EASY");
+        assignAvailability(concept, "TOBIAS", "EASY");
+        jdbcTemplate.update("update ingredient_concept set novelty_level = 4 where id = ?", concept);
+
+        BulkOperation operation = new BulkOperation(
+                List.of(new BulkSelection(concept, 0)), BulkAction.SET_GEORGIA_AVAILABILITY,
+                null, CatalogQueries.CatalogAvailability.SPECIALTY, true, ACTOR);
+        var preview = bulkCommands.preview(operation);
+
+        assertThat(preview.items()).singleElement().satisfies(item ->
+                assertThat(item.effects()).containsExactly("Georgia: Spezialbeschaffung"));
+        assertThat(preview.items().getFirst().effects()).allMatch(effect -> !effect.contains("SPECIALTY"));
+        assertThat(preview.warnings()).anyMatch(warning -> warning.contains("Kochungewöhnlichkeit Stufe 4"));
+        assertThat(preview.warnings()).noneMatch(warning -> warning.contains("Ungewöhnlichkeit Stufe 4"));
     }
 
     @Test
@@ -178,6 +198,7 @@ class CatalogBulkCommandServiceIntegrationTest {
                 List.of(new BulkSelection(parent, 1), new BulkSelection(child, 1)),
                 BulkAction.REMOVE_FUNCTIONAL_ROLE, "FRUIT", null, true, ACTOR);
         var disjointResult = bulkCommands.execute(removeLastCommonRole);
+
         assertThat(disjointResult.changedConceptIds()).containsExactly(parent, child);
         assertThat(roleCodes(parent)).isEmpty();
         assertThat(roleCodes(child)).isEmpty();

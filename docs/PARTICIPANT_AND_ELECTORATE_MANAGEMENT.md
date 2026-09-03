@@ -203,7 +203,7 @@ Daraus folgt:
 Pro Zutatenkonzept werden alle für das Session-Elektorat **vorhandenen** Werte betrachtet. Maßgeblich ist der restriktivste davon:
 
 ```text
-UNAVAILABLE > DIFFICULT > PLANNED > EASY
+UNAVAILABLE > DIFFICULT > SPECIALTY > PLANNED > EASY
 ```
 
 Es wird niemals gemittelt. Eine für eine einzige maßgebliche Person unbeschaffbare Zutat wird nicht dadurch hilfreich, dass andere sie bequem kaufen könnten.
@@ -214,6 +214,7 @@ Beispiele:
 
 - Georgia `EASY`, Tobias `UNAVAILABLE` → Konzept ist nicht zufällig ziehbar.
 - Georgia `EASY`, Tobias `DIFFICULT` → der `DIFFICULT`-Faktor gilt.
+- Georgia `PLANNED`, Tobias `SPECIALTY` → der `SPECIALTY`-Faktor gilt.
 - Georgia ohne Wert, Tobias `PLANNED` → der `PLANNED`-Faktor gilt.
 - Beide ohne Wert → Beschaffbarkeit verändert die Ziehung nicht.
 - Eine dritte Person außerhalb des Session-Electorates mit `UNAVAILABLE` → ohne Wirkung auf diese Session.
@@ -226,13 +227,14 @@ Die bislang verwendeten Faktoren `PLANNED = 0,65` und `DIFFICULT = 0,20` gewicht
 |---|---:|
 | `EASY` | 1,00 |
 | `PLANNED` | 0,45 |
+| `SPECIALTY` | 0,15 |
 | `DIFFICULT` | 0,03 |
 | `UNAVAILABLE` | 0,00 |
 | kein einziger gepflegter Wert | neutraler Faktor 1,00 |
 
 `DIFFICULT` bezeichnet eine zwar nicht logisch unmögliche, praktisch aber nur mit unverhältnismäßigem Reise-, Import- oder Kostenaufwand realisierbare Beschaffung. Es soll deshalb selten, aber nicht vollständig ausgeschlossen bleiben.
 
-Die numerische Umstellung wird bewusst in einem eigenen Kalibrierungspaket umgesetzt. Dieses Paket muss eine reproduzierbare Vorher-/Nachher-Auswertung liefern und die Konfigurationsversion erhöhen. Es verändert nicht stillschweigend Neuigkeitsziele, Kandidaten-Caps oder andere Generatorparameter.
+Im Übergangspaket gilt für `SPECIALTY` der Faktor `0,15`; die bestehenden Faktoren bleiben unverändert. Die spätere numerische Kalibrierung erfolgt bewusst in einem eigenen Paket und verändert nicht stillschweigend Neuigkeitsziele, Kandidaten-Caps oder andere Generatorparameter. Die fachliche Stufendefinition steht verbindlich in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md).
 
 ### 7.4 Katalogprojektion und Modulgrenze
 
