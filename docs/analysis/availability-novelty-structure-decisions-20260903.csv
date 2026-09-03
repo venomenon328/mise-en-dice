@@ -1,0 +1,9 @@
+concept_code,review_applicability,decision_note
+BAKED_GOODS,NOT_APPLICABLE_STRUCTURE,Reiner Strukturknoten ausdrücklich freigegeben.
+CONFECTIONERY,NOT_APPLICABLE_STRUCTURE,Reiner Strukturknoten ausdrücklich freigegeben.
+DAIRY_PRODUCTS,NOT_APPLICABLE_STRUCTURE,Reiner Strukturknoten ausdrücklich freigegeben.
+FRESH_HERBS,NOT_APPLICABLE_STRUCTURE,Reiner Strukturknoten ausdrücklich freigegeben.
+PLANT_DRINKS,NOT_APPLICABLE_STRUCTURE,Reiner Strukturknoten ausdrücklich freigegeben.
+READY_CURRY_PASTE,APPLICABLE,Kein reiner Strukturknoten; im Vollreview regulär bewerten.
+READY_SAUCES_AND_PASTES,NOT_APPLICABLE_STRUCTURE,Reiner Strukturknoten ausdrücklich freigegeben.
+SPICES,NOT_APPLICABLE_STRUCTURE,Reiner Strukturknoten ausdrücklich freigegeben.

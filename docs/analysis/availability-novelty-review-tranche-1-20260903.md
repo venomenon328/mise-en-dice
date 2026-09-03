@@ -4,20 +4,17 @@ Stand: 3. September 2026
 
 Issue: #188, Tracking: #186
 
-Status: **Wartet auf menschliche Freigabe der Referenzanker. Keine Vollbewertung begonnen.**
+Status: **Referenzanker menschlich freigegeben. Vollbewertung darf mit Schritt 4 fortgesetzt werden.**
 
 ## 1. Eingefrorener Katalogstand
 
-Maßgeblich ist der Repository-Katalog auf `main` am Commit
+Maßgeblich bleibt der Repository-Katalog auf `main` am Commit
 `e61b2358bc0ed240a8aac88caca1d012172a4c1c` (`Merge PR #192: add five-level availability`).
 Der Arbeitsbranch `feat/188-availability-novelty-review` startete exakt auf diesem Commit.
 
 Der Snapshot wurde aus einer leeren PostgreSQL-17.6-Datenbank erzeugt, auf die der vollständige explizite
-Liquibase-Masterchangelog des Commits angewandt wurde. Er umfasst damit alle Katalogchangesets bis
-`catalog/032-thailand-curation.sql`, die Kuratornotiz-Vervollständigung aus
-`catalog/028-curator-note-completeness.sql` und die technische Fünfer-Skala aus
-`schema/018-five-level-availability.sql`. Es wurde kein Produktionsdatenbankexport verwendet und keine
-produktive Katalogzeile verändert.
+Liquibase-Masterchangelog des Commits angewandt wurde. Es wurde kein Produktionsdatenbankexport verwendet und
+keine produktive Katalogzeile verändert.
 
 | Merkmal | Umfang |
 |---|---:|
@@ -29,109 +26,138 @@ produktive Katalogzeile verändert.
 | offene / spezifische Konzepte gesamt | 116 / 744 |
 | direkte Konkretisierungsbeziehungen | 983 |
 | Konzepte mit Georgia-/Tobias-Wert | 852 / 852 |
-| vorgeschlagene reine Strukturknoten ohne Personenwerte | 8 |
 
-Aktuelle, ausdrücklich nur als Ausgangsdaten konservierte Verteilungen:
+Die ursprünglichen Verteilungen bleiben nur Ausgangsdaten. `SPECIALTY` und `UNAVAILABLE` kamen im eingefrorenen
+Produktivkatalog noch nicht vor; sie werden erst durch den Review fachlich vergeben.
 
-| Dimension | Verteilung |
-|---|---|
-| bisherige Kochungewöhnlichkeit | `1=341`, `2=243`, `3=136`, `4=98`, `5=42` |
-| bisherige Beschaffbarkeit Georgia | `EASY=555`, `PLANNED=250`, `DIFFICULT=47` |
-| bisherige Beschaffbarkeit Tobias | `EASY=525`, `PLANNED=196`, `DIFFICULT=131` |
+## 2. Auditspur der ersten Tranche
 
-`SPECIALTY` und `UNAVAILABLE` kommen im eingefrorenen Katalog noch nicht vor. Das ist kein Reviewurteil:
-Issue #187 hat ausschließlich den technischen Wertebereich erweitert; neue produktive Einzelwerte gehören erst
-in Issue #189.
+Die ursprünglich vorgeschlagenen Artefakte bleiben als Auditspur erhalten:
 
-## 2. Vollständiges Reviewledger
+- [`availability-novelty-review-ledger-20260903.csv`](availability-novelty-review-ledger-20260903.csv):
+  vollständiger eingefrorener Pre-Approval-Arbeitsstand mit 860 Konzepten,
+- [`availability-novelty-reference-anchors-20260903.csv`](availability-novelty-reference-anchors-20260903.csv):
+  die 39 ursprünglich vorgeschlagenen Referenzanker,
+- [`availability-novelty-review-ledger-export.sql`](availability-novelty-review-ledger-export.sql):
+  der ursprüngliche Pre-Approval-Export.
 
-[`availability-novelty-review-ledger-20260903.csv`](availability-novelty-review-ledger-20260903.csv) enthält
-jedes der 860 Konzepte genau einmal, kanonisch nach stabilem Konzeptcode sortiert. Pro Zeile sind festgehalten:
+Diese Dateien dokumentieren bewusst, **was vor der menschlichen Freigabe vorgeschlagen war**. Sie werden nicht
+nachträglich umgeschrieben, um die Reviewhistorie zu verwischen.
 
-- Anzeigename, Aktiv-/Ziehstatus und Spezifität,
-- bisherige Kochungewöhnlichkeit und beide bisherigen Personenwerte,
-- bisheriges `base_draw_weight`,
-- direkte Parent- und Child-Codes,
-- vollständige Kuratornotiz,
-- getrennte leere Vorschlags-, Begründungs-, Evidenz- und Freigabefelder für die spätere Reviewphase.
+Ab jetzt sind zusätzlich maßgeblich:
 
-Für 852 fachlich bewertbare Konzepte sind sämtliche neuen Bewertungsfelder leer und der Status lautet
-`WAITING_FOR_HUMAN_ANCHOR_APPROVAL`. Es wurde keine katalogweite Klassifikation vorgezogen.
+- [`availability-novelty-reference-anchor-decisions-20260903.csv`](availability-novelty-reference-anchor-decisions-20260903.csv):
+  menschlich freigegebene effektive Werte für alle 39 Anker,
+- [`availability-novelty-structure-decisions-20260903.csv`](availability-novelty-structure-decisions-20260903.csv):
+  explizite Anwendbarkeitsentscheidung für die acht zuvor als mögliche Strukturknoten identifizierten Konzepte,
+- [`availability-novelty-review-ledger-export-approved.sql`](availability-novelty-review-ledger-export-approved.sql):
+  Exportgrundlage für den post-approval Arbeitsstand ohne technische Ableitung von `NOT_APPLICABLE`.
 
-Die acht nicht ziehbaren Konzepte `BAKED_GOODS`, `CONFECTIONERY`, `DAIRY_PRODUCTS`, `FRESH_HERBS`,
-`PLANT_DRINKS`, `READY_CURRY_PASTE`, `READY_SAUCES_AND_PASTES` und `SPICES` besitzen im eingefrorenen Stand
-bewusst keine Personenwerte. Sie sind sichtbar als `NOT_APPLICABLE_STRUCTURE` beziehungsweise
-`PROPOSED_NOT_APPLICABLE` markiert; auch diese Einordnung ist noch nicht menschlich freigegeben.
+## 3. Menschliche Freigabe der Referenzanker
 
-Der read-only erzeugende SQL-Select liegt in
-[`availability-novelty-review-ledger-export.sql`](availability-novelty-review-ledger-export.sql). Gegen eine
-frisch migrierte Datenbank lässt sich der Stand beispielsweise mit `psql` reproduzieren. Dabei bezeichnet
-`REVIEW_DATABASE_URL` eine `psql`-kompatible PostgreSQL-URI, keine JDBC-URL:
+Alle 39 Referenzanker wurden fachlich freigegeben. Die Freigabe umfasst insbesondere:
 
-```text
-psql "$REVIEW_DATABASE_URL" -X -q --csv -P footer=off \
-  -f docs/analysis/availability-novelty-review-ledger-export.sql \
-  -o docs/analysis/availability-novelty-review-ledger-20260903.csv
-```
+- `COFFEE` bleibt Kochungewöhnlichkeit **4**,
+- `LIQUORICE` bleibt Kochungewöhnlichkeit **5**,
+- bei `CALAMANSI` ist neben der frischen Frucht auch **ungesüßter sortenreiner Saft** eine zulässige Produktform,
+- bei `UBE` sind **frisch, TK und ungesüßtes reines Püree** zulässige Produktformen,
+- bei `FISH_MINT` darf eine **essbare lebende Houttuynia-cordata-Pflanze** als Beschaffungsweg zählen,
+- die vorgeschlagenen persönlichen Beschaffbarkeiten für `GOCHUJANG`, `SUMAC`, `SAFFRON`, `BAGOONG`,
+  `LONGGANISA`, `BANANA_LEAVES`, `HOLY_BASIL`, `THAI_EGGPLANT` und `NATTO` wurden bestätigt.
 
-SHA-256 des eingefrorenen CSV-Ledgers:
-`03cdbe526ad0dae2ae770583d21130876e996ce06699e2120aa65c2f304247fc`.
+Die verbindlichen Trennungsanker bleiben damit unter anderem:
 
-## 3. Vorgeschlagene Referenzanker
+| Konzept | Kochungewöhnlichkeit | Georgia | Tobias |
+|---|---:|---|---|
+| `ONION` | 1 | `EASY` | `EASY` |
+| `MISO` | 2 | `EASY` | `EASY` |
+| `BAGOONG` | 3 | `PLANNED` | `SPECIALTY` |
+| `SAFFRON` | 3 | `EASY` | `EASY` |
+| `BEER` | 4 | `EASY` | `EASY` |
+| `LIQUORICE` | 5 | `EASY` | `EASY` |
 
-[`availability-novelty-reference-anchors-20260903.csv`](availability-novelty-reference-anchors-20260903.csv)
-enthält 39 Vorschläge. Sie stehen auf `PROPOSED` beziehungsweise beim Strukturanker auf
-`PROPOSED_NOT_APPLICABLE` und sind weder fachlich freigegeben noch in das Vollledger übertragen. Der Satz deckt
-ab:
+## 4. Nachrecherchierte Availability-Korrekturen
 
-- alle vier geforderten Kombinationen aus leichter/schwerer Beschaffung und alltäglicher/ungewöhnlicher
-  Verwendung,
-- alle fünf Stufen der Kochungewöhnlichkeit sowie `NOT_APPLICABLE`; `LIQUORICE=5` kalibriert dabei bewusst eine
-  leicht beschaffbare, aber als Kochzutat ausgefallene Süßware, während vermeintlich exotische konventionelle
-  Zutaten häufig auf Stufe 3 oder 4 zurückfallen,
-- alle fünf Beschaffbarkeitsstufen einschließlich weniger ausdrücklich offener `UNAVAILABLE`-Vorschläge,
-- frische, trockene/haltbare, gekühlte und tiefgekühlte Formen,
-- offene und spezifische Konzepte,
-- europäische, ost-/südostasiatische, philippinische, türkisch/arabische und osteuropäische Beispiele.
+Vier Anker wurden vor der Freigabe anhand exakter aktueller Bezugswege korrigiert:
 
-Verteilung der vorgeschlagenen Werte:
+| Konzept | Georgia | Tobias | Korrektur |
+|---|---|---|---|
+| `MAM_TOM` | `SPECIALTY` | `SPECIALTY` | Tobias `DIFFICULT → SPECIALTY` |
+| `FROG_LEGS` | `SPECIALTY` | `SPECIALTY` | beide `DIFFICULT → SPECIALTY` |
+| `FRESHWATER_SNAILS` | `SPECIALTY` | `SPECIALTY` | beide `UNAVAILABLE → SPECIALTY` |
+| `FISH_MINT` | `SPECIALTY` | `SPECIALTY` | Georgia `DIFFICULT → SPECIALTY`, Tobias `UNAVAILABLE → SPECIALTY` |
+
+Begründung:
+
+- echte Mắm-tôm-Garnelenpaste ist bei mehreren deutschen Händlern regulär in haushaltsüblicher Menge bestellbar,
+- TK-Froschschenkel und TK-Apfelschneckenfleisch sind bei deutschem Spezialhandel mit isoliertem
+  Tiefkühlversand erhältlich,
+- essbare `Houttuynia cordata` wird als Pflanze im spezialisierten deutschen Pflanzenhandel angeboten und
+  kann innerhalb des definierten Beschaffungshorizonts als frische Bezugsform dienen.
+
+`STOCKFISH` bleibt nach gezielter Nachrecherche für beide **`DIFFICULT`**: exakter ungesalzener Stockfisch ist
+im europäischen Spezialhandel grundsätzlich vorhanden, aktuell aber nicht zuverlässig lieferbar; viele scheinbare
+Treffer sind tatsächlich gesalzener Klippfisch/Bacalhau und zählen nicht als Ersatzprodukt.
+
+Die Quellen und die konkreten Overrides stehen maschinenlesbar in der Anchor-Decision-Datei.
+
+Effektive Verteilung der 39 freigegebenen Anker:
 
 | Dimension | Verteilung |
 |---|---|
 | Kochungewöhnlichkeit | `1=5`, `2=7`, `3=18`, `4=7`, `5=1`, `NOT_APPLICABLE=1` |
-| Beschaffbarkeit Georgia | `EASY=14`, `PLANNED=8`, `SPECIALTY=8`, `DIFFICULT=6`, `UNAVAILABLE=2`, `NOT_APPLICABLE=1` |
-| Beschaffbarkeit Tobias | `EASY=13`, `PLANNED=5`, `SPECIALTY=8`, `DIFFICULT=9`, `UNAVAILABLE=3`, `NOT_APPLICABLE=1` |
+| Beschaffbarkeit Georgia | `EASY=14`, `PLANNED=8`, `SPECIALTY=11`, `DIFFICULT=4`, `UNAVAILABLE=1`, `NOT_APPLICABLE=1` |
+| Beschaffbarkeit Tobias | `EASY=13`, `PLANNED=5`, `SPECIALTY=12`, `DIFFICULT=7`, `UNAVAILABLE=1`, `NOT_APPLICABLE=1` |
 
-Die vier Beispiele der verbindlichen Spezifikation sind sichtbar aufgenommen: `ONION=1`, `BEER=4`,
-`BAGOONG=3` und `SAFFRON=3`. Gerade `SAFFRON`, `LOBSTER`, `STOCKFISH`, `MAM_TOM` und
-`FRESHWATER_SNAILS` kalibrieren die geforderte Entkopplung von Preis oder Beschaffung und
-Kochungewöhnlichkeit.
+Damit bleiben alle fünf Beschaffbarkeitsstufen im Ankersatz vertreten; `COM_ME` kalibriert weiterhin die
+Extremstufe `UNAVAILABLE`.
 
-Der Ankersatz enthält begrenzte aktuelle Händler-Evidenz nur für repräsentative Spezialfälle. Ein Listing zählt
-nicht automatisch als zuverlässiger Bezugsweg; Form, Liefergebiet, Kühlkette und Ersatzproduktgefahr bleiben in
-den getrennten Feldern sichtbar. CSV-SHA-256:
-`90138a21e44345e87c0408655c9483ccf20b87eeb725aa5a76b7fa0daee1204b`.
+## 5. Explizite Strukturentscheidungen
 
-## 4. Vor Freigabe zu entscheidende Grenzfälle
+`NOT_APPLICABLE` darf nicht aus `random_draw_enabled = false` oder fehlenden Availability-Zeilen abgeleitet
+werden. Die menschliche Entscheidung lautet:
 
-Die Spalte `open_boundary` nennt die konkrete Frage je betroffenem Anker. Besonders wichtig sind:
+**Reine Strukturknoten / `NOT_APPLICABLE_STRUCTURE`:**
 
-- **gültige Produktform:** ungesüßter Calamansi-Saft statt Getränk/Aroma, rohe oder ungesüßte Ube statt
-  Pulver/Eiscreme sowie echtes Mẻ statt Cơm rượu oder Koji;
-- **exakter Spezialartikel:** fischbasiertes `BAGOONG_ISDA`, Aligue, Mắm tôm, Tai Pla, ungesalzener Stockfisch
-  sowie See- und Süßwasserschnecken dürfen nicht durch ähnliche Produkte belegt werden;
-- **Kühl- und TK-Logistik:** Longganisa, Natto, Bananenblätter und Froschschenkel brauchen einen tatsächlich
-  praktikablen Personenweg;
-- **lokale Stufengrenzen:** bei Spezialläden im Rheinland sowie Tobias' großem Edeka ist zwischen `PLANNED`
-  und `SPECIALTY` anhand wiederholter Erfahrung zu entscheiden;
-- **Extremstufe 5:** `FRESHWATER_SNAILS`, `FISH_MINT` und `COM_ME` sind nur als offene
-  `UNAVAILABLE`-Kalibrierung vorgeschlagen und benötigen vor Freigabe eine ausdrückliche Bestätigung;
-- **Verwendungsgrenze:** bei Kaffee ist zu entscheiden, ob die breite zulässige Form noch Stufe 3 oder bereits
-  Stufe 4 trägt; bei Lakritz ist die vorgeschlagene Extremstufe 5 ausdrücklich zu bestätigen.
+- `BAKED_GOODS`
+- `CONFECTIONERY`
+- `DAIRY_PRODUCTS`
+- `FRESH_HERBS`
+- `PLANT_DRINKS`
+- `READY_SAUCES_AND_PASTES`
+- `SPICES`
 
-## 5. Verbindlicher Haltepunkt
+**Regulär fachlich zu bewerten:**
 
-Vor einer Fortsetzung müssen die 39 Zeilen des Ankerartefakts ausdrücklich bestätigt, geändert oder als Anker
-verworfen werden. Bis dahin beginnen weder Schritt 4 (katalogweite Kochungewöhnlichkeit) noch Schritt 5
-(personengetrennte Beschaffbarkeit). Es gibt in dieser Tranche keine Gewichtsempfehlung, keine produktive
-Katalogänderung, keine Liquibase-Datenmigration und keine Generatoranpassung.
+- `READY_CURRY_PASTE`
+
+Der neue post-approval SQL-Export enthält diese Entscheidung deshalb als explizite CTE. Alle anderen Konzepte
+sind standardmäßig `APPLICABLE`; technische Eigenschaften erzeugen keine redaktionelle Nichtanwendbarkeit.
+
+## 6. Fortsetzung des Vollreviews
+
+Der Haltepunkt aus Schritt 3 ist aufgehoben. Die nächste Tranche darf nun strikt nach Issue #188 fortfahren:
+
+1. aus dem eingefrorenen Katalog mit dem post-approval Export den Arbeitsstand für die Vollbewertung erzeugen,
+2. **Schritt 4:** alle anwendbaren Konzepte ausschließlich nach Kochungewöhnlichkeit bewerten,
+3. danach **Schritt 5:** Beschaffbarkeit für Georgia und Tobias getrennt bewerten,
+4. unsichere Spezialfälle gemäß Schritt 6 gezielt recherchieren,
+5. keine Werte aus Beschaffbarkeit, bestehendem Gewicht oder Beschaffungsaufwand in die Kochungewöhnlichkeit
+   hineinziehen,
+6. keine produktiven Katalogwerte, Liquibase-Datenmigrationen oder Generatorparameter ändern.
+
+Die sieben bestätigten Strukturknoten bleiben sichtbar nicht anwendbar. `READY_CURRY_PASTE` muss im Vollreview
+wie jedes andere anwendbare Konzept drei reguläre Bewertungen erhalten.
+
+## 7. Noch nicht Teil dieses Pakets
+
+Es gibt weiterhin:
+
+- keine produktive Katalogmigration,
+- keine Änderung von `base_draw_weight`,
+- keine Generator-Kalibrierung,
+- keine Tests, die konkrete redaktionelle Einzelwerte als dauerhafte Fachwahrheit festschreiben.
+
+Die menschliche Präferenz, schwierige Beschaffbarkeit künftig **noch stärker** im Generator abzuwerten und bereits
+`PLANNED` mit deutlicher Vorsicht zu behandeln, wird getrennt in Issue #190 für die empirische Kalibrierung
+festgehalten. #188 entscheidet keine numerischen Generatorfaktoren.
