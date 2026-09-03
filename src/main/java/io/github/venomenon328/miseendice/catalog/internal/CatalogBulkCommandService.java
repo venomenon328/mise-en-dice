@@ -254,7 +254,7 @@ class CatalogBulkCommandService implements CatalogBulkCommands {
                 default -> null;
             };
             if (cap != null && detail.baseDrawWeight().compareTo(cap) > 0) {
-                warnings.add("\u201e%s\u201c: Ungew\u00f6hnlichkeit Stufe %d hat einen Richtwert von h\u00f6chstens %s."
+                warnings.add("\u201e%s\u201c: Kochungew\u00f6hnlichkeit Stufe %d hat einen Richtwert von h\u00f6chstens %s."
                         .formatted(detail.displayName(), detail.noveltyLevel(), cap));
             }
         }
@@ -344,8 +344,8 @@ class CatalogBulkCommandService implements CatalogBulkCommands {
                 case DISABLE_RANDOM_DRAW -> List.of("wird nicht ziehbar");
                 case ADD_FUNCTIONAL_ROLE -> List.of("Rolle wird hinzugef\u00fcgt: " + operation.functionalRoleCode());
                 case REMOVE_FUNCTIONAL_ROLE -> List.of("Rolle wird entfernt: " + operation.functionalRoleCode());
-                case SET_GEORGIA_AVAILABILITY -> List.of("Georgia: " + operation.availability());
-                case SET_TOBIAS_AVAILABILITY -> List.of("Tobias: " + operation.availability());
+                case SET_GEORGIA_AVAILABILITY -> List.of("Georgia: " + operation.availability().displayName());
+                case SET_TOBIAS_AVAILABILITY -> List.of("Tobias: " + operation.availability().displayName());
             };
         }
     }
