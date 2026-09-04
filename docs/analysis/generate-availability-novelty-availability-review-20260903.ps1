@@ -134,7 +134,8 @@ function Get-GeorgiaReview {
         'PALM_SUGAR','PICKLED_MUSHROOMS','PORK_STOCK','PRESERVED_LEMON','PURSLANE','QUINCE','RICE_CAKES',
         'ROMESCO','SAMBAL_BRANDAL','SARDINES','SHERRY_VINEGAR','SILKEN_TOFU','SOYBEANS','STICKY_RICE',
         'TURKEY_MINCE','VEAL_CHOP','VEAL_CUTLET','VEAL_GOULASH','VEAL_LIVER','VEAL_MINCE','VEAL_ROAST',
-        'VEAL_SHANK','VEAL_STEAK','VEAL_STRIPS','WONTON_WRAPPERS','YELLOW_LENTILS'
+        'VEAL_SHANK','VEAL_STEAK','VEAL_STRIPS','WONTON_WRAPPERS','YELLOW_LENTILS','DUMPLING_WRAPPERS',
+        'YEAST_EXTRACT','FENUGREEK','WATERCRESS','BIRDS_EYE_CHILI'
     )
     $specialty = New-StringSet @(
         'BAGOONG_ISDA','BRUNOST','CALAMANSI','CLOUDBERRY','COCKLES','CORIANDER_ROOT','CULANTRO',
@@ -144,11 +145,11 @@ function Get-GeorgiaReview {
         'PEA_EGGPLANT','PERILLA_LEAVES','PICKLED_SAUSAGE','PINNEKJOTT','RAZOR_CLAMS','REINDEER','ROD_POLSE',
         'SAI_UA','SOBRASADA','STINKY_TOFU','TABLEA','THAI_EGGPLANT','UBE','VEAL_SWEETBREAD',
         'VIETNAMESE_CORIANDER','VIETNAMESE_SOYBEAN_PASTE','WATER_SPINACH','CLOUDBERRY_PRESERVES',
-        'LA_LOT_LEAVES','SEA_SNAILS','TOMATILLO'
+        'LA_LOT_LEAVES','SEA_SNAILS','TOMATILLO','STOCKFISH'
     )
     $difficult = New-StringSet @(
         'ALIGUE','DAING','DUMPLING_DOUGH','GREEN_RICE_FLAKES','LUTEFISK','MILKFISH',
-        'NIPA_PALM_VINEGAR','NORWEGIAN_WAFFLE','POBLANO','RICE_PADDY_HERB','STOCKFISH','TAI_PLA'
+        'NIPA_PALM_VINEGAR','NORWEGIAN_WAFFLE','POBLANO','RICE_PADDY_HERB','TAI_PLA'
     )
     $unavailable = New-StringSet @('COM_ME','RAKFISK')
 
@@ -168,7 +169,10 @@ function Get-GeorgiaReview {
         'FISH_MINT' = 'Georgia: Eine essbare Houttuynia-cordata-Pflanze ist über spezialisierten deutschen Pflanzenversand beschaffbar und deckt die freigegebene lebende Produktform ab.'
         'FRESHWATER_SNAILS' = 'Georgia: Tiefgekühltes Apfelschneckenfleisch wird von einem deutschen Asia-Spezialversand angeboten; die Kühlware bleibt Spezialbeschaffung.'
         'FROG_LEGS' = 'Georgia: Haushaltsübliche tiefgekühlte Froschschenkel sind bei einem deutschen Asia-Spezialversand mit kurzer Lieferzeit gelistet.'
-        'FRANKFURT_GREEN_SAUCE' = 'Georgia: Die zubereitete Sieben-Kräuter-Sauce ist über regulären deutschen Frischeversand gezielt bestellbar; aufgrund der relativen Rheinlandnähe bleibt der konkrete Weg PLANNED.'
+        'BIRDS_EYE_CHILI' = 'Georgia: Frische Bird-Eye-Chilis sind über einen deutschen Frischefachversand planbar, aber Bestand und Versandtage tragen keinen spontanen Bornheimer Alltagsweg.'
+        'DUMPLING_WRAPPERS' = 'Georgia: Echte Füll- und Faltblätter werden im spezialisierten Tiefkühlsortiment geführt, sind dort aber bestandsabhängig; der gezielte Fachhandelsweg trägt PLANNED.'
+        'FENUGREEK' = 'Georgia: Bockshornkleesamen sind über Gewürzfachhandel und regulären deutschen Versand zuverlässig planbar, aber ein spontan bestätigtes gewöhnliches Supermarktregal ist nicht belegt.'
+        'FRANKFURT_GREEN_SAUCE' = 'Georgia: Die zubereitete Sieben-Kräuter-Sauce ist über denselben regulären deutschen Paketversand wie für Tobias gezielt bestellbar; der geografisch gleichwertige Weg trägt PLANNED.'
         'GARLIC_CHIVES' = 'Georgia: Frischer Knoblauch-Schnittlauch ist über deutschen Asia-Frischeversand beziehungsweise die erreichbare Köln-/Düsseldorf-Route gezielt beschaffbar.'
         'GAC_FRUIT' = 'Georgia: Exaktes tiefgekühltes Gấc-Fruchtfleisch ist bei einem deutschen Asia-Spezialversand gelistet; Drachenfrucht oder Farbstoff gelten nicht.'
         'GIO_LUA' = 'Georgia: Giò lụa ist über die konkret erreichbaren vietnamesisch-asiatischen Fachmärkte in Köln/Düsseldorf gezielt beschaffbar; eine solche Stadtfahrt bleibt geplant.'
@@ -196,13 +200,15 @@ function Get-GeorgiaReview {
         'CLOUDBERRY_PRESERVES' = 'Georgia: Exakte Moltebeerkonfitüre ist über ein konkretes Bestell- und Auslieferfenster eines deutschen Skandinavien-Fachversands planbar, verlangt aber einen spezialisierten Bezugsweg.'
         'LA_LOT_LEAVES' = 'Georgia: Exakte frische Lá-lốt-Blätter sind bei deutschen Asia-Fachhändlern mit Frische- beziehungsweise Kühlversand regulär erhältlich.'
         'SEA_SNAILS' = 'Georgia: Gewürzte Dosen-Wellhornschnecken sind bei einem deutschen Asia-Fachhändler regulär erhältlich; der offene Katalogbegriff erlaubt diese haltbare Produktform und trägt SPECIALTY.'
-        'STOCKFISH' = 'Georgia: Ungesalzener Stockfisch ist in einem EU-liefernden Norwegenshop gelistet, dessen gesamtes geprüftes Tørrfisk-Sortiment jedoch nicht vorrätig war; Klippfisch zählt nicht.'
+        'STOCKFISH' = 'Georgia: Ungesalzener luftgetrockneter Kabeljau ist bei deutschen Endkundenhändlern in haushaltsüblichen Mengen mit Warenkorb und kurzer Lieferzeit erhältlich; der spezialisierte Versandweg trägt SPECIALTY.'
         'SUMAC' = 'Georgia: Sumach ist aufgrund der bestätigten persönlichen Beschaffung und des stärkeren türkisch-/arabischen Bornheimer Sortiments spontan und zuverlässig erreichbar.'
         'TAI_PLA' = 'Georgia: Für echte südthailändische Tai-Pla-Würze wurde kein belastbarer deutscher Retailweg gefunden; Fischsauce und Pla Ra sind keine zulässigen Ersatzformen.'
         'TOMATILLO' = 'Georgia: Exakte frische Tomatillos sind über einen deutschen Exoten-Fachversand als vorrätige Haushaltsmenge bestellbar; der gezielte Frischeweg trägt SPECIALTY.'
         'TWAROG' = 'Georgia: Exakter Twaróg ist über einen gezielten osteuropäischen Markt planbar, gehört aber nicht verlässlich zur Bornheimer Basisversorgung.'
         'UBE' = 'Georgia: Frische oder tiefgekühlte Ube beziehungsweise ungesüßtes reines Püree ist über philippinische Spezialwege beschaffbar; Pulver und gesüßte Zubereitungen zählen nicht.'
         'WATER_SPINACH' = 'Georgia: Exakter frischer Kangkong ist über einen deutschen Asia-Fachhändler mit deutschlandweitem DHL-Expressweg am nächsten Werktag bestellbar; gewöhnlicher Spinat zählt nicht.'
+        'WATERCRESS' = 'Georgia: Frische Brunnenkresse ist über einen wöchentlichen Vorbestell- und Kühlversandweg zuverlässig planbar, jedoch nicht als spontaner Bornheimer Alltagskauf bestätigt.'
+        'YEAST_EXTRACT' = 'Georgia: Exakter Hefeextrakt wie Marmite ist über deutschen internationalen Fachversand zuverlässig bestellbar, aber kein bestätigter spontaner Bestandteil der Bornheimer Basisversorgung.'
         'PUL_BIBER' = 'Georgia: Pul Biber gehört im stärkeren türkisch-/arabischen Bornheimer Umfeld zum spontan erreichbaren Standardsortiment.'
         'SMOKED_TROUT' = 'Georgia: Geräucherte Forelle ist über einen gezielten Fischhandel oder gut sortierten Markt verlässlich beschaffbar, aber kein sicherer Spontankauf im persönlichen Basissortiment.'
         'ZAATAR' = 'Georgia: Zaatar gehört im stärkeren türkisch-/arabischen Bornheimer Umfeld zum spontan erreichbaren Standardsortiment.'
@@ -272,7 +278,8 @@ function Get-TobiasReview {
         'PRESERVED_LEMON','PURSLANE','QUINCE','RICE_CAKES','ROMESCO','SAMBAL_BRANDAL','SARDINES',
         'SHERRY_VINEGAR','SILKEN_TOFU','SOYBEANS','STICKY_RICE','TURKEY_MINCE','VEAL_CHOP','VEAL_CUTLET',
         'VEAL_GOULASH','VEAL_LIVER','VEAL_MINCE','VEAL_ROAST','VEAL_SHANK','VEAL_STEAK','VEAL_STRIPS',
-        'WONTON_WRAPPERS','YELLOW_LENTILS'
+        'WONTON_WRAPPERS','YELLOW_LENTILS','DUMPLING_WRAPPERS','YEAST_EXTRACT','FENUGREEK','WATERCRESS',
+        'FRANKFURT_GREEN_SAUCE'
     )
     $specialty = New-StringSet @(
         'BAGOONG','BAGOONG_ALAMANG','BAGOONG_ISDA','BANANA_LEAVES','BRUNOST','CALAMANSI','CLOUDBERRY','COCKLES','CORIANDER_ROOT','CULANTRO','CURRY_LEAVES',
@@ -282,11 +289,11 @@ function Get-TobiasReview {
         'NATTO','OLOMOUC_TVARUZKY','PEA_EGGPLANT','PERILLA_LEAVES','PICKLED_SAUSAGE','PINNEKJOTT','PLA_RA',
         'RAZOR_CLAMS','REINDEER','ROD_POLSE','SAI_UA','SALTED_DUCK_EGG','SOBRASADA','STINKY_TOFU','TABLEA',
         'THAI_EGGPLANT','VEAL_SWEETBREAD','VIETNAMESE_CORIANDER','VIETNAMESE_SOYBEAN_PASTE',
-        'CLOUDBERRY_PRESERVES','FRANKFURT_GREEN_SAUCE','GARLIC_CHIVES','LA_LOT_LEAVES','SEA_SNAILS','TOMATILLO','WATER_SPINACH'
+        'CLOUDBERRY_PRESERVES','GARLIC_CHIVES','LA_LOT_LEAVES','SEA_SNAILS','TOMATILLO','WATER_SPINACH','STOCKFISH'
     )
     $difficult = New-StringSet @(
         'ALIGUE','DAING','DUMPLING_DOUGH','GREEN_RICE_FLAKES','LUTEFISK','MILKFISH',
-        'NIPA_PALM_VINEGAR','NORWEGIAN_WAFFLE','POBLANO','RICE_PADDY_HERB','STOCKFISH','TAI_PLA','UBE'
+        'NIPA_PALM_VINEGAR','NORWEGIAN_WAFFLE','POBLANO','RICE_PADDY_HERB','TAI_PLA','UBE'
     )
     $unavailable = New-StringSet @('COM_ME','RAKFISK')
 
@@ -307,7 +314,9 @@ function Get-TobiasReview {
         'FISH_MINT' = 'Tobias: Eine essbare Houttuynia-cordata-Pflanze ist über spezialisierten deutschen Pflanzenversand beschaffbar; der lebende Pflanzenweg ist transportfähiger als frische Kräuterware.'
         'FRESHWATER_SNAILS' = 'Tobias: Tiefgekühltes Apfelschneckenfleisch ist über deutschen Asia-Spezialversand beschaffbar; erforderlich sind Spezialbestellung und belastbare Tiefkühlzustellung nach Rostock.'
         'FROG_LEGS' = 'Tobias: Haushaltsübliche tiefgekühlte Froschschenkel sind bei einem deutschen Asia-Spezialversand gelistet und mit geeigneter Tiefkühlzustellung nach Rostock beschaffbar.'
-        'FRANKFURT_GREEN_SAUCE' = 'Tobias: Die zubereitete Sieben-Kräuter-Sauce ist bei einer Frankfurter Soßenmanufaktur mit ausgewiesenem Lebensmittel-Paketversand bestellbar, bleibt aber außerhalb der Rostocker Standard- und Planversorgung.'
+        'DUMPLING_WRAPPERS' = 'Tobias: Echte Füll- und Faltblätter werden im spezialisierten Tiefkühlsortiment geführt, sind dort aber bestandsabhängig; ohne bestätigten Rostocker Alltagsweg trägt der gezielte Einkauf PLANNED.'
+        'FENUGREEK' = 'Tobias: Bockshornkleesamen sind über Gewürzfachhandel und regulären deutschen Versand zuverlässig planbar, aber ein spontan bestätigtes Rostocker Supermarktregal ist nicht belegt.'
+        'FRANKFURT_GREEN_SAUCE' = 'Tobias: Die zubereitete Sieben-Kräuter-Sauce ist bei einer Frankfurter Soßenmanufaktur über regulären deutschen Paketversand gezielt bestellbar; derselbe Weg wie für Georgia trägt PLANNED.'
         'GARLIC_CHIVES' = 'Tobias: Frischer Knoblauch-Schnittlauch ist über spezialisierten deutschen Asia-Frischeversand mit festem Versandtag und Kühlweg nach Rostock erhältlich.'
         'GAC_FRUIT' = 'Tobias: Exaktes tiefgekühltes Gấc-Fruchtfleisch ist bei einem deutschen Asia-Spezialversand gelistet; eine belastbare Tiefkühlzustellung nach Rostock bleibt Teil der Spezialbeschaffung.'
         'GIO_LUA' = 'Tobias: Giò lụa verlangt spezialisierten vietnamesischen Versand oder einen seltenen Rostocker Sortimentsfund; die gekühlte Wurst ist nicht verlässlich planbar.'
@@ -335,13 +344,15 @@ function Get-TobiasReview {
         'CLOUDBERRY_PRESERVES' = 'Tobias: Exakte Moltebeerkonfitüre ist über ein konkretes Bestell- und Auslieferfenster eines deutschen Skandinavien-Fachversands planbar, verlangt aber einen spezialisierten Bezugsweg.'
         'LA_LOT_LEAVES' = 'Tobias: Exakte frische Lá-lốt-Blätter sind bei deutschen Asia-Fachhändlern mit Frische- beziehungsweise Kühlversand regulär nach Rostock bestellbar.'
         'SEA_SNAILS' = 'Tobias: Gewürzte Dosen-Wellhornschnecken sind ohne Kühlkettenproblem bei einem deutschen Asia-Fachhändler regulär erhältlich; der offene Katalogbegriff erlaubt diese haltbare Produktform und trägt SPECIALTY.'
-        'STOCKFISH' = 'Tobias: Ungesalzener Stockfisch ist in einem EU-liefernden Norwegenshop gelistet, dessen gesamtes geprüftes Tørrfisk-Sortiment jedoch nicht vorrätig war; Klippfisch zählt nicht.'
+        'STOCKFISH' = 'Tobias: Ungesalzener luftgetrockneter Kabeljau ist bei deutschen Endkundenhändlern in haushaltsüblichen Mengen mit Warenkorb und kurzer Lieferzeit erhältlich; der spezialisierte Versandweg trägt SPECIALTY.'
         'SUMAC' = 'Tobias: Sumach ist über einen gut sortierten Markt oder gezielten türkischen Einkauf planbar; die persönliche Beschaffung wurde ausdrücklich als PLANNED bestätigt.'
         'TAI_PLA' = 'Tobias: Für echte südthailändische Tai-Pla-Würze wurde kein belastbarer deutscher Versandweg gefunden; Fischsauce und Pla Ra sind keine zulässigen Ersatzformen.'
         'TOMATILLO' = 'Tobias: Exakte frische Tomatillos sind über einen deutschen Exoten-Fachversand mit deutschlandweiter Zustellung als vorrätige Haushaltsmenge bestellbar; dieser gezielte Frischeweg trägt SPECIALTY.'
         'TWAROG' = 'Tobias: Exakter Twaróg gehört zum stärkeren russisch-/osteuropäischen Rostocker Sortiment und ist über die persönliche Alltagsroute spontan und zuverlässig erreichbar.'
         'UBE' = 'Tobias: Im deutschen Versand wurden vor allem Pulver oder gesüßte Ube-Zubereitungen gefunden; frisch, TK oder ungesüßtes reines Püree ist für Rostock nicht zuverlässig belegt.'
         'WATER_SPINACH' = 'Tobias: Exakter frischer Kangkong ist über einen deutschen Asia-Fachhändler mit deutschlandweitem DHL-Expressweg am nächsten Werktag bestellbar; dieser spezialisierte Frischeweg trägt SPECIALTY.'
+        'WATERCRESS' = 'Tobias: Frische Brunnenkresse ist über einen wöchentlichen Vorbestell- und Kühlversandweg zuverlässig planbar, jedoch nicht als spontaner Rostocker Alltagskauf bestätigt.'
+        'YEAST_EXTRACT' = 'Tobias: Exakter Hefeextrakt wie Marmite ist über deutschen internationalen Fachversand zuverlässig bestellbar, aber kein bestätigter spontaner Bestandteil der Rostocker Basisversorgung.'
         'SMOKED_TROUT' = 'Tobias: Geräucherte Forelle gehört zum gut erreichbaren Rostocker Fischsortiment und ist über die persönlich starke übliche Fischroute spontan beschaffbar.'
         'ZAATAR' = 'Tobias: Zaatar ist über einen gut sortierten Markt oder gezielten orientalischen Einkauf planbar, aber nicht Teil des spontan verlässlichen Rostocker Basissortiments.'
     }
@@ -378,7 +389,6 @@ function Get-TobiasReview {
 
 function Get-EvidenceIds {
     param([string]$Person, [string]$Code, [string]$Rating)
-    if ($Rating -notin @('SPECIALTY','DIFFICULT','UNAVAILABLE')) { return '' }
 
     $commonByCode = @{
         'ALIGUE'='EV29'; 'BRUNOST'='EV15'; 'CALAMANSI'='EV41'; 'CLOUDBERRY'='EV35';
@@ -395,25 +405,32 @@ function Get-EvidenceIds {
         'PICKLED_SAUSAGE'='EV43'; 'PINNEKJOTT'='EV87'; 'POBLANO'='EV34'; 'RAKFISK'='EV32';
         'RAZOR_CLAMS'='EV49'; 'REINDEER'='EV45'; 'RICE_PADDY_HERB'='EV64'; 'ROD_POLSE'='EV89';
         'SAI_UA'='EV56'; 'SEA_SNAILS'='EV40'; 'SOBRASADA'='EV47'; 'STINKY_TOFU'='EV57';
-        'STOCKFISH'='EV05'; 'TABLEA'='EV84'; 'TAI_PLA'='EV30'; 'THAI_EGGPLANT'='EV58';
+        'STOCKFISH'='EV92|EV94'; 'TABLEA'='EV84'; 'TAI_PLA'='EV30'; 'THAI_EGGPLANT'='EV58';
         'TOMATILLO'='EV91'; 'VEAL_SWEETBREAD'='EV21'; 'VIETNAMESE_CORIANDER'='EV31';
-        'VIETNAMESE_SOYBEAN_PASTE'='EV78'
+        'VIETNAMESE_SOYBEAN_PASTE'='EV78'; 'BAGOONG_ALAMANG'='EV42'; 'CURRY_LEAVES'='EV12';
+        'DUMPLING_WRAPPERS'='EV95'; 'YEAST_EXTRACT'='EV96'; 'FENUGREEK'='EV97';
+        'WATERCRESS'='EV98'; 'FRANKFURT_GREEN_SAUCE'='EV72'
     }
     $georgiaByCode = @{
-        'BAGOONG_ISDA'='EV68|EV80'; 'UBE'='EV67'; 'WATER_SPINACH'='EV59'
+        'BAGOONG_ISDA'='EV68|EV80'; 'UBE'='EV67'; 'WATER_SPINACH'='EV59';
+        'BIRDS_EYE_CHILI'='EV99'
     }
     $tobiasByCode = @{
-        'BAGOONG'='EV80'; 'BAGOONG_ALAMANG'='EV42'; 'BAGOONG_ISDA'='EV68|EV80';
-        'BANANA_LEAVES'='EV12'; 'CURRY_LEAVES'='EV12'; 'FRANKFURT_GREEN_SAUCE'='EV72';
+        'BAGOONG'='EV80'; 'BAGOONG_ISDA'='EV68|EV80';
+        'BANANA_LEAVES'='EV12';
         'GARLIC_CHIVES'='EV73'; 'GIO_LUA'='EV60'; 'LONGGANISA'='EV61';
         'MACAPUNO'='EV81'; 'NATTO'='EV62'; 'PLA_RA'='EV77'; 'SALTED_DUCK_EGG'='EV63';
         'UBE'='EV27'; 'WATER_SPINACH'='EV59'
     }
 
     $personMap = if ($Person -eq 'Georgia') { $georgiaByCode } elseif ($Person -eq 'Tobias') { $tobiasByCode } else { throw "Unknown person for evidence mapping: $Person" }
-    $ids = if ($personMap.ContainsKey($Code)) { $personMap[$Code] } elseif ($commonByCode.ContainsKey($Code)) { $commonByCode[$Code] } else { throw "No exact evidence mapping for $Person/$Code/$Rating" }
+    $ids = if ($personMap.ContainsKey($Code)) { $personMap[$Code] } elseif ($commonByCode.ContainsKey($Code)) { $commonByCode[$Code] } else { '' }
+    if ([string]::IsNullOrWhiteSpace($ids)) {
+        if ($Rating -in @('SPECIALTY','DIFFICULT','UNAVAILABLE')) { throw "No exact evidence mapping for $Person/$Code/$Rating" }
+        return ''
+    }
 
-    $requiredRole = if ($Rating -eq 'SPECIALTY') { 'EXACT_RETAIL' } else { 'DECISION_LIMITATION' }
+    $requiredRole = if ($Rating -in @('PLANNED','SPECIALTY')) { 'EXACT_RETAIL' } elseif ($Rating -in @('DIFFICULT','UNAVAILABLE')) { 'DECISION_LIMITATION' } else { '' }
     $requiredRoleFound = $false
     foreach ($id in $ids.Split('|')) {
         if (-not $evidenceById.ContainsKey($id)) { throw "Unknown evidence '$id' for $Person/$Code/$Rating" }
@@ -423,13 +440,23 @@ function Get-EvidenceIds {
         if ($Rating -notin @($item.supported_ratings.Split('|'))) { throw "Evidence '$id' does not support rating $Rating for $Person/$Code" }
         if ($item.evidence_role -eq $requiredRole) { $requiredRoleFound = $true }
     }
-    if (-not $requiredRoleFound) { throw "Evidence for $Person/$Code/$Rating lacks required role $requiredRole" }
+    if (-not [string]::IsNullOrWhiteSpace($requiredRole) -and -not $requiredRoleFound) { throw "Evidence for $Person/$Code/$Rating lacks required role $requiredRole" }
     return $ids
 }
 
 function Export-Tsv {
     param([object[]]$Rows, [string]$Path)
-    $Rows | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" | Set-Content -LiteralPath $Path -Encoding UTF8
+    Write-Utf8NoBom $Path ($Rows | ConvertTo-Csv -NoTypeInformation -Delimiter "`t")
+}
+
+function Export-CsvUtf8NoBom {
+    param([object[]]$Rows, [string]$Path)
+    Write-Utf8NoBom $Path ($Rows | ConvertTo-Csv -NoTypeInformation)
+}
+
+function Write-Utf8NoBom {
+    param([string]$Path, [string[]]$Lines)
+    [System.IO.File]::WriteAllLines($Path, $Lines, [System.Text.UTF8Encoding]::new($false))
 }
 
 $georgiaInput = foreach ($row in $source) {
@@ -451,8 +478,8 @@ $tobiasInput = foreach ($row in $source) {
     }
 }
 
-$georgiaInput | Export-Csv -LiteralPath (Join-Path $analysisDir 'availability-novelty-availability-input-georgia-20260903.csv') -NoTypeInformation -Encoding UTF8
-$tobiasInput | Export-Csv -LiteralPath (Join-Path $analysisDir 'availability-novelty-availability-input-tobias-20260903.csv') -NoTypeInformation -Encoding UTF8
+Export-CsvUtf8NoBom $georgiaInput (Join-Path $analysisDir 'availability-novelty-availability-input-georgia-20260903.csv')
+Export-CsvUtf8NoBom $tobiasInput (Join-Path $analysisDir 'availability-novelty-availability-input-tobias-20260903.csv')
 
 $georgia = Get-GeorgiaReview $georgiaInput
 $tobias = Get-TobiasReview $tobiasInput
