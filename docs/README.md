@@ -7,6 +7,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`VISION.md`](VISION.md): Produktidee, Challenge-Regeln, Ziele und Nicht-Ziele
 - [`DATA_MODEL.md`](DATA_MODEL.md): fachliche Entscheidungen des PostgreSQL-Datenmodells
 - [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md): verbindliche Ziel- und Redaktionssemantik für die getrennte Bewertung von personenspezifischer Beschaffbarkeit und gemeinsamer Kochungewöhnlichkeit einschließlich des katalogweiten Reviewprozesses
+- [`INGREDIENT_CONCEPT_CURATION.md`](INGREDIENT_CONCEPT_CURATION.md): verbindliche operative Checkliste für jede neue Zutatenkonzeptanlage, Konkretisierung und wesentliche Produktformänderung einschließlich Availability-Marktbreite, Evidenz und Freigabe-Gates
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
 - [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md): redaktionelle Semantik und technische Pflege der expliziten kulinarischen Länderzuordnungen
 - [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md): verbindliche Bedien-, Interaktions-, Locking-, Audit- und Sicherheitsentscheidungen für die private Katalogverwaltung
@@ -20,6 +21,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`DISCORD_INGREDIENT_LOOKUP.md`](DISCORD_INGREDIENT_LOOKUP.md): verbindliche Such-, Auswahl-, Darstellungs- und Modulgrenzen für die rein lesende Discord-Zutatenabfrage aus Issue #108
 - [`CANDIDATE_GENERATOR_DATA_READINESS.md`](CANDIDATE_GENERATOR_DATA_READINESS.md): gemessene Metadatenabdeckung und Gate für den Generatorstart
 - [`analysis/candidate-generator-data-readiness.sql`](analysis/candidate-generator-data-readiness.sql): reproduzierbare PostgreSQL-Auswertung des aktiven Ziehpools
+- [`analysis/availability-reference-anchors-v2-20260904.md`](analysis/availability-reference-anchors-v2-20260904.md): aktueller Vorschlag des strengeren Availability-Ankersatzes mit Marktbreiten-Abgrenzung und menschlichem Haltepunkt aus #188
 - [`analysis/final-catalog-review-20260813.md`](analysis/final-catalog-review-20260813.md): verbindlicher fachlicher Review für den finalen Katalog
 - [`analysis/final-catalog-snapshot-contract-20260813.md`](analysis/final-catalog-snapshot-contract-20260813.md): Normalisierung, Upgrade-Schutz, Endfingerprint und Dimensionsabdeckung aus Issue #52
 - [`analysis/generator-laboratory-implementation-notes.md`](analysis/generator-laboratory-implementation-notes.md): kompakte Implementierungsgrenze des read-only Preview-/Replay-Kerns aus Phase 9E1
