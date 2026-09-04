@@ -1,16 +1,16 @@
 # Beschaffbarkeit und Kochungewöhnlichkeit
 
-Stand: 3. September 2026  
-Status: verbindliche Ziel- und Redaktionsspezifikation; technische und katalogweite Umsetzung in #187–#190
+Stand: 4. September 2026  
+Status: verbindliche Ziel-, Redaktions- und Pflegespezifikation; technische und katalogweite Umsetzung in #187–#190
 
-Dieses Dokument trennt zwei Metadaten, die im bisherigen Katalog technisch eigenständig, redaktionell aber nicht immer ausreichend klar voneinander behandelt wurden:
+Dieses Dokument trennt zwei Metadaten, die technisch eigenständig und redaktionell strikt unabhängig gepflegt werden:
 
 - die **Beschaffbarkeit** eines Zutatenkonzepts für eine bestimmte Person,
 - die **Kochungewöhnlichkeit** eines Zutatenkonzepts aus gemeinsamer Mise-en-Dice-Perspektive.
 
-Es ergänzt insbesondere [`VISION.md`](VISION.md), [`DATA_MODEL.md`](DATA_MODEL.md), [`PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md`](PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md), [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md), [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) und [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md).
+Es ergänzt insbesondere [`VISION.md`](VISION.md), [`DATA_MODEL.md`](DATA_MODEL.md), [`PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md`](PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md), [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md), [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md), [`INGREDIENT_CONCEPT_CURATION.md`](INGREDIENT_CONCEPT_CURATION.md) und [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md).
 
-Für die Zielsemantik dieser beiden Metadaten ist dieses Dokument maßgeblich. Bis das jeweilige Folgepaket gemergt ist, bleibt die aktuell implementierte vierstufige Beschaffbarkeit technisch gültig; die Spezifikation beschreibt den verbindlichen Zielzustand und den Übergangsprozess.
+Für die Zielsemantik dieser beiden Metadaten ist dieses Dokument maßgeblich. Die fünfstufige Beschaffbarkeit ist seit #187 technisch verfügbar. Die katalogweiten Einzelwerte werden in #188 fachlich freigegeben, in #189 persistiert und in #190 generatorisch kalibriert.
 
 ## 1. Zentrale Trennung
 
@@ -18,20 +18,20 @@ Für die Zielsemantik dieser beiden Metadaten ist dieses Dokument maßgeblich. B
 
 Die Beschaffbarkeit beantwortet ausschließlich:
 
-> Wie realistisch kann die betreffende Person genau dieses Zutatenkonzept in einer geeigneten Produktform beschaffen?
+> Wie realistisch kann die betreffende Person genau dieses Zutatenkonzept in einer geeigneten Produktform innerhalb des normalen Vorlaufs beschaffen?
 
 Sie berücksichtigt insbesondere:
 
-- gewöhnliche Supermärkte und bekannte Spezialgeschäfte,
+- Art und Breite des erreichbaren Handelsmarkts,
 - räumliche Erreichbarkeit und notwendigen Planungsaufwand,
 - Zuverlässigkeit beziehungsweise Periodik des Angebots,
-- realistische Online-Bestellung,
+- realistische deutsche oder europäische Online-Bestellung,
 - Kühl-, Tiefkühl- und Transportanforderungen,
 - regelmäßige, ohnehin stattfindende Reisen, soweit sie für die konkrete Produktform tatsächlich nutzbar sind.
 
 Sie beantwortet ausdrücklich nicht:
 
-- ob die Person eine Verwendungsidee hat,
+- ob der Person eine Verwendungsidee einfällt,
 - ob die Zutat häufig oder ungewöhnlich zum Kochen eingesetzt wird,
 - ob die Zutat gerade im persönlichen Vorrat liegt,
 - ob sie persönlich beliebt ist,
@@ -43,7 +43,7 @@ Die Kochungewöhnlichkeit beantwortet ausschließlich:
 
 > Angenommen, die Zutat liegt bereits kostenlos in geeigneter Form in der Küche: Wie ungewöhnlich ist es, sie sinnvoll und erkennbar als verpflichtenden Bestandteil eines Gerichts zu verwenden?
 
-Sie beschreibt die **Außergewöhnlichkeit der Verwendung**, nicht die Herkunft oder die Beschaffung.
+Sie beschreibt die **Außergewöhnlichkeit der Verwendung**, nicht Herkunft, Preis oder Beschaffung.
 
 Sie berücksichtigt insbesondere:
 
@@ -67,7 +67,7 @@ Sie berücksichtigt ausdrücklich nicht:
 Bei jeder redaktionellen Bewertung sind zwei Kontrollfragen zu beantworten:
 
 1. **Kochungewöhnlichkeit:** Würde ich denselben Wert vergeben, wenn die Zutat bereits kostenlos auf dem Küchentisch läge?
-2. **Beschaffbarkeit:** Bewerte ich gerade, ob die Person das Produkt bekommen kann – oder ob ihr spontan einfällt, was sie damit kochen könnte?
+2. **Beschaffbarkeit:** Bewerte ich gerade, ob die Person das exakte Produkt bekommen kann – oder ob ihr spontan einfällt, was sie damit kochen könnte?
 
 Fällt eine Antwort anders aus, sind die beiden Eigenschaften wahrscheinlich wieder vermischt worden.
 
@@ -79,7 +79,7 @@ Maßgeblich ist folgende Perspektive:
 
 > Zwei experimentierfreudige, deutsch sozialisierte Hobbyköche mit deutlich überdurchschnittlichem Interesse an ost- und südostasiatischer Küche. Durch Georgias familiären Hintergrund besteht zusätzlicher philippinischer Einfluss, ohne dass deshalb jede philippinische Regional- oder Spezialzutat automatisch als alltäglich gilt.
 
-Der Referenzrahmen ist damit bewusst weder:
+Der Referenzrahmen ist bewusst weder:
 
 - der statistische deutsche Durchschnittshaushalt,
 - noch eine weltweit gemittelte Profiküche,
@@ -89,7 +89,7 @@ Persönliche Erfahrung darf die Einordnung präzisieren. Sie darf aber nicht daz
 
 ## 3. Fünfstufige Kochungewöhnlichkeit
 
-`ingredient_concept.novelty_level` bleibt technisch fünfstufig. Die fachliche Bezeichnung wird auf **Kochungewöhnlichkeit** beziehungsweise **Außergewöhnlichkeit als Kochzutat** geschärft.
+`ingredient_concept.novelty_level` bleibt technisch fünfstufig. Die fachliche Bezeichnung lautet **Kochungewöhnlichkeit** beziehungsweise **Außergewöhnlichkeit als Kochzutat**.
 
 | Stufe | Name | Verbindliche Bedeutung |
 |---:|---|---|
@@ -109,8 +109,6 @@ Persönliche Erfahrung darf die Einordnung präzisieren. Sie darf aber nicht daz
 
 ### 3.2 Kalibrierungsbeispiele
 
-Die folgenden Beispiele illustrieren die Trennung und ersetzen noch nicht den katalogweiten Review aus #188:
-
 | Konzept | Kochungewöhnlichkeit | Aussage |
 |---|---:|---|
 | Zwiebel | typischerweise 1 | Standardzutat mit sehr breiter alltäglicher Verwendung. |
@@ -122,102 +120,166 @@ Exakte Werte werden im Vollreview einzeln freigegeben. Das Bagoong-Beispiel setz
 
 ## 4. Fünfstufige Beschaffbarkeit
 
-Die Zielmenge der technischen Werte lautet:
+Die technische Reihenfolge lautet:
 
 ```text
 EASY < PLANNED < SPECIALTY < DIFFICULT < UNAVAILABLE
 ```
 
-Die Reihenfolge bedeutet zunehmenden Beschaffungsaufwand beziehungsweise abnehmende Beschaffungsrealität. Die deutschen Bezeichnungen sind für die Nutzeroberfläche maßgeblich; technische Codes werden nicht als Nutztext ausgegeben.
+Die Stufen unterscheiden nicht nur den Aufwand, sondern vor allem die **Breite und Robustheit des tatsächlich erreichbaren Bezugsmarkts**.
+
+### 4.1 Handelsmarkt-Klassen
+
+Vor der eigentlichen Stufe wird der belastbare Bezugsmarkt eingeordnet:
+
+| Marktklasse | Bedeutung |
+|---|---|
+| **Allgemeiner lokaler Handel** | Gewöhnliche nahe Supermärkte oder Discounter mit hoher Trefferwahrscheinlichkeit und alltäglicher Ausweichmöglichkeit. |
+| **Breiter allgemeiner deutscher/EU-Handel** | Gut sortierte allgemeine Supermärkte, etablierter Feinkost-/Gewürz-/Fischhandel oder reguläre nicht nischengebundene Onlinehändler. |
+| **Breiter einschlägiger Spezialmarkt** | Die Ware gehört zum üblichen Sortiment vieler breit aufgestellter Asia-, arabischer, türkischer, osteuropäischer oder vergleichbarer Spezialhändler; ein gut sortierter Laden dieser Kategorie hat eine realistische Trefferchance. |
+| **Enger Nischen-/Importmarkt** | Nur wenige national, regional oder produktspezifisch ausgerichtete Händler führen die Ware; Bezugswege, Bestände oder Produktformen sind fragil. |
+| **Kein realistischer Markt** | Kein wiederholbarer Endkundenweg innerhalb Deutschlands oder sinnvoll erreichbaren EU-Handels. |
+
+Mehrere Produktseiten desselben Händlers, Marktplatzangebote desselben Verkäufers oder mehrere Shops mit erkennbar demselben fragilen Importweg zählen nicht automatisch als unabhängige Marktbreite.
+
+### 4.2 Verbindliche Stufen
 
 | Stufe | Code | Name | Verbindliche Bedeutung |
 |---:|---|---|---|
-| **1** | `EASY` | **Spontan beschaffbar** | In einem gewöhnlichen nahe gelegenen Supermarkt oder einer ähnlich alltäglichen Bezugsquelle zuverlässig erhältlich. Ein spontaner Einkauf reicht normalerweise aus. |
-| **2** | `PLANNED` | **Gezielt beschaffbar** | Ein gut sortierter Supermarkt, ein bekannter erreichbarer Spezialladen oder eine unkomplizierte reguläre Online-Bestellung ist nötig. Der konkrete Bezugsweg ist planbar und ziemlich zuverlässig. |
-| **3** | `SPECIALTY` | **Spezialbeschaffung** | Im normalen Supermarkt eher nicht erhältlich. Ein spezialisierter Laden, eine Fahrt in eine größere Stadt oder spezialisierter deutscher beziehungsweise europäischer Onlinehandel sind nötig, funktionieren aber mit vernünftiger Zuverlässigkeit. |
-| **4** | `DIFFICULT` | **Schwer beschaffbar** | Auch Spezialgeschäfte sind unsicher, Bestände schwanken stark oder ein sehr spezialisierter Importeur beziehungsweise besondere Kühlzustellung ist erforderlich. Mehrere Versuche oder längere Planung können nötig sein. |
-| **5** | `UNAVAILABLE` | **Praktisch nicht beschaffbar** | Es existiert kein realistischer, wiederholbarer Bezugsweg. Allenfalls mit großem Glück, privatem Import oder einer Reise ins Herkunftsland erhältlich; für eine zufällige Challenge faktisch ausgeschlossen. |
+| **1** | `EASY` | **Spontan beschaffbar** | Die konkrete zulässige Produktform ist im allgemeinen lokalen Handel mit sehr hoher Wahrscheinlichkeit erhältlich. Normalerweise sind weder Vorabrecherche, besondere Fahrt, Spezialgeschäft noch Onlinebestellung nötig; eine alltägliche Ausweichquelle ist plausibel. |
+| **2** | `PLANNED` | **Gezielt beschaffbar** | Das Produkt ist in den breiten deutschen/EU-Handel integriert, aber nicht zwingend lokaler Standard. Ein gut sortierter allgemeiner Markt, etablierter Fachhandel oder unkomplizierter nicht nischengebundener Onlineweg ist konkret und zuverlässig planbar. |
+| **3** | `SPECIALTY` | **Breite Spezialbeschaffung** | Der allgemeine Handel scheidet aus, die Zutat ist aber im einschlägigen Spezialmarkt breit etabliert. Viele unabhängige Spezialhändler führen sie regulär, oder ein typischer gut sortierter Laden der passenden Kategorie hat eine gute Trefferchance. |
+| **4** | `DIFFICULT` | **Nischen-/Importbeschaffung** | Die Zutat hängt von einem engen Nischen- oder Herkunftslandmarkt ab: nur wenige sehr spezielle Händler, schwankende Bestände, Importhürden, exakte Formprobleme, besondere Frische-/Kühl-/TK-Logistik oder realistische Mehrfachsuche. Eine Bestellung kann gelingen, ist aber nicht robust planbar. |
+| **5** | `UNAVAILABLE` | **Praktisch nicht beschaffbar** | Es existiert kein realistischer wiederholbarer Endkundenweg. Allenfalls Glücksfund, privater Import oder Herkunftslandreise; für eine zufällige Challenge faktisch ausgeschlossen. |
 
 Ein fehlender Datensatz bleibt ein eigener Zustand **nicht bewertet beziehungsweise nicht gepflegt**. Er ist keine sechste Stufe und darf weder als `EASY` noch als `UNAVAILABLE` interpretiert werden.
+
+### 4.3 Harte Gates
+
+- Spezialläden, Wochenmärkte, Fischhändler, besondere Stadtfahrten und Onlinebestellungen können **niemals allein `EASY`** begründen.
+- Regionale Demografie oder die bloße Existenz einer Community begründet keine Stufe. Sie kann nur einen konkret nachgewiesenen Bezugsweg plausibler machen.
+- Ein Produkt, das nur bei vielen einschlägigen Spezialhändlern regelmäßig vorkommt, ist typischerweise `SPECIALTY`, nicht `PLANNED`.
+- Ein oder zwei sehr spezielle Händler, nationale Nischenimporteure oder fragile Produktseiten reichen **nicht** für `SPECIALTY`; das ist grundsätzlich ein `DIFFICULT`-Signal.
+- Ein einzelner Anbieter kann `SPECIALTY` nur in einem Ausnahmefall tragen, wenn Sortiment, Bestand, Endkundenversand und Wiederholbarkeit außergewöhnlich stabil dokumentiert sind und der Händler einen breiten Spezialmarkt repräsentiert.
+- Schwankender Bestand, wiederkehrendes Ausverkauftsein, problematische Kühl-/TK-Kette, hohe Mindestmengen oder erhebliche Ersatzproduktgefahr verschieben einen Spezialweg in Richtung `DIFFICULT`.
+- Preis allein verändert die Stufe nicht. Importaufschlag oder Versandkosten sind nur relevant, soweit sie einen praktisch fragilen oder unrealistischen Bezugsweg anzeigen.
+- Die spätere geringe Generatorwahrscheinlichkeit von `SPECIALTY` darf niemals dazu dienen, fachlich eigentlich `DIFFICULT` einzustufende Produkte künstlich in Stufe 3 zu belassen.
+
+### 4.4 Entscheidungstest
+
+Für jede Person und jedes Konzept wird in dieser Reihenfolge geprüft:
+
+1. **Produktform:** Welche Formen erfüllen das Konzept tatsächlich?
+2. **Alltagshandel:** Gibt es einen sehr wahrscheinlichen gewöhnlichen lokalen Weg mit alltäglicher Ausweichquelle?
+3. **Allgemeiner Handel:** Ist die Ware im breiten deutschen/EU-Handel robust planbar?
+4. **Spezialmarktbreite:** Ist sie ein reguläres Produkt vieler einschlägiger Spezialhändler oder nur eines engen Nischenmarkts?
+5. **Zuverlässigkeit:** Sind Bestand, Menge, Versand und Produktform über den normalen Vorlauf wiederholbar?
+6. **Logistik:** Verschlechtern Frische, Kühlung, Tiefkühlung, Mindestmenge oder Transport den realen Weg?
+7. **Personenprofil:** Verändert ein konkret erreichbarer Markt die Stufe für Georgia oder Tobias?
+
+Die Stufe folgt dem realen Engpass. Eine hübsche Produktseite hebt fehlende Marktbreite nicht auf.
+
+### 4.5 Kalibrierungsbeispiele der Beschaffbarkeit
+
+Die folgenden Beispiele illustrieren die Zielgrenzen und werden im Ankersatz aus #188 gesondert freigegeben:
+
+| Beispiel | Typische Stufe | Trennlinie |
+|---|---:|---|
+| Zwiebel, Kartoffel, Koriandersaat | `EASY` | gewöhnlicher lokaler Supermarktstandard |
+| Miso | `PLANNED` | in großen allgemeinen Ketten und breitem Onlinehandel etabliert, aber nicht überall lokaler Standard |
+| Gochujang, Doubanjiang, Dumpling-Hüllen | `SPECIALTY` | bei vielen breit aufgestellten Asia-Händlern üblich |
+| Bagoong, Mắm ruốc, zulässige frische/TK-Ube-Form | `DIFFICULT` | enger nationaler Nischenmarkt beziehungsweise Form-/Bestandsprobleme |
+| ungesalzener Stockfisch | `DIFFICULT` | wenige spezialisierte Wege und hohe Verwechslungsgefahr mit Klippfisch/Bacalhau |
+| Mẻ/Cơm mẻ | `UNAVAILABLE` | kein realistischer wiederholbarer Endkundenweg |
 
 ## 5. Beschaffungshorizont und Bezugswege
 
 ### 5.1 Normaler Zeithorizont
 
-Bewertet wird ein realistischer Challenge-Vorlauf von ungefähr einer Woche. Eine Beschaffung muss nicht am selben Tag möglich sein, um Stufe 2 oder 3 zu erreichen.
+Bewertet wird ein realistischer Challenge-Vorlauf von ungefähr einer Woche.
 
 Regelmäßige Vorratskäufe dürfen bei haltbaren Produkten berücksichtigt werden, wenn sie tatsächlich planbar und ohne außergewöhnliche Sonderreise möglich sind. Ein bloß theoretischer zukünftiger Einkauf verbessert den Wert nicht.
 
-### 5.2 Supermarkt und Spezialgeschäft
+### 5.2 Allgemeiner und lokaler Handel
 
-- **Stufe 1** verlangt normalerweise eine alltägliche lokale Bezugsquelle mit hoher Trefferwahrscheinlichkeit.
-- Ein bekannter zuverlässiger Spezialladen kann **Stufe 2** begründen.
-- Die bloße Existenz möglicherweise passender Geschäfte in einer Großstadt begründet höchstens einen Rechercheansatz, noch keinen niedrigen Wert.
-- Müssen mehrere Geschäfte auf Verdacht abgeklappert werden, spricht dies mindestens für Stufe 3 oder 4.
+- `EASY` verlangt gewöhnliche nahe Supermärkte oder Discounter mit sehr hoher Trefferwahrscheinlichkeit.
+- Ein gut sortierter allgemeiner Markt oder etablierter allgemeiner Fachhandel kann `PLANNED` begründen.
+- Ein Spezialladen ist keine Alltagsquelle. Selbst eine wiederholt genutzte Spezialquelle begründet höchstens `PLANNED`, wenn das Produkt dort konkret und zuverlässig geführt wird.
+- Müssen mehrere Läden auf Verdacht abgeklappert werden, spricht dies mindestens für `SPECIALTY`, bei engem oder instabilem Markt für `DIFFICULT`.
 
-### 5.3 Onlinehandel
+### 5.3 Onlinehandel und Marktbreite
 
-Online-Beschaffung zählt, wenn:
+Online-Beschaffung zählt nur, wenn:
 
 - der Händler real an den Wohnort liefert,
 - das Produkt in haushaltsüblicher Menge bestellbar ist,
-- Bestände wiederkehrend und nicht nur zufällig vorhanden sind,
-- Versandart und Produktform fachlich geeignet sind,
+- die exakte zulässige Produktform angeboten wird,
+- Bestand und Sortiment wiederkehrend sind,
+- Versandart und Lieferzeit zum normalen Vorlauf passen,
 - kein privater oder rechtlich problematischer Import nötig ist.
 
-Ein einzelner Suchtreffer oder ein dauerhaft ausverkistetes Listing ist kein Beschaffungsnachweis. Sehr hohe Mindestbestellwerte, unverhältnismäßige Versandkosten oder unzuverlässige Kühlzustellung können einen theoretischen Onlineweg praktisch um eine Stufe verschlechtern.
+Für die Stufenzuordnung gilt:
 
-### 5.4 Preis
+- allgemeiner, nicht nischengebundener deutscher/EU-Onlinehandel kann `PLANNED` tragen,
+- viele unabhängige breit aufgestellte Spezialhändler können `SPECIALTY` tragen,
+- wenige national oder produktspezifisch ausgerichtete Händler sprechen für `DIFFICULT`,
+- Marktplatzangebote, ausverkaufte Listings oder bloße Suchtreffer sind keine eigenständigen robusten Wege.
+
+### 5.4 Preis, Mindestmengen und Versand
 
 Preis ist grundsätzlich keine Beschaffbarkeitsstufe. Safran kann leicht erhältlich und dennoch teuer sein.
 
-Nur wenn die konkrete Bezugsform durch extreme Mindestmengen, Versandbedingungen oder realitätsferne Gesamtkosten praktisch keinen normalen Einkauf mehr darstellt, darf dies bei der Zuverlässigkeit des Bezugswegs berücksichtigt werden. Eine eigene Preisdimension wird mit dieser Spezifikation nicht eingeführt.
+Extreme Mindestmengen, unverhältnismäßige Versandbedingungen, Importgebühren oder Kühlzuschläge dürfen berücksichtigt werden, wenn sie den Bezugsweg praktisch aus dem normalen privaten Einkauf herausheben. Sie sind ein Zuverlässigkeits- und Realitätsindikator, keine eigene Preisdimension.
 
 ## 6. Persönliche Beschaffungsprofile
 
 ### 6.1 Tobias
 
-Als reguläre beziehungsweise realistisch nutzbare Bezugswege gelten:
+Realistisch nutzbare Bezugswege:
 
 - größere Rostocker Supermärkte einschließlich des gut sortierten Edeka,
 - kleinere vietnamesisch geführte beziehungsweise allgemein asiatische Läden mit breitem, aber nicht vollumfänglichem Sortiment,
 - das regional vergleichsweise gute Angebot an gewöhnlichem frischem Fisch,
-- plausiblere russische, osteuropäische und ostdeutsche Sortimente,
+- plausiblere russische, osteuropäische und ostdeutsche Spezialsortimente,
 - reguläre deutsche und europäische Onlinehändler,
 - regelmäßige Reisen zu Georgia und damit verbundene Einkäufe vor allem in Köln, soweit die Ware haltbar und vernünftig transportierbar ist.
 
-Für Rheinland-Einkäufe gilt:
+Harte Profilregeln:
 
-- haltbare Vorratsware darf berücksichtigt werden,
-- frische empfindliche Ware wird grundsätzlich nicht als verlässlicher Tobias-Bezugsweg gewertet,
-- Kühl- und Tiefkühlware verbessert den Wert nur bei einem tatsächlich verlässlichen Kühltransport,
-- eine theoretische 200+-km-Sonderfahrt ausschließlich für die Zutat ist kein regulärer Beschaffungsweg.
-
-Eigene wiederholte Beobachtungen haben Vorrang. Beispiele wie gelegentlich vorhandene TK-Longganisa oder Bananenblätter begründen noch nicht automatisch eine zuverlässige Stufe 2. Wiederholt nicht auffindbares Bagoong ist ein starkes Indiz gegen eine zu günstige lokale Einstufung.
+- Rostocker Asia-Läden liegen nicht auf einer alltäglichen Einkaufsroute und sind niemals allein ein `EASY`-Beleg.
+- Wochenmärkte und dedizierte Fischhändler können gegenüber Georgia eine günstigere Stufe rechtfertigen, aber höchstens `PLANNED`, solange die Ware kein normaler Supermarktstandard ist.
+- Ein stärkeres osteuropäisches Umfeld ist ein relativer Vorteil, kein pauschaler `EASY`-Bonus.
+- Rheinlandreisen zählen nur als Zusatzweg für passende haltbare Ware; frische, gekühlte oder tiefgekühlte Ware verbessert die Stufe nur bei tatsächlich praktikabler Transportkette.
+- Eine 200+-km-Sonderfahrt ausschließlich für die Zutat ist kein regulärer Bezugsweg.
 
 ### 6.2 Georgia
 
-Als reguläre beziehungsweise realistisch nutzbare Bezugswege gelten:
+Realistisch nutzbare Bezugswege:
 
 - der große Edeka und weitere normale Geschäfte im Raum Bornheim,
-- lokal plausiblere türkische und arabische Sortimente,
+- lokal plausiblere türkische und arabische Spezialsortimente,
 - gezielt erreichbare Spezialgeschäfte in Köln und Düsseldorf,
-- dortige größere asiatische, philippinische oder andere nationale Lebensmittelgeschäfte,
+- dortige größere asiatische, philippinische und andere nationale Lebensmittelgeschäfte,
 - reguläre deutsche und europäische Onlinehändler.
 
-Eine Fahrt nach Köln oder Düsseldorf ist niemals Stufe 1. Sie kann Stufe 2 begründen, wenn ein konkreter bekannter Laden das Produkt mit hoher Zuverlässigkeit führt. Ist nur allgemein zu erwarten, dass „irgendwo in Köln“ eine Chance besteht, liegt eher Stufe 3 vor.
+Harte Profilregeln:
+
+- Türkisch-/arabische Demografie macht ein Produkt nicht automatisch `EASY`.
+- Ein konkret verlässlicher lokaler Fachmarkt kann `PLANNED` begründen.
+- Eine Fahrt nach Köln oder Düsseldorf ist niemals `EASY`.
+- Große, breit sortierte Spezialmärkte können für Georgia `SPECIALTY` tragen, wo Tobias wegen fehlender Marktbreite oder heikler Frischelogistik `DIFFICULT` erhält.
+- „Irgendwo in Köln wird es das geben“ ist keine Evidenz.
 
 ### 6.3 Evidenzrangfolge
 
-Für beide Profile gilt grundsätzlich:
+1. wiederholte eigene Einkaufserfahrung am **konkreten Bezugsweg**,
+2. aktuelles verlässliches Sortiment eines konkret erreichbaren Händlers,
+3. mehrere unabhängige breit aufgestellte real liefernde Händler,
+4. ein enger oder einzelner Nischenhändler mit dokumentierten Einschränkungen,
+5. plausible Annahme aus Ladentyp, Region oder Demografie,
+6. bloße Vermutung.
 
-1. wiederholte eigene Einkaufserfahrung oder Beobachtung,
-2. aktuelles verlässliches Sortiment eines konkreten erreichbaren Händlers,
-3. mehrere seriöse real liefernde Online-Bezugsquellen,
-4. plausible Annahmen aus Ladentyp, Region oder Demografie,
-5. bloße Vermutung.
-
-Je schwächer die Evidenz, desto vorsichtiger ist die Einstufung. Eine einzelne überraschende Sichtung macht ein Produkt nicht spontan oder gezielt beschaffbar.
+Eine persönliche Erfahrung verbessert nur die Zuverlässigkeit des konkreten Wegs; sie verwandelt einen Spezialladen nicht in allgemeinen Alltagshandel.
 
 ## 7. Produktform, Saison und Hierarchie
 
@@ -235,6 +297,7 @@ Beschaffbarkeit bezieht sich immer auf eine Form, die das konkrete Zutatenkonzep
 
 - Lokale oder real lieferbare Kühl-/TK-Ware kann regulär bewertet werden.
 - Eine nur theoretische Kühlzustellung ohne verlässliche Lieferung an den Wohnort genügt nicht.
+- Ein einzelner TK-Händler mit Haftungsausschluss, unklarem Versandfenster oder häufigem Ausverkauf spricht regelmäßig für `DIFFICULT`.
 - Regelmäßige Fernreisen verbessern eine Kühl-/TK-Einstufung nur bei tatsächlich praktikabler Kühlkette.
 
 ### 7.3 Saison und schwankender Import
@@ -255,7 +318,46 @@ Beschaffbarkeit und Kochungewöhnlichkeit werden direkt pro Konzept gepflegt.
 
 Ausreißer innerhalb einer Familie können einen Prüfhinweis erzeugen, sind aber nicht automatisch falsch. `Fisch` kann leicht beschaffbar sein, obwohl eine bestimmte Fischart schwierig ist; `Chili` kann vertraut verwendet werden, obwohl eine einzelne Sorte ungewöhnlicher ist.
 
-## 8. Verhältnis zu Ziehungsgewicht und Generator
+## 8. Beschaffbarkeitsnotiz und Evidenz
+
+### 8.1 Personenspezifische Notiz
+
+Jeder fachlich anwendbare Beschaffbarkeitswert für Georgia und Tobias erhält eine kurze Begründung.
+
+Die Notiz nennt knapp:
+
+- Marktart beziehungsweise realen Bezugsweg,
+- Marktbreite und Zuverlässigkeit,
+- relevante Produktform,
+- gegebenenfalls Frische-, Kühl-, TK-, Import- oder Transportgrenzen.
+
+Nicht hinein gehören Rezeptideen, Kochungewöhnlichkeit, persönlicher Vorrat oder eine vollständige Händlerliste.
+
+### 8.2 Mindeststandard nach Stufe
+
+- `EASY`: positive Aussage über gewöhnlichen lokalen Handel; Spezialweg oder Onlinequelle dürfen nicht als Begründung erscheinen.
+- `PLANNED`: konkreter robuster allgemeiner Bezugsweg; bei nicht offensichtlichen Fällen mindestens ein aktueller Beleg oder belastbare persönliche Erfahrung.
+- `SPECIALTY`: Marktbreite des einschlägigen Spezialhandels muss sichtbar begründet sein. Normalerweise mehrere unabhängige breit aufgestellte Spezialhändler oder eine gleichwertige Kombination aus verlässlichem großem Offline-Markt und Onlinewegen.
+- `DIFFICULT`: enger Nischenmarkt, Bestands-/Logistikproblem oder Produktformrisiko muss konkret benannt sein; mindestens ein positiver Nischenweg und/oder dokumentierte negative Suche.
+- `UNAVAILABLE`: gezielte negative Suche und Ausschluss naheliegender Ersatzformen beziehungsweise theoretischer Herkunftslandwege.
+
+Zahlen wie „drei Händler“ sind Heuristiken, keine automatische Fachwahrheit. Entscheidend ist, ob die Quellen tatsächlich unabhängige Marktbreite oder nur denselben engen Importkanal zeigen.
+
+### 8.3 Evidenzpflege
+
+Für aktuelle Spezial- und Grenzfälle sollen mindestens festgehalten werden:
+
+- Prüfdatum,
+- exakter Konzeptcode und Produktform,
+- Händlerart: allgemein, breiter Spezialmarkt oder Nischenimporteur,
+- personenspezifische Relevanz,
+- Bestand beziehungsweise Lieferbarkeit,
+- Versandart und besondere Bedingungen,
+- erkannte Ersatzprodukt- oder Formrisiken.
+
+Evidenz bleibt Recherchegrundlage und wird nicht Bestandteil des Generatorgewichts.
+
+## 9. Verhältnis zu Ziehungsgewicht und Generator
 
 Folgende Signale bleiben fachlich getrennt:
 
@@ -265,29 +367,25 @@ Folgende Signale bleiben fachlich getrennt:
 - `ingredient_seasonality.weight_multiplier`: monatliche Ziehungsanpassung,
 - Cooldown und Novelty-Zielband: laufzeitbezogene Generatorfaktoren.
 
-### 8.1 Keine automatische Gewichtskopplung
+### 9.1 Keine automatische Gewichtskopplung
 
 `base_draw_weight` wird nicht mechanisch aus Beschaffbarkeit oder Kochungewöhnlichkeit berechnet.
 
-Insbesondere gelten künftig keine pauschalen redaktionellen Regeln der Form:
+Insbesondere gelten keine pauschalen Regeln der Form:
 
 - hohe Kochungewöhnlichkeit erzwingt Gewicht höchstens X,
 - schwierige Beschaffbarkeit erzwingt Gewicht höchstens Y.
 
-Solche alten Baseline-Caps werden im Vollreview einzeln geprüft und in #189 aus der aktuellen Runtime-/Adminsemantik entfernt. Bereits veröffentlichte historische Changesets bleiben append-only und werden nicht umgeschrieben.
-
-Gewicht darf weiterhin eigenständig niedriger sein, etwa wegen:
+Gewicht darf eigenständig niedriger sein, etwa wegen:
 
 - zu breiter oder stark überrepräsentierter Konzepte,
 - sehr dominanter oder schwer sinnvoll kombinierbarer Komponenten,
 - gewünschter Katalogbalance,
 - ausdrücklich freigegebener redaktioneller Seltenheit.
 
-Die Begründung muss jedoch eigenständig sein und darf nicht nur Kochungewöhnlichkeit oder Beschaffbarkeit umetikettieren.
+Die Begründung muss eigenständig sein und darf nicht nur Kochungewöhnlichkeit oder Beschaffbarkeit umetikettieren.
 
-### 8.2 Laufzeitfaktoren
-
-Der Generator darf Beschaffbarkeit und Kochungewöhnlichkeit weiterhin getrennt gewichten:
+### 9.2 Laufzeitfaktoren
 
 ```text
 effectiveWeight =
@@ -298,142 +396,129 @@ effectiveWeight =
   × noveltyTargetFactor
 ```
 
-Die endgültigen fünfstufigen Beschaffbarkeitsfaktoren werden nach der Katalogrevision in #190 empirisch kalibriert. #187 führt zunächst die technische Zwischenstufe mit einer ausdrücklich vorläufigen monotonen Faktorposition ein.
+Die endgültigen fünfstufigen Beschaffbarkeitsfaktoren werden nach der Katalogrevision in #190 empirisch kalibriert.
 
-`UNAVAILABLE` blockiert eine zufällige Ziehung für ein maßgebliches Session-Elektoratsmitglied. Manuelle Vorgaben bleiben von der Beschaffbarkeit unberührt.
+Verbindliche fachliche Zielrichtung:
 
-## 9. Fehlende Werte und Pflegevollständigkeit
+- `PLANNED` merklich vorsichtiger als `EASY`,
+- `SPECIALTY` sehr selten, aber erreichbar,
+- `DIFFICULT` noch seltener, jedoch größer als null,
+- `UNAVAILABLE` hart ausgeschlossen.
+
+Diese Faktoren dürfen fachlich falsche Stufen nicht kompensieren.
+
+## 10. Fehlende Werte und Pflegevollständigkeit
 
 Die Persistenz bleibt grundsätzlich sparse:
 
-- fehlende Beschaffbarkeit bedeutet „nicht gepflegt“ und wirkt für generische Teilnehmer neutral,
-- fehlende Novelty bedeutet „nicht gepflegt“ und macht ein Konzept für zufällige Generator-Slots bereits ungeeignet,
+- fehlende Beschaffbarkeit bedeutet „nicht gepflegt“,
+- fehlende Novelty bedeutet „nicht gepflegt“,
 - fehlende Werte werden nicht erfunden.
 
-Für die redaktionelle Freigabe des aktuellen privaten Produkts gilt strenger:
+Für den aktuellen privaten Produktstand gilt strenger:
 
 - jedes aktive zufällig ziehbare Konzept benötigt eine Kochungewöhnlichkeit 1–5,
 - jedes aktive zufällig ziehbare Konzept benötigt eine freigegebene Beschaffbarkeit für Georgia und Tobias,
-- reine Strukturknoten oder fachlich nicht mehr verwendete inaktive Altwerte dürfen ausdrücklich als `nicht anwendbar` markiert werden,
-- eine solche Nichtanwendbarkeit ist eine sichtbare Reviewentscheidung, kein versehentliches Loch.
-
-Bei späteren zusätzlichen Teilnehmern bleibt die generische Sparse-Semantik erhalten. Eine neue globale Datenbankpflicht für sämtliche jemals angelegten Personen wird nicht eingeführt.
-
-## 10. Neunstufiger katalogweiter Review
-
-Der vollständige Katalogreview aus #188 folgt verbindlich diesen neun Schritten.
-
-### Schritt 1: Katalogstand einfrieren und exportieren
-
-- Ausgangscommit dokumentieren.
-- Jedes Konzept mit Code, Namen, Aktiv-/Ziehstatus, Spezifität, bisherigen Werten, Gewicht, Parent-/Child-Kontext und Kuratornotiz erfassen.
-- Jedes Konzept genau einmal in einem Reviewledger führen.
-
-### Schritt 2: Repräsentative Anker vorschlagen
-
-Ungefähr 25–40 Konzepte über die vollständige Matrix auswählen:
-
-- leicht + gewöhnlich,
-- leicht + ungewöhnlich,
-- schwer + konventionell im Küchenkontext,
-- schwer + ungewöhnlich,
-- unterschiedliche Produktformen und Kulturkreise,
-- offene und spezifische Konzepte.
-
-### Schritt 3: Anker menschlich freigeben
-
-Erst ausdrücklich freigegebene Anker werden als Vergleichswerte verwendet. Streitfälle bleiben offen und werden nicht als stillschweigende Norm eingesetzt.
-
-### Schritt 4: Kochungewöhnlichkeit separat bewerten
-
-Den vollständigen Katalog ausschließlich nach der Verwendungsperspektive einstufen. Bestehende Beschaffbarkeit und möglichst auch Gewicht bleiben während dieses Durchgangs ausgeblendet.
-
-### Schritt 5: Beschaffbarkeit pro Person separat bewerten
-
-Für jedes Konzept unabhängig Georgia und Tobias beurteilen. Die persönlichen Beschaffungsprofile, Produktformen, Onlinewege, Reisen und Kühlbedingungen sind anzuwenden.
-
-### Schritt 6: Unsichere Fälle recherchieren
-
-Alltägliche eindeutige Produkte benötigen keine künstliche Vollrecherche. Spezialimporte, Stufen 4/5, überraschende Personenunterschiede, mehrdeutige Formen und strittige Novelty-Werte sind angemessen zu belegen.
-
-### Schritt 7: Konsistenz und Ausreißer prüfen
-
-Mindestens prüfen:
-
-- auffällige Gleichsetzung von schwerer Beschaffung und hoher Novelty,
-- starke Personenunterschiede,
-- Formverwechslungen,
-- unplausible Familienmuster,
-- fehlende Pflichtwerte,
-- alte Novelty-/Availability-bedingte Gewichtskappungen.
-
-Prüfregeln erzeugen Hinweise, keine automatische Fachwahrheit.
-
-### Schritt 8: Menschliche Freigabe in Chargen
-
-Ergebnisse in überschaubaren thematischen oder alphabetischen Chargen vorlegen. Nur ausdrücklich freigegebene Werte und Gewichtskorrekturen gelangen in den Abschlussstand.
-
-### Schritt 9: Autoritativen Abschlussstand, Migration und Kalibrierung erzeugen
-
-- einen diffbaren, maschinenlesbaren und menschenprüfbaren Reviewstand erzeugen,
-- freigegebene Werte in #189 append-only persistieren,
-- anschließend in #190 die Generatorfaktoren auf dem neuen Katalogstand kalibrieren.
-
-Redaktionelle Fachlichkeit wird nicht in einem zweiten Satz produktiver Einzelwert-Assertions konserviert.
+- jede anwendbare Personenbewertung benötigt eine freigegebene Beschaffbarkeitsnotiz,
+- reine Strukturknoten oder fachlich nicht verwendete Altwerte dürfen ausdrücklich als `nicht anwendbar` markiert werden,
+- Nichtanwendbarkeit ist eine sichtbare Reviewentscheidung, kein Loch.
 
 ## 11. Dauerhafte Regeln für Neuaufnahmen und Änderungen
 
-Jeder Metadatenentwurf für ein neues zufällig ziehbares Konzept muss künftig getrennt enthalten:
+Die operative Checkliste liegt in [`INGREDIENT_CONCEPT_CURATION.md`](INGREDIENT_CONCEPT_CURATION.md). Sie ist bei jeder neuen Konzeptanlage, Konkretisierung oder wesentlichen Produktformänderung verbindlich.
 
-### 11.1 Kochungewöhnlichkeit
+Jeder Metadatenentwurf für ein neues zufällig ziehbares Konzept muss vor Aktivierung getrennt enthalten:
+
+### 11.1 Fachliche Identität und Produktform
+
+- stabilen Konzeptcode und eindeutigen Anzeigenamen,
+- kurze Kuratornotiz ohne technische Interna,
+- zulässige Produktformen und ausdrücklich ausgeschlossene Ersatzformen,
+- Parent-/Child-Einordnung ohne automatische Metadatenvererbung,
+- Entscheidung, ob das Konzept fachlich ziehbar oder nur Strukturknoten ist.
+
+### 11.2 Kochungewöhnlichkeit
 
 - Stufe 1–5 mit sprechendem Namen,
 - kurze Begründung aus der Verwendungsperspektive,
-- bei Stufe 3–5 mindestens ein Hinweis auf den typischen kulinarischen Kontext beziehungsweise den ungewöhnlichen Verwendungskern,
-- beantwortete Kontrollfrage: Würde der Wert bei bereits vorhandener kostenloser Zutat gleich bleiben?
+- bei Stufe 3–5 Hinweis auf typischen Kontext beziehungsweise ungewöhnlichen Verwendungskern,
+- bestätigte Kontrollfrage: Der Wert bliebe bei bereits vorhandener kostenloser Zutat gleich.
 
-### 11.2 Beschaffbarkeit
+### 11.3 Beschaffbarkeit je Person
 
 Für Georgia und Tobias jeweils:
 
 - technische Stufe und deutsche Bezeichnung,
 - relevante zulässige Produktform,
-- realistischer Bezugsweg,
-- bei Stufe 3–5 oder abweichenden Personenwerten eine knappe Begründung,
-- bei unsicherer Spezialware angemessene aktuelle Evidenz.
+- Händler-/Marktklasse,
+- Marktbreite: allgemein, breiter Spezialmarkt, enger Nischenmarkt oder kein Markt,
+- Zuverlässigkeit von Bestand und Lieferung,
+- Frische-, Kühl-, TK-, Import- und Transportbedingungen,
+- kurze personenspezifische Beschaffbarkeitsnotiz,
+- aktuelle Evidenz entsprechend Abschnitt 8.
 
-### 11.3 Verbindliche Abgrenzungen
+### 11.4 Harte Neuaufnahme-Gates
 
-- keine Ableitung aus Herkunft oder Novelty,
-- keine Ersatzprodukte,
-- keine Gleichsetzung mit aktuellem Vorrat,
-- keine automatische Parent-/Child-Vererbung,
-- Saison und Importperiodik getrennt behandeln,
-- Preis nicht als versteckte Beschaffbarkeitsdimension verwenden,
-- keine Dummywerte zur bloßen Erfüllung eines Formulars,
-- keine Aktivierung für zufällige Ziehung vor redaktioneller Freigabe der benötigten Werte.
+- `EASY` darf niemals aus Spezialladen, Markt, Fischhändler oder Onlinebestellung abgeleitet werden.
+- `SPECIALTY` verlangt breite Etablierung im einschlägigen Spezialmarkt; eine einzelne Produktseite oder ein bis zwei Nischenimporteure reichen nicht.
+- `DIFFICULT` ist die normale Stufe für enge nationale Importmärkte, fragile Frische-/Kühlwege und stark schwankende Spezialware.
+- Ersatzprodukte, ähnliche Sorten und ungültige Produktformen zählen nicht.
+- Herkunft, Länderrelation, Novelty, Preis oder aktueller Vorrat erzeugen keine Beschaffbarkeitsstufe.
+- Parent-/Child-Werte werden nicht vererbt.
+- Saison und Importperiodik werden getrennt behandelt.
+- `base_draw_weight` wird eigenständig begründet.
+- Das Konzept wird nicht für zufällige Ziehungen aktiviert, bevor alle erforderlichen Werte, Notizen und Evidenzen redaktionell freigegeben sind.
 
-Automatisierte Tests dürfen Wertebereiche, technische Vollständigkeitsverträge und die korrekte Verarbeitung aller Stufen prüfen. Sie dürfen nicht behaupten, dass eine konkrete produktive Zutat fachlich zwingend einen bestimmten Wert besitzen muss.
+### 11.5 Erneute Prüfung bestehender Konzepte
 
-## 12. Entwicklungspakete
+Eine neue Bewertung ist erforderlich, wenn:
 
-Die Umsetzung ist unter #186 in folgende Pakete getrennt:
+- Name oder Produktform wesentlich geschärft werden,
+- eine zuvor zulässige Form ausgeschlossen oder erweitert wird,
+- sich der erreichbare Markt erkennbar verbreitert oder verengt,
+- ein wichtiger Händlerweg dauerhaft entfällt,
+- Frische-/Kühl-/TK-Logistik sich wesentlich ändert,
+- ein neuer Teilnehmer mit anderem Beschaffungsprofil aufgenommen wird.
+
+Automatisierte Tests dürfen Wertebereiche, Vollständigkeitsverträge und die technische Verarbeitung aller Stufen prüfen. Sie dürfen nicht behaupten, dass eine konkrete produktive Zutat fachlich zwingend einen bestimmten Wert besitzen muss.
+
+## 12. Katalogweiter Review in #188
+
+Der vollständige Review folgt weiterhin dem neunstufigen Grundablauf:
+
+1. Katalogstand einfrieren und vollständig exportieren.
+2. Repräsentative Anker vorschlagen.
+3. Anker menschlich freigeben.
+4. Kochungewöhnlichkeit separat bewerten.
+5. Beschaffbarkeit pro Person separat bewerten.
+6. Unsichere Fälle recherchieren.
+7. Konsistenz und Ausreißer prüfen.
+8. Menschliche Freigabe in überschaubaren Chargen.
+9. Autoritativen Abschlussstand erzeugen.
+
+Nach der Schärfung vom 4. September 2026 gilt zusätzlich:
+
+- Die abgeschlossene Kochungewöhnlichkeitsbewertung bleibt unberührt.
+- Die frühere Availability-Freigabe ist zurückgesetzt.
+- Vor einem neuen vollständigen Availability-Durchgang wird der revidierte Marktbreiten-Ankersatz erneut menschlich freigegeben.
+- Erst danach werden alle anwendbaren Personenwerte neu auditiert.
+- Prüfregeln erzeugen Hinweise, keine automatische Fachwahrheit.
+
+## 13. Entwicklungspakete
 
 1. **#187 – Technische Fünfer-Skala und Begriffsschärfung**  
-   `SPECIALTY` end-to-end in Schema, API, Administration, Audit, Snapshots und Generator einführen; sichtbare Kochungewöhnlichkeitsbegriffe schärfen; keine produktiven Einzelwerte ändern.
+   `SPECIALTY` end-to-end in Schema, API, Administration, Audit, Snapshots und Generator einführen; sichtbare Kochungewöhnlichkeitsbegriffe schärfen.
 
 2. **#188 – Katalogweiter Vollreview**  
-   Referenzanker freigeben, vollständigen Katalog in getrennten Durchgängen bewerten, Spezialfälle recherchieren und einen autoritativen Abschlussstand erzeugen; noch keine produktive Migration.
+   Referenzanker freigeben, vollständigen Katalog in getrennten Durchgängen bewerten, Spezialfälle recherchieren und einen autoritativen Abschlussstand erzeugen.
 
-3. **#189 – Freigegebene Werte persistieren und Gewicht entkoppeln**  
-   Reviewwerte append-only übernehmen, ausdrücklich freigegebene Gewichtskorrekturen setzen und pauschale Novelty-/Availability-Gewichtswarnungen aus der aktuellen Runtime-Semantik entfernen.
+3. **#189 – Freigegebene Werte und Notizen persistieren**  
+   Reviewwerte append-only übernehmen, personenspezifische Beschaffbarkeitsnotizen pflegbar machen und pauschale Gewichtskopplungen entfernen.
 
 4. **#190 – Generator neu kalibrieren**  
    Fünfstufige Beschaffbarkeitsfaktoren und Novelty-Ziele mit einer breiten reproduzierbaren PostgreSQL-Matrix prüfen, final entscheiden und dokumentieren.
 
-#188 kann nach Freigabe dieser Spezifikation parallel zur technischen Arbeit aus #187 vorbereitet werden. #189 benötigt beide abgeschlossenen Vorgänger; #190 folgt auf #189.
-
-## 13. Nicht-Ziele
+## 14. Nicht-Ziele
 
 Diese Spezifikation führt nicht ein:
 
