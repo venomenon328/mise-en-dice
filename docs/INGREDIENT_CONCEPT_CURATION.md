@@ -43,12 +43,14 @@ Metadaten werden nicht aus Parent, Child, Land oder Namen geerbt.
 Für Georgia und Tobias jeweils:
 
 - Stufe `EASY`, `PLANNED`, `SPECIALTY`, `DIFFICULT` oder `UNAVAILABLE`,
-- personenspezifische Beschaffbarkeitsnotiz,
+- individuelle personenspezifische Beschaffbarkeitsnotiz mit konzeptspezifischem Kern,
 - Marktklasse,
 - Marktbreite,
 - Bestands- und Lieferzuverlässigkeit,
 - Frische-, Kühl-, TK-, Import- oder Transportbedingungen,
 - Evidenz entsprechend Abschnitt 4.
+
+Eine Beschaffbarkeitsnotiz darf nicht bloß den Enum-Wert ausformulieren. Auch bei `EASY` muss sie knapp benennen, **warum gerade diese konkrete Produktform** im Alltagshandel zuverlässig erhältlich ist. Katalogweit wiederholte Standardtexte ohne konzeptspezifischen Informationsgewinn sind keine erfüllte Notizpflicht.
 
 ### Gewicht
 
@@ -125,16 +127,29 @@ Die Stufe richtet sich nach dem besten **realistisch nutzbaren**, nicht bloß th
 | `DIFFICULT` | enger Nischen-/Importmarkt, wenige Händler, fragiler Bestand, heikle Produktform oder besondere Logistik |
 | `UNAVAILABLE` | kein realistischer wiederholbarer Weg |
 
-### Schritt 6: Notiz schreiben
+### Schritt 6: Individuelle Notiz schreiben
 
 Die Notiz beantwortet knapp:
 
-- Woher kommt die Einstufung?
-- Welche Marktbreite liegt vor?
-- Welche Produktform ist maßgeblich?
-- Welcher Engpass verhindert eine leichtere Stufe?
+- Was macht gerade **dieses Konzept und seine zulässige Produktform** gut oder schlecht beschaffbar?
+- Welche konkrete Marktbreite oder Bezugsart trägt die Stufe?
+- Welcher Engpass verhindert gegebenenfalls eine leichtere Stufe?
+- Worin besteht ein personenspezifischer Unterschied?
 
-Sie nennt keine Rezeptideen und bildet keine vollständige Händlerdatenbank.
+Bevorzugt wird eine kurze, konkrete Kerninformation wie:
+
+- „Gewöhnliches Gewürzregal größerer wie auch vieler kleinerer Supermärkte.“
+- „In gut sortierten allgemeinen Märkten und im breiten Onlinehandel zuverlässig erhältlich, lokal aber nicht überall Standard.“
+- „Regulärer Sortimentsartikel vieler unabhängiger breit aufgestellter Asia-Händler.“
+- „Nur wenige philippinische Kühl-/TK-Händler; wechselnde Sorten und Kühlweg verhindern einen robusten Bezug.“
+
+Nicht ausreichend sind austauschbare Formulierungen wie:
+
+- „Die definierte Produktform ist in der Basisversorgung zuverlässig erhältlich.“
+- „Die Zutat ist über Spezialhandel beschaffbar.“
+- eine bloße Wiederholung von `EASY`, `PLANNED`, `SPECIALTY` oder `DIFFICULT` in ganzen Sätzen.
+
+Auch offensichtliche `EASY`-Fälle erhalten eine individuelle Kurzbegründung. Formulierungen dürfen nur dann wiederverwendet werden, wenn die konkrete Handelsrealität tatsächlich identisch ist und der Text weiterhin einen konzeptspezifischen Kern enthält. Die Notiz nennt keine Rezeptideen und bildet keine vollständige Händlerdatenbank.
 
 ## 3. Harte Verbote und Schutzregeln
 
@@ -150,6 +165,8 @@ Sie nennt keine Rezeptideen und bildet keine vollständige Händlerdatenbank.
 - einen gelegentlichen persönlichen Fund.
 
 Eine Spezialquelle bleibt auch bei wiederholter Nutzung mindestens `PLANNED`.
+
+Die Beschaffbarkeitsnotiz muss den konkreten Alltagsgrund nennen, beispielsweise normales Gemüse-, Gewürz-, Molkerei-, Fleisch- oder Konservensortiment. Der Satz „im normalen Supermarkt erhältlich“ ohne konzeptspezifische Aussage genügt katalogweit nicht als massenhaft wiederholte Standardnotiz.
 
 ### `PLANNED`
 
@@ -237,7 +254,8 @@ Ein neues zufällig ziehbares Konzept darf erst aktiviert werden, wenn:
 - Produktform und Ersatzformen eindeutig sind,
 - Kochungewöhnlichkeit freigegeben ist,
 - Georgia- und Tobias-Beschaffbarkeit freigegeben sind,
-- beide Beschaffbarkeitsnotizen vorliegen,
+- beide individuellen, konzeptspezifischen Beschaffbarkeitsnotizen vorliegen,
+- keine Notiz lediglich den Enum-Wert oder einen katalogweiten Standardtext paraphrasiert,
 - erforderliche Evidenz vorliegt,
 - `base_draw_weight` unabhängig begründet ist,
 - Parent-/Child-, Rollen-, Dimensions-, Flag-, Saison- und Länderbeziehungen geprüft sind.
@@ -278,7 +296,7 @@ Georgia:
 - Marktklasse:
 - Marktbreite/Zuverlässigkeit:
 - Logistik:
-- Notiz:
+- Individuelle Notiz (konzeptspezifischer Kern):
 - Evidenz:
 
 Tobias:
@@ -286,7 +304,7 @@ Tobias:
 - Marktklasse:
 - Marktbreite/Zuverlässigkeit:
 - Logistik:
-- Notiz:
+- Individuelle Notiz (konzeptspezifischer Kern):
 - Evidenz:
 
 Base Draw Weight:
