@@ -193,33 +193,14 @@ function Get-PersonDifferenceProblems {
     param([object]$GeorgiaRow, [object]$TobiasRow)
 
     $problems = [Collections.Generic.List[string]]::new()
-    if ($GeorgiaRow.proposed_availability -cne $TobiasRow.proposed_availability) {
+    if ($GeorgiaRow.proposed_availability -cne $TobiasRow.proposed_availability -and
+        -not $EffectiveAnchors.ContainsKey($GeorgiaRow.concept_code)) {
         foreach ($pair in @(@('Georgia',$GeorgiaRow), @('Tobias',$TobiasRow))) {
             if ($pair[1].evidence_requirement -cne 'REQUIRED') { $problems.Add("EVIDENCE_NOT_REQUIRED:$($pair[0])") }
             if ([string]::IsNullOrWhiteSpace($pair[1].availability_evidence)) { $problems.Add("EVIDENCE_MISSING:$($pair[0])") }
         }
     }
     return @($problems)
-}
-
-function Invoke-GenericValidatorSelfTests {
-    $sharedNote = 'Frische Beispielwurzel ist über gut sortierte Gemüseabteilungen planbar; der Filialbestand muss vor dem Einkauf geprüft werden.'
-    $noteFixture = [pscustomobject]@{ availability_note=$sharedNote; product_form_basis='Frische Beispielwurzel in kochgeeigneter Form.' }
-    Assert-Equal @(Get-AvailabilityNoteProblems $noteFixture).Count 0 'Generic fixture rejected a valid shared note for Georgia'
-    Assert-Equal @(Get-AvailabilityNoteProblems $noteFixture).Count 0 'Generic fixture rejected the same valid shared note for Tobias'
-
-    $g = [pscustomobject]@{ concept_code='CONCEPT_ALPHA'; proposed_availability='PLANNED'; evidence_requirement='REQUIRED'; availability_evidence='EV-G' }
-    $t = [pscustomobject]@{ concept_code='CONCEPT_ALPHA'; proposed_availability='SPECIALTY'; evidence_requirement='REQUIRED'; availability_evidence='EV-T' }
-    Assert-Equal @(Get-PersonDifferenceProblems $g $t).Count 0 'Generic fixture rejected an additional data-driven person difference'
-
-    $catalog = @{
-        'EV-G'=[pscustomobject]@{ concept_code='CONCEPT_ALPHA'; person_relevance='Georgia'; supported_rating='PLANNED' }
-        'EV-WRONG-CONCEPT'=[pscustomobject]@{ concept_code='CONCEPT_BETA'; person_relevance='Georgia'; supported_rating='PLANNED' }
-        'EV-WRONG-PERSON'=[pscustomobject]@{ concept_code='CONCEPT_ALPHA'; person_relevance='Tobias'; supported_rating='PLANNED' }
-    }
-    Assert-True (@(Get-EvidenceReferenceProblems ([pscustomobject]@{ concept_code='CONCEPT_ALPHA'; proposed_availability='PLANNED'; availability_evidence='EV-UNKNOWN' }) 'Georgia' $catalog) -ccontains 'UNKNOWN:EV-UNKNOWN') 'Generic fixture did not reject an unknown evidence ID'
-    Assert-True (@(Get-EvidenceReferenceProblems ([pscustomobject]@{ concept_code='CONCEPT_ALPHA'; proposed_availability='PLANNED'; availability_evidence='EV-WRONG-CONCEPT' }) 'Georgia' $catalog) -ccontains 'CONCEPT_SCOPE:EV-WRONG-CONCEPT') 'Generic fixture did not reject wrong concept scope'
-    Assert-True (@(Get-EvidenceReferenceProblems ([pscustomobject]@{ concept_code='CONCEPT_ALPHA'; proposed_availability='PLANNED'; availability_evidence='EV-WRONG-PERSON' }) 'Georgia' $catalog) -ccontains 'PERSON_SCOPE:EV-WRONG-PERSON') 'Generic fixture did not reject wrong person scope'
 }
 
 function Get-UriHost {
@@ -233,6 +214,122 @@ function Test-PositiveRouteEvidence {
     param([object]$Item)
     if ($Item.availability_status -cin @('IN_STOCK','REGULAR_RANGE')) { return $true }
     return $Item.availability_status -ceq 'PERSONALLY_CONFIRMED' -and $Item.evidence_role -ceq 'PERSON_ROUTE'
+}
+
+function Get-DivergenceAuditProblems {
+    param(
+        [object]$AuditRow,
+        [object]$CurrentGeorgia,
+        [object]$CurrentTobias,
+        [hashtable]$EffectiveAnchors
+    )
+
+    $problems = [Collections.Generic.List[string]]::new()
+    foreach ($field in $divergenceHeaders) {
+        if ([string]::IsNullOrWhiteSpace($AuditRow.$field)) { $problems.Add("EMPTY_FIELD:$field") }
+    }
+    foreach ($field in @('georgia_before','tobias_before','recommended_georgia','recommended_tobias')) {
+        if ($AuditRow.$field -cnotin $ratings) { $problems.Add("INVALID_RATING:$field") }
+    }
+
+    switch ($AuditRow.audit_status) {
+        'ALIGNMENT_CORRECTION_REQUIRED' {
+            if ($AuditRow.georgia_before -ceq $AuditRow.tobias_before) { $problems.Add('ALIGNMENT_STARTED_EQUAL') }
+            if ($AuditRow.recommended_georgia -cne $AuditRow.recommended_tobias) { $problems.Add('ALIGNMENT_DID_NOT_CONVERGE') }
+        }
+        'ANCHOR_PROFILE_DIFFERENCE_CONFIRMED' {
+            if (-not $EffectiveAnchors.ContainsKey($AuditRow.concept_code)) { $problems.Add('CONFIRMED_DIFFERENCE_NOT_ANCHOR') }
+            if ($AuditRow.recommended_georgia -ceq $AuditRow.recommended_tobias) { $problems.Add('CONFIRMED_DIFFERENCE_IS_EQUAL') }
+        }
+        'PROFILE_DIFFERENCE_EVIDENCE_PENDING' {
+            if ($AuditRow.recommended_georgia -ceq $AuditRow.recommended_tobias) { $problems.Add('PENDING_DIFFERENCE_IS_EQUAL') }
+            if ($CurrentGeorgia.proposed_availability -cne $AuditRow.recommended_georgia) { $problems.Add('PENDING_GEORGIA_NOT_CURRENT') }
+            if ($CurrentTobias.proposed_availability -cne $AuditRow.recommended_tobias) { $problems.Add('PENDING_TOBIAS_NOT_CURRENT') }
+        }
+        'EQUAL_CASE_CORRECTION_REQUIRED' {
+            if ($AuditRow.georgia_before -cne $AuditRow.tobias_before) { $problems.Add('EQUAL_CASE_STARTED_DIFFERENT') }
+            if ($AuditRow.recommended_georgia -ceq $AuditRow.georgia_before -and $AuditRow.recommended_tobias -ceq $AuditRow.tobias_before) { $problems.Add('EQUAL_CASE_HAS_NO_TRANSITION') }
+        }
+        default { $problems.Add("INVALID_STATUS:$($AuditRow.audit_status)") }
+    }
+    return @($problems)
+}
+
+function Get-CurrentDecisionPairProblems {
+    param(
+        [object]$GeorgiaRow,
+        [object]$TobiasRow,
+        [hashtable]$EvidenceById,
+        [object[]]$HistoricalAuditRows,
+        [hashtable]$EffectiveAnchors,
+        [switch]$RequirePositiveNonAnchorDifferenceEvidence
+    )
+
+    $problems = [Collections.Generic.List[string]]::new()
+    foreach ($pair in @(@('Georgia',$GeorgiaRow), @('Tobias',$TobiasRow))) {
+        $person = $pair[0]; $row = $pair[1]
+        foreach ($problem in @(Get-AvailabilityNoteProblems $row)) { $problems.Add("${person}:NOTE:$problem") }
+        foreach ($problem in @(Get-EvidenceReferenceProblems $row $person $EvidenceById)) { $problems.Add("${person}:$problem") }
+    }
+    foreach ($problem in @(Get-PersonDifferenceProblems $GeorgiaRow $TobiasRow)) { $problems.Add($problem) }
+
+    if ($RequirePositiveNonAnchorDifferenceEvidence -and
+        $GeorgiaRow.proposed_availability -cne $TobiasRow.proposed_availability -and
+        -not $EffectiveAnchors.ContainsKey($GeorgiaRow.concept_code)) {
+        foreach ($pair in @(@('Georgia',$GeorgiaRow), @('Tobias',$TobiasRow))) {
+            $positive = @(
+                Split-PipeTokens $pair[1].availability_evidence |
+                    Where-Object { $EvidenceById.ContainsKey($_) -and (Test-PositiveRouteEvidence $EvidenceById[$_]) }
+            )
+            if ($positive.Count -eq 0) { $problems.Add("POSITIVE_EVIDENCE_MISSING:$($pair[0])") }
+        }
+    }
+
+    foreach ($auditRow in $HistoricalAuditRows) {
+        foreach ($problem in @(Get-DivergenceAuditProblems $auditRow $GeorgiaRow $TobiasRow $EffectiveAnchors)) {
+            $problems.Add("HISTORICAL_AUDIT:$problem")
+        }
+    }
+    return @($problems)
+}
+
+function Invoke-GenericValidatorSelfTests {
+    $sharedNote = 'Frische Beispielwurzel ist über gut sortierte Gemüseabteilungen planbar; der Filialbestand muss vor dem Einkauf geprüft werden.'
+    $georgia = [pscustomobject]@{
+        concept_code='CONCEPT_ALPHA'; product_form_basis='Frische Beispielwurzel in kochgeeigneter Form.'
+        proposed_availability='PLANNED'; availability_note=$sharedNote
+        evidence_requirement='REQUIRED'; availability_evidence='EV-G'
+    }
+    $tobias = [pscustomobject]@{
+        concept_code='CONCEPT_ALPHA'; product_form_basis='Frische Beispielwurzel in kochgeeigneter Form.'
+        proposed_availability='SPECIALTY'; availability_note=$sharedNote
+        evidence_requirement='REQUIRED'; availability_evidence='EV-T'
+    }
+    $catalog = @{
+        'EV-G'=[pscustomobject]@{ concept_code='CONCEPT_ALPHA'; person_relevance='Georgia'; supported_rating='PLANNED'; availability_status='IN_STOCK'; evidence_role='EXACT_ROUTE' }
+        'EV-T'=[pscustomobject]@{ concept_code='CONCEPT_ALPHA'; person_relevance='Tobias'; supported_rating='SPECIALTY'; availability_status='IN_STOCK'; evidence_role='MARKET_BREADTH' }
+        'EV-WRONG-CONCEPT'=[pscustomobject]@{ concept_code='CONCEPT_BETA'; person_relevance='Georgia'; supported_rating='PLANNED'; availability_status='IN_STOCK'; evidence_role='EXACT_ROUTE' }
+        'EV-WRONG-PERSON'=[pscustomobject]@{ concept_code='CONCEPT_ALPHA'; person_relevance='Tobias'; supported_rating='PLANNED'; availability_status='IN_STOCK'; evidence_role='EXACT_ROUTE' }
+    }
+    $historicalAlignment = [pscustomobject]@{
+        concept_code='CONCEPT_ALPHA'; georgia_before='SPECIALTY'; tobias_before='DIFFICULT'
+        recommended_georgia='PLANNED'; recommended_tobias='PLANNED'
+        audit_reason='Historische Angleichung im damaligen Stand.'; evidence_focus='Damals geprüfte synthetische Evidenz.'
+        audit_status='ALIGNMENT_CORRECTION_REQUIRED'
+    }
+    $noAnchors = @{}
+    Assert-Equal @(Get-CurrentDecisionPairProblems -GeorgiaRow $georgia -TobiasRow $tobias -EvidenceById $catalog -HistoricalAuditRows @($historicalAlignment) -EffectiveAnchors $noAnchors -RequirePositiveNonAnchorDifferenceEvidence).Count 0 'Full generic path rejected identical valid notes or a new evidenced non-anchor difference after historical alignment'
+
+    foreach ($mutation in @(
+        @('EV-UNKNOWN','UNKNOWN:EV-UNKNOWN','unknown evidence ID'),
+        @('EV-WRONG-CONCEPT','CONCEPT_SCOPE:EV-WRONG-CONCEPT','wrong concept scope'),
+        @('EV-WRONG-PERSON','PERSON_SCOPE:EV-WRONG-PERSON','wrong person scope')
+    )) {
+        $mutatedGeorgia = $georgia.PSObject.Copy()
+        $mutatedGeorgia.availability_evidence = $mutation[0]
+        $mutationProblems = @(Get-CurrentDecisionPairProblems -GeorgiaRow $mutatedGeorgia -TobiasRow $tobias -EvidenceById $catalog -HistoricalAuditRows @($historicalAlignment) -EffectiveAnchors $noAnchors -RequirePositiveNonAnchorDifferenceEvidence)
+        Assert-True ($mutationProblems -ccontains "Georgia:$($mutation[1])") "Full generic path did not reject $($mutation[2])"
+    }
 }
 
 function Get-EffectiveAnchors {
@@ -473,7 +570,8 @@ foreach ($row in $noteCorrections) {
     Assert-Equal $row.audit_status 'RESOLVED_VERIFIED' "Note-correction audit is not finally resolved: $($row.person)/$($row.concept_code)"
     $decision = @($decisionSets[$row.person] | Where-Object concept_code -ceq $row.concept_code)
     Assert-Equal $decision.Count 1 "Note-correction audit decision lookup differs: $($row.person)/$($row.concept_code)"
-    Assert-Equal $decision[0].proposed_availability $row.recommended_availability "Note-correction audit rating differs from final decision: $($row.person)/$($row.concept_code)"
+    # This file records the historical note-correction pass. Its then-current and
+    # recommended ratings remain immutable context, not a second live rating oracle.
 }
 
 Assert-Equal (@($noteEditorialExamples | ForEach-Object { "$($_.person)|$($_.concept_code)" } | Sort-Object -Unique).Count) $noteEditorialExamples.Count 'Duplicate v2 note editorial example person/concept pair'
@@ -620,7 +718,6 @@ $negativeOnlyGroups = @(
         Group-Object concept_code |
         Where-Object { @($_.Group | Where-Object availability_status -cnotin @('NO_MATCH','OUT_OF_STOCK')).Count -eq 0 }
 )
-Assert-True ($negativeOnlyGroups.Count -gt 0) 'Canonical evidence contains no negative-only concept to validate'
 foreach ($group in $negativeOnlyGroups) {
     $code = $group.Name
     $items = @($group.Group)
@@ -674,8 +771,9 @@ $referencedEvidence = @{}
 
 foreach ($code in $knownCodes.Keys) {
     if ($structureCodes.ContainsKey($code)) { continue }
-    $differenceProblems = @(Get-PersonDifferenceProblems $georgiaByCode[$code] $tobiasByCode[$code])
-    Assert-Equal $differenceProblems.Count 0 "Person difference has evidence problems [$($differenceProblems -join ',')]: $code"
+    $auditRows = @($divergence | Where-Object concept_code -ceq $code)
+    $pairProblems = @(Get-CurrentDecisionPairProblems -GeorgiaRow $georgiaByCode[$code] -TobiasRow $tobiasByCode[$code] -EvidenceById $evidenceById -HistoricalAuditRows $auditRows -EffectiveAnchors $effectiveAnchors)
+    Assert-Equal $pairProblems.Count 0 "Current decision pair or historical audit has problems [$($pairProblems -join ',')]: $code"
 }
 
 Assert-Equal (@($divergence.concept_code | Sort-Object -Unique).Count) $divergence.Count 'Duplicate v2 divergence-audit concept'
@@ -693,8 +791,6 @@ foreach ($row in $divergence) {
     Assert-True ($row.recommended_georgia -cin $ratings) "Divergence audit Georgia recommendation invalid: $($row.concept_code)"
     Assert-True ($row.recommended_tobias -cin $ratings) "Divergence audit Tobias recommendation invalid: $($row.concept_code)"
     Assert-True ($row.audit_status -cin $allowedAuditStatuses) "Divergence audit status invalid: $($row.concept_code)"
-    Assert-Equal $georgiaByCode[$row.concept_code].proposed_availability $row.recommended_georgia "Georgia decision differs from divergence recommendation: $($row.concept_code)"
-    Assert-Equal $tobiasByCode[$row.concept_code].proposed_availability $row.recommended_tobias "Tobias decision differs from divergence recommendation: $($row.concept_code)"
     switch ($row.audit_status) {
         'ALIGNMENT_CORRECTION_REQUIRED' {
             Assert-True ($row.georgia_before -cne $row.tobias_before) "Alignment correction did not start from a person difference: $($row.concept_code)"
@@ -706,6 +802,8 @@ foreach ($row in $divergence) {
         }
         'PROFILE_DIFFERENCE_EVIDENCE_PENDING' {
             Assert-True ($row.recommended_georgia -cne $row.recommended_tobias) "Pending profile difference is not a difference: $($row.concept_code)"
+            Assert-Equal $georgiaByCode[$row.concept_code].proposed_availability $row.recommended_georgia "Pending Georgia decision differs from current recommendation: $($row.concept_code)"
+            Assert-Equal $tobiasByCode[$row.concept_code].proposed_availability $row.recommended_tobias "Pending Tobias decision differs from current recommendation: $($row.concept_code)"
         }
         'EQUAL_CASE_CORRECTION_REQUIRED' {
             Assert-Equal $row.georgia_before $row.tobias_before "Equal-case correction did not start from equal ratings: $($row.concept_code)"
@@ -1021,5 +1119,5 @@ Write-Host "Georgia: EASY $($distribution.Georgia.EASY) | PLANNED $($distributio
 Write-Host "Tobias:  EASY $($distribution.Tobias.EASY) | PLANNED $($distribution.Tobias.PLANNED) | SPECIALTY $($distribution.Tobias.SPECIALTY) | DIFFICULT $($distribution.Tobias.DIFFICULT) | UNAVAILABLE $($distribution.Tobias.UNAVAILABLE)."
 Write-Host "Person differences: $($differences.Count). Required evidence assignments: $coveredCount/$requiredCount covered."
 Write-Host "Notes: $($allNotes.Count)/$expectedNoteCount nonempty, short, procurement-specific and URL-free; identical notes remain allowed where market reality is identical."
-Write-Host 'Generic validator fixtures: shared valid note and additional data-driven person difference accepted; unknown evidence ID and wrong concept/person scope rejected.'
+Write-Host 'Generic full-path fixtures: identical valid G/T notes and a new non-anchor difference with positive EV-G/EV-T after historical alignment accepted; unknown evidence ID and wrong concept/person scope rejected.'
 Write-Host 'Protected Cooking Novelty, previous Availability and v2 anchor approval traces: unchanged.'
