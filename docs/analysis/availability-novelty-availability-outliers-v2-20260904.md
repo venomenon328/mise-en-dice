@@ -6,8 +6,8 @@ Dieser Bericht wird ausschließlich aus den zwei fixierten v2-Personenreviews ab
 
 | Person | EASY | PLANNED | SPECIALTY | DIFFICULT | UNAVAILABLE |
 |---|---:|---:|---:|---:|---:|
-| Georgia | 423 | 267 | 96 | 65 | 2 |
-| Tobias | 423 | 261 | 97 | 70 | 2 |
+| Georgia | 423 | 271 | 96 | 61 | 2 |
+| Tobias | 423 | 265 | 97 | 66 | 2 |
 
 ## Übergangsmatrizen gegenüber dem letzten Vorschlagsstand
 
@@ -16,7 +16,7 @@ Dieser Bericht wird ausschließlich aus den zwei fixierten v2-Personenreviews ab
 | Alt \\ v2 | EASY | PLANNED | SPECIALTY | DIFFICULT | UNAVAILABLE |
 |---|---:|---:|---:|---:|---:|
 | EASY | 423 | 146 | 3 | 0 | 0 |
-| PLANNED | 0 | 119 | 84 | 15 | 0 |
+| PLANNED | 0 | 123 | 84 | 11 | 0 |
 | SPECIALTY | 0 | 1 | 9 | 40 | 0 |
 | DIFFICULT | 0 | 1 | 0 | 10 | 0 |
 | UNAVAILABLE | 0 | 0 | 0 | 0 | 2 |
@@ -26,7 +26,7 @@ Dieser Bericht wird ausschließlich aus den zwei fixierten v2-Personenreviews ab
 | Alt \\ v2 | EASY | PLANNED | SPECIALTY | DIFFICULT | UNAVAILABLE |
 |---|---:|---:|---:|---:|---:|
 | EASY | 423 | 145 | 5 | 0 | 0 |
-| PLANNED | 0 | 114 | 80 | 12 | 0 |
+| PLANNED | 0 | 118 | 80 | 8 | 0 |
 | SPECIALTY | 0 | 1 | 12 | 47 | 0 |
 | DIFFICULT | 0 | 1 | 0 | 11 | 0 |
 | UNAVAILABLE | 0 | 0 | 0 | 0 | 2 |
@@ -35,17 +35,17 @@ Dieser Bericht wird ausschließlich aus den zwei fixierten v2-Personenreviews ab
 
 | Code | Konzept | Georgia | Tobias | Georgia-Kern | Tobias-Kern |
 |---|---|---|---|---|---|
-| CURRY_LEAVES | Curryblätter | SPECIALTY | DIFFICULT | In Bornheim sucht Georgia Curryblätter über „indisch-asiatische Frisch- und Tiefkühlsortimente in Köln oder Düsseldorf“. Aromatische Blätter des Currybaums mit zitrisch-röstigem Aroma; frisch oder tiefgekühlt bevorzugt, nicht Currypulver. | Über den indischen Lebensmittel-Spezialhandel (Evidenzstand: die menschliche v2-Freigabe für diesen Weg und Tiefkühlversand, Importbeschränkungen sowie einen gezielten Händlerbesuch) prüft Tobias in Rostock „Curryblätter“, wobei folgende Abgrenzung gilt: „Aromatische Blätter des Currybaums mit zitrisch-röstigem Aroma; frisch oder tiefgekühlt bevorzugt, nicht Currypulver.“ |
-| DATE_SYRUP | Dattelsirup | PLANNED | SPECIALTY | In Bornheim sucht Georgia Dattelsirup über „nahe türkisch-arabische Lebensmittelmärkte und deren Sirupregal“. Dunkler konzentrierter Sirup aus Datteln mit fruchtig-karamelligem Geschmack; nicht Melasse. | Über ausgewählte Fachanbieter für Süßungsmittel und Backwaren (Evidenzstand: die menschliche v2-Freigabe für diesen Weg und Frischeversand sowie einen gezielten Händlerbesuch) prüft Tobias in Rostock „Dattelsirup“, wobei folgende Abgrenzung gilt: „Dunkler konzentrierter Sirup aus Datteln mit fruchtig-karamelligem Geschmack; nicht Melasse.“ |
-| GARLIC_CHIVES | Knoblauch-Schnittlauch | SPECIALTY | DIFFICULT | In Bornheim sucht Georgia Knoblauch-Schnittlauch über „große Asia-Frischmärkte in Köln oder Düsseldorf“. Flaches asiatisches Schnittlauchgewächs mit deutlichem Knoblaucharoma; auch Knoblauch-Schnittlauch genannt. | Über spezialisierte Anbieter für frische Kräuter (Evidenzstand: die menschliche v2-Freigabe für diesen Weg und Importbeschränkungen, einen gezielten Händlerbesuch sowie Standardversand) prüft Tobias in Rostock „Knoblauch-Schnittlauch“, wobei folgende Abgrenzung gilt: „Flaches asiatisches Schnittlauchgewächs mit deutlichem Knoblaucharoma; auch Knoblauch-Schnittlauch genannt.“ |
-| HARISSA | Harissa | PLANNED | SPECIALTY | In Bornheim sucht Georgia Harissa über „nahe türkisch-arabische Feinkostmärkte und deren Würzpastenregal“. Nordafrikanische Chilipaste mit Gewürzen und häufig Knoblauch; Schärfe, Ölanteil und genaue Zusammensetzung variieren. | Tobias erreicht Harissa in Rostock über den breiten levantinisch-nordafrikanischen Spezialhandel; gesucht wird eine fertige Chilipaste mit Gewürzen und häufig Knoblauch, nicht bloß allgemeine Chilisauce. |
-| NATTO | Nattō | SPECIALTY | DIFFICULT | In Bornheim sucht Georgia Nattō über „japanische Kühl- oder Tiefkühlsortimente großer Asia-Spezialmärkte“. Japanische fermentierte Sojabohnen mit klebrigen Fäden und kräftigem, erdig-würzigem Aroma. | Über den japanischen Lebensmittel-Spezialhandel (Evidenzstand: die menschliche v2-Freigabe für diesen Weg und Importbeschränkungen, einen gezielten Händlerbesuch sowie Standardversand) prüft Tobias in Rostock „Nattō“, wobei folgende Abgrenzung gilt: „Japanische fermentierte Sojabohnen mit klebrigen Fäden und kräftigem, erdig-würzigem Aroma.“ |
-| POMEGRANATE_MOLASSES | Granatapfelmelasse | PLANNED | SPECIALTY | In Bornheim sucht Georgia Granatapfelmelasse über „nahe nahöstliche Lebensmittelmärkte und deren Sirup- oder Feinkostregal“. Dick eingekochter Granatapfelsaft mit intensiver süß-saurer Fruchtigkeit; nicht Zuckerrohrmelasse. | Tobias findet Granatapfelmelasse in Rostock über levantinisch-türkischen Spezialhandel als dicke süß-saure Reduktion aus Granatapfelsaft; Zuckerrohrmelasse oder dünner Granatapfelsirup sind nicht formgleich. |
-| PUL_BIBER | Pul Biber | PLANNED | SPECIALTY | In Bornheim sucht Georgia Pul Biber über „nahe türkische Lebensmittelmärkte und deren Gewürzregal“. Türkisch geprägte grobe Chiliflocken, häufig mild bis mittelscharf und leicht ölig; Aleppo-Stil ist eine mögliche Ausprägung. | Über den levantinisch-nordafrikanischen Lebensmittel-Spezialhandel (Evidenzstand: die menschliche v2-Freigabe für diesen Weg und einen gezielten Händlerbesuch sowie Standardversand) prüft Tobias in Rostock „Pul Biber“, wobei folgende Abgrenzung gilt: „Türkisch geprägte grobe Chiliflocken, häufig mild bis mittelscharf und leicht ölig; Aleppo-Stil ist eine mögliche Ausprägung.“ |
-| SUMAC | Sumach | PLANNED | SPECIALTY | In Bornheim sucht Georgia Sumach über „nahe türkische oder arabische Lebensmittelmärkte und deren Gewürzregal“. Getrocknete gemahlene Sumachfrüchte mit fruchtig-zitroniger Säure; nicht giftiger Zier-Sumach. | Für Tobias in Rostock ist gemahlener Speise-Sumach über türkisch-levantinischen Spezialhandel erreichbar; verlangt sind getrocknete säuerliche Früchte als Gewürz, ausdrücklich kein giftiger Zier-Sumach. |
-| THAI_BASIL | Thai-Basilikum | SPECIALTY | DIFFICULT | Für Thai-Basilikum nutzt Georgia den Bezugsweg „große Asia-Frischmärkte in Köln oder Düsseldorf“. Thai-Basilikum mit anis- beziehungsweise lakritzartigem Aroma und festerem Blatt; nicht gewöhnliches süßes Basilikum. | Über auf thailändische Lebensmittel spezialisierte Anbieter (Evidenzstand: die menschliche v2-Freigabe für diesen Weg und Frischeversand, Importbeschränkungen sowie einen gezielten Händlerbesuch) prüft Tobias in Rostock „Thai-Basilikum“, wobei folgende Abgrenzung gilt: „Thai-Basilikum mit anis- beziehungsweise lakritzartigem Aroma und festerem Blatt; nicht gewöhnliches süßes Basilikum.“ |
-| THAI_EGGPLANT | Thai-Aubergine | SPECIALTY | DIFFICULT | Georgias Weg zu Thai-Aubergine führt vom Bornheimer Standort aus über „große Asia-Frischmärkte in Köln oder Düsseldorf“. Kleine runde Thai-Auberginen, meist grün-weiß und fest, die in Currys ihre Form behalten und leicht herb schmecken; Nicht mit Erbsenauberginen gleichsetzen. | Über philippinische Lebensmittelfachhändler (Evidenzstand: die menschliche v2-Freigabe für diesen Weg und Kühlversand, Importbeschränkungen sowie einen gezielten Händlerbesuch) prüft Tobias in Rostock „Thai-Aubergine“, wobei folgende Abgrenzung gilt: „Kleine runde Thai-Auberginen, meist grün-weiß und fest, die in Currys ihre Form behalten und leicht herb schmecken. Nicht mit Erbsenauberginen gleichsetzen.“ |
-| ZAATAR | Za’atar | PLANNED | SPECIALTY | In Bornheim sucht Georgia Za’atar über „nahe arabische Lebensmittelmärkte und deren Gewürzregal“. Levantinische Gewürzmischung typischerweise aus Za’atar-Kraut beziehungsweise Thymian, Sumach, Sesam und Salz; Rezepturen variieren. | Über levantinisch-nordafrikanische Lebensmittelfachhändler (Evidenzstand: die menschliche v2-Freigabe für diesen Weg und Frischeversand sowie einen gezielten Händlerbesuch) prüft Tobias in Rostock „Za’atar“, wobei folgende Abgrenzung gilt: „Levantinische Gewürzmischung typischerweise aus Za’atar-Kraut beziehungsweise Thymian, Sumach, Sesam und Salz; Rezepturen variieren.“ |
+| CURRY_LEAVES | Curryblätter | SPECIALTY | DIFFICULT | Curryblätter: Im großen indisch-asiatischen Spezialmarkt grundsätzlich etabliert; für Tobias bleibt die exakte frische/TK-Form wegen kleinerer lokaler Auswahl und Frischelogistik schwierig. | Curryblätter: Im großen indisch-asiatischen Spezialmarkt grundsätzlich etabliert; für Tobias bleibt die exakte frische/TK-Form wegen kleinerer lokaler Auswahl und Frischelogistik schwierig. |
+| DATE_SYRUP | Dattelsirup | PLANNED | SPECIALTY | Dattelsirup: Georgia hat einen konkreten breiteren türkisch-/arabischen Fachmarktweg; Tobias benötigt eher den einschlägigen Spezialhandel. Keine Seite erhält EASY allein aus Demografie. | Dattelsirup: Georgia hat einen konkreten breiteren türkisch-/arabischen Fachmarktweg; Tobias benötigt eher den einschlägigen Spezialhandel. Keine Seite erhält EASY allein aus Demografie. |
+| GARLIC_CHIVES | Knoblauch-Schnittlauch | SPECIALTY | DIFFICULT | Knoblauch-Schnittlauch: Georgia hat Zugang zu großen Asia-Frischsortimenten; Tobias hängt von wenigen frischen Versand- oder Zufallswegen ab. | Knoblauch-Schnittlauch: Georgia hat Zugang zu großen Asia-Frischsortimenten; Tobias hängt von wenigen frischen Versand- oder Zufallswegen ab. |
+| HARISSA | Harissa | PLANNED | SPECIALTY | Harissa: Für Georgia konkret planbarer regionaler Fachmarkt; für Tobias breit verfügbarer aber gezielt einschlägiger Spezialmarkt. | Harissa: Für Georgia konkret planbarer regionaler Fachmarkt; für Tobias breit verfügbarer aber gezielt einschlägiger Spezialmarkt. |
+| NATTO | Nattō | SPECIALTY | DIFFICULT | Nattō: Georgia kann große japanisch-asiatische Kühl-/TK-Sortimente gezielt erreichen; Tobias hängt von wenigen geeigneten Kühlwegen ab. | Nattō: Georgia kann große japanisch-asiatische Kühl-/TK-Sortimente gezielt erreichen; Tobias hängt von wenigen geeigneten Kühlwegen ab. |
+| POMEGRANATE_MOLASSES | Granatapfelmelasse | PLANNED | SPECIALTY | Granatapfelmelasse: Für Georgia über breiteren nahöstlichen Fachmarkt planbar; für Tobias typisches Produkt des breiten Spezialmarkts. | Granatapfelmelasse: Für Georgia über breiteren nahöstlichen Fachmarkt planbar; für Tobias typisches Produkt des breiten Spezialmarkts. |
+| PUL_BIBER | Pul Biber | PLANNED | SPECIALTY | Pul Biber: Georgias erreichbares türkisches Fachsortiment kann einen robusten geplanten Weg tragen; Tobias bleibt auf breiten Spezialhandel angewiesen. | Pul Biber: Georgias erreichbares türkisches Fachsortiment kann einen robusten geplanten Weg tragen; Tobias bleibt auf breiten Spezialhandel angewiesen. |
+| SUMAC | Sumach | PLANNED | SPECIALTY | Sumach: Konkreter regionaler Fachmarktweg für Georgia; Tobias benötigt einschlägigen Spezialhandel. Persönliche Erfahrung macht die Quelle nicht zu EASY. | Sumach: Konkreter regionaler Fachmarktweg für Georgia; Tobias benötigt einschlägigen Spezialhandel. Persönliche Erfahrung macht die Quelle nicht zu EASY. |
+| THAI_BASIL | Thai-Basilikum | SPECIALTY | DIFFICULT | Thai-Basilikum: Georgia kann große Asia-Frischmärkte in Köln/Düsseldorf gezielt nutzen; für Tobias machen wenige Frischewege und Transport die Beschaffung nischig und fragil. | Thai-Basilikum: Georgia kann große Asia-Frischmärkte in Köln/Düsseldorf gezielt nutzen; für Tobias machen wenige Frischewege und Transport die Beschaffung nischig und fragil. |
+| THAI_EGGPLANT | Thai-Aubergine | SPECIALTY | DIFFICULT | Thai-Aubergine: In großen Asia-Frischmärkten regelmäßig plausibel; für Tobias ist die frische exakte Form über enge und schwankende Wege zu beziehen. | Thai-Aubergine: In großen Asia-Frischmärkten regelmäßig plausibel; für Tobias ist die frische exakte Form über enge und schwankende Wege zu beziehen. |
+| ZAATAR | Za’atar | PLANNED | SPECIALTY | Za’atar: Georgias regionaler Fachmarktweg ist planbar; Tobias benötigt den breit etablierten arabischen Spezialmarkt. | Za’atar: Georgias regionaler Fachmarktweg ist planbar; Tobias benötigt den breit etablierten arabischen Spezialmarkt. |
 
 ## SPECIALTY / DIFFICULT / UNAVAILABLE
 
@@ -53,9 +53,9 @@ Dieser Bericht wird ausschließlich aus den zwei fixierten v2-Personenreviews ab
 
 - **Tobias / SPECIALTY (97):** `AJWAIN`, `ANCHO_CHILI`, `ANNATTO`, `BANANA_BLOSSOM`, `BANANA_KETCHUP`, `BANANA_LEAVES`, `BIRDS_EYE_CHILI`, `BITTER_MELON`, `BLACK_CARDAMOM`, `BLACK_VINEGAR`, `BOMBA_RICE`, `BONITO_FLAKES`, `BROKEN_RICE`, `CASSAVA`, `CHICKEN_FEET`, `COCONUT_VINEGAR`, `DARK_SOY_SAUCE`, `DASHI`, `DATE_SYRUP`, `DOENJANG`, `DOUBANJIANG`, `DRIED_FISH`, `DRIED_SHRIMP`, `DUMPLING_WRAPPERS`, `EGUSI_SEEDS`, `ENOKI`, `FENUGREEK`, `FERMENTED_BLACK_BEANS`, `FERMENTED_TOFU`, `FINGERROOT`, `FRESH_TURMERIC`, `GALANGAL`, `GOCHUGARU`, `GOCHUJANG`, `GREEN_PAPAYA`, `HARISSA`, `HIJIKI`, `KAFFIR_LIME_LEAVES`, `KASHMIRI_CHILI_POWDER`, `KECAP_MANIS`, `KLIPPFISH`, `KOMBU`, `LAKSA_PASTE`, `LAMBIC`, `LOBSTER`, `LOTUS_ROOT`, `LOTUS_SEEDS`, `MACAPUNO`, `MAM_NEM`, `MAM_TOM`, `MASA_HARINA`, `MASSAMAN_CURRY_PASTE`, `MEMBRILLO`, `MIRIN`, `MOLE_PASTE`, `MORCILLA`, `MORINGA_LEAVES`, `MUOI_TOM`, `NAM_PRIK_PAO`, `NATA_DE_COCO`, `NORA_PEPPER`, `OKRA`, `PALM_SUGAR`, `PANDAN_LEAVES`, `PANEER`, `PIQUILLO_PEPPER`, `PLA_RA`, `PLANTAIN`, `POMEGRANATE_MOLASSES`, `PONZU`, `PRESERVED_LEMON`, `PUL_BIBER`, `RAS_EL_HANOUT`, `RENDANG_PASTE`, `RICE_CAKES`, `ROMESCO`, `SALTED_DUCK_EGG`, `SAMBAL_BRANDAL`, `SHAOXING_WINE`, `SHRIMP_PASTE`, `SICHUAN_PEPPER`, `SOBRASADA`, `SOUR_RYE_STARTER`, `STICKY_RICE`, `SUGARCANE_VINEGAR`, `SUMAC`, `TAMARIND`, `TAPIOCA_STARCH`, `TARO`, `THAI_YELLOW_CURRY_PASTE`, `TWAROG`, `WONTON_WRAPPERS`, `XO_SAUCE`, `YAM`, `YEAST_EXTRACT`, `YUZU`, `ZAATAR`
 
-- **Georgia / DIFFICULT (65):** `ALIGUE`, `BAGOONG`, `BAGOONG_ALAMANG`, `BAGOONG_ISDA`, `BELACAN`, `BRUNOST`, `CALAMANSI`, `CARP`, `CHERVIL`, `CLOUDBERRY`, `CLOUDBERRY_PRESERVES`, `COCKLES`, `CORIANDER_ROOT`, `CULANTRO`, `DAING`, `DANABLU`, `DUCK_EGG`, `FENALAR`, `FISH_MINT`, `FLATBROD`, `FRANKFURT_GREEN_SAUCE`, `FRESHWATER_SNAILS`, `FROG_LEGS`, `GAC_FRUIT`, `GIO_LUA`, `GOAT`, `GREEN_RICE_FLAKES`, `HERVE_CHEESE`, `HOLY_BASIL`, `KOLACHE`, `LA_LOT_LEAVES`, `LEFSE`, `LIEGE_SYRUP`, `LONGGANISA`, `LUTEFISK`, `MAM_RUOC`, `MILKFISH`, `MOOSE`, `NIPA_PALM_VINEGAR`, `NORWEGIAN_WAFFLE`, `OLOMOUC_TVARUZKY`, `PEA_EGGPLANT`, `PERILLA_LEAVES`, `PICKLED_SAUSAGE`, `PINNEKJOTT`, `POBLANO`, `PURSLANE`, `RAZOR_CLAMS`, `REINDEER`, `RICE_PADDY_HERB`, `ROD_POLSE`, `ROOKWORST`, `SAI_UA`, `SEA_SNAILS`, `SERRANO_CHILI`, `STINKY_TOFU`, `STOCKFISH`, `TABLEA`, `TAI_PLA`, `TOMATILLO`, `UBE`, `VEAL_SWEETBREAD`, `VIETNAMESE_CORIANDER`, `VIETNAMESE_SOYBEAN_PASTE`, `WATER_SPINACH`
+- **Georgia / DIFFICULT (61):** `ALIGUE`, `BAGOONG`, `BAGOONG_ALAMANG`, `BAGOONG_ISDA`, `BELACAN`, `BRUNOST`, `CALAMANSI`, `CLOUDBERRY`, `CLOUDBERRY_PRESERVES`, `COCKLES`, `CORIANDER_ROOT`, `CULANTRO`, `DAING`, `DUCK_EGG`, `FENALAR`, `FISH_MINT`, `FLATBROD`, `FRANKFURT_GREEN_SAUCE`, `FRESHWATER_SNAILS`, `FROG_LEGS`, `GAC_FRUIT`, `GIO_LUA`, `GREEN_RICE_FLAKES`, `HERVE_CHEESE`, `HOLY_BASIL`, `KOLACHE`, `LA_LOT_LEAVES`, `LEFSE`, `LIEGE_SYRUP`, `LONGGANISA`, `LUTEFISK`, `MAM_RUOC`, `MILKFISH`, `MOOSE`, `NIPA_PALM_VINEGAR`, `NORWEGIAN_WAFFLE`, `OLOMOUC_TVARUZKY`, `PEA_EGGPLANT`, `PERILLA_LEAVES`, `PICKLED_SAUSAGE`, `PINNEKJOTT`, `POBLANO`, `PURSLANE`, `RAZOR_CLAMS`, `REINDEER`, `RICE_PADDY_HERB`, `ROD_POLSE`, `ROOKWORST`, `SAI_UA`, `SEA_SNAILS`, `SERRANO_CHILI`, `STINKY_TOFU`, `STOCKFISH`, `TABLEA`, `TAI_PLA`, `TOMATILLO`, `UBE`, `VEAL_SWEETBREAD`, `VIETNAMESE_CORIANDER`, `VIETNAMESE_SOYBEAN_PASTE`, `WATER_SPINACH`
 
-- **Tobias / DIFFICULT (70):** `ALIGUE`, `BAGOONG`, `BAGOONG_ALAMANG`, `BAGOONG_ISDA`, `BELACAN`, `BRUNOST`, `CALAMANSI`, `CARP`, `CHERVIL`, `CLOUDBERRY`, `CLOUDBERRY_PRESERVES`, `COCKLES`, `CORIANDER_ROOT`, `CULANTRO`, `CURRY_LEAVES`, `DAING`, `DANABLU`, `DUCK_EGG`, `FENALAR`, `FISH_MINT`, `FLATBROD`, `FRANKFURT_GREEN_SAUCE`, `FRESHWATER_SNAILS`, `FROG_LEGS`, `GAC_FRUIT`, `GARLIC_CHIVES`, `GIO_LUA`, `GOAT`, `GREEN_RICE_FLAKES`, `HERVE_CHEESE`, `HOLY_BASIL`, `KOLACHE`, `LA_LOT_LEAVES`, `LEFSE`, `LIEGE_SYRUP`, `LONGGANISA`, `LUTEFISK`, `MAM_RUOC`, `MILKFISH`, `MOOSE`, `NATTO`, `NIPA_PALM_VINEGAR`, `NORWEGIAN_WAFFLE`, `OLOMOUC_TVARUZKY`, `PEA_EGGPLANT`, `PERILLA_LEAVES`, `PICKLED_SAUSAGE`, `PINNEKJOTT`, `POBLANO`, `PURSLANE`, `RAZOR_CLAMS`, `REINDEER`, `RICE_PADDY_HERB`, `ROD_POLSE`, `ROOKWORST`, `SAI_UA`, `SEA_SNAILS`, `SERRANO_CHILI`, `STINKY_TOFU`, `STOCKFISH`, `TABLEA`, `TAI_PLA`, `THAI_BASIL`, `THAI_EGGPLANT`, `TOMATILLO`, `UBE`, `VEAL_SWEETBREAD`, `VIETNAMESE_CORIANDER`, `VIETNAMESE_SOYBEAN_PASTE`, `WATER_SPINACH`
+- **Tobias / DIFFICULT (66):** `ALIGUE`, `BAGOONG`, `BAGOONG_ALAMANG`, `BAGOONG_ISDA`, `BELACAN`, `BRUNOST`, `CALAMANSI`, `CLOUDBERRY`, `CLOUDBERRY_PRESERVES`, `COCKLES`, `CORIANDER_ROOT`, `CULANTRO`, `CURRY_LEAVES`, `DAING`, `DUCK_EGG`, `FENALAR`, `FISH_MINT`, `FLATBROD`, `FRANKFURT_GREEN_SAUCE`, `FRESHWATER_SNAILS`, `FROG_LEGS`, `GAC_FRUIT`, `GARLIC_CHIVES`, `GIO_LUA`, `GREEN_RICE_FLAKES`, `HERVE_CHEESE`, `HOLY_BASIL`, `KOLACHE`, `LA_LOT_LEAVES`, `LEFSE`, `LIEGE_SYRUP`, `LONGGANISA`, `LUTEFISK`, `MAM_RUOC`, `MILKFISH`, `MOOSE`, `NATTO`, `NIPA_PALM_VINEGAR`, `NORWEGIAN_WAFFLE`, `OLOMOUC_TVARUZKY`, `PEA_EGGPLANT`, `PERILLA_LEAVES`, `PICKLED_SAUSAGE`, `PINNEKJOTT`, `POBLANO`, `PURSLANE`, `RAZOR_CLAMS`, `REINDEER`, `RICE_PADDY_HERB`, `ROD_POLSE`, `ROOKWORST`, `SAI_UA`, `SEA_SNAILS`, `SERRANO_CHILI`, `STINKY_TOFU`, `STOCKFISH`, `TABLEA`, `TAI_PLA`, `THAI_BASIL`, `THAI_EGGPLANT`, `TOMATILLO`, `UBE`, `VEAL_SWEETBREAD`, `VIETNAMESE_CORIANDER`, `VIETNAMESE_SOYBEAN_PASTE`, `WATER_SPINACH`
 
 - **Georgia / UNAVAILABLE (2):** `COM_ME`, `RAKFISK`
 
@@ -63,7 +63,7 @@ Dieser Bericht wird ausschließlich aus den zwei fixierten v2-Personenreviews ab
 
 ## Parent-/Child- und Familienhinweise
 
-- Parent-/Child-Sprünge um mindestens zwei Stufen: 287
+- Parent-/Child-Sprünge um mindestens zwei Stufen: 281
   - FERMENTED_SEASONINGS->BAGOONG (georgia: EASY->DIFFICULT)
   - FERMENTED_SEASONINGS->BAGOONG (tobias: EASY->DIFFICULT)
   - FLOWER_VEGETABLES->BANANA_BLOSSOM (georgia: EASY->SPECIALTY)
@@ -84,8 +84,6 @@ Dieser Bericht wird ausschließlich aus den zwei fixierten v2-Personenreviews ab
   - CITRUS_FRUIT->CALAMANSI (tobias: EASY->DIFFICULT)
   - TROPICAL_FRUIT->CALAMANSI (georgia: EASY->DIFFICULT)
   - TROPICAL_FRUIT->CALAMANSI (tobias: EASY->DIFFICULT)
-  - FISH->CARP (georgia: EASY->DIFFICULT)
-  - FISH->CARP (tobias: EASY->DIFFICULT)
   - ROOT_VEGETABLES->CASSAVA (georgia: EASY->SPECIALTY)
   - ROOT_VEGETABLES->CASSAVA (tobias: EASY->SPECIALTY)
   - STARCHES->CASSAVA (georgia: EASY->SPECIALTY)
@@ -106,8 +104,6 @@ Dieser Bericht wird ausschließlich aus den zwei fixierten v2-Personenreviews ab
   - FERMENTED_SEASONINGS->COM_ME (tobias: EASY->UNAVAILABLE)
   - RICE_PRODUCTS->COM_ME (georgia: EASY->UNAVAILABLE)
   - RICE_PRODUCTS->COM_ME (tobias: EASY->UNAVAILABLE)
-  - BLUE_CHEESE->DANABLU (georgia: EASY->DIFFICULT)
-  - BLUE_CHEESE->DANABLU (tobias: EASY->DIFFICULT)
   - SOY_SAUCE->DARK_SOY_SAUCE (georgia: EASY->SPECIALTY)
   - SOY_SAUCE->DARK_SOY_SAUCE (tobias: EASY->SPECIALTY)
   - STOCKS->DASHI (georgia: EASY->SPECIALTY)
@@ -155,8 +151,6 @@ Dieser Bericht wird ausschließlich aus den zwei fixierten v2-Personenreviews ab
   - PORK->GIO_LUA (tobias: EASY->DIFFICULT)
   - SAUSAGE->GIO_LUA (georgia: EASY->DIFFICULT)
   - SAUSAGE->GIO_LUA (tobias: EASY->DIFFICULT)
-  - MEAT->GOAT (georgia: EASY->DIFFICULT)
-  - MEAT->GOAT (tobias: EASY->DIFFICULT)
   - CHILI_FLAKES->GOCHUGARU (georgia: EASY->SPECIALTY)
   - CHILI_FLAKES->GOCHUGARU (tobias: EASY->SPECIALTY)
   - CHILI_CONDIMENTS->GOCHUJANG (georgia: EASY->SPECIALTY)
@@ -689,12 +683,12 @@ Dieser Bericht wird ausschließlich aus den zwei fixierten v2-Personenreviews ab
 ## Notizqualität
 
 - Nichtleere Personennotizen: 1706 / 1706
-- Normalisierte eindeutige Notizen: 1706 / 1706
-- Normalisierte Duplikatgruppen: 0
-- Kürzeste Notiz: 115 Zeichen
+- Kürzeste Notiz: 52 Zeichen
+- Längste Notiz: 259 Zeichen
+- Gleiche oder ähnliche Notizen sind ausdrücklich zulässig, wenn sie dieselbe Beschaffungsrealität knapp beschreiben; Textvariation ist kein Qualitätsziel.
 
 ## Evidenzabdeckung
 
 - Evidenzpflichtige Personenentscheidungen: 563
 - Davon mit automatisch zugeordneten Evidence-IDs: 563
-- Evidenzkatalogzeilen: 581
+- Evidenzkatalogzeilen: 587

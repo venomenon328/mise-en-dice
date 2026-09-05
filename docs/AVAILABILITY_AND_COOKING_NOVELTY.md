@@ -333,6 +333,8 @@ Die Notiz nennt knapp:
 
 Nicht hinein gehören Rezeptideen, Kochungewöhnlichkeit, persönlicher Vorrat oder eine vollständige Händlerliste.
 
+Notizen müssen nicht künstlich eindeutig sein. Wo Georgia und Tobias dieselbe reale Markt- und Logistiksituation haben, darf derselbe sachlich passende Text verwendet werden. Ungeprüfte Telefonate, Ladenbesuche, digitale Bestandsabfragen oder bestätigte Filialbestände dürfen nicht als Routine erfunden werden; Geschmack, Verwendung und vollständige Konzeptdefinitionen werden nicht als Fülltext übernommen.
+
 ### 8.2 Mindeststandard nach Stufe
 
 - `EASY`: positive Aussage über gewöhnlichen lokalen Handel; Spezialweg oder Onlinequelle dürfen nicht als Begründung erscheinen.
@@ -356,6 +358,8 @@ Für aktuelle Spezial- und Grenzfälle sollen mindestens festgehalten werden:
 - erkannte Ersatzprodukt- oder Formrisiken.
 
 Evidenz bleibt Recherchegrundlage und wird nicht Bestandteil des Generatorgewichts.
+
+Eine Marktplatzdomain zählt nicht als eigener Händlerweg, wenn Verkauf und Versand durch einen Drittanbieter erfolgen. Kategorie-, Start- und Suchseiten sind keine positiven Exaktbelege; sie können nur Marktbreite oder eine transparent dokumentierte Negativsuche tragen. `SPECIALTY` bleibt eine qualitative Marktbreitenentscheidung: Mehrere Domains allein sind kein Beweis, wenn sie denselben engen Importkanal oder bloße Einzelangebote abbilden.
 
 ## 9. Verhältnis zu Ziehungsgewicht und Generator
 
@@ -481,6 +485,8 @@ Eine neue Bewertung ist erforderlich, wenn:
 - ein neuer Teilnehmer mit anderem Beschaffungsprofil aufgenommen wird.
 
 Automatisierte Tests dürfen Wertebereiche, Vollständigkeitsverträge und die technische Verarbeitung aller Stufen prüfen. Sie dürfen nicht behaupten, dass eine konkrete produktive Zutat fachlich zwingend einen bestimmten Wert besitzen muss.
+
+Validatoren verwenden deshalb keine festen redaktionellen Ergebniszahlen, keine konzeptspezifischen Sollwertlisten und keine globale Notiz-Eindeutigkeit. Generische Prüffälle arbeiten mit synthetischen Konzepten und müssen gleiche gültige Personennotizen sowie zusätzliche evidenzgestützte Personenunterschiede akzeptieren, unbekannte Evidenz-IDs und falsche Konzept-/Personenzuordnungen aber ablehnen. Ratingfreigabe und Notizfreigabe werden getrennt geführt; ein freigegebener Anker ist keine aktuelle Bestands- oder Händlerbestätigung.
 
 ## 12. Katalogweiter Review in #188
 

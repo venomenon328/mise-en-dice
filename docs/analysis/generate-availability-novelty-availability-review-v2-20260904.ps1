@@ -196,7 +196,9 @@ function New-PersonReview {
         $approvalStatus = 'PROPOSED_FOR_HUMAN_REVIEW'
         if ($EffectiveAnchors.ContainsKey($code)) {
             $flags = Add-Token $flags 'REFERENCE_ANCHOR_V2'
-            $approvalStatus = 'APPROVED_REFERENCE_ANCHOR_V2'
+            # The v2 approval fixes the rating only. Notes and current merchant
+            # evidence remain proposals until the catalogue-wide review is accepted.
+            $approvalStatus = 'RATING_APPROVED_NOTE_PROPOSED_REFERENCE_ANCHOR_V2'
         }
         $evidenceIds = Get-EvidenceIds $Evidence $code $Person $decision.proposed_availability
 
@@ -276,7 +278,7 @@ $combined = foreach ($index in 0..($source.Count - 1)) {
         proposed_availability_tobias = $t.proposed_availability; availability_note_tobias = $t.availability_note
         evidence_requirement_tobias = $t.evidence_requirement; availability_evidence_tobias = $t.availability_evidence
         review_flags = @($flags | Sort-Object -Unique) -join '|'
-        approval_status = if ($g.approval_status -ceq 'APPROVED_NOT_APPLICABLE') { 'APPROVED_NOT_APPLICABLE' } elseif ($effectiveAnchors.ContainsKey($g.concept_code)) { 'APPROVED_REFERENCE_ANCHOR_V2' } else { 'PROPOSED_FOR_HUMAN_REVIEW' }
+        approval_status = if ($g.approval_status -ceq 'APPROVED_NOT_APPLICABLE') { 'APPROVED_NOT_APPLICABLE' } elseif ($effectiveAnchors.ContainsKey($g.concept_code)) { 'RATING_APPROVED_NOTE_PROPOSED_REFERENCE_ANCHOR_V2' } else { 'PROPOSED_FOR_HUMAN_REVIEW' }
     }
 }
 $combined = @($combined)
@@ -402,15 +404,14 @@ $lines.Add("- Explizit geflaggte Konzepte: $($formFlags.Count)")
 foreach ($row in $formFlags) { $lines.Add("  - ``$($row.concept_code)``: $($row.review_flags)") }
 
 $allNotes = @($georgiaReview.availability_note + $tobiasReview.availability_note | Where-Object { $_ })
-$normalizedGroups = @($allNotes | ForEach-Object { Get-NormalizedNote $_ } | Group-Object)
-$duplicateGroups = @($normalizedGroups | Where-Object Count -gt 1)
+$expectedNoteCount = ($source.Count - $structureCodes.Count) * 2
 $lines.Add('')
 $lines.Add('## Notizqualität')
 $lines.Add('')
-$lines.Add("- Nichtleere Personennotizen: $($allNotes.Count) / 1706")
-$lines.Add("- Normalisierte eindeutige Notizen: $($normalizedGroups.Count) / 1706")
-$lines.Add("- Normalisierte Duplikatgruppen: $($duplicateGroups.Count)")
+$lines.Add("- Nichtleere Personennotizen: $($allNotes.Count) / $expectedNoteCount")
 $lines.Add("- Kürzeste Notiz: $((@($allNotes | ForEach-Object Length) | Measure-Object -Minimum).Minimum) Zeichen")
+$lines.Add("- Längste Notiz: $((@($allNotes | ForEach-Object Length) | Measure-Object -Maximum).Maximum) Zeichen")
+$lines.Add('- Gleiche oder ähnliche Notizen sind ausdrücklich zulässig, wenn sie dieselbe Beschaffungsrealität knapp beschreiben; Textvariation ist kein Qualitätsziel.')
 
 $requiredAssignments = 0; $coveredAssignments = 0
 foreach ($person in @('Georgia','Tobias')) {

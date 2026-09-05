@@ -9,27 +9,29 @@ Bewertungsumfang: 853 anwendbare Konzepte × Georgia und Tobias = 1.706 Personen
 
 Dieser Audit ist eine vollständige, getrennte Neubewertung der Availability. Maßgeblich waren ausschließlich die im Issue menschlich freigegebene v2-Semantik, die 84 v2-Anker (davon 83 bewertete Konzepte) und neue beziehungsweise im Audit erneut geprüfte markt-, produktform- und personenspezifische Evidenz. Der Vorschlagsstand vom 2026-09-03 wurde erst nach Abschluss beider unabhängiger Personenpässe für den Vergleich geladen; seine Werte und frühere Vorschläge waren kein Bewertungsinput.
 
+Die Nacharbeit vom 2026-09-05 ist kein weiterer pauschaler Bewertungsdurchlauf. Sie redigiert alle Notizen nach den freigegebenen Qualitätsregeln, korrigiert konkret beanstandete Evidenzen und ändert ausschließlich vier fachlich neu belegte Ratings je Person. Die v2-Semantik und sämtliche freigegebenen Ankerstufen bleiben unverändert; bei Ankern ist nun sichtbar, dass die Ratingfreigabe nicht automatisch den neu redigierten Notiztext freigibt.
+
 Cooking Novelty, produktive Katalogwerte, Gewichte, Migrationen und Generatorparameter bleiben unverändert. Inhalte aus #189 und #190 wurden nicht vorgezogen.
 
 ## Ergebnis je Person
 
 | Person | EASY | PLANNED | SPECIALTY | DIFFICULT | UNAVAILABLE | Summe |
 |---|---:|---:|---:|---:|---:|---:|
-| Georgia, v2 | 423 | 267 | 96 | 65 | 2 | 853 |
+| Georgia, v2 | 423 | 271 | 96 | 61 | 2 | 853 |
 | Georgia, Vorschlag 2026-09-03 | 572 | 218 | 50 | 11 | 2 | 853 |
-| Georgia, Delta | -149 | +49 | +46 | +54 | 0 | 0 |
-| Tobias, v2 | 423 | 261 | 97 | 70 | 2 | 853 |
+| Georgia, Delta | -149 | +53 | +46 | +50 | 0 | 0 |
+| Tobias, v2 | 423 | 265 | 97 | 66 | 2 | 853 |
 | Tobias, Vorschlag 2026-09-03 | 573 | 206 | 60 | 12 | 2 | 853 |
-| Tobias, Delta | -150 | +55 | +37 | +58 | 0 | 0 |
+| Tobias, Delta | -150 | +59 | +37 | +54 | 0 | 0 |
 
-Georgia hat 290 Entscheidungen gegenüber dem letzten Vorschlagsstand geändert und 563 beibehalten. Tobias hat 291 geändert und 562 beibehalten.
+Georgia hat 286 Entscheidungen gegenüber dem letzten Vorschlagsstand geändert und 567 beibehalten. Tobias hat 287 geändert und 566 beibehalten.
 
 | Übergang | Georgia | Tobias |
 |---|---:|---:|
 | DIFFICULT → PLANNED | 1 | 1 |
 | EASY → PLANNED | 146 | 145 |
 | EASY → SPECIALTY | 3 | 5 |
-| PLANNED → DIFFICULT | 15 | 12 |
+| PLANNED → DIFFICULT | 11 | 8 |
 | PLANNED → SPECIALTY | 84 | 80 |
 | SPECIALTY → DIFFICULT | 40 | 47 |
 | SPECIALTY → PLANNED | 1 | 1 |
@@ -56,14 +58,14 @@ Es gibt 11 Personenunterschiede. Sämtliche Unterschiede sind freigegebene perso
 
 ## Evidenzabdeckung
 
-Die kanonische Evidenzdatei umfasst 581 Evidenzzeilen für 335 Konzepte. Davon enthalten 487 Zeilen eine URL; es gibt 338 unterschiedliche URLs auf 123 wörtlich unterschiedlichen Hosts. Die Rollen verteilen sich auf 94 `ANCHOR_APPROVAL`, 211 `EXACT_ROUTE`, 206 `MARKET_BREADTH`, 4 `PERSON_ROUTE` und 66 `ROUTE_LIMITATION`.
+Die kanonische Evidenzdatei umfasst 587 Evidenzzeilen für 335 Konzepte. Davon enthalten 493 Zeilen eine URL; es gibt 345 unterschiedliche URLs auf 130 wörtlich unterschiedlichen Hosts. Die Rollen verteilen sich auf 94 `ANCHOR_APPROVAL`, 215 `EXACT_ROUTE`, 212 `MARKET_BREADTH`, 4 `PERSON_ROUTE`, 55 `ROUTE_LIMITATION` und 7 `NEGATIVE_SEARCH`.
 
 | Person | relevante Evidenzzeilen | abgedeckte Konzepte | mit positiver/variabler Route | evidenzpflichtige Entscheidungen | davon SPECIALTY/DIFFICULT/UNAVAILABLE |
 |---|---:|---:|---:|---:|---:|
-| Georgia | 443 | 326 | 318 | 295 | 163 |
-| Tobias | 412 | 314 | 306 | 268 | 169 |
+| Georgia | 449 | 326 | 318 | 295 | 159 |
+| Tobias | 418 | 314 | 306 | 268 | 165 |
 
-Alle 563 evidenzpflichtigen Personenzuordnungen sind abgedeckt. Acht Konzepte haben bewusst ausschließlich negative oder limitierende Evidenz: `COCKLES`, `CULANTRO`, `FENALAR`, `GAC_FRUIT`, `LUTEFISK`, `POBLANO`, `RAZOR_CLAMS` und `TOMATILLO`. Das betrifft 13 Evidenzzeilen und 16 Personenentscheidungen.
+Alle 563 evidenzpflichtigen Personenzuordnungen sind abgedeckt. Acht Konzepte haben aktuell ausschließlich negative oder limitierende Evidenz: `COCKLES`, `CULANTRO`, `DUCK_EGG`, `FENALAR`, `LUTEFISK`, `POBLANO`, `RAZOR_CLAMS` und `TOMATILLO`. Das betrifft 13 Evidenzzeilen und 16 Personenentscheidungen. Der zusätzliche Negativ-Evidenz-Recheck dokumentiert außerdem `GAC_FRUIT`, dessen frühere Negativlage durch den positiven formgenauen Asia-Moin-Treffer korrigiert wurde.
 
 Zusätzliche gezielte Nachprüfungen schließen zwei zuvor erkannte Evidenzlücken:
 
@@ -72,26 +74,29 @@ Zusätzliche gezielte Nachprüfungen schließen zwei zuvor erkannte Evidenzlück
 
 ## Individuelle Notizqualität
 
-Alle 1.706 Kernnotizen sind nichtleer, konzept- und produktformspezifisch sowie nach exakter Normalisierung global eindeutig. Der Validator schließt URL-Fragmente, verbotene technische Platzhalter und bloße katalogweit wiederholte Enum-Paraphrasen aus. Zusätzlich gelten person- und stufenweise Schranken für wiederholte Satzgerüste, normalisierte Klauseln und häufige Vierwortfragmente. Kein exaktes Satzgerüst tritt dreimal oder öfter je Person auf; keine normalisierte Klausel oder Rating-Paraphrase erreicht zehn Wiederholungen je Person.
+Alle 1.706 Kernnotizen wurden auf kurze Beschaffungsbegründungen verdichtet. Entfernt wurden Geschmacks- und Verwendungstext, vollständige Produktdefinitionen, fingierte Telefon-/Bestands-/Besuchsroutinen sowie falsche Behauptungen, die menschliche Ankerfreigabe genehmige den jeweiligen Notiztext. Identische Georgia-/Tobias-Notizen bleiben bewusst zulässig, wenn die reale Beschaffungssituation gleich ist. Repräsentative Vorher-/Nachher-Belege stehen in `availability-novelty-availability-note-editorial-examples-v2-20260905.csv`.
 
-Der Korrekturaudit enthält 72/72 verifizierte Notizkorrekturen für 64 Konzepte. Die ergänzenden Routen-Audits sind vollständig: 344/344 Produktformrouten, 122/122 Prüfungen der exakten Routenspezifität, 27/27 Root-URL-Prüfungen, 6/6 Route-Mismatch-Prüfungen, 7/7 Statusprüfungen und 178/178 ausgerichtete Divergenzempfehlungen.
+Der Validator prüft die Auditdateien strukturell, referenziell und anhand ihrer Statusübergänge. Redaktionelle Sollmengen, konzeptspezifische Routentests, globale Notiz-Eindeutigkeit, Satzgerüst-/Klauselcluster und Vierwortfragment-Gates wurden entfernt. Die verlangten generischen Selbsttests verwenden nur synthetische Konzepte: gleiche gültige Personennotiz und zusätzlicher evidenzgestützter Personenunterschied werden akzeptiert; unbekannte Evidenz-ID sowie falscher Konzept- oder Personen-Scope werden abgelehnt.
 
 ## Wichtigste Grenzfälle
 
 - `BELACAN` ist für beide DIFFICULT: Die belastbare Route bleibt ein enger Importweg mit geringer beziehungsweise unklarer Bestandsstabilität.
 - `BERBERE` ist für beide PLANNED: Zwei voneinander unabhängige allgemeine deutsche Gewürzhändler tragen die haltbare Trockenform.
-- `GOAT` ist für beide DIFFICULT: Eine Versandroute ist nicht als belastbare Kühlkette belegt, die zweite ist lokal auf Dresden begrenzt.
+- `GOAT` ist für beide PLANNED: Zwei unabhängige deutsche Online-Metzgereien belegen Ziegenfleisch mit planbarer Kühlzustellung; enge Einzelangebote tragen die Stufe nicht allein.
 - `PURSLANE` ist für beide DIFFICULT: Der exakte Sommerportulak ist ausverkauft; Alternativen sind regional oder in der Form mehrdeutig.
-- `CARP` ist für beide DIFFICULT: Große Fischrouten sind nicht verfügbar; die verbleibende Tiefkühlroute ist an Mindestbestellwert und regionale Lieferfenster gebunden.
-- `CHERVIL` ist für beide DIFFICULT: Die belastbare exakte Frischform ist nur als lebende Gärtnereipflanze erreichbar; allgemeine Frischkraut-Routen sind nicht verfügbar oder variabel.
-- `DANABLU` ist für beide DIFFICULT: Belastbar bleibt nur kleiner Bestand bei einem skandinavischen Kühlversender; die allgemeine Handelsroute ist variabel.
-- `FRESH_TURMERIC` ist für beide SPECIALTY: Zwei unabhängige Asia-Frischerouten führen das exakte Rhizom positiv, aber ohne robuste allgemeine Handelsbreite.
+- `CARP` ist für beide PLANNED: Ein aktuell positiver deutscher TK-Endkundenweg und eine unabhängige wiederkehrende Fischhandelslistung tragen die Stufe; Saison und Kühlannahme bleiben planungsrelevant.
+- `CHERVIL` ist für beide PLANNED: Zwei unabhängige Bundwarenwege und essbarer Kerbel im allgemeinen Pflanzenhandel belegen die Frischform; Saison und lokaler Bestand bleiben variabel.
+- `DANABLU` ist für beide PLANNED: Der exakte Castello-Danablu ist im nationalen REWE-Katalog und bei einem unabhängigen Kühlversender gelistet.
+- `FRESH_TURMERIC` bleibt für beide SPECIALTY: Mehrere unabhängige Asia-Frischerouten tragen die breite Spezialmarktpräsenz; allgemeine Listungen bleiben filialabhängig und erzwingen keine leichtere Stufe.
+- `GAC_FRUIT` bleibt für beide DIFFICULT: Die korrigierte Evidenz belegt einen positiven formgenauen TK-Importweg, aber keine breite oder robuste Händlerlandschaft.
+- `DULSE` bleibt für beide PLANNED: Marktplatzverkäufer Miraherba ist korrekt zugerechnet und eine unabhängige Naturkostroute belegt die planbare Marktpräsenz.
+- `FRUIT_DUMPLING` bleibt für beide PLANNED: Neben dem 3-kg-Gastronomiegebinde ist eine unabhängige verfügbare 1,625-kg-Lebensmittelroute belegt; TK-Annahme bleibt nötig.
 - `LAMBIC` ist für beide SPECIALTY: Mehrere unabhängige Spezialbier-Routen tragen die Einordnung, eine allgemeine Route fehlt.
 - `DUMPLING_DOUGH` ist für beide PLANNED: Grundlage ist ein ungeschnittener gekühlter Teig; das Zuschneiden zu Wrappern bleibt als transparente Forminferenz dokumentiert.
 
 ## Artefakte
 
-Generator und Validator erzeugen beziehungsweise prüfen die getrennten Blindinputs, Personenentscheidungen, Personenreviews, den kombinierten Review, den Vergleich, die kanonische Evidenz sowie die versionierten Ausreißer- und Auditspuren. Die Nachprüfungen vom 2026-09-05 sind eigene append-only Artefakte; bestehende Auditspuren wurden nicht überschrieben.
+Generator und Validator erzeugen beziehungsweise prüfen die getrennten Blindinputs, Personenentscheidungen, Personenreviews, den kombinierten Review, den Vergleich, die kanonische Evidenz sowie die versionierten Ausreißer- und Auditspuren. Die geschützten Cooking-Artefakte, früheren Availability-Freigaben und v2-Ankerentscheidungen wurden nicht verändert. Beanstandete v2-Evidenz- und Auditzeilen wurden fachlich korrigiert; Negativ-Evidenz-Recheck und redaktionelle Vorher-/Nachher-Beispiele sind ergänzende Artefakte vom 2026-09-05.
 
 ## Pflichtprüfungen
 

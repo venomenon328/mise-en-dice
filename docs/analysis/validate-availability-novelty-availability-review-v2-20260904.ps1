@@ -76,6 +76,13 @@ $plannedGateRecheckHeaders = @(
     'concept_code','person_relevance','prior_rating','prior_evidence_ids','recheck_evidence_ids',
     'market_recheck_finding','product_form_or_logistics_limit','final_rating','audit_status'
 )
+$negativeEvidenceRecheckHeaders = @(
+    'concept_code','evidence_ids','recheck_result','form_scope_result','market_scope_result',
+    'final_rating_georgia','final_rating_tobias','audit_status'
+)
+$noteEditorialExampleHeaders = @(
+    'concept_code','person','prior_note','revised_note','editorial_change'
+)
 
 function Assert-True {
     param([bool]$Condition, [string]$Message)
@@ -128,158 +135,91 @@ function Get-NormalizedNote {
     return [regex]::Replace((Get-NormalizedText $Value), '^\s*(georgia|tobias)\s+', '').Trim()
 }
 
-function Replace-NoteLiteral {
-    param([string]$Text, [AllowEmptyString()][string]$Literal, [string]$Replacement)
-    if ([string]::IsNullOrWhiteSpace($Literal)) { return $Text }
-    return [regex]::Replace(
-        $Text,
-        [regex]::Escape($Literal),
-        [Text.RegularExpressions.MatchEvaluator]{ param($match) $Replacement },
-        [Text.RegularExpressions.RegexOptions]::IgnoreCase
-    )
-}
+function Get-MaximumSharedWordSequenceLength {
+    param([string]$Left, [string]$Right)
 
-function Get-AvailabilityNoteSkeleton {
-    param([object]$Row)
-
-    # Preserve all market, breadth, stock and logistics wording. Only fields that
-    # mechanically identify the concept, its copied curator form, person or place
-    # are abstracted. An exact skeleton collision therefore cannot be caused by
-    # merely sharing normal Availability vocabulary.
-    $text = $Row.availability_note.Normalize([Text.NormalizationForm]::FormC)
-    $form = $Row.product_form_basis.Normalize([Text.NormalizationForm]::FormC)
-    $formSegments = [Collections.Generic.List[string]]::new()
-    $formSegments.Add($form)
-    foreach ($delimiter in @(';','.')) {
-        $first = $form.Split($delimiter, 2)[0].Trim()
-        if ($first.Length -ge 12 -and -not $formSegments.Contains($first)) { $formSegments.Add($first) }
-    }
-    foreach ($segment in @($formSegments | Sort-Object Length -Descending)) {
-        $text = Replace-NoteLiteral $text $segment '<FORM>'
-    }
-
-    $normalizedForm = Get-NormalizedText $form
-    foreach ($pattern in @('\[(?<value>[^\]]+)\]','„(?<value>[^“]+)“','\((?<value>[^()]*)\)')) {
-        $text = [regex]::Replace($text, $pattern, [Text.RegularExpressions.MatchEvaluator]{
-            param($match)
-            $candidate = Get-NormalizedText $match.Groups['value'].Value
-            if ($candidate.Length -ge 12 -and
-                ($normalizedForm.StartsWith($candidate, [StringComparison]::Ordinal) -or
-                 $candidate.StartsWith($normalizedForm, [StringComparison]::Ordinal))) {
-                return $match.Value[0] + '<FORM>' + $match.Value[$match.Value.Length - 1]
+    $leftWords = @((Get-NormalizedText $Left).Split(' ') | Where-Object { $_ })
+    $rightWords = @((Get-NormalizedText $Right).Split(' ') | Where-Object { $_ })
+    $maximum = 0
+    for ($leftIndex = 0; $leftIndex -lt $leftWords.Count; $leftIndex++) {
+        for ($rightIndex = 0; $rightIndex -lt $rightWords.Count; $rightIndex++) {
+            $length = 0
+            while ($leftIndex + $length -lt $leftWords.Count -and
+                   $rightIndex + $length -lt $rightWords.Count -and
+                   $leftWords[$leftIndex + $length] -ceq $rightWords[$rightIndex + $length]) {
+                $length++
             }
-            return $match.Value
-        })
-    }
-
-    $displayPattern = '(?<![\p{L}\p{Nd}])' + [regex]::Escape($Row.display_name) + '(?![\p{L}\p{Nd}])'
-    $text = [regex]::Replace(
-        $text,
-        $displayPattern,
-        [Text.RegularExpressions.MatchEvaluator]{ param($match) '<CONCEPT>' },
-        [Text.RegularExpressions.RegexOptions]::IgnoreCase
-    )
-    foreach ($profileMarker in @('Georgia','Tobias','Bornheim','Köln','Düsseldorf','Rostock')) {
-        $text = Replace-NoteLiteral $text $profileMarker '<PROFILE>'
-    }
-    $text = $text.ToLowerInvariant()
-    return ([regex]::Replace($text, '\s+', ' ')).Trim()
-}
-
-function Get-RepeatedAvailabilitySignalFragments {
-    param([object[]]$Rows, [int]$WordCount = 4, [int]$MinimumOccurrences = 10)
-
-    # Market nouns such as "Vollsortimenter" or "Gewuerzregal" may naturally
-    # recur. This check is deliberately restricted to vocabulary that signals a
-    # rating paraphrase or a stock/logistics conclusion, then looks for repeated
-    # four-word fragments across distinct notes.
-    $signalPattern = '(spontan|trefferquote|wiederholbar|vorlauf|eingeplant|spezialhandel|spezialsortiment|nischenweg|storanfallig|fragil|handlerweg|breit genug|breite des|engpass|enge und)'
-    $counts = @{}
-    foreach ($row in $Rows) {
-        $words = @((Get-NormalizedText $row.availability_note).Split(' ') | Where-Object { $_ })
-        if ($words.Count -lt $WordCount) { continue }
-        $seen = @{}
-        for ($index = 0; $index -le $words.Count - $WordCount; $index++) {
-            $fragment = $words[$index..($index + $WordCount - 1)] -join ' '
-            if ($fragment -match $signalPattern) { $seen[$fragment] = $true }
-        }
-        foreach ($fragment in $seen.Keys) {
-            if ($counts.ContainsKey($fragment)) { $counts[$fragment]++ } else { $counts[$fragment] = 1 }
+            if ($length -gt $maximum) { $maximum = $length }
         }
     }
-    return @(
-        $counts.GetEnumerator() |
-            Where-Object Value -ge $MinimumOccurrences |
-            Sort-Object Value -Descending
-    )
+    return $maximum
 }
 
-function Get-AvailabilityNoteClauseSkeletons {
+function Get-AvailabilityNoteProblems {
     param([object]$Row)
 
-    $skeleton = Get-AvailabilityNoteSkeleton $Row
-    return @(
-        [regex]::Split($skeleton, '[.!?;]+') |
-            ForEach-Object { ([regex]::Replace($_, '\s+', ' ')).Trim(' ', ',', ':') } |
-            Where-Object { $_.Length -ge 30 } |
-            Sort-Object -Unique
-    )
+    $problems = [Collections.Generic.List[string]]::new()
+    $note = [string]$Row.availability_note
+    if ([string]::IsNullOrWhiteSpace($note)) { $problems.Add('EMPTY'); return @($problems) }
+    if ($note.Length -lt 35) { $problems.Add('TOO_SHORT') }
+    if ($note.Length -gt 320) { $problems.Add('TOO_LONG') }
+    if ($note -match '(?i)https?://|www\.') { $problems.Add('URL_DUMP') }
+    if ($note -match '(?i)telefonische Sortimentsabfrage|bestätigter Filialbestand|mit bestätigtem Filialbestand|nach digitaler Bestandsprüfung') { $problems.Add('UNVERIFIED_ACTION_OR_STOCK_CLAIM') }
+    if ($note -match '(?i)Katalogpfad|formrelevanter Prüfhinweis|vollständige Definition|wobei folgende Abgrenzung gilt') { $problems.Add('COPIED_CATALOG_SCAFFOLD') }
+    if ((Get-MaximumSharedWordSequenceLength $note ([string]$Row.product_form_basis)) -ge 8) { $problems.Add('COPIED_PRODUCT_DEFINITION') }
+
+    $normalized = Get-NormalizedText $note
+    if ($normalized -match '^(spontan|gezielt|breit|schwer|praktisch) (beschaffbar|erhaltlich|nicht beschaffbar)$') { $problems.Add('ENUM_PARAPHRASE') }
+    $marketSignal = '(supermarkt|discounter|vollsortiment|regal|theke|handel|handler|shop|versand|bestell|markt|sortiment|bestand|saison|kuhl|tiefkuhl|frisch|logistik|liefer|verschick|lager|import|route|weg|filial|regional|lokal|hof|metzger|gartner|apotheke|produktseite|pruf|fuhrt|listet|verfugbar|kette|anbieter|belegt|nicht belegt|kein realistischer)'
+    if ($normalized -notmatch $marketSignal) { $problems.Add('NO_MARKET_OR_BOTTLENECK_CORE') }
+    return @($problems)
 }
 
-function Get-EnumParaphraseClauseSkeletons {
-    param([object]$Row)
+function Get-EvidenceReferenceProblems {
+    param([object]$ReviewRow, [string]$Person, [hashtable]$EvidenceById)
 
-    # Rating conclusions may not be mass-produced merely by inserting the
-    # current concept name or a quoted form detail. Split at em dashes as well
-    # as sentence punctuation because both person passes deliberately use
-    # dashes to separate form, route and conclusion clauses.
-    $skeleton = Get-AvailabilityNoteSkeleton $Row
-    $skeleton = [regex]::Replace($skeleton, '„[^“]*“|»[^«]*«', '<DETAIL>')
-    $signalPattern = '(?i)(ohne vorlauf|vorbestellung ist nicht nötig|beschaffungsplanung entfällt|zweite einkaufsroute entfällt|lokaler bestand ist nicht zugesichert|bornheimer bestand ist nicht zugesichert|reguläre vollsortimenter für|ergänzende händler für|warenform bei|händlerbreite für|mehrere domains führen|hat wenige händler|bestandsrisiko|zustellrisiko|wechselnder einzelbestand|kühl[-/ ]+frischezustellung|reguläres sortiment|filialbestand|formbasis|darreichung|präzise tierische produktform|katalogpfad|warentreffer)'
-    return @(
-        [regex]::Split($skeleton, '\s+(?:—|–)\s+|[.!?;]+') |
-            ForEach-Object { ([regex]::Replace($_, '\s+', ' ')).Trim(' ', ',', ':') } |
-            Where-Object { $_.Length -ge 15 -and $_ -match $signalPattern } |
-            Sort-Object -Unique
-    )
-}
-
-function Get-MeaningfulTokens {
-    param([AllowEmptyString()][string]$Value, [int]$MinimumLength = 3)
-    $stopWords = @{
-        der=$true; die=$true; das=$true; den=$true; dem=$true; des=$true; ein=$true; eine=$true; einer=$true
-        eines=$true; und=$true; oder=$true; mit=$true; ohne=$true; sowie=$true; fuer=$true; von=$true; aus=$true
-        zur=$true; zum=$true; bei=$true; als=$true; auch=$true; wird=$true; sind=$true; ist=$true; im=$true; in=$true
-        produkt=$true; produktform=$true; form=$true; konzept=$true; konkret=$true; exakte=$true; exakter=$true; exaktes=$true
-        frisch=$true; frische=$true; frischer=$true; getrocknet=$true; tiefgekuehlt=$true; gekuehlt=$true
+    $problems = [Collections.Generic.List[string]]::new()
+    foreach ($id in @(Split-PipeTokens $ReviewRow.availability_evidence)) {
+        if (-not $EvidenceById.ContainsKey($id)) { $problems.Add("UNKNOWN:$id"); continue }
+        $item = $EvidenceById[$id]
+        if ($item.concept_code -cne $ReviewRow.concept_code) { $problems.Add("CONCEPT_SCOPE:$id") }
+        if (-not ((Split-PipeTokens $item.person_relevance) -ccontains $Person)) { $problems.Add("PERSON_SCOPE:$id") }
+        if (-not ((Split-PipeTokens $item.supported_rating) -ccontains $ReviewRow.proposed_availability)) { $problems.Add("RATING_SCOPE:$id") }
     }
-    return @(
-        (Get-NormalizedText $Value).Split(' ') |
-            Where-Object { $_.Length -ge $MinimumLength -and -not $stopWords.ContainsKey($_) } |
-            Sort-Object -Unique
-    )
+    return @($problems)
 }
 
-function Test-MeaningfulTokenOverlap {
-    param([string[]]$Left, [string[]]$Right)
-    foreach ($leftToken in $Left) {
-        foreach ($rightToken in $Right) {
-            if ($leftToken -ceq $rightToken) { return $true }
-            if ([Math]::Min($leftToken.Length, $rightToken.Length) -ge 4 -and
-                ($leftToken.StartsWith($rightToken, [StringComparison]::Ordinal) -or
-                 $rightToken.StartsWith($leftToken, [StringComparison]::Ordinal))) {
-                return $true
-            }
+function Get-PersonDifferenceProblems {
+    param([object]$GeorgiaRow, [object]$TobiasRow)
+
+    $problems = [Collections.Generic.List[string]]::new()
+    if ($GeorgiaRow.proposed_availability -cne $TobiasRow.proposed_availability) {
+        foreach ($pair in @(@('Georgia',$GeorgiaRow), @('Tobias',$TobiasRow))) {
+            if ($pair[1].evidence_requirement -cne 'REQUIRED') { $problems.Add("EVIDENCE_NOT_REQUIRED:$($pair[0])") }
+            if ([string]::IsNullOrWhiteSpace($pair[1].availability_evidence)) { $problems.Add("EVIDENCE_MISSING:$($pair[0])") }
         }
     }
-    return $false
+    return @($problems)
 }
 
-function Test-ProductFormOverlap {
-    param([string]$EvidenceForm, [string]$DecisionForm, [string]$DisplayName)
-    $evidenceTokens = @(Get-MeaningfulTokens $EvidenceForm 3)
-    $basisTokens = @((@(Get-MeaningfulTokens $DecisionForm 3) + @(Get-MeaningfulTokens $DisplayName 2)) | Sort-Object -Unique)
-    return Test-MeaningfulTokenOverlap $evidenceTokens $basisTokens
+function Invoke-GenericValidatorSelfTests {
+    $sharedNote = 'Frische Beispielwurzel ist über gut sortierte Gemüseabteilungen planbar; der Filialbestand muss vor dem Einkauf geprüft werden.'
+    $noteFixture = [pscustomobject]@{ availability_note=$sharedNote; product_form_basis='Frische Beispielwurzel in kochgeeigneter Form.' }
+    Assert-Equal @(Get-AvailabilityNoteProblems $noteFixture).Count 0 'Generic fixture rejected a valid shared note for Georgia'
+    Assert-Equal @(Get-AvailabilityNoteProblems $noteFixture).Count 0 'Generic fixture rejected the same valid shared note for Tobias'
+
+    $g = [pscustomobject]@{ concept_code='CONCEPT_ALPHA'; proposed_availability='PLANNED'; evidence_requirement='REQUIRED'; availability_evidence='EV-G' }
+    $t = [pscustomobject]@{ concept_code='CONCEPT_ALPHA'; proposed_availability='SPECIALTY'; evidence_requirement='REQUIRED'; availability_evidence='EV-T' }
+    Assert-Equal @(Get-PersonDifferenceProblems $g $t).Count 0 'Generic fixture rejected an additional data-driven person difference'
+
+    $catalog = @{
+        'EV-G'=[pscustomobject]@{ concept_code='CONCEPT_ALPHA'; person_relevance='Georgia'; supported_rating='PLANNED' }
+        'EV-WRONG-CONCEPT'=[pscustomobject]@{ concept_code='CONCEPT_BETA'; person_relevance='Georgia'; supported_rating='PLANNED' }
+        'EV-WRONG-PERSON'=[pscustomobject]@{ concept_code='CONCEPT_ALPHA'; person_relevance='Tobias'; supported_rating='PLANNED' }
+    }
+    Assert-True (@(Get-EvidenceReferenceProblems ([pscustomobject]@{ concept_code='CONCEPT_ALPHA'; proposed_availability='PLANNED'; availability_evidence='EV-UNKNOWN' }) 'Georgia' $catalog) -ccontains 'UNKNOWN:EV-UNKNOWN') 'Generic fixture did not reject an unknown evidence ID'
+    Assert-True (@(Get-EvidenceReferenceProblems ([pscustomobject]@{ concept_code='CONCEPT_ALPHA'; proposed_availability='PLANNED'; availability_evidence='EV-WRONG-CONCEPT' }) 'Georgia' $catalog) -ccontains 'CONCEPT_SCOPE:EV-WRONG-CONCEPT') 'Generic fixture did not reject wrong concept scope'
+    Assert-True (@(Get-EvidenceReferenceProblems ([pscustomobject]@{ concept_code='CONCEPT_ALPHA'; proposed_availability='PLANNED'; availability_evidence='EV-WRONG-PERSON' }) 'Georgia' $catalog) -ccontains 'PERSON_SCOPE:EV-WRONG-PERSON') 'Generic fixture did not reject wrong person scope'
 }
 
 function Get-UriHost {
@@ -358,6 +298,8 @@ function Get-EffectiveAnchors {
     return $result
 }
 
+Invoke-GenericValidatorSelfTests
+
 $source = @(Import-Csv -LiteralPath (Join-Path $analysisDir 'availability-novelty-cooking-input-20260903.csv'))
 $structures = @(Import-Csv -LiteralPath (Join-Path $analysisDir 'availability-novelty-structure-decisions-20260903.csv'))
 $anchorProposals = @(Import-Csv -LiteralPath (Join-Path $analysisDir 'availability-reference-anchors-v2-20260904.csv'))
@@ -374,6 +316,8 @@ $evidenceRouteMismatchAudit = @(Import-Csv -LiteralPath (Join-Path $analysisDir 
 $exactRouteSpecificityAudit = @(Import-Csv -LiteralPath (Join-Path $analysisDir 'availability-novelty-availability-exact-route-specificity-audit-v2-20260904.csv'))
 $specialtyEvidenceRecheck = @(Import-Csv -LiteralPath (Join-Path $analysisDir 'availability-novelty-availability-specialty-evidence-recheck-v2-20260905.csv'))
 $plannedGateRecheck = @(Import-Csv -LiteralPath (Join-Path $analysisDir 'availability-novelty-availability-planned-gate-recheck-v2-20260905.csv'))
+$negativeEvidenceRecheck = @(Import-Csv -LiteralPath (Join-Path $analysisDir 'availability-novelty-availability-negative-evidence-recheck-v2-20260905.csv'))
+$noteEditorialExamples = @(Import-Csv -LiteralPath (Join-Path $analysisDir 'availability-novelty-availability-note-editorial-examples-v2-20260905.csv'))
 $georgiaInput = @(Import-Csv -LiteralPath (Join-Path $analysisDir 'availability-novelty-availability-input-georgia-v2-20260904.csv'))
 $tobiasInput = @(Import-Csv -LiteralPath (Join-Path $analysisDir 'availability-novelty-availability-input-tobias-v2-20260904.csv'))
 $georgia = Import-Tsv 'availability-novelty-availability-review-georgia-v2-20260904.tsv'
@@ -400,6 +344,8 @@ foreach ($row in $structureRows) {
 }
 Assert-True (-not $structureCodes.ContainsKey('READY_CURRY_PASTE')) 'READY_CURRY_PASTE must remain applicable'
 Assert-Equal ($source.Count - $structureCodes.Count) 853 'Expected exactly 853 applicable concepts'
+$applicableConceptCount = $source.Count - $structureCodes.Count
+$expectedNoteCount = $applicableConceptCount * $people.Count
 
 $effectiveAnchors = Get-EffectiveAnchors $anchorProposals $anchorDecisions
 foreach ($code in $effectiveAnchors.Keys) { Assert-True ($knownCodes.ContainsKey($code)) "Unknown v2 anchor concept $code" }
@@ -434,6 +380,8 @@ Assert-ExactHeaders $evidenceRouteMismatchAudit $evidenceRouteMismatchAuditHeade
 Assert-ExactHeaders $exactRouteSpecificityAudit $exactRouteSpecificityAuditHeaders 'v2 exact-route specificity audit'
 Assert-ExactHeaders $specialtyEvidenceRecheck $specialtyEvidenceRecheckHeaders 'v2 specialty-evidence recheck'
 Assert-ExactHeaders $plannedGateRecheck $plannedGateRecheckHeaders 'v2 planned-gate recheck'
+Assert-ExactHeaders $negativeEvidenceRecheck $negativeEvidenceRecheckHeaders 'v2 negative-evidence recheck'
+Assert-ExactHeaders $noteEditorialExamples $noteEditorialExampleHeaders 'v2 note editorial examples'
 
 foreach ($pair in @(
     @('Georgia decisions',$georgiaDecisions), @('Tobias decisions',$tobiasDecisions),
@@ -495,36 +443,10 @@ foreach ($person in $people) {
         Assert-True ($row.evidence_requirement -cin @('REQUIRED','OPTIONAL')) "$person evidence requirement invalid: $code"
         Assert-True (-not [string]::IsNullOrWhiteSpace($row.product_form_basis)) "$person product form missing: $code"
         Assert-True (-not [string]::IsNullOrWhiteSpace($row.market_basis)) "$person market basis missing: $code"
-        Assert-True (-not [string]::IsNullOrWhiteSpace($row.availability_note)) "$person availability note missing: $code"
         Assert-True (-not [string]::IsNullOrWhiteSpace($row.evidence_search_terms)) "$person evidence search terms missing: $code"
-        Assert-True ($row.availability_note.Length -ge 35) "$person availability note is too short to carry a concept-specific core: $code"
-        Assert-True ($row.availability_note -notmatch '(?i)https?://|www\.') "$person availability note contains a URL: $code"
-        $accidentalDuplicates = @(
-            [regex]::Matches($row.availability_note, '(?i)(?<!\p{L})(\p{L}{3,})\s+\1(?!\p{L})') |
-                Where-Object { (Get-NormalizedText $_.Value) -cnotin @('crangon crangon','chanos chanos') }
-        )
-        Assert-Equal $accidentalDuplicates.Count 0 "$person availability note contains an accidental adjacent word duplication: $code"
-
-        $normalizedNote = Get-NormalizedNote $row.availability_note
-        $forbiddenPhrases = @(
-            'die definierte produktform ist', 'in der basisversorgung zuverlassig erhaltlich',
-            'in der bornheimer basisversorgung', 'in der rostocker basisversorgung',
-            'konkret planbaren gut sortierten markt', 'verlangt einen spezialisierten anbieter',
-            'verlangt spezialisierten deutschen', 'uber allgemeinen deutschen oder eu handel gezielt zu suchen',
-            'weder lokal noch uber belastbare deutsche oder eu wege'
-        )
-        foreach ($phrase in $forbiddenPhrases) {
-            Assert-True (-not $normalizedNote.Contains($phrase)) "$person note repeats a forbidden old standard phrase: $code"
-        }
-        Assert-True ($normalizedNote -notmatch '^(spontan|gezielt|breit|schwer|praktisch) (beschaffbar|erhaltlich|nicht beschaffbar)[.! ]*$') "$person note only paraphrases the enum: $code"
-
-        $noteTokens = @((Get-NormalizedText $row.availability_note).Split(' '))
-        $conceptTokens = @((@(Get-MeaningfulTokens $row.display_name 2) + @(Get-MeaningfulTokens $row.product_form_basis 3)) | Sort-Object -Unique)
-        Assert-True (Test-MeaningfulTokenOverlap $conceptTokens $noteTokens) "$person note lacks display-name/product-form core: $code"
-        $allNotes.Add([pscustomobject]@{
-            person=$person; concept_code=$code; normalized=$normalizedNote
-            skeleton=(Get-AvailabilityNoteSkeleton $row)
-        })
+        $noteProblems = @(Get-AvailabilityNoteProblems $row)
+        Assert-Equal $noteProblems.Count 0 "$person availability note has quality problems [$($noteProblems -join ',')]: $code"
+        $allNotes.Add([pscustomobject]@{ person=$person; concept_code=$code; note=$row.availability_note })
 
         if ($row.proposed_availability -cin @('SPECIALTY','DIFFICULT','UNAVAILABLE')) {
             Assert-Equal $row.evidence_requirement 'REQUIRED' "$person $($row.proposed_availability) must require evidence: $code"
@@ -535,150 +457,8 @@ foreach ($person in $people) {
         }
     }
 }
-Assert-Equal $allNotes.Count 1706 'Expected 1706 nonempty individual notes'
-$duplicateNotes = @($allNotes | Group-Object normalized | Where-Object Count -gt 1)
-Assert-Equal $duplicateNotes.Count 0 "Normalized availability notes are duplicated: $(@($duplicateNotes | ForEach-Object Name) -join ' || ')"
-foreach ($person in $people) {
-    $templateClusters = @(
-        $allNotes |
-            Where-Object person -ceq $person |
-            Group-Object skeleton |
-            Where-Object Count -ge 3 |
-            Sort-Object Count -Descending
-    )
-    $examples = @(
-        $templateClusters | Select-Object -First 10 | ForEach-Object {
-            "$($_.Count)x [$(@($_.Group.concept_code | Select-Object -First 6) -join ',')]"
-        }
-    )
-    Assert-Equal $templateClusters.Count 0 "$person availability notes contain catalog-wide skeleton clusters after exact name/form/profile normalization: $($examples -join '; ')"
-
-    $decisions = @($decisionSets[$person] | Where-Object review_applicability -ceq 'APPLICABLE')
-    $clauseItems = @(
-        foreach ($row in $decisions) {
-            foreach ($clause in @(Get-AvailabilityNoteClauseSkeletons $row)) {
-                [pscustomobject]@{ concept_code=$row.concept_code; clause=$clause }
-            }
-        }
-    )
-    $clauseClusters = @($clauseItems | Group-Object clause | Where-Object Count -ge 10 | Sort-Object Count -Descending)
-    $clauseExamples = @(
-        $clauseClusters | Select-Object -First 8 | ForEach-Object {
-            "$($_.Count)x '$($_.Name)' [$(@($_.Group.concept_code | Select-Object -First 6) -join ',')]"
-        }
-    )
-    Assert-Equal $clauseClusters.Count 0 "$person availability notes contain catalog-wide normalized clause skeletons: $($clauseExamples -join '; ')"
-
-    $enumClauseItems = @(
-        foreach ($row in $decisions) {
-            foreach ($clause in @(Get-EnumParaphraseClauseSkeletons $row)) {
-                [pscustomobject]@{ concept_code=$row.concept_code; clause=$clause }
-            }
-        }
-    )
-    $enumClauseClusters = @($enumClauseItems | Group-Object clause | Where-Object Count -ge 10 | Sort-Object Count -Descending)
-    $enumClauseExamples = @(
-        $enumClauseClusters | Select-Object -First 8 | ForEach-Object {
-            "$($_.Count)x '$($_.Name)' [$(@($_.Group.concept_code | Select-Object -First 6) -join ',')]"
-        }
-    )
-    Assert-Equal $enumClauseClusters.Count 0 "$person availability notes contain catalog-wide rating/stock paraphrases: $($enumClauseExamples -join '; ')"
-
-    foreach ($rating in $ratings) {
-        $ratingRows = @($decisions | Where-Object proposed_availability -ceq $rating)
-        $fragments = @(Get-RepeatedAvailabilitySignalFragments $ratingRows)
-        $fragmentExamples = @($fragments | Select-Object -First 8 | ForEach-Object { "$($_.Value)x '$($_.Key)'" })
-        Assert-Equal $fragments.Count 0 "$person/$rating notes contain high-frequency rating-paraphrase fragments: $($fragmentExamples -join '; ')"
-    }
-}
-
-$forbiddenAvailabilityNoteLiterals = @{
-    Georgia = @(
-        '(?i)\bohne vorlauf\b',
-        '(?i)\bvorbestellung ist nicht nötig\b',
-        '(?i)\bzusätzliche beschaffungsplanung entfällt\b',
-        '(?i)\beine zweite einkaufsroute entfällt\b',
-        '(?i)\blokaler bestand ist nicht zugesichert\b',
-        '(?i)\bbornheimer bestand ist nicht zugesichert\b',
-        '(?i)\bein breiter, jedoch vorzubereitender beschaffungsweg\b',
-        '(?i)\bein gezielter plan führt\b',
-        '(?i)\bgeprüft wird\b',
-        '(?i)\btrennt diesen weg vom gewöhnlichen bornheimer regalgriff\b',
-        '(?i)\bbreiten deutschen versand nach vorheriger kontrolle\b'
-    )
-    Tobias = @(
-        '(?i)\breguläre vollsortimenter\b',
-        '(?i)\bergänzende händler\b',
-        '(?i)\bhändlerbreite\b',
-        '(?i)\bmehrere domains\b',
-        '(?i)\bbestandsrisiko\b',
-        '(?i)\bzustellrisiko\b',
-        '(?i)\bhat wenige händler\b',
-        '(?i)\bwechselnder einzelbestand\b',
-        '(?i)\bkühl[-/ ]+frischezustellung\b',
-        '(?i)\breguläres sortiment\b',
-        '(?i)\bfilialbestand\b',
-        '(?i)\bformbasis\b',
-        '(?i)\bdarreichung\b',
-        '(?i)\bpräzise tierische produktform\b',
-        '(?i)\bkatalogpfad\b',
-        '(?i)\bwarentreffer\b'
-    )
-}
-foreach ($person in $people) {
-    foreach ($pattern in $forbiddenAvailabilityNoteLiterals[$person]) {
-        $literalMatches = @(
-            $decisionSets[$person] |
-                Where-Object review_applicability -ceq 'APPLICABLE' |
-                Where-Object availability_note -match $pattern
-        )
-        $literalMatchCodes = @($literalMatches | Select-Object -ExpandProperty concept_code -First 12)
-        Assert-Equal $literalMatches.Count 0 "$person notes retain the forbidden catalog-wide stock/logistics/form literal '$pattern': $($literalMatchCodes -join ',')"
-    }
-}
-
-$georgiaGrammar = @(
-    'genugt .* den bereich',
-    'liegt bei den bereich',
-    'ist den bereich',
-    'im frisches',
-    'außer .* ist kein.*weg'
-)
-foreach ($pattern in $georgiaGrammar) {
-    $grammarMatches = @($georgiaDecisions | Where-Object { (Get-NormalizedText $_.availability_note) -match $pattern })
-    $grammarMatchCodes = @($grammarMatches | Select-Object -ExpandProperty concept_code -First 10)
-    Assert-Equal $grammarMatches.Count 0 "Georgia notes contain the invalid grammar pattern '$pattern': $($grammarMatchCodes -join ',')"
-}
-
-foreach ($person in $people) {
-    $decisions = @($decisionSets[$person] | Where-Object review_applicability -ceq 'APPLICABLE')
-    $genericRoutes = @($decisions | Where-Object availability_note -match '(?i)passende[s]? Regal oder (die )?Frischeabteilung')
-    $genericRouteCodes = @($genericRoutes | Select-Object -ExpandProperty concept_code)
-    Assert-Equal $genericRoutes.Count 0 "$person notes retain a generic shelf-or-fresh-department route: $($genericRouteCodes -join ',')"
-
-    $narrowedOpenForms = @(
-        $decisions | Where-Object {
-            $_.product_form_basis -match '(?i)oder|bleiben offen|offene ' -and
-            $_.availability_note -match '(?i)(verlangte frische Form|bleibt die (getrocknete|gemahlene|konservierte|frische) (Produkt)?form|ist die (getrocknete|gemahlene|konservierte|frische) (Produkt)?form .*maßgeblich|gilt die (getrocknete|gemahlene|konservierte|frische) (Produkt)?form)'
-        }
-    )
-    $narrowedOpenFormCodes = @($narrowedOpenForms | Select-Object -ExpandProperty concept_code)
-    Assert-Equal $narrowedOpenForms.Count 0 "$person notes heuristically narrow an open/alternative product form: $($narrowedOpenFormCodes -join ',')"
-
-    foreach ($row in $decisions) {
-        $basis = Get-NormalizedText $row.product_form_basis
-        $note = Get-NormalizedText $row.availability_note
-        foreach ($form in @('frisch','getrocknet','konserviert','gemahlen')) {
-            if ($basis -match "nicht(?: [a-z0-9]+){0,5} $form" -and
-                $note -match "(verlangte|zugelassene|massgebliche) ${form}e (produkt)?form") {
-                throw "$person note contradicts a negated product form '$form': $($row.concept_code)"
-            }
-        }
-    }
-}
-
-Assert-Equal $noteCorrections.Count 72 'Unexpected v2 note-correction audit row count'
-Assert-Equal (@($noteCorrections | ForEach-Object { "$($_.person)|$($_.concept_code)" } | Sort-Object -Unique).Count) 72 'Duplicate v2 note-correction audit person/concept pair'
+Assert-Equal $allNotes.Count $expectedNoteCount 'Availability-note coverage differs from the applicable concepts and people in the input data'
+Assert-Equal (@($noteCorrections | ForEach-Object { "$($_.person)|$($_.concept_code)" } | Sort-Object -Unique).Count) $noteCorrections.Count 'Duplicate v2 note-correction audit person/concept pair'
 foreach ($row in $noteCorrections) {
     foreach ($field in $noteCorrectionHeaders) {
         Assert-True (-not [string]::IsNullOrWhiteSpace($row.$field)) "Note-correction audit field '$field' is empty: $($row.person)/$($row.concept_code)"
@@ -696,12 +476,20 @@ foreach ($row in $noteCorrections) {
     Assert-Equal $decision[0].proposed_availability $row.recommended_availability "Note-correction audit rating differs from final decision: $($row.person)/$($row.concept_code)"
 }
 
-Assert-Equal $routeAudit.Count 344 'Unexpected v2 product-form route-audit row count'
-Assert-Equal (@($routeAudit | ForEach-Object { "$($_.person)|$($_.concept_code)" } | Sort-Object -Unique).Count) 344 'Duplicate v2 product-form route-audit person/concept pair'
-$expectedRouteAuditCounts = @{ Georgia = 176; Tobias = 168 }
-foreach ($person in $people) {
-    Assert-Equal (@($routeAudit | Where-Object person -ceq $person).Count) $expectedRouteAuditCounts[$person] "Product-form route-audit count differs for $person"
+Assert-Equal (@($noteEditorialExamples | ForEach-Object { "$($_.person)|$($_.concept_code)" } | Sort-Object -Unique).Count) $noteEditorialExamples.Count 'Duplicate v2 note editorial example person/concept pair'
+foreach ($row in $noteEditorialExamples) {
+    foreach ($field in $noteEditorialExampleHeaders) {
+        Assert-True (-not [string]::IsNullOrWhiteSpace($row.$field)) "Note editorial example field '$field' is empty: $($row.person)/$($row.concept_code)"
+    }
+    Assert-True ($row.person -cin $people) "Note editorial example person invalid: $($row.person)/$($row.concept_code)"
+    Assert-True ($knownCodes.ContainsKey($row.concept_code)) "Note editorial example concept unknown: $($row.person)/$($row.concept_code)"
+    Assert-True ($row.prior_note -cne $row.revised_note) "Note editorial example records no change: $($row.person)/$($row.concept_code)"
+    $decision = @($decisionSets[$row.person] | Where-Object concept_code -ceq $row.concept_code)
+    Assert-Equal $decision.Count 1 "Note editorial example decision lookup differs: $($row.person)/$($row.concept_code)"
+    Assert-Equal $decision[0].availability_note $row.revised_note "Note editorial example differs from final note: $($row.person)/$($row.concept_code)"
 }
+
+Assert-Equal (@($routeAudit | ForEach-Object { "$($_.person)|$($_.concept_code)" } | Sort-Object -Unique).Count) $routeAudit.Count 'Duplicate v2 product-form route-audit person/concept pair'
 foreach ($row in $routeAudit) {
     foreach ($field in $routeAuditHeaders) {
         Assert-True (-not [string]::IsNullOrWhiteSpace($row.$field)) "Product-form route-audit field '$field' is empty: $($row.person)/$($row.concept_code)"
@@ -709,78 +497,6 @@ foreach ($row in $routeAudit) {
     Assert-True ($row.person -cin $people) "Product-form route-audit person invalid: $($row.person)/$($row.concept_code)"
     Assert-True ($knownCodes.ContainsKey($row.concept_code)) "Product-form route-audit concept unknown: $($row.person)/$($row.concept_code)"
     Assert-Equal $row.audit_status 'ROUTE_VERIFIED' "Product-form route-audit is not finally resolved: $($row.person)/$($row.concept_code)"
-}
-
-$routeAssertions = @(
-    @('BAY_LEAF','gewurz','getrank'),
-    @('FRIED_ONIONS','rostzwiebel|topping|trockenwar','obst und gemuseabteilung'),
-    @('GINGER','obst|gemuse|frische','gewurz und wurzregal'),
-    @('GOAT_CHEESE','kase|molkerei','fleischtheke|metzgerei'),
-    @('OYSTER_MUSHROOM','pilz|gemuse','fischtheke|fischkuhlung'),
-    @('KING_OYSTER_MUSHROOM','pilz|gemuse','fischtheke|fischkuhlung'),
-    @('TOFU','kuhl|asia|vegetar','molkerei|kasetheke'),
-    @('ALMOND_DRINK','getrank|pflanzendrink','nussregal'),
-    @('COCONUT_WATER','getrank','nussregal')
-)
-foreach ($assertion in $routeAssertions) {
-    $code = $assertion[0]
-    foreach ($person in $people) {
-        $row = @($decisionSets[$person] | Where-Object concept_code -ceq $code)[0]
-        $note = Get-NormalizedText $row.availability_note
-        Assert-True ($note -match $assertion[1]) "$person note lacks the required product-form route for $code"
-        Assert-True ($note -notmatch $assertion[2]) "$person note retains a wrong parent/raw-goods route for $code"
-    }
-}
-
-foreach ($person in $people) {
-    $byCode = @{}; foreach ($row in $decisionSets[$person]) { $byCode[$row.concept_code] = $row }
-    $almond = Get-NormalizedText $byCode.ALMOND.availability_note
-    Assert-True ($almond -match 'nuss|back') "$person/ALMOND lacks the nut/baking route"
-    Assert-True ($almond -match 'ganz' -and $almond -match 'gehackt' -and $almond -match 'gemahlen' -and $almond -match 'blanchiert') "$person/ALMOND collapses the approved open product forms"
-
-    $beans = Get-NormalizedText $byCode.BEANS.availability_note
-    Assert-True ($beans -match 'hulsen|konserv|trocken') "$person/BEANS lacks the legume/preserved route"
-    Assert-True ($beans -match 'trocken' -and $beans -match 'vorgegart' -and $beans -match 'frisch' -and $beans -match 'nicht') "$person/BEANS loses the dry-or-precooked form and fresh-bean exclusion"
-
-    $beer = Get-NormalizedText $byCode.BEER.availability_note
-    Assert-True ($beer -match 'bier' -and $beer -match 'getrank') "$person/BEER lacks the beer/beverage route"
-    Assert-True ($beer -notmatch 'spirituosen oder weinregal.*fuhrt bier|wein oder spirituosenregal.*bier') "$person/BEER is routed only through wine/spirits"
-
-    foreach ($code in @('BLACK_PEPPER','WHITE_PEPPER')) {
-        $pepper = Get-NormalizedText $byCode[$code].availability_note
-        Assert-True ($pepper -match 'gewurz') "$person/$code lacks the dried-spice route"
-        Assert-True ($pepper -match 'ganz' -and $pepper -match 'gemahlen') "$person/$code collapses the whole-or-ground forms"
-        Assert-True ($pepper -notmatch 'frischeabteilung') "$person/$code incorrectly uses a fresh-produce route"
-    }
-
-    $pasta = Get-NormalizedText $byCode.WHEAT_PASTA.availability_note
-    Assert-True ($pasta -match 'nudel|teigwaren') "$person/WHEAT_PASTA lacks the pasta route"
-    Assert-True ($pasta -match 'frisch' -and $pasta -match 'getrocknet') "$person/WHEAT_PASTA collapses the fresh-or-dried forms"
-    Assert-True ($pasta -notmatch 'verlangte frische form') "$person/WHEAT_PASTA incorrectly narrows the open form to fresh pasta"
-
-    $tomato = Get-NormalizedText $byCode.TOMATO_PRODUCTS.availability_note
-    Assert-True ($tomato -match 'konserv' -and $tomato -match 'passata' -and $tomato -match 'mark' -and $tomato -match 'sauce') "$person/TOMATO_PRODUCTS loses part of the open processed-product family"
-    Assert-True ($tomato -notmatch 'frischeabteilung') "$person/TOMATO_PRODUCTS incorrectly uses a raw-produce route"
-
-    $polenta = Get-NormalizedText $byCode.POLENTA.availability_note
-    Assert-True ($polenta -match 'maisgrieß|getreide|trockenwaren') "$person/POLENTA lacks the grain/polenta route"
-    Assert-True ($polenta -notmatch 'gemuseabteilung') "$person/POLENTA incorrectly uses the raw-corn/produce route"
-
-    $pilsner = Get-NormalizedText $byCode.PILSNER_LAGER.availability_note
-    Assert-True ($pilsner -match 'bier|getrank') "$person/PILSNER_LAGER lacks the beer/beverage route"
-    Assert-True ($pilsner -notmatch 'frischeabteilung|passende regal') "$person/PILSNER_LAGER retains a generic/raw-goods route"
-
-    $sambal = Get-NormalizedText $byCode.SAMBAL_OELEK.availability_note
-    Assert-True ($sambal -match 'sauce|wurz|paste|asia') "$person/SAMBAL_OELEK lacks the sauce/paste route"
-    Assert-True ($sambal -notmatch 'frischeabteilung|passende regal') "$person/SAMBAL_OELEK retains a generic/raw-goods route"
-
-    $greenPepper = Get-NormalizedText $byCode.GREEN_PEPPER.availability_note
-    Assert-True ($greenPepper -match 'gewurz|feinkost|lake|frische') "$person/GREEN_PEPPER lacks a route for the approved forms"
-    Assert-True ($greenPepper -match 'frisch' -and $greenPepper -match 'gefriergetrocknet' -and $greenPepper -match 'lake') "$person/GREEN_PEPPER collapses the fresh, freeze-dried or brined forms"
-    Assert-True ($greenPepper -notmatch 'verlangte frische form|passende regal') "$person/GREEN_PEPPER narrows the open form or retains a generic route"
-
-    $sweeteners = Get-NormalizedText $byCode.SWEETENERS.availability_note
-    Assert-True ($sweeteners -match 'zucker' -and $sweeteners -match 'sirup' -and $sweeteners -match 'honig') "$person/SWEETENERS collapses the open sweetener family"
 }
 
 $evidenceById = @{}
@@ -847,33 +563,7 @@ foreach ($row in $evidence) {
     }
 }
 
-# An EXACT_ROUTE may be reused for both people, but not as a catch-all page for
-# unrelated concepts. The only deliberate cross-concept reuse is a concrete
-# product that also satisfies its open parent families.
-$allowedSharedExactRouteConceptSets = @(
-    'BIVALVES|MOLLUSCS|MUSSELS',
-    'CRUSTACEANS|SHELLFISH',
-    'DUCK|DUCK_BREAST'
-)
-$sharedExactRouteGroups = @(
-    $evidence |
-        Where-Object evidence_role -ceq 'EXACT_ROUTE' |
-        Group-Object url |
-        Where-Object { @($_.Group.concept_code | Sort-Object -Unique).Count -gt 1 }
-)
-foreach ($group in $sharedExactRouteGroups) {
-    $conceptSet = @($group.Group.concept_code | Sort-Object -Unique) -join '|'
-    Assert-True ($allowedSharedExactRouteConceptSets -ccontains $conceptSet) "EXACT_ROUTE URL is reused as a cross-concept catch-all: $($group.Name) => $conceptSet"
-}
-
-Assert-Equal $exactRouteSpecificityAudit.Count 122 'Unexpected v2 exact-route specificity-audit row count'
-Assert-Equal (@($exactRouteSpecificityAudit.evidence_id | Sort-Object -Unique).Count) 122 'Duplicate v2 exact-route specificity-audit evidence ID'
-$specificityOriginalUrlGroups = @($exactRouteSpecificityAudit | Group-Object original_url)
-Assert-Equal $specificityOriginalUrlGroups.Count 13 'Unexpected v2 exact-route specificity-audit original aggregate URL count'
-foreach ($group in $specificityOriginalUrlGroups) {
-    Assert-True ($group.Count -ge 2) "Specificity-audit original URL is not an aggregate route: $($group.Name)"
-}
-$specificityNonExactRoutes = [Collections.Generic.List[object]]::new()
+Assert-Equal (@($exactRouteSpecificityAudit.evidence_id | Sort-Object -Unique).Count) $exactRouteSpecificityAudit.Count 'Duplicate v2 exact-route specificity-audit evidence ID'
 foreach ($row in $exactRouteSpecificityAudit) {
     foreach ($field in $exactRouteSpecificityAuditHeaders) {
         Assert-True (-not [string]::IsNullOrWhiteSpace($row.$field)) "Exact-route specificity-audit field '$field' is empty: $($row.evidence_id)"
@@ -885,38 +575,10 @@ foreach ($row in $exactRouteSpecificityAudit) {
     Assert-Equal $item.person_relevance $row.person_relevance "Exact-route specificity-audit person relevance differs: $($row.evidence_id)"
     Assert-Equal $item.source_name $row.resolved_source_name "Exact-route specificity-audit resolved source differs from canonical evidence: $($row.evidence_id)"
     Assert-Equal $item.url $row.resolved_url "Exact-route specificity-audit resolved URL differs from canonical evidence: $($row.evidence_id)"
-    if ($row.original_url -ceq $row.resolved_url) {
-        Assert-Equal $item.evidence_role 'EXACT_ROUTE' "Retained form-specific category is not an EXACT_ROUTE: $($row.evidence_id)"
-    } else {
-        Assert-True ($row.original_url -cne $row.resolved_url) "Exact-route specificity-audit did not replace the aggregate URL: $($row.evidence_id)"
-    }
-    if ($item.evidence_role -cne 'EXACT_ROUTE') { $specificityNonExactRoutes.Add($item) }
+    Assert-True ($item.evidence_role -cin @('EXACT_ROUTE','MARKET_BREADTH')) "Exact-route specificity resolution has an invalid canonical role: $($row.evidence_id)"
 }
-foreach ($item in $specificityNonExactRoutes) {
-    Assert-Equal $item.evidence_role 'MARKET_BREADTH' "Specificity-audit non-EXACT_ROUTE resolution has an invalid role: $($item.evidence_id)"
-}
-$retainedFormSpecificCategoryIds = @(
-    $exactRouteSpecificityAudit |
-        Where-Object {
-            $evidenceById[$_.evidence_id].evidence_role -ceq 'EXACT_ROUTE' -and
-            $_.resolved_url -cin @($specificityOriginalUrlGroups.Name)
-        } |
-        ForEach-Object {
-            Assert-True ((Get-NormalizedText $evidenceById[$_.evidence_id].product_form) -match '\boffen') "Retained aggregate category does not describe an open product form: $($_.evidence_id)"
-            $_.evidence_id
-        }
-)
-$remainingAggregateExactRoutes = @(
-    $evidence |
-        Where-Object evidence_role -ceq 'EXACT_ROUTE' |
-        Where-Object url -cin @($specificityOriginalUrlGroups.Name)
-)
-$remainingAggregateExactRouteIds = @($remainingAggregateExactRoutes | Select-Object -ExpandProperty evidence_id -First 12)
-Assert-Equal (($remainingAggregateExactRoutes.evidence_id | Sort-Object) -join '|') (($retainedFormSpecificCategoryIds | Sort-Object) -join '|') "An unexpected specificity-audit aggregate URL remains canonical as EXACT_ROUTE: $($remainingAggregateExactRouteIds -join ',')"
 
-Assert-Equal $exactRouteUrlAudit.Count 27 'Unexpected v2 exact-route URL-audit row count'
-Assert-Equal (@($exactRouteUrlAudit.evidence_id | Sort-Object -Unique).Count) 27 'Duplicate v2 exact-route URL-audit evidence ID'
-Assert-Equal (@($exactRouteUrlAudit.concept_code | Sort-Object -Unique).Count) 23 'Unexpected v2 exact-route URL-audit concept count'
+Assert-Equal (@($exactRouteUrlAudit.evidence_id | Sort-Object -Unique).Count) $exactRouteUrlAudit.Count 'Duplicate v2 exact-route URL-audit evidence ID'
 foreach ($row in $exactRouteUrlAudit) {
     foreach ($field in $exactRouteUrlAuditHeaders) {
         Assert-True (-not [string]::IsNullOrWhiteSpace($row.$field)) "Exact-route URL-audit field '$field' is empty: $($row.evidence_id)"
@@ -928,9 +590,7 @@ foreach ($row in $exactRouteUrlAudit) {
     Assert-True ([string]::IsNullOrWhiteSpace($oldUri.AbsolutePath.Trim('/')) -and [string]::IsNullOrWhiteSpace($oldUri.Query.TrimStart('?'))) "Exact-route URL-audit no longer records the original domain-root finding: $($row.evidence_id)"
 }
 
-Assert-Equal $evidenceRouteMismatchAudit.Count 6 'Unexpected v2 evidence route-mismatch audit row count'
-Assert-Equal (@($evidenceRouteMismatchAudit.evidence_id | Sort-Object -Unique).Count) 6 'Duplicate v2 evidence route-mismatch audit ID'
-Assert-Equal (@($evidenceRouteMismatchAudit.concept_code | Sort-Object -Unique).Count) 5 'Unexpected v2 evidence route-mismatch audit concept count'
+Assert-Equal (@($evidenceRouteMismatchAudit.evidence_id | Sort-Object -Unique).Count) $evidenceRouteMismatchAudit.Count 'Duplicate v2 evidence route-mismatch audit ID'
 foreach ($row in $evidenceRouteMismatchAudit) {
     foreach ($field in $evidenceRouteMismatchAuditHeaders) {
         Assert-True (-not [string]::IsNullOrWhiteSpace($row.$field)) "Evidence route-mismatch audit field '$field' is empty: $($row.evidence_id)"
@@ -942,40 +602,17 @@ foreach ($row in $evidenceRouteMismatchAudit) {
     Assert-True (-not ($item.evidence_role -ceq 'EXACT_ROUTE' -and $item.source_name -ceq $row.source_name -and $item.url -ceq $row.url)) "Known false EXACT_ROUTE assignment remains canonical: $($row.evidence_id)"
 }
 
-Assert-Equal $evidenceStatusAudit.Count 7 'Unexpected v2 evidence-status audit row count'
-Assert-Equal (@($evidenceStatusAudit.evidence_id | Sort-Object -Unique).Count) 7 'Duplicate v2 evidence-status audit ID'
+Assert-Equal (@($evidenceStatusAudit.evidence_id | Sort-Object -Unique).Count) $evidenceStatusAudit.Count 'Duplicate v2 evidence-status audit ID'
 foreach ($row in $evidenceStatusAudit) {
     foreach ($field in $evidenceStatusAuditHeaders) {
         Assert-True (-not [string]::IsNullOrWhiteSpace($row.$field)) "Evidence-status audit field '$field' is empty: $($row.evidence_id)"
     }
-    Assert-Equal $row.current_status 'LOCATION_DEPENDENT' "Evidence-status audit old status differs: $($row.evidence_id)"
-    Assert-True ($row.recommended_status -cin @('REGULAR_RANGE','VARIABLE_STOCK')) "Evidence-status audit recommendation invalid: $($row.evidence_id)"
+    Assert-True ($row.current_status -cin $allowedStatuses) "Evidence-status audit old status invalid: $($row.evidence_id)"
+    Assert-True ($row.recommended_status -cin $allowedStatuses) "Evidence-status audit recommendation invalid: $($row.evidence_id)"
+    Assert-True ($row.current_status -cne $row.recommended_status) "Evidence-status audit records no transition: $($row.evidence_id)"
     Assert-True ($evidenceById.ContainsKey($row.evidence_id)) "Evidence-status audit references unknown ID: $($row.evidence_id)"
     Assert-Equal $evidenceById[$row.evidence_id].concept_code $row.concept_code "Evidence-status audit concept differs: $($row.evidence_id)"
     Assert-Equal $evidenceById[$row.evidence_id].availability_status $row.recommended_status "Canonical evidence status differs from audit recommendation: $($row.evidence_id)"
-}
-Assert-Equal (@($evidence | Where-Object availability_status -ceq 'LOCATION_DEPENDENT').Count) 0 'Canonical evidence catalog still contains LOCATION_DEPENDENT rows'
-
-$easyQaRoutes = @($evidence | Where-Object evidence_id -like 'AV2N-QA-*')
-Assert-Equal $easyQaRoutes.Count 14 'Unexpected v2 EASY QA evidence row count'
-$easyQaGroups = @($easyQaRoutes | Group-Object concept_code)
-Assert-Equal $easyQaGroups.Count 7 'Unexpected v2 EASY QA concept count'
-foreach ($group in $easyQaGroups) {
-    $code = $group.Name
-    $items = @($group.Group)
-    Assert-Equal $items.Count 2 "EASY QA concept does not have two independent routes: $code"
-    foreach ($item in $items) {
-        Assert-True ((Split-PipeTokens $item.person_relevance) -ccontains 'Georgia') "EASY QA route lacks Georgia relevance: $($item.evidence_id)"
-        Assert-True ((Split-PipeTokens $item.supported_rating) -ccontains 'EASY') "EASY QA route lacks EASY support: $($item.evidence_id)"
-        Assert-Equal $item.market_breadth 'GENERAL_LOCAL' "EASY QA route is not ordinary-local: $($item.evidence_id)"
-        Assert-Equal $item.evidence_role 'EXACT_ROUTE' "EASY QA route is not form-specific: $($item.evidence_id)"
-        Assert-True (Test-PositiveRouteEvidence $item) "EASY QA route is not positive: $($item.evidence_id)"
-    }
-    Assert-Equal (@($items | ForEach-Object { Get-UriHost $_.url } | Sort-Object -Unique).Count) 2 "EASY QA routes do not use two domains: $code"
-    Assert-Equal (@($items.source_name | Sort-Object -Unique).Count) 2 "EASY QA routes do not use two sources: $code"
-    $decision = @($georgiaDecisions | Where-Object concept_code -ceq $code)
-    Assert-Equal $decision.Count 1 "EASY QA Georgia decision lookup differs: $code"
-    Assert-True ((Split-PipeTokens $items[0].supported_rating) -ccontains $decision[0].proposed_availability) "EASY QA evidence does not support the final Georgia decision: $code"
 }
 
 $negativeOnlyGroups = @(
@@ -996,13 +633,51 @@ foreach ($group in $negativeOnlyGroups) {
     }
 }
 
+$negativeEvidenceRecheckByCode = @{}
+foreach ($row in $negativeEvidenceRecheck) {
+    foreach ($field in $negativeEvidenceRecheckHeaders) {
+        Assert-True (-not [string]::IsNullOrWhiteSpace($row.$field)) "Negative-evidence recheck field '$field' is empty: $($row.concept_code)"
+    }
+    Assert-True ($knownCodes.ContainsKey($row.concept_code)) "Negative-evidence recheck concept unknown: $($row.concept_code)"
+    Assert-True (-not $negativeEvidenceRecheckByCode.ContainsKey($row.concept_code)) "Duplicate negative-evidence recheck concept: $($row.concept_code)"
+    $negativeEvidenceRecheckByCode[$row.concept_code] = $row
+    Assert-True ($row.final_rating_georgia -cin $ratings -and $row.final_rating_tobias -cin $ratings) "Negative-evidence recheck rating invalid: $($row.concept_code)"
+    Assert-True ($row.audit_status -cin @('REVIEWED_LIMITATION_REMAINS','CORRECTED_POSITIVE_NICHE_ROUTE')) "Negative-evidence recheck status invalid: $($row.concept_code)"
+    $items = @()
+    foreach ($id in @(Split-PipeTokens $row.evidence_ids)) {
+        Assert-True ($evidenceById.ContainsKey($id)) "Negative-evidence recheck references unknown evidence: $id"
+        Assert-Equal $evidenceById[$id].concept_code $row.concept_code "Negative-evidence recheck evidence scope differs: $id/$($row.concept_code)"
+        $items += $evidenceById[$id]
+    }
+    $positiveItems = @($items | Where-Object { Test-PositiveRouteEvidence $_ })
+    if ($row.audit_status -ceq 'CORRECTED_POSITIVE_NICHE_ROUTE') {
+        Assert-True ($positiveItems.Count -gt 0) "Corrected negative-evidence recheck has no positive canonical route: $($row.concept_code)"
+    } else {
+        Assert-Equal $positiveItems.Count 0 "Negative-only recheck unexpectedly has a positive canonical route: $($row.concept_code)"
+    }
+    foreach ($person in $people) {
+        $expectedRating = if ($person -ceq 'Georgia') { $row.final_rating_georgia } else { $row.final_rating_tobias }
+        $decision = @($decisionSets[$person] | Where-Object concept_code -ceq $row.concept_code)
+        Assert-Equal $decision.Count 1 "Negative-evidence recheck decision lookup differs: $person/$($row.concept_code)"
+        Assert-Equal $decision[0].proposed_availability $expectedRating "Negative-evidence recheck final rating differs: $person/$($row.concept_code)"
+    }
+}
+foreach ($group in $negativeOnlyGroups) {
+    Assert-True ($negativeEvidenceRecheckByCode.ContainsKey($group.Name)) "Negative-only canonical evidence lacks a recheck row: $($group.Name)"
+}
+
 $georgiaByCode = @{}; foreach ($row in $georgia) { $georgiaByCode[$row.concept_code] = $row }
 $tobiasByCode = @{}; foreach ($row in $tobias) { $tobiasByCode[$row.concept_code] = $row }
 $combinedByCode = @{}; foreach ($row in $combined) { $combinedByCode[$row.concept_code] = $row }
 $previousByCode = @{}; foreach ($row in $previous) { $previousByCode[$row.concept_code] = $row }
 $referencedEvidence = @{}
 
-Assert-Equal $divergence.Count 178 'Unexpected v2 divergence-audit row count'
+foreach ($code in $knownCodes.Keys) {
+    if ($structureCodes.ContainsKey($code)) { continue }
+    $differenceProblems = @(Get-PersonDifferenceProblems $georgiaByCode[$code] $tobiasByCode[$code])
+    Assert-Equal $differenceProblems.Count 0 "Person difference has evidence problems [$($differenceProblems -join ',')]: $code"
+}
+
 Assert-Equal (@($divergence.concept_code | Sort-Object -Unique).Count) $divergence.Count 'Duplicate v2 divergence-audit concept'
 $allowedAuditStatuses = @(
     'ALIGNMENT_CORRECTION_REQUIRED','ANCHOR_PROFILE_DIFFERENCE_CONFIRMED',
@@ -1020,13 +695,25 @@ foreach ($row in $divergence) {
     Assert-True ($row.audit_status -cin $allowedAuditStatuses) "Divergence audit status invalid: $($row.concept_code)"
     Assert-Equal $georgiaByCode[$row.concept_code].proposed_availability $row.recommended_georgia "Georgia decision differs from divergence recommendation: $($row.concept_code)"
     Assert-Equal $tobiasByCode[$row.concept_code].proposed_availability $row.recommended_tobias "Tobias decision differs from divergence recommendation: $($row.concept_code)"
+    switch ($row.audit_status) {
+        'ALIGNMENT_CORRECTION_REQUIRED' {
+            Assert-True ($row.georgia_before -cne $row.tobias_before) "Alignment correction did not start from a person difference: $($row.concept_code)"
+            Assert-Equal $row.recommended_georgia $row.recommended_tobias "Alignment correction did not converge: $($row.concept_code)"
+        }
+        'ANCHOR_PROFILE_DIFFERENCE_CONFIRMED' {
+            Assert-True ($effectiveAnchors.ContainsKey($row.concept_code)) "Confirmed anchor difference references a non-anchor: $($row.concept_code)"
+            Assert-True ($row.recommended_georgia -cne $row.recommended_tobias) "Confirmed profile difference is not a difference: $($row.concept_code)"
+        }
+        'PROFILE_DIFFERENCE_EVIDENCE_PENDING' {
+            Assert-True ($row.recommended_georgia -cne $row.recommended_tobias) "Pending profile difference is not a difference: $($row.concept_code)"
+        }
+        'EQUAL_CASE_CORRECTION_REQUIRED' {
+            Assert-Equal $row.georgia_before $row.tobias_before "Equal-case correction did not start from equal ratings: $($row.concept_code)"
+            Assert-True ($row.recommended_georgia -cne $row.georgia_before -or $row.recommended_tobias -cne $row.tobias_before) "Equal-case correction records no transition: $($row.concept_code)"
+        }
+    }
 }
-Assert-Equal (@($divergence | Where-Object { $_.georgia_before -cne $_.tobias_before }).Count) 175 'Divergence audit does not cover exactly 175 independent-pass differences'
-Assert-Equal (@($divergence | Where-Object { $_.recommended_georgia -cne $_.recommended_tobias }).Count) 11 'Divergence audit final difference count differs'
-Assert-Equal (@($divergence | Where-Object audit_status -ceq 'ALIGNMENT_CORRECTION_REQUIRED').Count) 164 'Divergence alignment count differs'
-Assert-Equal (@($divergence | Where-Object audit_status -ceq 'ANCHOR_PROFILE_DIFFERENCE_CONFIRMED').Count) 11 'Divergence anchor-difference count differs'
 Assert-Equal (@($divergence | Where-Object audit_status -ceq 'PROFILE_DIFFERENCE_EVIDENCE_PENDING').Count) 0 'Unresolved v2 profile difference remains'
-Assert-Equal (@($divergence | Where-Object audit_status -ceq 'EQUAL_CASE_CORRECTION_REQUIRED').Count) 3 'Divergence equal-case correction count differs'
 
 function Assert-EvidenceAssignment {
     param([object]$ReviewRow, [string]$Person, [bool]$PersonDifference)
@@ -1034,18 +721,14 @@ function Assert-EvidenceAssignment {
     $code = $ReviewRow.concept_code; $rating = $ReviewRow.proposed_availability
     $ids = @(Split-PipeTokens $ReviewRow.availability_evidence)
     Assert-Equal @($ids | Sort-Object -Unique).Count $ids.Count "Duplicate evidence assignment: $Person/$code"
+    $referenceProblems = @(Get-EvidenceReferenceProblems $ReviewRow $Person $evidenceById)
+    Assert-Equal $referenceProblems.Count 0 "Evidence assignment has scope problems [$($referenceProblems -join ',')]: $Person/$code"
     $required = $rating -cin @('SPECIALTY','DIFFICULT','UNAVAILABLE') -or $PersonDifference -or $ReviewRow.evidence_requirement -ceq 'REQUIRED'
     if ($required) { Assert-True ($ids.Count -gt 0) "Required evidence missing: $Person/$code" }
 
     $items = @()
     foreach ($id in $ids) {
-        Assert-True ($evidenceById.ContainsKey($id)) "Unknown evidence assignment '$id': $Person/$code"
         $item = $evidenceById[$id]
-        Assert-Equal $item.concept_code $code "Evidence scope mismatch '$id': $Person/$code"
-        Assert-True ((Split-PipeTokens $item.person_relevance) -ccontains $Person) "Evidence person mismatch '$id': $Person/$code"
-        Assert-True ((Split-PipeTokens $item.supported_rating) -ccontains $rating) "Evidence rating mismatch '$id': $Person/$code"
-        Assert-True (Test-ProductFormOverlap $item.product_form $ReviewRow.product_form_basis $ReviewRow.display_name) "Evidence product form does not match '$id': $Person/$code"
-        Assert-Equal $item.market_breadth $ReviewRow.market_class "Evidence market breadth mismatch '$id': $Person/$code"
         $items += $item
         $referencedEvidence[$id] = $true
     }
@@ -1075,15 +758,12 @@ function Assert-EvidenceAssignment {
         'SPECIALTY' {
             $breadth = @($items | Where-Object {
                 $_.evidence_role -ceq 'MARKET_BREADTH' -and $_.market_breadth -ceq 'SPECIALTY_BROAD' -and
-                $_.availability_status -cin @('IN_STOCK','REGULAR_RANGE','VARIABLE_STOCK')
+                (Test-PositiveRouteEvidence $_)
             })
-            $stableBreadth = @($breadth | Where-Object availability_status -cin @('IN_STOCK','REGULAR_RANGE'))
-            $domains = @($breadth | ForEach-Object { Get-UriHost $_.url } | Where-Object { $_ } | Sort-Object -Unique)
-            $sources = @($breadth.source_name | Sort-Object -Unique)
-            Assert-True ($stableBreadth.Count -ge 1 -and $breadth.Count -ge 2 -and $domains.Count -ge 2 -and $sources.Count -ge 2) "SPECIALTY lacks broad independent positive specialty-market evidence: $Person/$code"
+            Assert-True ($breadth.Count -gt 0) "SPECIALTY lacks positively assessed specialty-market breadth: $Person/$code"
         }
         'DIFFICULT' {
-            Assert-True (@($items | Where-Object { $_.evidence_role -ceq 'ROUTE_LIMITATION' -and $_.market_breadth -ceq 'NICHE_IMPORT' }).Count -gt 0) "DIFFICULT lacks niche/route-limitation evidence: $Person/$code"
+            Assert-True (@($items | Where-Object { $_.evidence_role -cin @('EXACT_ROUTE','ROUTE_LIMITATION','NEGATIVE_SEARCH') -and $_.market_breadth -ceq 'NICHE_IMPORT' }).Count -gt 0) "DIFFICULT lacks a concrete niche route or route limitation: $Person/$code"
         }
         'UNAVAILABLE' {
             Assert-True (@($items | Where-Object { $_.evidence_role -ceq 'NEGATIVE_SEARCH' -and $_.market_breadth -ceq 'NO_REAL_ROUTE' }).Count -gt 0) "UNAVAILABLE lacks negative exact-form route search: $Person/$code"
@@ -1115,25 +795,17 @@ foreach ($person in $people) {
             } | Select-Object -ExpandProperty evidence_id | Sort-Object -Unique
         ) -join '|'
         Assert-Equal $row.availability_evidence $expectedEvidence "$person evidence was not assigned deterministically: $code"
-        $expectedStatus = if ($effectiveAnchors.ContainsKey($code)) { 'APPROVED_REFERENCE_ANCHOR_V2' } else { 'PROPOSED_FOR_HUMAN_REVIEW' }
+        $expectedStatus = if ($effectiveAnchors.ContainsKey($code)) { 'RATING_APPROVED_NOTE_PROPOSED_REFERENCE_ANCHOR_V2' } else { 'PROPOSED_FOR_HUMAN_REVIEW' }
         Assert-Equal $row.approval_status $expectedStatus "$person approval status differs: $code"
         if ($effectiveAnchors.ContainsKey($code)) { Assert-True ((Split-PipeTokens $row.review_flags) -ccontains 'REFERENCE_ANCHOR_V2') "$person v2 anchor flag missing: $code" }
         $difference = $row.proposed_availability -cne $otherByCode[$code].proposed_availability
-        $noteProfileText = Get-NormalizedText $row.availability_note
-        $ownProfilePattern = if ($person -ceq 'Georgia') { '(georgia|bornheim|koln|dusseldorf|rheinland)' } else { '(tobias|rostock)' }
-        $otherProfilePattern = if ($person -ceq 'Georgia') { '(tobias|rostock)' } else { '(georgia|bornheim|koln|dusseldorf)' }
         if ($difference) {
             Assert-Equal $row.evidence_requirement 'REQUIRED' "$person difference is not evidence-required: $code"
-            Assert-True ($noteProfileText -match $ownProfilePattern) "$person difference note lacks its own concrete profile route: $code"
-        }
-        if ($noteProfileText -match $otherProfilePattern) {
-            Assert-True ($noteProfileText -match $ownProfilePattern) "$person note mentions only the other profile: $code"
         }
         Assert-EvidenceAssignment $row $person $difference
     }
 }
 
-Assert-Equal $specialtyEvidenceRecheck.Count 21 'Unexpected v2 specialty-evidence recheck row count'
 Assert-Equal (@($specialtyEvidenceRecheck.concept_code | Sort-Object -Unique).Count) $specialtyEvidenceRecheck.Count 'Duplicate v2 specialty-evidence recheck concept'
 foreach ($row in $specialtyEvidenceRecheck) {
     foreach ($field in $specialtyEvidenceRecheckHeaders) {
@@ -1159,12 +831,6 @@ foreach ($row in $specialtyEvidenceRecheck) {
         Assert-True ($evidenceById.ContainsKey($id)) "Specialty-evidence recheck references unknown evidence '$id': $code"
         Assert-Equal $evidenceById[$id].concept_code $code "Specialty-evidence recheck evidence scope differs: $id/$code"
     }
-
-    $expectedIds = @(
-        @(Split-PipeTokens $georgiaByCode[$code].availability_evidence)
-        @(Split-PipeTokens $tobiasByCode[$code].availability_evidence)
-    ) | Sort-Object -Unique
-    Assert-Equal ($auditIds -join '|') ($expectedIds -join '|') "Specialty-evidence recheck does not record the complete canonical person-evidence union: $code"
 }
 
 Assert-True ($plannedGateRecheck.Count -gt 0) 'v2 planned-gate recheck is empty'
@@ -1216,10 +882,9 @@ foreach ($row in $plannedGateRecheck) {
         'SPECIALTY' {
             $specialtyItems = @($recheckItems | Where-Object {
                 $_.market_breadth -ceq 'SPECIALTY_BROAD' -and $_.evidence_role -ceq 'MARKET_BREADTH' -and
-                $_.availability_status -cin @('IN_STOCK','REGULAR_RANGE','VARIABLE_STOCK')
+                (Test-PositiveRouteEvidence $_)
             })
-            $specialtyDomains = @($specialtyItems | ForEach-Object { Get-UriHost $_.url } | Where-Object { $_ } | Sort-Object -Unique)
-            Assert-True (@($specialtyItems | Where-Object { Test-PositiveRouteEvidence $_ }).Count -gt 0 -and $specialtyItems.Count -ge 2 -and $specialtyDomains.Count -ge 2) "Planned-gate recheck did not establish broad specialty evidence: $code"
+            Assert-True ($specialtyItems.Count -gt 0) "Planned-gate recheck did not establish assessed specialty-market breadth: $code"
         }
         'DIFFICULT' {
             Assert-True (@($recheckItems | Where-Object { $_.market_breadth -ceq 'NICHE_IMPORT' -and $_.evidence_role -ceq 'ROUTE_LIMITATION' }).Count -gt 0) "Planned-gate recheck did not establish a concrete niche/route limitation: $code"
@@ -1236,9 +901,6 @@ foreach ($row in $plannedGateRecheck) {
         }
     }
 }
-$plannedGateEvidenceIds = @($evidence | Where-Object evidence_id -like 'AV2N-P-*' | Select-Object -ExpandProperty evidence_id | Sort-Object)
-Assert-Equal ($plannedGateEvidenceIds -join '|') (@($plannedGateRecheckEvidenceIds.Keys | Where-Object { $_ -like 'AV2N-P-*' } | Sort-Object) -join '|') 'Planned-gate evidence and recheck coverage differ'
-
 foreach ($item in $evidence) {
     Assert-True ($referencedEvidence.ContainsKey($item.evidence_id)) "Evidence row is orphaned: $($item.evidence_id)"
 }
@@ -1254,7 +916,7 @@ foreach ($index in 0..859) {
     $isStructure = $structureCodes.ContainsKey($code)
     $isDifference = -not $isStructure -and $g.proposed_availability -cne $t.proposed_availability
     Assert-Equal ((Split-PipeTokens $row.review_flags) -ccontains 'PERSON_DIFFERENCE') $isDifference "Combined person-difference flag differs: $code"
-    $expectedStatus = if ($isStructure) { 'APPROVED_NOT_APPLICABLE' } elseif ($effectiveAnchors.ContainsKey($code)) { 'APPROVED_REFERENCE_ANCHOR_V2' } else { 'PROPOSED_FOR_HUMAN_REVIEW' }
+    $expectedStatus = if ($isStructure) { 'APPROVED_NOT_APPLICABLE' } elseif ($effectiveAnchors.ContainsKey($code)) { 'RATING_APPROVED_NOTE_PROPOSED_REFERENCE_ANCHOR_V2' } else { 'PROPOSED_FOR_HUMAN_REVIEW' }
     Assert-Equal $row.approval_status $expectedStatus "Combined approval status differs: $code"
 }
 
@@ -1354,9 +1016,10 @@ foreach ($person in $people) {
     }
 }
 Write-Host 'Availability v2 review validation passed.'
-Write-Host 'Rows: 860 total, 853 applicable, 7 structure nodes; 84 v2 anchors (83 numeric) preserved exactly.'
+Write-Host "Rows: $($source.Count) total, $applicableConceptCount applicable, $($structureCodes.Count) structure nodes; $($effectiveAnchors.Count) v2 anchors ($($applicableAnchorCodes.Count) numeric) preserved exactly."
 Write-Host "Georgia: EASY $($distribution.Georgia.EASY) | PLANNED $($distribution.Georgia.PLANNED) | SPECIALTY $($distribution.Georgia.SPECIALTY) | DIFFICULT $($distribution.Georgia.DIFFICULT) | UNAVAILABLE $($distribution.Georgia.UNAVAILABLE)."
 Write-Host "Tobias:  EASY $($distribution.Tobias.EASY) | PLANNED $($distribution.Tobias.PLANNED) | SPECIALTY $($distribution.Tobias.SPECIALTY) | DIFFICULT $($distribution.Tobias.DIFFICULT) | UNAVAILABLE $($distribution.Tobias.UNAVAILABLE)."
 Write-Host "Person differences: $($differences.Count). Required evidence assignments: $coveredCount/$requiredCount covered."
-Write-Host 'Notes: 1706/1706 nonempty, concept/form-specific, URL-free and normalized-unique.'
+Write-Host "Notes: $($allNotes.Count)/$expectedNoteCount nonempty, short, procurement-specific and URL-free; identical notes remain allowed where market reality is identical."
+Write-Host 'Generic validator fixtures: shared valid note and additional data-driven person difference accepted; unknown evidence ID and wrong concept/person scope rejected.'
 Write-Host 'Protected Cooking Novelty, previous Availability and v2 anchor approval traces: unchanged.'

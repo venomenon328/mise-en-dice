@@ -151,6 +151,13 @@ Nicht ausreichend sind austauschbare Formulierungen wie:
 
 Auch offensichtliche `EASY`-Fälle erhalten eine individuelle Kurzbegründung. Formulierungen dürfen nur dann wiederverwendet werden, wenn die konkrete Handelsrealität tatsächlich identisch ist und der Text weiterhin einen konzeptspezifischen Kern enthält. Die Notiz nennt keine Rezeptideen und bildet keine vollständige Händlerdatenbank.
 
+Für neue oder überarbeitete Notizen gilt zusätzlich:
+
+- Textähnlichkeit und Eindeutigkeit sind kein Qualitätsziel. Identische Georgia-/Tobias-Notizen und wiederkehrende sachlich passende Formulierungen sind ausdrücklich zulässig, wenn die Beschaffungsrealität gleich ist.
+- Händlerbesuche, Telefonate, digitale Bestandsprüfungen, persönliche Routinen oder bestätigte Filialbestände werden nur genannt, wenn sie tatsächlich durchgeführt und als Evidenz dokumentiert wurden.
+- Geschmack, Verwendungsideen und vollständige Kuratornotizen gehören nicht in die Beschaffbarkeitsnotiz. Produktform wird nur so weit genannt, wie sie den realen Bezugsweg oder eine Ersatzproduktgefahr erklärt.
+- Die Freigabe einer Stufe oder eines Referenzankers genehmigt nicht automatisch einen später neu formulierten Notiztext. Rating- und Notizstatus bleiben getrennt sichtbar.
+
 ## 3. Harte Verbote und Schutzregeln
 
 ### `EASY`
@@ -217,6 +224,8 @@ Für recherchierte Evidenz festhalten:
 - Liefergebiet und Versandart,
 - Einschränkungen und Ersatzproduktgefahren.
 
+Marktplatzseiten werden dem tatsächlich verkaufenden und versendenden Händler zugerechnet; die Plattformdomain ist kein unabhängiger Marktweg. Kategorie-, Start- und Suchseiten dürfen Marktbreite oder eine dokumentierte Negativsuche stützen, aber nicht als formgenauer positiver Produktbeleg ausgegeben werden. Ein positiver Weg verlangt eine passende Produktseite oder eine gleichwertig konkrete, überprüfbare Quelle.
+
 ### 4.2 Mindestanforderung nach Stufe
 
 - `EASY`: positive lokale Alltagsevidenz oder sehr belastbare allgemeine Sortimentskenntnis; keine Spezialquellen.
@@ -225,7 +234,7 @@ Für recherchierte Evidenz festhalten:
 - `DIFFICULT`: mindestens ein enger positiver Weg und/oder dokumentierte negative Marktbreiten-/Formsuche.
 - `UNAVAILABLE`: dokumentierte negative Suche über naheliegende deutsche/EU-Wege.
 
-Die Evidenzprüfung darf Struktur und Nachvollziehbarkeit absichern, aber keinen konkreten redaktionellen Zutatenwert als automatisierte Fachwahrheit konservieren.
+Die Evidenzprüfung darf Struktur und Nachvollziehbarkeit absichern, aber keinen konkreten redaktionellen Zutatenwert als automatisierte Fachwahrheit konservieren. Validatoren leiten Sollmengen, Personenunterschiede und Auditabdeckung aus den Eingabedaten ab; sie enthalten keine festen Ergebniszahlen, Konzeptlisten oder Text-Eindeutigkeitsvorgaben. Generische Prüffälle verwenden synthetische Konzepte und testen mindestens zulässige identische Personennotizen, zusätzliche evidenzgestützte Personenunterschiede sowie die Ablehnung unbekannter Evidenz-IDs und falscher Konzept- oder Personenzuordnungen.
 
 ## 5. Personenprofile
 
@@ -261,6 +270,8 @@ Ein neues zufällig ziehbares Konzept darf erst aktiviert werden, wenn:
 - Parent-/Child-, Rollen-, Dimensions-, Flag-, Saison- und Länderbeziehungen geprüft sind.
 
 Reine Strukturknoten erhalten ausdrücklich `NOT_APPLICABLE` statt erfundener Beschaffbarkeitswerte.
+
+Eine Freigabe muss angeben, ob sie Rating, Notiz oder beides umfasst. Ein freigegebener Referenzanker schützt seine Stufe, darf aber nicht als aktuelle Händler- oder Bestandsprüfung erscheinen und verleiht einem nachträglich redigierten Notiztext keinen stillschweigenden Freigabestatus.
 
 ## 7. Änderungs- und Revalidierungsregeln
 
