@@ -216,6 +216,34 @@ function Test-PositiveRouteEvidence {
     return $Item.availability_status -ceq 'PERSONALLY_CONFIRMED' -and $Item.evidence_role -ceq 'PERSON_ROUTE'
 }
 
+function Get-UnverifiedPersonalRouteClaimProblems {
+    param([object]$Row, [string]$Person, [hashtable]$EvidenceById)
+
+    $problems = [Collections.Generic.List[string]]::new()
+    $claimPattern = '(?i)Händlerbesuch|Standortprüfung|Freigabe\s+für\s+(?:diesen|den)\s+Weg'
+    $claimFields = @(
+        @('market_basis', [string]$Row.market_basis),
+        @('availability_note', [string]$Row.availability_note)
+    )
+    foreach ($field in $claimFields) {
+        if ($field[1] -notmatch $claimPattern) { continue }
+        $matchingPersonalRoute = @(
+            Split-PipeTokens $Row.availability_evidence |
+                Where-Object {
+                    if (-not $EvidenceById.ContainsKey($_)) { return $false }
+                    $item = $EvidenceById[$_]
+                    return $item.concept_code -ceq $Row.concept_code -and
+                        (Split-PipeTokens $item.person_relevance) -ccontains $Person -and
+                        (Split-PipeTokens $item.supported_rating) -ccontains $Row.proposed_availability -and
+                        $item.evidence_role -ceq 'PERSON_ROUTE' -and
+                        $item.availability_status -ceq 'PERSONALLY_CONFIRMED'
+                }
+        )
+        if ($matchingPersonalRoute.Count -eq 0) { $problems.Add("UNVERIFIED_PERSONAL_ROUTE_CLAIM:$($field[0])") }
+    }
+    return @($problems)
+}
+
 function Get-DivergenceAuditProblems {
     param(
         [object]$AuditRow,
@@ -270,6 +298,7 @@ function Get-CurrentDecisionPairProblems {
         $person = $pair[0]; $row = $pair[1]
         foreach ($problem in @(Get-AvailabilityNoteProblems $row)) { $problems.Add("${person}:NOTE:$problem") }
         foreach ($problem in @(Get-EvidenceReferenceProblems $row $person $EvidenceById)) { $problems.Add("${person}:$problem") }
+        foreach ($problem in @(Get-UnverifiedPersonalRouteClaimProblems $row $person $EvidenceById)) { $problems.Add("${person}:$problem") }
     }
     foreach ($problem in @(Get-PersonDifferenceProblems $GeorgiaRow $TobiasRow)) { $problems.Add($problem) }
 
@@ -297,11 +326,13 @@ function Invoke-GenericValidatorSelfTests {
     $sharedNote = 'Frische Beispielwurzel ist über gut sortierte Gemüseabteilungen planbar; der Filialbestand muss vor dem Einkauf geprüft werden.'
     $georgia = [pscustomobject]@{
         concept_code='CONCEPT_ALPHA'; product_form_basis='Frische Beispielwurzel in kochgeeigneter Form.'
+        market_basis='Breiter allgemeiner Gemüsehandel mit planbarer Frischwarenlogistik.'
         proposed_availability='PLANNED'; availability_note=$sharedNote
         evidence_requirement='REQUIRED'; availability_evidence='EV-G'
     }
     $tobias = [pscustomobject]@{
         concept_code='CONCEPT_ALPHA'; product_form_basis='Frische Beispielwurzel in kochgeeigneter Form.'
+        market_basis='Breiter einschlägiger Gemüsespezialhandel mit planbarer Frischwarenlogistik.'
         proposed_availability='SPECIALTY'; availability_note=$sharedNote
         evidence_requirement='REQUIRED'; availability_evidence='EV-T'
     }
@@ -310,6 +341,7 @@ function Invoke-GenericValidatorSelfTests {
         'EV-T'=[pscustomobject]@{ concept_code='CONCEPT_ALPHA'; person_relevance='Tobias'; supported_rating='SPECIALTY'; availability_status='IN_STOCK'; evidence_role='MARKET_BREADTH' }
         'EV-WRONG-CONCEPT'=[pscustomobject]@{ concept_code='CONCEPT_BETA'; person_relevance='Georgia'; supported_rating='PLANNED'; availability_status='IN_STOCK'; evidence_role='EXACT_ROUTE' }
         'EV-WRONG-PERSON'=[pscustomobject]@{ concept_code='CONCEPT_ALPHA'; person_relevance='Tobias'; supported_rating='PLANNED'; availability_status='IN_STOCK'; evidence_role='EXACT_ROUTE' }
+        'EV-PERSON'=[pscustomobject]@{ concept_code='CONCEPT_ALPHA'; person_relevance='Georgia'; supported_rating='PLANNED'; availability_status='PERSONALLY_CONFIRMED'; evidence_role='PERSON_ROUTE' }
     }
     $historicalAlignment = [pscustomobject]@{
         concept_code='CONCEPT_ALPHA'; georgia_before='SPECIALTY'; tobias_before='DIFFICULT'
@@ -330,6 +362,15 @@ function Invoke-GenericValidatorSelfTests {
         $mutationProblems = @(Get-CurrentDecisionPairProblems -GeorgiaRow $mutatedGeorgia -TobiasRow $tobias -EvidenceById $catalog -HistoricalAuditRows @($historicalAlignment) -EffectiveAnchors $noAnchors -RequirePositiveNonAnchorDifferenceEvidence)
         Assert-True ($mutationProblems -ccontains "Georgia:$($mutation[1])") "Full generic path did not reject $($mutation[2])"
     }
+
+    $unverifiedClaim = $georgia.PSObject.Copy()
+    $unverifiedClaim.market_basis = 'Ein gezielter Händlerbesuch bestätigte den breiten allgemeinen Gemüseweg.'
+    $claimProblems = @(Get-CurrentDecisionPairProblems -GeorgiaRow $unverifiedClaim -TobiasRow $tobias -EvidenceById $catalog -HistoricalAuditRows @($historicalAlignment) -EffectiveAnchors $noAnchors -RequirePositiveNonAnchorDifferenceEvidence)
+    Assert-True ($claimProblems -ccontains 'Georgia:UNVERIFIED_PERSONAL_ROUTE_CLAIM:market_basis') 'Full generic path accepted an unverified merchant-visit claim'
+
+    $verifiedClaim = $unverifiedClaim.PSObject.Copy()
+    $verifiedClaim.availability_evidence = 'EV-G|EV-PERSON'
+    Assert-Equal @(Get-CurrentDecisionPairProblems -GeorgiaRow $verifiedClaim -TobiasRow $tobias -EvidenceById $catalog -HistoricalAuditRows @($historicalAlignment) -EffectiveAnchors $noAnchors -RequirePositiveNonAnchorDifferenceEvidence).Count 0 'Full generic path rejected a personal-route claim backed by matching PERSON_ROUTE evidence'
 }
 
 function Get-EffectiveAnchors {
@@ -584,7 +625,8 @@ foreach ($row in $noteEditorialExamples) {
     Assert-True ($row.prior_note -cne $row.revised_note) "Note editorial example records no change: $($row.person)/$($row.concept_code)"
     $decision = @($decisionSets[$row.person] | Where-Object concept_code -ceq $row.concept_code)
     Assert-Equal $decision.Count 1 "Note editorial example decision lookup differs: $($row.person)/$($row.concept_code)"
-    Assert-Equal $decision[0].availability_note $row.revised_note "Note editorial example differs from final note: $($row.person)/$($row.concept_code)"
+    # These examples preserve the historical before/after editorial pass. A later
+    # evidence-based revision must not rewrite the example or turn it into a live oracle.
 }
 
 Assert-Equal (@($routeAudit | ForEach-Object { "$($_.person)|$($_.concept_code)" } | Sort-Object -Unique).Count) $routeAudit.Count 'Duplicate v2 product-form route-audit person/concept pair'
@@ -1119,5 +1161,5 @@ Write-Host "Georgia: EASY $($distribution.Georgia.EASY) | PLANNED $($distributio
 Write-Host "Tobias:  EASY $($distribution.Tobias.EASY) | PLANNED $($distribution.Tobias.PLANNED) | SPECIALTY $($distribution.Tobias.SPECIALTY) | DIFFICULT $($distribution.Tobias.DIFFICULT) | UNAVAILABLE $($distribution.Tobias.UNAVAILABLE)."
 Write-Host "Person differences: $($differences.Count). Required evidence assignments: $coveredCount/$requiredCount covered."
 Write-Host "Notes: $($allNotes.Count)/$expectedNoteCount nonempty, short, procurement-specific and URL-free; identical notes remain allowed where market reality is identical."
-Write-Host 'Generic full-path fixtures: identical valid G/T notes and a new non-anchor difference with positive EV-G/EV-T after historical alignment accepted; unknown evidence ID and wrong concept/person scope rejected.'
+Write-Host 'Generic full-path fixtures: identical valid G/T notes and a new non-anchor difference with positive EV-G/EV-T after historical alignment accepted; unknown evidence ID, wrong concept/person scope and unverified personal-route claims rejected; matching PERSON_ROUTE evidence accepted.'
 Write-Host 'Protected Cooking Novelty, previous Availability and v2 anchor approval traces: unchanged.'
