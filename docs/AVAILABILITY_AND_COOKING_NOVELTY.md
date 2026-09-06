@@ -45,11 +45,17 @@ Die Kochungewöhnlichkeit beantwortet ausschließlich:
 
 Sie beschreibt die **Außergewöhnlichkeit der Verwendung**, nicht Herkunft, Preis oder Beschaffung.
 
+Für **alle fünf Stufen** ist primär maßgeblich, wie ungewöhnlich **genau dieses Konzept** als verpflichtende
+Kochzutat im gemeinsamen Referenzrahmen ist. Die Breite oder Enge etablierter Verwendungen, Gerichtsfamilien,
+Garverfahren und Kombinationsmöglichkeiten ist nur ein Indiz für diese konkrete Zutatenvertrautheit. Sie ersetzt
+sie nicht und macht eine selbst sehr vertraute konkrete Kochzutat nicht allein wegen einer engen typischen
+Gerichtsfamilie ungewöhnlicher.
+
 Sie berücksichtigt insbesondere:
 
-- wie selbstverständlich das Produkt als Kochzutat eingesetzt wird,
-- wie vertraut genau diese Art, regionale beziehungsweise kulturelle Zutat und Produktform ist,
-- wie breit oder eng die etablierten Verwendungsweisen sind,
+- wie vertraut genau diese Art, regionale beziehungsweise kulturelle Zutat und Produktform als verpflichtende Kochzutat ist,
+- wie selbstverständlich genau dieses Produkt als Kochzutat eingesetzt wird,
+- als Indiz, wie breit oder eng seine etablierten Verwendungsweisen sind,
 - ob es nur in bestimmten Küchen oder Gerichtsfamilien konventionell ist,
 - wie stark es die kulinarische Richtung einer Challenge vorgibt,
 - ob die Entwicklung einer nicht konstruierten Verwendung bereits wesentlicher Teil der Herausforderung ist.
@@ -104,11 +110,11 @@ bewerten.
 
 | Stufe | Name | Verbindliche Bedeutung |
 |---:|---|---|
-| **1** | **Standardverwendung** | Genau dieses Konzept, nicht bloß sein Parent oder seine Kochrolle, wird breit und selbstverständlich in gewöhnlichen Gerichten verwendet. Seine Vorgabe erzeugt kaum einen besonderen kulinarischen Impuls. |
-| **2** | **Vertraute Verwendung** | Genau diese Art oder Produktform ist im gemeinsamen Horizont eine klar etablierte und wenig überraschende Kochzutat mit mehreren naheliegenden Verwendungen, aber nicht zwingend universeller Alltagsstandard. |
-| **3** | **Kontextgebundene Verwendung** | Die konkrete Art, Regionalzutat, kulturelle Zutat oder Produktform ist in bestimmten Küchen oder Gerichtsfamilien konventionell, gemeinsam aber merklich speziell oder richtungsgebend. Sie verlangt eine bewusste kulinarische Einordnung. |
-| **4** | **Ungewöhnliche Verwendung** | Nur eine begrenzte Zahl etablierter Kochanwendungen liegt nahe, oder das Produkt wird normalerweise eher anders konsumiert. Als Challenge-Vorgabe ist es ein deutlicher Twist. |
-| **5** | **Ausgefallene Verwendung** | Eine sinnvolle Verwendung ist selbst im gemeinsamen kulinarischen Horizont ausgesprochen nischig, experimentell oder überraschend. Das Gericht muss stark um die Vorgabe herum konstruiert werden. |
+| **1** | **Standardverwendung** | Genau dieses Konzept selbst ist im gemeinsamen Referenzrahmen als verpflichtende Kochzutat sehr vertraut und selbstverständlich. Breite etablierte Verwendung ist ein starkes Indiz; eine erkennbare typische Gerichtsfamilie widerlegt Stufe 1 nicht. |
+| **2** | **Vertraute Verwendung** | Genau diese Art oder Produktform ist als verpflichtende Kochzutat klar vertraut und wenig überraschend, aber nicht zwingend universeller Alltagsstandard. Mehrere naheliegende Verwendungen können das belegen, ihre bloße Zahl entscheidet die Stufe nicht. |
+| **3** | **Kontextgebundene Verwendung** | Die konkrete Art, Regionalzutat, kulturelle Zutat oder Produktform ist in bestimmten Küchen oder Gerichtsfamilien konventionell, im gemeinsamen Referenzrahmen als verpflichtende Kochzutat aber merklich speziell oder richtungsgebend. Die Kontextbindung ist ein Indiz für diese geringere Vertrautheit. |
+| **4** | **Ungewöhnliche Verwendung** | Genau dieses Konzept ist als verpflichtende Kochzutat im gemeinsamen Referenzrahmen klar ungewöhnlich und verlangt eine bewusste kulinarische Einordnung. Eine enge etablierte Kochrolle oder überwiegend andere Konsumform kann dies anzeigen, genügt allein aber nicht. |
+| **5** | **Ausgefallene Verwendung** | Genau dieses Konzept ist als verpflichtende Kochzutat im gemeinsamen Referenzrahmen ausgesprochen nischig, experimentell oder überraschend. Eine stark eingeengte oder konstruierte Kochrolle ist nur zusammen mit dieser geringen konkreten Zutatenvertrautheit ein Stufe-5-Indiz. |
 
 ### 3.1 Redaktionelle Leitplanken
 

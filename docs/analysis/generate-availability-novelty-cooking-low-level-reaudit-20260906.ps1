@@ -16,13 +16,15 @@ function New-Correction {
         [int] $Previous,
         [int] $Reaudited,
         [string] $Rationale,
-        [bool] $HumanCorrection = $false
+        [bool] $HumanCorrection = $false,
+        [int[]] $AcceptedStartingValues = @()
     )
     return [pscustomobject]@{
         Previous = $Previous
         Reaudited = $Reaudited
         Rationale = $Rationale
         HumanCorrection = $HumanCorrection
+        AcceptedStartingValues = if ($AcceptedStartingValues.Count -eq 0) { @($Previous, $Reaudited) } else { $AcceptedStartingValues }
     }
 }
 
@@ -30,12 +32,12 @@ $corrections = [ordered]@{
     'FERMENTED_CUCUMBER' = New-Correction 1 2 'Die milchsauer fermentierte Salzgurke ist vertraut, als exakt abgegrenzte konservierte Form aber richtungsgebender als Gurke allgemein.'
     'GHEE' = New-Correction 1 2 'Ghee ist ein vielseitiges Kochfett, das nussige geklärte Milchfett bleibt als konkrete Pflichtzutat jedoch mehr als ein neutraler Alltagsstandard.'
     'GLASS_NOODLES' = New-Correction 1 2 'Die konkrete elastisch-transparente Stärkeform eröffnet mehrere vertraute Gerichte, setzt aber einen erkennbaren ost- oder südostasiatischen Impuls.'
-    'LASAGNE_SHEETS' = New-Correction 1 2 'Die konkrete Blattform ist vertraut, lenkt die Pflichtverwendung aber deutlich stärker auf geschichtete Gerichte als Pasta allgemein.'
+    'LASAGNE_SHEETS' = New-Correction 1 1 'Lasagneplatten sind als exakte verpflichtende Kochzutat im gemeinsamen Referenzrahmen sehr vertraut; die Bindung an geschichtete Pastagerichte ist nur ein Indiz und erhöht die Stufe nicht.' $false @(1, 2)
     'LIGHT_SOY_SAUCE' = New-Correction 1 2 'Helle Sojasauce ist im gemeinsamen Kochhorizont vertraut, ihre konkrete salzige Würzrolle ist aber spezifischer als Sojasauce allgemein.'
     'NORI' = New-Correction 1 2 'Nori ist vertraut, doch die konkrete Blatt- und Algenform bleibt als Hülle, Einlage oder Würze erkennbar richtungsgebend.'
     'PANKO' = New-Correction 1 2 'Die grobe luftige Bröselform ist unkompliziert einsetzbar, erzeugt als Pflichtzutat aber einen konkreteren Texturimpuls als Paniermehl allgemein.'
     'RAMEN_NOODLES' = New-Correction 1 2 'Die alkalische japanische Weizennudelform ist vertraut und vielseitig, aber als konkrete Pflichtzutat klarer konturiert als Nudeln allgemein.'
-    'RISOTTO_RICE' = New-Correction 1 2 'Der stärkereiche Rundkornreis ist vertraut, legt Textur und Gerichtsfamilie als Pflichtzutat aber merklich fest.'
+    'RISOTTO_RICE' = New-Correction 1 1 'Risottoreis ist als exakte verpflichtende Kochzutat im gemeinsamen Referenzrahmen sehr vertraut; die Bindung an Risottogerichte ist nur ein Indiz und erhöht die Stufe nicht.' $false @(1, 2)
     'SESAME_OIL' = New-Correction 1 2 'Sesamöl ist im gemeinsamen Kochhorizont vertraut, als konkrete aromatische Ölform jedoch deutlich prägender als Speiseöl allgemein.'
     'SILKEN_TOFU' = New-Correction 1 2 'Die sehr weiche konkrete Tofuform besitzt mehrere vertraute süße und herzhafte Rollen, verlangt aber eine bewusst passende Texturplanung.'
     'SOBA' = New-Correction 1 2 'Soba sind vertraut, die buchweizengeprägte japanische Nudelform setzt als Pflichtzutat dennoch einen konkreten Geschmacks- und Texturimpuls.'
@@ -96,13 +98,15 @@ foreach ($entry in $corrections.GetEnumerator()) {
     $correction = $entry.Value
     if (-not $reviewByCode.ContainsKey($code)) { throw "Unknown correction code '$code'." }
     $row = $reviewByCode[$code]
-    if ([int]$row.proposed_cooking_novelty -notin @($correction.Previous, $correction.Reaudited)) {
+    if ([int]$row.proposed_cooking_novelty -notin $correction.AcceptedStartingValues) {
         throw "Unexpected starting value for '$code': $($row.proposed_cooking_novelty)."
     }
     $row.proposed_cooking_novelty = [string]$correction.Reaudited
     $row.novelty_rationale = $correction.Rationale
     $flags = @($row.review_flags -split '\|' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    if ('LOW_LEVEL_REAUDIT_20260906' -notin $flags) { $flags += 'LOW_LEVEL_REAUDIT_20260906' }
+    if ($correction.Previous -eq $correction.Reaudited) {
+        $flags = @($flags | Where-Object { $_ -ne 'LOW_LEVEL_REAUDIT_20260906' })
+    } elseif ('LOW_LEVEL_REAUDIT_20260906' -notin $flags) { $flags += 'LOW_LEVEL_REAUDIT_20260906' }
     if ($correction.Previous -eq 2 -and $correction.Reaudited -eq 3 -and 'BOUNDARY_2_3' -notin $flags) { $flags += 'BOUNDARY_2_3' }
     if ($correction.Previous -eq 3 -and $correction.Reaudited -eq 4 -and 'BOUNDARY_3_4' -notin $flags) { $flags += 'BOUNDARY_3_4' }
     if ($correction.HumanCorrection) {
@@ -178,7 +182,7 @@ $auditRows = @(
         $correction = if ($corrections.Contains($row.concept_code)) { $corrections[$row.concept_code] } else { $null }
         $previous = if ($null -ne $correction) { $correction.Previous } elseif ($row.proposed_cooking_novelty -match '^[1-3]$') { [int]$row.proposed_cooking_novelty } else { $null }
         if ($null -eq $previous) { continue }
-        $outcome = if ($null -eq $correction) { 'REAUDITED_RETAINED' } elseif ($correction.HumanCorrection) { 'HUMAN_CORRECTION_CHARGE_1' } else { 'REAUDIT_CORRECTED_PROPOSAL' }
+        $outcome = if ($null -eq $correction -or $correction.Previous -eq $correction.Reaudited) { 'REAUDITED_RETAINED' } elseif ($correction.HumanCorrection) { 'HUMAN_CORRECTION_CHARGE_1' } else { 'REAUDIT_CORRECTED_PROPOSAL' }
         $note = if ($null -eq $correction) {
             'Konkrete Art, Produktform und verpflichtende Kochrolle einzeln geprüft; bisheriger Wert bestätigt.'
         } else {
@@ -199,5 +203,6 @@ $auditRows = @(
 $auditRows | Export-Csv -Encoding utf8BOM -Delimiter "`t" -NoTypeInformation $auditPath
 
 $distribution = $reviewRows | Where-Object review_applicability -eq 'APPLICABLE' | Group-Object proposed_cooking_novelty | Sort-Object Name
-Write-Output "Generated low-level re-audit with $($auditRows.Count) reviewed N1/N2/N3 source rows and $($corrections.Count) corrections."
+$correctionCount = @($corrections.Values | Where-Object { $_.Previous -ne $_.Reaudited }).Count
+Write-Output "Generated low-level re-audit with $($auditRows.Count) reviewed N1/N2/N3 source rows and $correctionCount corrections."
 Write-Output "Distribution: $(($distribution | ForEach-Object { "$($_.Name)=$($_.Count)" }) -join ', ')."

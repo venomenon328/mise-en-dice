@@ -67,6 +67,11 @@ Eine Beschaffbarkeitsnotiz darf nicht bloß den Enum-Wert ausformulieren. Auch b
 Bewertet wird die konkret benannte Art, Regionalzutat, kulturelle Zutat oder Produktform. Ein breiter Parent, eine
 ähnliche Standardzutat oder eine austauschbare Kochfunktion ist kein Ersatz für diese Identität.
 
+Für **alle fünf Stufen** ist zuerst zu entscheiden, wie ungewöhnlich genau dieses Konzept als verpflichtende
+Kochzutat im gemeinsamen Referenzrahmen ist. Verwendungsbreite oder -enge, typische Gerichtsfamilien und
+technisch mögliche Garverfahren sind nur Indizien. Sie machen eine selbst sehr vertraute konkrete Kochzutat nicht
+allein wegen einer engen typischen Verwendung ungewöhnlicher.
+
 ### Schritt 2: Gemeinsamen Horizont anwenden
 
 Maßgeblich sind zwei deutsch sozialisierte, experimentierfreudige Hobbyköche mit starkem ost- und
@@ -77,7 +82,8 @@ begründen, senkt aber nicht pauschal jede Zutat aus diesen Küchen.
 
 Die Frage lautet, wie ungewöhnlich genau das Produkt als erkennbarer verpflichtender Bestandteil eines Gerichts
 ist. Dass es technisch gebraten, gebacken, geschmort, püriert oder wie sein Parent gewürzt werden kann, beweist
-keine vertraute Verwendung. Für Stufe 1 oder 2 muss die konkrete Zutat selbst als Kochzutat vertraut sein.
+keine vertraute Verwendung. Für Stufe 1 oder 2 muss die konkrete Zutat selbst als Kochzutat vertraut sein; für
+Stufe 3 bis 5 muss ihre geringere konkrete Zutatenvertrautheit vorliegen, nicht bloß eine enge Verwendungsrolle.
 
 ### Schritt 4: Küchentisch-Kontrolle durchführen
 
@@ -87,12 +93,15 @@ Identität, kulturelle Bindung oder besondere Produktform.
 
 ### Schritt 5: Stufe und Begründung setzen
 
-- Stufe 1 verlangt Standardverwendung des konkreten Konzepts selbst.
-- Stufe 2 verlangt mehrere naheliegende, gemeinsam vertraute Verwendungen des konkreten Konzepts selbst.
+- Stufe 1 verlangt, dass das konkrete Konzept selbst als verpflichtende Kochzutat sehr vertraut ist; breite
+  Standardverwendung stützt diese Einordnung, eine enge typische Gerichtsfamilie widerlegt sie nicht.
+- Stufe 2 verlangt, dass das konkrete Konzept selbst als verpflichtende Kochzutat vertraut ist; mehrere
+  naheliegende Verwendungen sind ein Indiz, aber keine eigenständige Mindestmenge.
 - Stufe 3 ist der normale Grenzwert für eine konkrete Art, Regionalzutat, kulturelle Zutat oder Produktform, die in
   bestimmten Küchen konventionell, gemeinsam aber bewusst kontextgebunden ist.
-- Stufe 4 oder 5 verlangt eine enge, ungewöhnliche beziehungsweise stark konstruierte Kochrolle gemäß der
-  Hauptspezifikation.
+- Stufe 4 oder 5 verlangt, dass das konkrete Konzept als verpflichtende Kochzutat selbst ungewöhnlich
+  beziehungsweise ausgefallen ist. Eine enge, ungewöhnliche oder stark konstruierte Kochrolle ist hierfür nur ein
+  Indiz gemäß der Hauptspezifikation.
 
 Bei einer Abweichung von Parent oder Geschwistern wird die konkrete Identitäts- oder Formdifferenz knapp benannt.
 Freigegebene Referenzanker werden nicht durch Analogieschlüsse überschrieben.

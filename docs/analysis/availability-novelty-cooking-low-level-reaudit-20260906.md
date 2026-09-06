@@ -4,7 +4,7 @@ Stand: 6. September 2026
 
 Issue: #188, Tracking: #186
 
-Status: **Gezielte Reaudit abgeschlossen; sechs menschliche Korrekturen aus Charge 1 freigegeben, 48 weitere
+Status: **Gezielte Reaudit abgeschlossen; sechs menschliche Korrekturen aus Charge 1 freigegeben, 46 weitere
 Korrekturen bleiben Vorschläge. Beschaffbarkeit wurde nicht verändert.**
 
 ## 1. Anlass und Bewertungsregel
@@ -14,9 +14,11 @@ Die Reaudit präzisiert den Kochungewöhnlichkeits-Durchgang vom 3. September 20
 Kochzutat** aus der gemeinsamen Perspektive zweier deutsch sozialisierter, experimentierfreudiger Hobbyköche mit
 starkem ost- und südostasiatischem Interesse und philippinischem Einfluss ist.
 
-Die Küchentisch-Kontrolle entfernt ausschließlich Beschaffbarkeit, Preis, Marktbreite und persönlichen Vorrat. Eine
-vertraute Elternkategorie, bekannte Kochrolle oder breite technische Verarbeitbarkeit vererbt keine niedrige Stufe.
-Das konkrete Produkt selbst muss für Stufe 1 oder 2 gemeinsam als Kochzutat vertraut sein.
+Die Küchentisch-Kontrolle entfernt ausschließlich Beschaffbarkeit, Preis, Marktbreite und persönlichen Vorrat. Für
+alle fünf Stufen ist primär maßgeblich, wie ungewöhnlich das exakte Konzept als verpflichtende Kochzutat im
+gemeinsamen Referenzrahmen ist. Eine vertraute Elternkategorie, bekannte Kochrolle oder breite technische
+Verarbeitbarkeit vererbt keine niedrige Stufe; umgekehrt macht die Enge einer typischen Gerichtsfamilie eine selbst
+sehr vertraute konkrete Kochzutat nicht ungewöhnlicher. Verwendungsbreite oder -enge ist nur ein Indiz.
 
 ## 2. Umfang und Reproduzierbarkeit
 
@@ -38,16 +40,20 @@ Artefakte:
 
 ## 3. Korrekturen
 
-Insgesamt wurden **54** Novelty-Werte korrigiert.
+Insgesamt wurden **52** Novelty-Werte korrigiert.
 
-### 1 → 2 (18)
+### 1 → 2 (16)
 
-`FERMENTED_CUCUMBER`, `GHEE`, `GLASS_NOODLES`, `LASAGNE_SHEETS`, `LIGHT_SOY_SAUCE`, `NORI`, `PANKO`,
-`RAMEN_NOODLES`, `RISOTTO_RICE`, `SESAME_OIL`, `SILKEN_TOFU`, `SOBA`, `SRIRACHA`, `SUSHI_RICE`, `TAMARI`,
-`UDON`, `WAKAME`, `WONTON_WRAPPERS`.
+`FERMENTED_CUCUMBER`, `GHEE`, `GLASS_NOODLES`, `LIGHT_SOY_SAUCE`, `NORI`, `PANKO`, `RAMEN_NOODLES`,
+`SESAME_OIL`, `SILKEN_TOFU`, `SOBA`, `SRIRACHA`, `SUSHI_RICE`, `TAMARI`, `UDON`, `WAKAME`,
+`WONTON_WRAPPERS`.
 
-Diese konkreten Formen sind gemeinsam vertraut und besitzen mehrere naheliegende Kochrollen, sind aber nicht breit
-genug für die Standardverwendung des exakten Konzepts auf Stufe 1.
+Diese konkreten Formen sind gemeinsam vertraut, als exakte verpflichtende Kochzutaten aber nicht durchgehend
+Standard. Ihre mehreren naheliegenden Kochrollen sind ein stützendes Indiz, nicht der primäre Stufengrund.
+
+`LASAGNE_SHEETS` und `RISOTTO_RICE` bleiben jeweils auf **1**. Beide exakten Konzepte sind als verpflichtende
+Kochzutaten im gemeinsamen Referenzrahmen sehr vertraut; die enge Bindung an geschichtete Pasta- beziehungsweise
+Risottogerichte ist nur ein Indiz und kein Grund für Stufe 2.
 
 ### 2 → 3 (35)
 
@@ -79,15 +85,15 @@ gesetzt:
 - `RAZOR_CLAMS`
 - `ROOKWORST`
 
-Die übrigen 48 Korrekturen bleiben `PROPOSED_FOR_HUMAN_REVIEW`. Die Freigabe der Referenzanker wurde nicht
+Die übrigen 46 Korrekturen bleiben `PROPOSED_FOR_HUMAN_REVIEW`. Die Freigabe der Referenzanker wurde nicht
 verändert.
 
 ## 5. Ergebnisbild und verbleibende Grenzfälle
 
 | Kochungewöhnlichkeit | Konzepte nach Reaudit |
 |---:|---:|
-| 1 | 327 |
-| 2 | 317 |
+| 1 | 329 |
+| 2 | 315 |
 | 3 | 171 |
 | 4 | 36 |
 | 5 | 2 |
