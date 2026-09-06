@@ -6,6 +6,8 @@ Quellstand des Reviews: `dbc8758a5da6b118f27a664a5a69e91c6982b935`
 
 Diese Datei dokumentiert die ausdrückliche menschliche Freigabe der zweiten Reviewcharge. Sie überstimmt für die hier aufgeführten Konzepte abweichende Vorschlagswerte des Quellstands und ist bis zum autoritativen Abschlussstand aus Schritt 9 als verbindliche Freigabespur zu behandeln.
 
+Maschinenlesbarer Begleiter: [`availability-novelty-human-approval-charge-2-20260906.csv`](availability-novelty-human-approval-charge-2-20260906.csv). Für unveränderte Notizen verweist dieser auf den exakten Quellstand `dbc8758`; `QUAIL` enthält dagegen die ausdrücklich freigegebene Ersatznotiz und Evidenzbehandlung vollständig im CSV.
+
 Die Freigabe umfasst jeweils Kochungewöhnlichkeit, Availability für Georgia und Tobias sowie die aktuellen personenspezifischen Availability-Notizen. Bei `QUAIL` ersetzt die unten dokumentierte Spezialmarktbegründung die bisherige PLANNED-Begründung.
 
 | Konzept | Kochungewöhnlichkeit | Georgia | Tobias |
@@ -41,7 +43,7 @@ Verbindliche Availability-Notiz für Georgia und Tobias:
 
 > Wachtelfleisch ist über mehrere spezialisierte Geflügel-/Fleischversender und Direktvermarkter beziehungsweise Wachtelzüchter erhältlich, gehört aber nicht zum breiten allgemeinen Fleischhandel.
 
-Die bisherige Evidenz `AV2N-N-0084` / `AV2N-N-0085` darf daher nicht mehr als `GENERAL_BROAD`-Begründung für `PLANNED` interpretiert werden. Bei der späteren Materialisierung des finalen Reviewstands ist die Evidenz auf den breiten spezialisierten Wachtel-/Geflügelmarkt auszurichten.
+Die bisherige Evidenz `AV2N-N-0084` / `AV2N-N-0085` bleibt als historische Recherche erhalten, darf aber nicht mehr als `GENERAL_BROAD`-Begründung für `PLANNED` interpretiert werden. Für den autoritativen Abschlussstand sind die dort belegten spezialisierten Versandwege als Teil eines `SPECIALTY_BROAD`-Markts zu behandeln und durch weitere unabhängige spezialisierte Wachtel-/Geflügelwege zu ergänzen.
 
 ## Freigabestatus
 
