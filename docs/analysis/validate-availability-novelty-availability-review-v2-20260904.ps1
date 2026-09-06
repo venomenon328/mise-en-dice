@@ -1110,10 +1110,13 @@ Assert-True ($generatorText -notmatch '(?is)\belse\s*\{\s*[''\"]EASY[''\"]\s*\}'
 
 $protectedFiles = [ordered]@{
     'availability-novelty-cooking-input-20260903.csv' = '3275FF468BFBA918E93B2BFD522BD0FF5BBAC3ABBCC88D8A970D8636FA646FF2'
-    'availability-novelty-cooking-review-20260903.tsv' = '04A08FAD9AC7AB40F3247684CC765064663E96FFD44805ADACB1DC0A5AD88EC5'
-    'availability-novelty-cooking-comparison-20260903.tsv' = 'C6107EE1FE344A75DF38D1843D4F0DD94574F7433A0E29F154479DC4183EC976'
-    'validate-availability-novelty-cooking-review-20260903.ps1' = 'E06EE67906A40A9868E03BF78C6E4D459D38CFF5CB60CD9152766512B329B4D2'
-    'availability-novelty-review-tranche-2-20260903.md' = '82B5B97D89E89A8E9D5F24F43D119CC8FD328ADC86740050D48E706A68A1193A'
+    'availability-novelty-cooking-review-20260903.tsv' = '766D37AD32BE802A621A623DEC3072303EBB29D04FBE65AF52F24E35FA6F766B'
+    'availability-novelty-cooking-comparison-20260903.tsv' = '81108111D6297C34E1F8AA9EF175B3E03FAD21114BC335C7FDD75296C9F90EA2'
+    'availability-novelty-cooking-low-level-reaudit-20260906.tsv' = '185975BEB67480C53A4B946CF40D847E80BB813AA897D11F5C287AFF7039DEFB'
+    'availability-novelty-cooking-low-level-reaudit-20260906.md' = '89989990E3ECFD4316D444C38093603BE9515E864C25042B164FEBAFDD91FEAE'
+    'generate-availability-novelty-cooking-low-level-reaudit-20260906.ps1' = '70D44BE3C689419403982E64B593B9CB21743384AA8436D28EED9C044C65555B'
+    'validate-availability-novelty-cooking-review-20260903.ps1' = '9F7001020ACE90CD19F12A7F8A7A76598A5A4BBBE154958100D835A35DBA12F7'
+    'availability-novelty-review-tranche-2-20260903.md' = '2F27D743E0767A333BB8470F4D8BF3AEA11154ADFFCF5300EE2066429D19B4BE'
     'availability-novelty-availability-anchor-deltas-20260903.csv' = '8E44CC5B029AD3F5B3C9FDB082857B64EE45FB0FF6140F6BC7A70CC304CA79BE'
     'availability-novelty-availability-comparison-20260903.tsv' = 'FBF101A416A4164D4F8E8F00EF79E5194FE3C1B06CE1B3A30497DDAFAB08B5CB'
     'availability-novelty-availability-easy-decisions-20260903.csv' = '8C16E3C11519FD856B0AFF358E0E3CA8FC9A707A4CDAB1504326C4C1B25F2598'
@@ -1162,4 +1165,4 @@ Write-Host "Tobias:  EASY $($distribution.Tobias.EASY) | PLANNED $($distribution
 Write-Host "Person differences: $($differences.Count). Required evidence assignments: $coveredCount/$requiredCount covered."
 Write-Host "Notes: $($allNotes.Count)/$expectedNoteCount nonempty, short, procurement-specific and URL-free; identical notes remain allowed where market reality is identical."
 Write-Host 'Generic full-path fixtures: identical valid G/T notes and a new non-anchor difference with positive EV-G/EV-T after historical alignment accepted; unknown evidence ID, wrong concept/person scope and unverified personal-route claims rejected; matching PERSON_ROUTE evidence accepted.'
-Write-Host 'Protected Cooking Novelty, previous Availability and v2 anchor approval traces: unchanged.'
+Write-Host 'Protected current Cooking Novelty re-audit, previous Availability and v2 anchor approval traces: consistent.'

@@ -1,6 +1,6 @@
 # Beschaffbarkeit und Kochungewöhnlichkeit
 
-Stand: 4. September 2026  
+Stand: 6. September 2026
 Status: verbindliche Ziel-, Redaktions- und Pflegespezifikation; technische und katalogweite Umsetzung in #187–#190
 
 Dieses Dokument trennt zwei Metadaten, die technisch eigenständig und redaktionell strikt unabhängig gepflegt werden:
@@ -41,13 +41,14 @@ Sie beantwortet ausdrücklich nicht:
 
 Die Kochungewöhnlichkeit beantwortet ausschließlich:
 
-> Angenommen, die Zutat liegt bereits kostenlos in geeigneter Form in der Küche: Wie ungewöhnlich ist es, sie sinnvoll und erkennbar als verpflichtenden Bestandteil eines Gerichts zu verwenden?
+> Angenommen, genau diese Zutat liegt bereits kostenlos in geeigneter Form in der Küche: Wie ungewöhnlich ist es aus der gemeinsamen Perspektive, sie sinnvoll und erkennbar als verpflichtende Kochzutat eines Gerichts zu verwenden?
 
 Sie beschreibt die **Außergewöhnlichkeit der Verwendung**, nicht Herkunft, Preis oder Beschaffung.
 
 Sie berücksichtigt insbesondere:
 
 - wie selbstverständlich das Produkt als Kochzutat eingesetzt wird,
+- wie vertraut genau diese Art, regionale beziehungsweise kulturelle Zutat und Produktform ist,
 - wie breit oder eng die etablierten Verwendungsweisen sind,
 - ob es nur in bestimmten Küchen oder Gerichtsfamilien konventionell ist,
 - wie stark es die kulinarische Richtung einer Challenge vorgibt,
@@ -61,6 +62,11 @@ Sie berücksichtigt ausdrücklich nicht:
 - bloße Exotik des Namens,
 - Seltenheit im deutschen Handel,
 - persönliche Abneigung oder Begeisterung.
+
+Die technische Breite denkbarer Gar-, Würz- oder Kombinationsmöglichkeiten ist nur ein Indiz. Sie genügt nicht,
+um ein ungewöhnliches konkretes Produkt auf Stufe 1 oder 2 zu ziehen. Bewertet wird nicht, ob sich die Zutat
+irgendwie wie ihr vertrauter Parent verarbeiten lässt, sondern ob genau sie als verpflichtende Kochzutat im
+gemeinsamen kulinarischen Horizont vertraut ist.
 
 ### 1.3 Kontrollfragen
 
@@ -87,15 +93,20 @@ Der Referenzrahmen ist bewusst weder:
 
 Persönliche Erfahrung darf die Einordnung präzisieren. Sie darf aber nicht dazu führen, dass eine einzelne häufig genutzte Spezialzutat allein deshalb auf Stufe 1 fällt oder ein unbekanntes Alltagsprodukt allein deshalb auf Stufe 5 steigt.
 
+Das starke ost- und südostasiatische Interesse sowie der philippinische Einfluss erweitern den tatsächlich
+gemeinsamen Vertrautheitshorizont. Sie sind jedoch kein pauschaler Abschlag für jede asiatische oder philippinische
+Zutat: Eine konkrete Art, Regionalzutat, kulturell gebundene Produktform oder Spezialität bleibt einzeln zu
+bewerten.
+
 ## 3. Fünfstufige Kochungewöhnlichkeit
 
 `ingredient_concept.novelty_level` bleibt technisch fünfstufig. Die fachliche Bezeichnung lautet **Kochungewöhnlichkeit** beziehungsweise **Außergewöhnlichkeit als Kochzutat**.
 
 | Stufe | Name | Verbindliche Bedeutung |
 |---:|---|---|
-| **1** | **Standardverwendung** | Die Zutat wird breit und selbstverständlich in gewöhnlichen Gerichten verwendet. Ihre Vorgabe erzeugt für sich genommen kaum einen besonderen kulinarischen Impuls. |
-| **2** | **Vertraute Verwendung** | Eine klar etablierte und wenig überraschende Kochzutat mit mehreren naheliegenden Verwendungsweisen, aber nicht zwingend universeller Alltagsstandard. |
-| **3** | **Kontextgebundene Verwendung** | In bestimmten Küchen oder Gerichtsfamilien völlig konventionell, außerhalb davon aber merklich speziell oder richtungsgebend. Die Zutat verlangt eine bewusste kulinarische Einordnung. |
+| **1** | **Standardverwendung** | Genau dieses Konzept, nicht bloß sein Parent oder seine Kochrolle, wird breit und selbstverständlich in gewöhnlichen Gerichten verwendet. Seine Vorgabe erzeugt kaum einen besonderen kulinarischen Impuls. |
+| **2** | **Vertraute Verwendung** | Genau diese Art oder Produktform ist im gemeinsamen Horizont eine klar etablierte und wenig überraschende Kochzutat mit mehreren naheliegenden Verwendungen, aber nicht zwingend universeller Alltagsstandard. |
+| **3** | **Kontextgebundene Verwendung** | Die konkrete Art, Regionalzutat, kulturelle Zutat oder Produktform ist in bestimmten Küchen oder Gerichtsfamilien konventionell, gemeinsam aber merklich speziell oder richtungsgebend. Sie verlangt eine bewusste kulinarische Einordnung. |
 | **4** | **Ungewöhnliche Verwendung** | Nur eine begrenzte Zahl etablierter Kochanwendungen liegt nahe, oder das Produkt wird normalerweise eher anders konsumiert. Als Challenge-Vorgabe ist es ein deutlicher Twist. |
 | **5** | **Ausgefallene Verwendung** | Eine sinnvolle Verwendung ist selbst im gemeinsamen kulinarischen Horizont ausgesprochen nischig, experimentell oder überraschend. Das Gericht muss stark um die Vorgabe herum konstruiert werden. |
 
@@ -105,7 +116,9 @@ Persönliche Erfahrung darf die Einordnung präzisieren. Sie darf aber nicht daz
 - Eine in einer bestimmten Küche normale, für den gemeinsamen Alltag aber klar richtungsgebende Zutat liegt typischerweise auf Stufe 3 statt automatisch auf 1 oder 2.
 - Ein Produkt, das überwiegend als Getränk, Snack oder fertige Beilage konsumiert wird, kann als Kochzutat Stufe 4 erreichen, obwohl es leicht erhältlich ist.
 - Die Schwierigkeit einer geschmacklichen Kombination gehört primär zur Kandidatenkuratierung. Die Novelty-Stufe bewertet das einzelne Konzept, nicht jede mögliche Kombination.
-- Ein breites offenes Konzept kann niedriger liegen als eine enge ungewöhnliche Konkretisierung; es gibt keine Vererbung.
+- Ein breites offenes Konzept kann niedriger liegen als eine enge ungewöhnliche Konkretisierung; es gibt keine Vererbung. Eine vertraute Elternkategorie, Kochfunktion oder Zubereitungstechnik zieht eine ungewöhnliche Art, Regionalzutat, kulturelle Zutat oder Produktform nicht automatisch auf 1 oder 2.
+- Aussagen wie „kann gebraten, gebacken, geschmort oder gewürzt werden“ belegen nur technische Verwendbarkeit. Für 1 oder 2 muss das konkrete Produkt selbst als verpflichtende Kochzutat vertraut sein.
+- Die Küchentisch-Kontrollfrage entfernt ausschließlich Beschaffbarkeit, Preis und Markt. Sie entfernt weder die Identität noch die kulturelle oder produktspezifische Besonderheit der konkreten Zutat.
 
 ### 3.2 Kalibrierungsbeispiele
 
@@ -115,6 +128,7 @@ Persönliche Erfahrung darf die Einordnung präzisieren. Sie darf aber nicht daz
 | Pilsner/Bier | typischerweise 4 | Problemlos erhältlich, als verpflichtende Kochzutat aber auf bestimmte Marinaden, Teige, Saucen oder Schmorgerichte begrenzt. |
 | Bagoong | **mindestens 3** | In philippinischen Gerichten konventionell, aus gemeinsamer Mise-en-Dice-Perspektive aber klar kontextgebunden und nicht bloße Standardverwendung. |
 | Safran | typischerweise 3 | Klassisch und konventionell in bestimmten Gerichten, zugleich stark richtungsgebend; der Preis ist für Novelty unerheblich. |
+| Entenei, Herver Käse, Milchfisch, Portulak, Schwertmuscheln, Rookworst | **3** | Menschlich korrigierte Grenzfälle: vertraute Parents oder Kochrollen reichen bei diesen konkreten Arten, Regionalprodukten beziehungsweise Produktformen nicht für Stufe 1 oder 2. |
 
 Exakte Werte werden im Vollreview einzeln freigegeben. Das Bagoong-Beispiel setzt jedoch eine verbindliche Untergrenze für die gemeinsame Perspektive.
 
@@ -316,7 +330,11 @@ Beschaffbarkeit und Kochungewöhnlichkeit werden direkt pro Konzept gepflegt.
 - keine automatische Gleichsetzung von Geschwistern,
 - keine Pflicht, dass ein Parent zwischen den Werten aller Children liegen muss.
 
-Ausreißer innerhalb einer Familie können einen Prüfhinweis erzeugen, sind aber nicht automatisch falsch. `Fisch` kann leicht beschaffbar sein, obwohl eine bestimmte Fischart schwierig ist; `Chili` kann vertraut verwendet werden, obwohl eine einzelne Sorte ungewöhnlicher ist.
+Ausreißer innerhalb einer Familie können einen Prüfhinweis erzeugen, sind aber nicht automatisch falsch. `Fisch`
+kann leicht beschaffbar sein, obwohl eine bestimmte Fischart schwierig ist; `Chili` kann vertraut verwendet werden,
+obwohl eine einzelne Sorte ungewöhnlicher ist. Für die Kochungewöhnlichkeit ist außerdem ausdrücklich die konkrete
+Identität maßgeblich: Eine bekannte Kochrolle des Parents oder dieselben technisch möglichen Garverfahren sind
+kein Nachweis, dass das Child selbst aus gemeinsamer Perspektive Stufe 1 oder 2 ist.
 
 ## 8. Beschaffbarkeitsnotiz und Evidenz
 
@@ -444,9 +462,10 @@ Jeder Metadatenentwurf für ein neues zufällig ziehbares Konzept muss vor Aktiv
 ### 11.2 Kochungewöhnlichkeit
 
 - Stufe 1–5 mit sprechendem Namen,
-- kurze Begründung aus der Verwendungsperspektive,
+- kurze Begründung für genau diese Art, regionale beziehungsweise kulturelle Zutat und Produktform als verpflichtende Kochzutat,
 - bei Stufe 3–5 Hinweis auf typischen Kontext beziehungsweise ungewöhnlichen Verwendungskern,
 - bestätigte Kontrollfrage: Der Wert bliebe bei bereits vorhandener kostenloser Zutat gleich.
+- bestätigte Parent-Kontrolle: Die Stufe wurde weder aus einer vertrauten Elternkategorie oder Kochrolle geerbt noch allein aus technisch breiten Verwendungsmöglichkeiten abgeleitet.
 
 ### 11.3 Beschaffbarkeit je Person
 
@@ -502,9 +521,10 @@ Der vollständige Review folgt weiterhin dem neunstufigen Grundablauf:
 8. Menschliche Freigabe in überschaubaren Chargen.
 9. Autoritativen Abschlussstand erzeugen.
 
-Nach der Schärfung vom 4. September 2026 gilt zusätzlich:
+Nach der Schärfung vom 4. September und der gezielten Novelty-Reaudit vom 6. September 2026 gilt zusätzlich:
 
-- Die abgeschlossene Kochungewöhnlichkeitsbewertung bleibt unberührt.
+- Die Kochungewöhnlichkeit wurde für alle bisherigen N1/N2-Vorschläge sowie kontrollierend für N3 auf die präzisierte Exaktprodukt-Semantik reauditiert; die sechs menschlichen Korrekturen der ersten Charge sind verbindlich eingetragen.
+- Die freigegebenen Novelty-Referenzanker bleiben unverändert; übrige korrigierte Reaudit-Werte bleiben Vorschläge bis zur menschlichen Freigabe.
 - Die frühere Availability-Freigabe ist zurückgesetzt.
 - Vor einem neuen vollständigen Availability-Durchgang wird der revidierte Marktbreiten-Ankersatz erneut menschlich freigegeben.
 - Erst danach werden alle anwendbaren Personenwerte neu auditiert.

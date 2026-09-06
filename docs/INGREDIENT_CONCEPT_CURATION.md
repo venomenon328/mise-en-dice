@@ -1,6 +1,6 @@
 # Operative Kurationsregeln für neue Zutatenkonzepte
 
-Stand: 4. September 2026  
+Stand: 6. September 2026
 Status: verbindliche Arbeitscheckliste für Neuaufnahmen und wesentliche Konzeptänderungen
 
 Dieses Dokument operationalisiert die fachliche Semantik aus [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md). Es ist bei jeder neuen Konzeptanlage, neuen Konkretisierung und jeder Änderung zu verwenden, die Name, Produktform, Ziehbarkeit oder Beschaffungsrealität eines bestehenden Konzepts wesentlich verändert.
@@ -34,9 +34,10 @@ Metadaten werden nicht aus Parent, Child, Land oder Namen geerbt.
 ### Kochungewöhnlichkeit
 
 - Stufe 1–5,
-- kurze Verwendungsperspektive,
+- kurze Verwendungsperspektive für genau diese Art, regionale beziehungsweise kulturelle Zutat und Produktform als verpflichtende Kochzutat,
 - bei Stufe 3–5 der konkrete Kontext oder ungewöhnliche Verwendungskern,
-- bestätigte Kontrollfrage: Der Wert bliebe gleich, wenn die Zutat bereits kostenlos in geeigneter Form vorhanden wäre.
+- bestätigte Kontrollfrage: Der Wert bliebe gleich, wenn die Zutat bereits kostenlos in geeigneter Form vorhanden wäre,
+- bestätigte Parent-Kontrolle: Die Stufe wurde nicht aus einer vertrauten Elternkategorie, Kochrolle oder bloß technisch breiten Verwendbarkeit abgeleitet.
 
 ### Beschaffbarkeit
 
@@ -48,7 +49,7 @@ Für Georgia und Tobias jeweils:
 - Marktbreite,
 - Bestands- und Lieferzuverlässigkeit,
 - Frische-, Kühl-, TK-, Import- oder Transportbedingungen,
-- Evidenz entsprechend Abschnitt 4.
+- Evidenz entsprechend Abschnitt 5.
 
 Eine Beschaffbarkeitsnotiz darf nicht bloß den Enum-Wert ausformulieren. Auch bei `EASY` muss sie knapp benennen, **warum gerade diese konkrete Produktform** im Alltagshandel zuverlässig erhältlich ist. Katalogweit wiederholte Standardtexte ohne konzeptspezifischen Informationsgewinn sind keine erfüllte Notizpflicht.
 
@@ -59,7 +60,44 @@ Eine Beschaffbarkeitsnotiz darf nicht bloß den Enum-Wert ausformulieren. Auch b
 - keine doppelte Bestrafung schwieriger Beschaffung,
 - gegebenenfalls ausdrücklich begründete Absenkung wegen Breite, Dominanz, Kombinationseignung oder Katalogbalance.
 
-## 2. Verbindlicher Ablauf der Beschaffbarkeitsbewertung
+## 2. Verbindlicher Ablauf der Kochungewöhnlichkeitsbewertung
+
+### Schritt 1: Exaktes Konzept fixieren
+
+Bewertet wird die konkret benannte Art, Regionalzutat, kulturelle Zutat oder Produktform. Ein breiter Parent, eine
+ähnliche Standardzutat oder eine austauschbare Kochfunktion ist kein Ersatz für diese Identität.
+
+### Schritt 2: Gemeinsamen Horizont anwenden
+
+Maßgeblich sind zwei deutsch sozialisierte, experimentierfreudige Hobbyköche mit starkem ost- und
+südostasiatischem Interesse und philippinischem Einfluss. Dieser Kontext kann reale gemeinsame Vertrautheit
+begründen, senkt aber nicht pauschal jede Zutat aus diesen Küchen.
+
+### Schritt 3: Verpflichtende Kochrolle prüfen
+
+Die Frage lautet, wie ungewöhnlich genau das Produkt als erkennbarer verpflichtender Bestandteil eines Gerichts
+ist. Dass es technisch gebraten, gebacken, geschmort, püriert oder wie sein Parent gewürzt werden kann, beweist
+keine vertraute Verwendung. Für Stufe 1 oder 2 muss die konkrete Zutat selbst als Kochzutat vertraut sein.
+
+### Schritt 4: Küchentisch-Kontrolle durchführen
+
+Der Wert muss unverändert bleiben, wenn die exakte zulässige Produktform kostenlos in der Küche liegt. Diese
+Kontrolle entfernt Beschaffbarkeit, Marktbreite, Preis und persönlichen Vorrat. Sie entfernt nicht die konkrete
+Identität, kulturelle Bindung oder besondere Produktform.
+
+### Schritt 5: Stufe und Begründung setzen
+
+- Stufe 1 verlangt Standardverwendung des konkreten Konzepts selbst.
+- Stufe 2 verlangt mehrere naheliegende, gemeinsam vertraute Verwendungen des konkreten Konzepts selbst.
+- Stufe 3 ist der normale Grenzwert für eine konkrete Art, Regionalzutat, kulturelle Zutat oder Produktform, die in
+  bestimmten Küchen konventionell, gemeinsam aber bewusst kontextgebunden ist.
+- Stufe 4 oder 5 verlangt eine enge, ungewöhnliche beziehungsweise stark konstruierte Kochrolle gemäß der
+  Hauptspezifikation.
+
+Bei einer Abweichung von Parent oder Geschwistern wird die konkrete Identitäts- oder Formdifferenz knapp benannt.
+Freigegebene Referenzanker werden nicht durch Analogieschlüsse überschrieben.
+
+## 3. Verbindlicher Ablauf der Beschaffbarkeitsbewertung
 
 ### Schritt 1: Exakte Produktform festlegen
 
@@ -158,7 +196,7 @@ Für neue oder überarbeitete Notizen gilt zusätzlich:
 - Geschmack, Verwendungsideen und vollständige Kuratornotizen gehören nicht in die Beschaffbarkeitsnotiz. Produktform wird nur so weit genannt, wie sie den realen Bezugsweg oder eine Ersatzproduktgefahr erklärt.
 - Die Freigabe einer Stufe oder eines Referenzankers genehmigt nicht automatisch einen später neu formulierten Notiztext. Rating- und Notizstatus bleiben getrennt sichtbar.
 
-## 3. Harte Verbote und Schutzregeln
+## 4. Harte Verbote und Schutzregeln
 
 ### `EASY`
 
@@ -208,9 +246,9 @@ Ein oder zwei nationale Nischenhändler, bloße Marktplatzangebote oder ein einz
 
 `UNAVAILABLE` erfordert eine gezielte negative Suche. Naheliegende falsche Formen und theoretische Herkunftslandwege werden ausdrücklich ausgeschlossen.
 
-## 4. Evidenzstandard
+## 5. Evidenzstandard
 
-### 4.1 Allgemeine Felder
+### 5.1 Allgemeine Felder
 
 Für recherchierte Evidenz festhalten:
 
@@ -226,7 +264,7 @@ Für recherchierte Evidenz festhalten:
 
 Marktplatzseiten werden dem tatsächlich verkaufenden und versendenden Händler zugerechnet; die Plattformdomain ist kein unabhängiger Marktweg. Kategorie-, Start- und Suchseiten dürfen Marktbreite oder eine dokumentierte Negativsuche stützen, aber nicht als formgenauer positiver Produktbeleg ausgegeben werden. Ein positiver Weg verlangt eine passende Produktseite oder eine gleichwertig konkrete, überprüfbare Quelle.
 
-### 4.2 Mindestanforderung nach Stufe
+### 5.2 Mindestanforderung nach Stufe
 
 - `EASY`: positive lokale Alltagsevidenz oder sehr belastbare allgemeine Sortimentskenntnis; keine Spezialquellen.
 - `PLANNED`: mindestens ein konkreter robuster allgemeiner Weg oder bestätigte wiederholte persönliche Beschaffung.
@@ -236,7 +274,7 @@ Marktplatzseiten werden dem tatsächlich verkaufenden und versendenden Händler 
 
 Die Evidenzprüfung darf Struktur und Nachvollziehbarkeit absichern, aber keinen konkreten redaktionellen Zutatenwert als automatisierte Fachwahrheit konservieren. Validatoren leiten Sollmengen, Personenunterschiede und Auditabdeckung aus den Eingabedaten ab; sie enthalten keine festen Ergebniszahlen, Konzeptlisten oder Text-Eindeutigkeitsvorgaben. Generische Prüffälle verwenden synthetische Konzepte und testen mindestens zulässige identische Personennotizen, zusätzliche evidenzgestützte Personenunterschiede sowie die Ablehnung unbekannter Evidenz-IDs und falscher Konzept- oder Personenzuordnungen.
 
-## 5. Personenprofile
+## 6. Personenprofile
 
 ### Tobias
 
@@ -256,12 +294,13 @@ Die Evidenzprüfung darf Struktur und Nachvollziehbarkeit absichern, aber keinen
 
 Regionale Vorteile verschieben nur bei einem konkreten Weg die Stufe. Sie sind kein pauschaler Bonus für eine ganze Kulturküche.
 
-## 6. Freigabe- und Aktivierungsgate
+## 7. Freigabe- und Aktivierungsgate
 
 Ein neues zufällig ziehbares Konzept darf erst aktiviert werden, wenn:
 
 - Produktform und Ersatzformen eindeutig sind,
 - Kochungewöhnlichkeit freigegeben ist,
+- die Kochungewöhnlichkeit das exakte Konzept als verpflichtende Kochzutat bewertet und die Parent-Kontrolle dokumentiert ist,
 - Georgia- und Tobias-Beschaffbarkeit freigegeben sind,
 - beide individuellen, konzeptspezifischen Beschaffbarkeitsnotizen vorliegen,
 - keine Notiz lediglich den Enum-Wert oder einen katalogweiten Standardtext paraphrasiert,
@@ -273,7 +312,7 @@ Reine Strukturknoten erhalten ausdrücklich `NOT_APPLICABLE` statt erfundener Be
 
 Eine Freigabe muss angeben, ob sie Rating, Notiz oder beides umfasst. Ein freigegebener Referenzanker schützt seine Stufe, darf aber nicht als aktuelle Händler- oder Bestandsprüfung erscheinen und verleiht einem nachträglich redigierten Notiztext keinen stillschweigenden Freigabestatus.
 
-## 7. Änderungs- und Revalidierungsregeln
+## 8. Änderungs- und Revalidierungsregeln
 
 Eine bestehende Entscheidung wird erneut geöffnet, wenn:
 
@@ -287,7 +326,7 @@ Eine bestehende Entscheidung wird erneut geöffnet, wenn:
 
 Kleine Preisänderungen oder ein einzelner temporärer Ausverkauf lösen allein keine Neuklassifikation aus.
 
-## 8. Vorlage für neue Konzepte
+## 9. Vorlage für neue Konzepte
 
 ```text
 Konzeptcode:
@@ -301,6 +340,7 @@ Ziehbar:
 
 Kochungewöhnlichkeit:
 Begründung:
+Parent-/Exaktprodukt-Kontrolle:
 
 Georgia:
 - Beschaffbarkeit:
