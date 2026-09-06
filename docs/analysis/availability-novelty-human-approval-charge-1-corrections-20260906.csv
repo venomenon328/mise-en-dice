@@ -1,0 +1,7 @@
+concept_code,approved_cooking_novelty,approval_status,decision_note,source_review_head
+DUCK_EGG,3,APPROVED_HUMAN_CORRECTION_CHARGE_1,"Entenei als exakte Pflichtzutat ist gegenüber Ei allgemein merklich spezieller und mindestens kontextgebunden.",dbc8758a5da6b118f27a664a5a69e91c6982b935
+HERVE_CHEESE,3,APPROVED_HUMAN_CORRECTION_CHARGE_1,"Hervé ist eine konkrete regionale Käseform und als Pflichtzutat merklich spezieller als Käse allgemein.",dbc8758a5da6b118f27a664a5a69e91c6982b935
+MILKFISH,3,APPROVED_HUMAN_CORRECTION_CHARGE_1,"Milchfisch ist im philippinischen Kontext konventionell, im gemeinsamen Referenzrahmen als exakte Pflichtzutat aber klar kontextgebunden.",dbc8758a5da6b118f27a664a5a69e91c6982b935
+PURSLANE,3,APPROVED_HUMAN_CORRECTION_CHARGE_1,"Portulak besitzt etablierte kulinarische Rollen, ist als exakte Pflichtzutat im gemeinsamen Referenzrahmen aber merklich speziell.",dbc8758a5da6b118f27a664a5a69e91c6982b935
+RAZOR_CLAMS,3,APPROVED_HUMAN_CORRECTION_CHARGE_1,"Schwertmuscheln sind eine konkrete Muschelform und als Pflichtzutat deutlich spezieller als Muscheln allgemein.",dbc8758a5da6b118f27a664a5a69e91c6982b935
+ROOKWORST,3,APPROVED_HUMAN_CORRECTION_CHARGE_1,"Rookworst bleibt trotz vertrauter Wurstrollen eine konkrete niederländische Regionalform und damit kontextgebunden.",dbc8758a5da6b118f27a664a5a69e91c6982b935
