@@ -1,6 +1,6 @@
 # Spezifikation der privaten Webverwaltung
 
-Stand: 24. August 2026
+Stand: 7. September 2026
 
 Dieses Dokument beschreibt die verbindliche fachliche, gestalterische und technische Spezifikation der privaten Webverwaltung von Mise en Dice. Es konkretisiert die in [`ARCHITECTURE.md`](ARCHITECTURE.md) festgelegten Leitplanken und bildet die Grundlage für die anschließenden Implementierungspakete.
 
@@ -379,7 +379,15 @@ Je Person:
 - `UNAVAILABLE` – Praktisch nicht beschaffbar,
 - `nicht gepflegt`.
 
-`nicht gepflegt` ist nur zulässig, solange das Konzept nicht gleichzeitig aktiv und zufällig ziehbar ist.
+Direkt beim Stufenfeld steht je Person ein kompaktes mehrzeiliges Feld `Beschaffbarkeitsnotiz`.
+Die Detailansicht zeigt Stufe und Notiz; fehlende Notizen werden neutral als nicht gepflegt angezeigt.
+Stufe und Notiz werden im selben atomaren, versionierten Save bearbeitet. Beim Wechsel der Stufe wird
+kein Text erfunden: Die vorhandene Notiz muss redaktionell geprüft werden. Zum Entfernen einer Bewertung
+werden Stufe und Notiz geleert; eine nichtleere Notiz ohne Stufe erzeugt einen Feldfehler.
+
+Der technische Schreibvertrag bleibt sparse. Vor zufälliger Aktivierung verlangt die redaktionelle
+Freigabe für Georgia und Tobias vollständige Stufen und individuelle Notizen gemäß der Kurationscheckliste;
+das ist keine allgemeine Runtime-Vollständigkeitsconstraint für sämtliche Teilnehmer.
 
 Die Detail-, Editier-, Filter-, Bulk- und Konfliktansicht verwenden diese Bezeichnungen statt technischer Codes. Die Fünfer-Skala, der Unterschied zu Kochungewöhnlichkeit und die verbindlichen Hilfetexte sind in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md) festgelegt.
 
@@ -593,6 +601,11 @@ Davon inaktiv: 3
 [Abbrechen] [37 Konzepte ändern]
 ```
 
+Availability-Bulkaktionen ändern nur die Stufe. Bestehende Notizen bleiben exakt erhalten;
+bei neuen Personenzeilen bleibt die Notiz `NULL`. Die Vorschau erklärt dieses Verhalten und fordert zur
+anschließenden Prüfung der Begründungen im Einzel-Editor auf. Weder Erzeugen noch Löschen oder Umformulieren
+von Begründungen gehört zum Bulk.
+
 Die Bulk-Operation ist atomar. Scheitert ein Element fachlich, wird die gesamte Operation verworfen und die problematischen Einträge werden benannt.
 
 Die Vorschau und die Ausführung enthalten für jede explizit ausgewählte Zeile die geladene Aggregatversion. Die Ausführung sperrt alle ausgewählten Konzepte in deterministischer ID-Reihenfolge und prüft sämtliche Versionen, bevor sie etwas ändert; ein Konflikt verwirft die gesamte Aktion. Bereits im Zielzustand befindliche Konzepte werden weder versioniert noch auditiert. Rollen-Bulkaktionen verwenden vor jeder Graphprüfung denselben PostgreSQL-Transaktionslock wie Rollen-, Spezifitäts- und Beziehungsänderungen im Einzelsave. Die Prüfung betrachtet den gemeinsamen resultierenden Graphen, nicht einzelne Zeilen nacheinander.
@@ -710,6 +723,9 @@ Aktionen:
 - `Mit aktuellem Stand weiterbearbeiten`.
 
 Bei der zweiten Variante werden die eigenen Eingaben wieder in ein Formular auf Basis der neuen Version übernommen. Vor einem erneuten Speichern muss der Nutzer die markierten Konfliktfelder bewusst prüfen.
+Beschaffbarkeitsstufe und -notiz werden pro Person getrennt gegenübergestellt und bei Abweichung markiert.
+Beide Notizen bleiben über Validierungsfehler, Konfliktformular und Rebase erhalten; Weiterbearbeiten
+allein schreibt noch nichts.
 
 ## 16. Audit-Trail
 
@@ -747,6 +763,10 @@ Auditdaten werden in diesem kleinen privaten System zunächst unbegrenzt aufbewa
 ### 16.3 Snapshot-Inhalt
 
 Snapshots sind **fachliche Aggregate-Snapshots**, keine Kopien von HTTP-Formularen. Ein Zutaten-Snapshot enthält die zu diesem Zeitpunkt relevanten editierbaren Werte einschließlich Zuordnungen, darunter Ländercode und Anzeigename jeder kulinarischen Länderzuordnung.
+
+Availability-Snapshots enthalten pro Person `level` und `curatorNote`. Der feldweise Diff zeigt reine
+Notizänderungen separat mit Personennamen. Alte Payload-v1-Snapshots ohne `curatorNote` bedeuten nicht gepflegt;
+sie werden weder umgeschrieben noch als beschädigt behandelt.
 
 Passwörter, Sessiondaten oder sonstige Sicherheitsgeheimnisse gelangen niemals in den Audit-Trail.
 
@@ -836,8 +856,11 @@ Die Anwendung validiert verständlich vor dem Datenbankzugriff; die Datenbank bl
 | Dimensionsstufe außerhalb 1–5 | Fehler an betroffener Dimension |
 | Saisonmultiplikator `<= 0` | Fehler am betroffenen Monat |
 | aktiv + ziehbar ohne Rolle | Fehler im Abschnitt Rollen |
-| aktiv + ziehbar ohne Georgia-Beschaffbarkeit | Fehler bei Georgia |
-| aktiv + ziehbar ohne Tobias-Beschaffbarkeit | Fehler bei Tobias |
+| ungepflegte Georgia-Beschaffbarkeit oder -notiz | redaktioneller Pflegebedarf; Sparse-Schreibvertrag bleibt zulässig |
+| ungepflegte Tobias-Beschaffbarkeit oder -notiz | redaktioneller Pflegebedarf; Sparse-Schreibvertrag bleibt zulässig |
+
+Novelty-Stufe und Availability lösen seit #189 keine pauschale Gewichtswarnung oder zusätzliche Bestätigung
+mehr aus – auch nicht im Bulk. Der unabhängige direkte `COOKING_ALCOHOL`-Hinweis bleibt bestehen.
 
 ### 18.2 Beziehungen
 

@@ -61,12 +61,11 @@ class GeneratorCompatibilityCleanupMigrationIntegrationTest {
                     )
                     """);
 
-            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+            runLiquibase(connection, "db/changelog/schema/012-remove-legacy-generator-compatibility.sql");
 
             assertThat(columnExists(connection, "generation_attempt", "exclusion_rule_id")).isFalse();
             assertThat(columnExists(connection, "challenge_candidate", "exclusion_rule_id")).isFalse();
-            // The master changelog may legitimately add later catalog batches.  This compatibility
-            // migration must only preserve existing catalog and administration state.
+            // Assert this migration's preservation contract before later catalog revisions advance versions.
             assertThat(stringValue(connection,
                     "select display_name from ingredient_concept where id = " + catalogConceptId))
                     .isEqualTo(catalogDisplayName);
@@ -78,6 +77,7 @@ class GeneratorCompatibilityCleanupMigrationIntegrationTest {
                     .isEqualTo(exclusionDisplayText);
             assertThat(count(connection, "catalog_audit_entry")).isEqualTo(auditCount + 1);
 
+            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
             int changesetCount = count(connection, "databasechangelog");
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
             assertThat(count(connection, "databasechangelog")).isEqualTo(changesetCount);

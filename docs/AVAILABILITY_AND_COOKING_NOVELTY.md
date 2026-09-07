@@ -1,6 +1,6 @@
 # Beschaffbarkeit und Kochungewöhnlichkeit
 
-Stand: 6. September 2026
+Stand: 7. September 2026
 Status: verbindliche Ziel-, Redaktions- und Pflegespezifikation; technische und katalogweite Umsetzung in #187–#190
 
 Dieses Dokument trennt zwei Metadaten, die technisch eigenständig und redaktionell strikt unabhängig gepflegt werden:
@@ -11,6 +11,12 @@ Dieses Dokument trennt zwei Metadaten, die technisch eigenständig und redaktion
 Es ergänzt insbesondere [`VISION.md`](VISION.md), [`DATA_MODEL.md`](DATA_MODEL.md), [`PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md`](PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md), [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md), [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md), [`INGREDIENT_CONCEPT_CURATION.md`](INGREDIENT_CONCEPT_CURATION.md) und [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md).
 
 Für die Zielsemantik dieser beiden Metadaten ist dieses Dokument maßgeblich. Die fünfstufige Beschaffbarkeit ist seit #187 technisch verfügbar. Die katalogweiten Einzelwerte werden in #188 fachlich freigegeben, in #189 persistiert und in #190 generatorisch kalibriert.
+
+Der [autoritative #188-Abschlussstand](analysis/availability-novelty-final-review-v1-20260907.md) ist inzwischen
+vollständig freigegeben. #189 übernimmt ausschließlich dessen TSV-Werte und Notizen; Umsetzung und exakter
+Abgleich stehen im [Migrationsbericht](analysis/availability-novelty-migration-20260907.md).
+Die Haltepunkte in Abschnitt 12 dokumentieren den historischen Reviewablauf und öffnen keine
+`APPROVED_FINAL`-Entscheidungen erneut. Die separate Kalibrierung in #190 bleibt gemeinsames Release-Gate.
 
 ## 1. Zentrale Trennung
 

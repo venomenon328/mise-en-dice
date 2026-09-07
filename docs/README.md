@@ -21,7 +21,9 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`DISCORD_INGREDIENT_LOOKUP.md`](DISCORD_INGREDIENT_LOOKUP.md): verbindliche Such-, Auswahl-, Darstellungs- und Modulgrenzen für die rein lesende Discord-Zutatenabfrage aus Issue #108
 - [`CANDIDATE_GENERATOR_DATA_READINESS.md`](CANDIDATE_GENERATOR_DATA_READINESS.md): gemessene Metadatenabdeckung und Gate für den Generatorstart
 - [`analysis/candidate-generator-data-readiness.sql`](analysis/candidate-generator-data-readiness.sql): reproduzierbare PostgreSQL-Auswertung des aktiven Ziehpools
-- [`analysis/availability-reference-anchors-v2-20260904.md`](analysis/availability-reference-anchors-v2-20260904.md): aktueller Vorschlag des strengeren Availability-Ankersatzes mit Marktbreiten-Abgrenzung und menschlichem Haltepunkt aus #188
+- [`analysis/availability-novelty-final-review-v1-20260907.md`](analysis/availability-novelty-final-review-v1-20260907.md): autoritativer #188-Abschlussstand; ausschließlich das dort verlinkte TSV liefert die freigegebenen Einzelwerte und Notizen
+- [`analysis/availability-novelty-migration-20260907.md`](analysis/availability-novelty-migration-20260907.md): #189-Migrationsumfang, exakter einmaliger QA-Abgleich, technischer Fingerprint und Release-Gate #190
+- [`analysis/availability-reference-anchors-v2-20260904.md`](analysis/availability-reference-anchors-v2-20260904.md): historische Vorbereitung des strengeren Availability-Ankersatzes; durch den finalen #188-Vertrag abgelöst
 - [`analysis/final-catalog-review-20260813.md`](analysis/final-catalog-review-20260813.md): verbindlicher fachlicher Review für den finalen Katalog
 - [`analysis/final-catalog-snapshot-contract-20260813.md`](analysis/final-catalog-snapshot-contract-20260813.md): Normalisierung, Upgrade-Schutz, Endfingerprint und Dimensionsabdeckung aus Issue #52
 - [`analysis/generator-laboratory-implementation-notes.md`](analysis/generator-laboratory-implementation-notes.md): kompakte Implementierungsgrenze des read-only Preview-/Replay-Kerns aus Phase 9E1

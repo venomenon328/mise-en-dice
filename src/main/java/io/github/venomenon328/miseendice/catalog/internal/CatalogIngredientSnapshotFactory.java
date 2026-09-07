@@ -46,6 +46,7 @@ final class CatalogIngredientSnapshotFactory {
             Map<String, Object> availability = referenceSnapshot(
                     value.participant().code(), value.participant().displayName(), value.participant().description());
             availability.put("level", value.level() == null ? null : value.level().name());
+            availability.put("curatorNote", value.curatorNote());
             return availability;
         }).toList());
         values.put("seasonality", detail.seasonality().stream().map(value -> Map.<String, Object>of(

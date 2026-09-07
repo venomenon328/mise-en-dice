@@ -63,8 +63,7 @@ class CatalogCommandService implements CatalogCommands {
                 : MetadataState.from(command.metadata());
         validateDrawability(command.active(), command.randomDrawEnabled(), metadata);
         List<String> weightWarnings = drawWeightWarnings(
-                command.active(), command.randomDrawEnabled(), command.baseDrawWeight(), command.noveltyLevel(),
-                metadata, false);
+                command.active(), command.randomDrawEnabled(), command.baseDrawWeight(), false);
         if (!weightWarnings.isEmpty() && !command.weightWarningsAcknowledged()) {
             throw new CatalogDrawWeightWarningException(weightWarnings);
         }
@@ -138,7 +137,6 @@ class CatalogCommandService implements CatalogCommands {
         }
         List<String> weightWarnings = drawWeightWarnings(
                 command,
-                resultingMetadata,
                 graphSemanticsChange
                         ? graph.hasDirectParentCode(command.conceptId(), "COOKING_ALCOHOL")
                         : hasDirectParentCode(command.conceptId(), "COOKING_ALCOHOL")
@@ -379,42 +377,22 @@ class CatalogCommandService implements CatalogCommands {
 
     private List<String> drawWeightWarnings(
             UpdateIngredientConceptCommand command,
-            MetadataState metadata,
             boolean directCookingAlcoholParent
     ) {
         return drawWeightWarnings(
-                command.active(), command.randomDrawEnabled(), command.baseDrawWeight(), command.noveltyLevel(),
-                metadata, directCookingAlcoholParent);
+                command.active(), command.randomDrawEnabled(), command.baseDrawWeight(), directCookingAlcoholParent);
     }
 
     private List<String> drawWeightWarnings(
             boolean active,
             boolean randomDrawEnabled,
             BigDecimal weight,
-            Integer noveltyLevel,
-            MetadataState metadata,
             boolean directCookingAlcoholParent
     ) {
         if (!active || !randomDrawEnabled) {
             return List.of();
         }
         List<String> warnings = new ArrayList<>();
-        if (noveltyLevel != null) {
-            BigDecimal cap = switch (noveltyLevel) {
-                case 5 -> new BigDecimal("0.25");
-                case 4 -> new BigDecimal("0.35");
-                case 3 -> new BigDecimal("0.55");
-                default -> null;
-            };
-            if (cap != null && weight.compareTo(cap) > 0) {
-                warnings.add("Die Kochungewöhnlichkeit Stufe %d hat in der Baseline einen Richtwert von höchstens %s."
-                        .formatted(noveltyLevel, cap));
-            }
-        }
-        if (metadata.availabilityByParticipant().containsValue(CatalogQueries.CatalogAvailability.DIFFICULT)
-                && weight.compareTo(new BigDecimal("0.35")) > 0) {
-            warnings.add("Schwierig beschaffbare Konzepte haben in der Baseline einen Richtwert von höchstens 0.35.");
-        }
         if (directCookingAlcoholParent && weight.compareTo(new BigDecimal("0.35")) > 0) {
             warnings.add("Direkte Konkretisierungen von Kochalkohol haben in der Baseline einen Richtwert von höchstens 0.35.");
         }
@@ -476,12 +454,26 @@ class CatalogCommandService implements CatalogCommands {
                     conceptId, code));
         }
 
-        jdbcTemplate.update("delete from ingredient_availability where ingredient_concept_id = ? "
-                + "and participant_id in (select id from participant where code in ('GEORGIA', 'TOBIAS'))", conceptId);
-        metadata.availabilityByParticipant().entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> jdbcTemplate.update(
-                "insert into ingredient_availability (ingredient_concept_id, participant_id, availability_level) "
-                        + "select ?, id, ? from participant where code = ?",
-                conceptId, entry.getValue().name(), entry.getKey()));
+        // Replace levels for the supported participants, preserving omitted notes for older callers.
+        for (String participant : List.of("GEORGIA", "TOBIAS")) {
+            var level = metadata.availabilityByParticipant().get(participant);
+            if (level == null) {
+                jdbcTemplate.update("delete from ingredient_availability where ingredient_concept_id = ? "
+                        + "and participant_id = (select id from participant where code = ?)", conceptId, participant);
+                continue;
+            }
+            boolean noteSupplied = metadata.availabilityNotesByParticipant().containsKey(participant);
+            String note = metadata.availabilityNotesByParticipant().get(participant);
+            note = note == null || note.isBlank() ? null : note.strip();
+            jdbcTemplate.update("""
+                    insert into ingredient_availability
+                        (ingredient_concept_id, participant_id, availability_level, curator_note)
+                    select ?, id, ?, ? from participant where code = ?
+                    on conflict (ingredient_concept_id, participant_id) do update
+                    set availability_level = excluded.availability_level,
+                        curator_note = case when ? then excluded.curator_note else ingredient_availability.curator_note end
+                    """, conceptId, level.name(), note, participant, noteSupplied);
+        }
 
         jdbcTemplate.update("delete from ingredient_seasonality where ingredient_concept_id = ?", conceptId);
         metadata.seasonalityByMonth().entrySet().stream()
@@ -514,30 +506,19 @@ class CatalogCommandService implements CatalogCommands {
     private record LockedConcept(long id, long version) {
     }
 
-    private record MetadataState(
-            Set<String> functionalRoleCodes,
-            Map<String, CatalogQueries.CatalogAvailability> availabilityByParticipant
-    ) {
-
+    private record MetadataState(Set<String> functionalRoleCodes) {
         private static MetadataState empty() {
-            return new MetadataState(Set.of(), Map.of());
+            return new MetadataState(Set.of());
         }
 
         private static MetadataState from(CatalogMetadata metadata) {
-            return new MetadataState(metadata.functionalRoleCodes(), metadata.availabilityByParticipant());
+            return new MetadataState(metadata.functionalRoleCodes());
         }
 
         private static MetadataState from(CatalogConceptDetail detail) {
-            Set<String> roles = detail.functionalRoles().stream()
+            return new MetadataState(detail.functionalRoles().stream()
                     .map(CatalogQueries.CatalogReferenceValue::code)
-                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
-            Map<String, CatalogQueries.CatalogAvailability> availability = new LinkedHashMap<>();
-            detail.availability().forEach(entry -> {
-                if (entry.level() != null) {
-                    availability.put(entry.participant().code(), entry.level());
-                }
-            });
-            return new MetadataState(roles, Map.copyOf(availability));
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet()));
         }
     }
 

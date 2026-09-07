@@ -196,6 +196,10 @@ class CatalogAdministrationEditingMvcTest {
         MockHttpSession session = authenticate();
         long warningConcept = insertConcept("WARNING", "Issue eleven warning", "SPECIFIC", true, false, 5);
         assignRequiredDrawMetadata(warningConcept);
+        jdbcTemplate.update("""
+                insert into ingredient_refinement (parent_concept_id, child_concept_id)
+                select id, ? from ingredient_concept where code = 'COOKING_ALCOHOL'
+                """, warningConcept);
 
         mockMvc.perform(post("/admin/catalog/{id}", warningConcept)
                         .session(session).with(csrf())
@@ -306,6 +310,65 @@ class CatalogAdministrationEditingMvcTest {
         assertTrue(jdbcTemplate.queryForObject("select count(*) = 0 from ingredient_culinary_dimension where ingredient_concept_id = ?", Boolean.class, concept));
         assertTrue(jdbcTemplate.queryForObject("select count(*) = 0 from ingredient_availability where ingredient_concept_id = ?", Boolean.class, concept));
         assertTrue(jdbcTemplate.queryForObject("select count(*) = 0 from ingredient_seasonality where ingredient_concept_id = ?", Boolean.class, concept));
+    }
+
+    @Test
+    void preservesAvailabilityNotesThroughValidationConflictRebaseAndAudit() throws Exception {
+        MockHttpSession session = authenticate();
+        long concept = insertConcept("NOTE_FLOW", "Technical note editor", "SPECIFIC", true, false, 1);
+        mockMvc.perform(noteSave(concept, 0, "Initial <technical> note.", "Initial second note.")
+                        .session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/admin/catalog/{id}", concept).session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Initial &lt;technical&gt; note.")));
+
+        mockMvc.perform(noteSave(concept, 1, "Unsaved note.", "Unsaved second note.")
+                        .param("availabilityNote[UNKNOWN]", "Invalid participant note.").session(session).with(csrf()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(containsString("Unsaved note.")))
+                .andExpect(content().string(containsString("Unsaved second note.")));
+        mockMvc.perform(noteSave(concept, 1, "Concurrent note.", "Concurrent second note.")
+                        .session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(noteSave(concept, 1, "My pending note.", "My second pending note.")
+                        .session(session).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(content().string(containsString("Concurrent note.")))
+                .andExpect(content().string(containsString("My pending note.")))
+                .andExpect(content().string(containsString("Beschaffbarkeitsnotiz Georgia")))
+                .andExpect(content().string(containsString("name=\"availabilityNote[GEORGIA]\"")));
+        mockMvc.perform(noteSave(concept, 2, "My pending note.", "My second pending note.")
+                        .param("continueEditing", "true").session(session).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("My pending note.")))
+                .andExpect(content().string(containsString("My second pending note.")));
+        assertTrue(jdbcTemplate.queryForObject("""
+                select a.curator_note = 'Concurrent note.' from ingredient_availability a
+                join participant p on p.id = a.participant_id
+                where ingredient_concept_id = ? and p.code = 'GEORGIA'
+                """, Boolean.class, concept));
+        mockMvc.perform(noteSave(concept, 2, "My pending note.", "My second pending note.")
+                        .session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        long auditId = jdbcTemplate.queryForObject("select max(id) from catalog_audit_entry where entity_id = ? and actor_key = ?",
+                Long.class, concept, ACTOR_KEY);
+        mockMvc.perform(get("/admin/audit").param("entry", Long.toString(auditId)).session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Beschaffbarkeitsnotiz")))
+                .andExpect(content().string(containsString("Concurrent note.")))
+                .andExpect(content().string(containsString("My pending note.")));
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder noteSave(
+            long concept, long version, String georgiaNote, String tobiasNote
+    ) {
+        return post("/admin/catalog/{id}", concept).param("displayName", "Technical note editor")
+                .param("active", "true").param("challengeSpecificity", "SPECIFIC")
+                .param("baseDrawWeight", "1.0").param("noveltyLevel", "1")
+                .param("curatorNote", "Technical concept note.").param("version", Long.toString(version))
+                .param("availability[GEORGIA]", "SPECIALTY").param("availability[TOBIAS]", "PLANNED")
+                .param("availabilityNote[GEORGIA]", georgiaNote).param("availabilityNote[TOBIAS]", tobiasNote);
     }
 
     @Test

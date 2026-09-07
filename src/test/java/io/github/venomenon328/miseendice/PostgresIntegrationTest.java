@@ -118,7 +118,16 @@ class PostgresIntegrationTest {
 
     @Test
     void administrationChangesetInitializesVersionsAndAuditSchema() {
-        assertThat(countWhere("ingredient_concept", "version = 0")).isEqualTo(count("ingredient_concept"));
+        // Migrated aggregates advance once; synthetic concepts created by this class start at zero.
+        assertThat(countWhere("ingredient_concept", "version = 1 and left(code, 5) <> 'TEST_'"))
+                .isEqualTo(countWhere("ingredient_concept", "left(code, 5) <> 'TEST_'"));
+        long newConcept = insertConcept("initial-version");
+        try {
+            assertThat(jdbcTemplate.queryForObject("select version from ingredient_concept where id = ?",
+                    Long.class, newConcept)).isZero();
+        } finally {
+            jdbcTemplate.update("delete from ingredient_concept where id = ?", newConcept);
+        }
         assertThat(countWhere("exclusion_rule", "version = 0")).isEqualTo(count("exclusion_rule"));
         assertThat(jdbcTemplate.queryForList(
                 """
@@ -204,7 +213,7 @@ class PostgresIntegrationTest {
             runLiquibase(connection, "db/changelog/db.changelog-before-administration.yaml");
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
 
-            assertThat(countWhere(connection, "ingredient_concept", "version = 0"))
+            assertThat(countWhere(connection, "ingredient_concept", "version = 1"))
                     .isEqualTo(count(connection, "ingredient_concept"));
             assertThat(countWhere(connection, "exclusion_rule", "version = 0"))
                     .isEqualTo(count(connection, "exclusion_rule"));

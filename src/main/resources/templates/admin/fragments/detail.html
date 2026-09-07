@@ -176,6 +176,7 @@
                 <dd>
                     <span class="availability-value" th:classappend="${entry.level == null} ? ' is-unmanaged'"
                           th:text="${entry.level == null ? 'nicht gepflegt' : availabilityLabels.get(entry.level)}">nicht gepflegt</span>
+                    <p class="muted-copy" th:text="${entry.curatorNote ?: 'Keine Beschaffbarkeitsnotiz gepflegt.'}">Notiz</p>
                 </dd>
             </div>
         </dl>
@@ -249,7 +250,10 @@
                     <div><dt>Flags</dt><dd th:text="${#strings.listJoin(form.metadata.culinaryFlagCodes, ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Kulinarische Zuordnung</dt><dd th:text="${#strings.listJoin(form.metadata.culinaryCountryCodes, ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Dimensionen</dt><dd th:text="${form.metadata.culinaryDimensionLevels}">nicht gepflegt</dd></div>
-                    <div><dt>Beschaffbarkeit</dt><dd th:text="${form.metadata.availabilitySummary()}">nicht gepflegt</dd></div>
+                    <th:block th:each="entry : ${currentDetail.availability}">
+                        <div th:classappend="${form.metadata.availability(entry.participant.code) != (entry.level == null ? '' : entry.level.name())} ? ' is-different'"><dt th:text="|Beschaffbarkeit ${entry.participant.displayName}|">Beschaffbarkeit</dt><dd th:text="${form.metadata.availabilityLabel(form.metadata.availability(entry.participant.code))}">Stufe</dd></div>
+                        <div th:classappend="${form.metadata.availabilityNote(entry.participant.code) != (entry.curatorNote ?: '')} ? ' is-different'"><dt th:text="|Beschaffbarkeitsnotiz ${entry.participant.displayName}|">Notiz</dt><dd th:text="${form.metadata.availabilityNote(entry.participant.code)}">Notiz</dd></div>
+                    </th:block>
                     <div><dt>Saison</dt><dd th:text="${form.metadata.seasonalityByMonth}">1.0</dd></div>
                 </dl>
                 <div th:if="${pendingRelationSummaries != null and !pendingRelationSummaries.isEmpty()}" class="conflict-relations" data-testid="pending-relation-conflict-summary">
@@ -273,7 +277,10 @@
                     <div><dt>Flags</dt><dd th:text="${#strings.listJoin(currentDetail.culinaryFlags.![code], ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Kulinarische Zuordnung</dt><dd th:text="${#strings.listJoin(currentDetail.culinaryCountries.![code], ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Dimensionen</dt><dd th:text="${currentDetail.culinaryDimensions}">nicht gepflegt</dd></div>
-                    <div><dt>Beschaffbarkeit</dt><dd th:text="${#strings.listJoin(currentDetail.availability.![participant.displayName + ': ' + (level == null ? 'nicht gepflegt' : availabilityLabels.get(level))], ', ')}">nicht gepflegt</dd></div>
+                    <th:block th:each="entry : ${currentDetail.availability}">
+                        <div th:classappend="${form.metadata.availability(entry.participant.code) != (entry.level == null ? '' : entry.level.name())} ? ' is-different'"><dt th:text="|Beschaffbarkeit ${entry.participant.displayName}|">Beschaffbarkeit</dt><dd th:text="${entry.level == null ? 'nicht gepflegt' : availabilityLabels.get(entry.level)}">Stufe</dd></div>
+                        <div th:classappend="${form.metadata.availabilityNote(entry.participant.code) != (entry.curatorNote ?: '')} ? ' is-different'"><dt th:text="|Beschaffbarkeitsnotiz ${entry.participant.displayName}|">Notiz</dt><dd th:text="${entry.curatorNote ?: 'keine'}">Notiz</dd></div>
+                    </th:block>
                     <div><dt>Saison</dt><dd th:text="${currentDetail.seasonality}">1.0</dd></div>
                     <div><dt>Direkte Eltern</dt><dd th:text="${#strings.listJoin(currentDetail.directParents.![displayName], ', ')} ?: 'keine'">keine</dd></div>
                     <div><dt>Direkte Kinder</dt><dd th:text="${#strings.listJoin(currentDetail.directChildren.![displayName], ', ')} ?: 'keine'">keine</dd></div>
@@ -296,6 +303,7 @@
                 <input th:each="country : ${form.metadata.culinaryCountryCodes}" type="hidden" name="culinaryCountry" th:value="${country}">
                 <input th:each="dimension : ${form.metadata.culinaryDimensionLevels}" type="hidden" th:name="|dimension[${dimension.key}]|" th:value="${dimension.value}">
                 <input th:each="availability : ${form.metadata.availabilityByParticipant}" type="hidden" th:name="|availability[${availability.key}]|" th:value="${availability.value}">
+                <input th:each="note : ${form.metadata.availabilityNotesByParticipant}" type="hidden" th:name="|availabilityNote[${note.key}]|" th:value="${note.value}">
                 <input th:each="season : ${form.metadata.seasonalityByMonth}" type="hidden" th:name="|seasonality[${season.key}]|" th:value="${season.value}">
                 <input th:each="pending : ${form.pendingRefinements}" type="hidden" name="relationChange" th:value="${pending.encoded()}">
                 <input type="hidden" name="continueEditing" value="true">
@@ -487,21 +495,19 @@
             <section class="detail-section" data-testid="availability-editor">
                 <div class="detail-section-heading"><p class="section-kicker">Beschaffung</p><h3>Georgia und Tobias</h3></div>
                 <div class="form-grid">
-                    <label>Georgia
-                        <select name="availability[GEORGIA]">
-                            <option value="" th:selected="${form.metadata.availability('GEORGIA').isEmpty()}">nicht gepflegt</option>
+                    <div class="textarea-field" th:each="person : ${ {'GEORGIA', 'TOBIAS'} }">
+                        <label th:for="|availability-${person}|" th:text="${person == 'GEORGIA' ? 'Georgia' : 'Tobias'}">Person</label>
+                        <select th:id="|availability-${person}|" th:name="|availability[${person}]|">
+                            <option value="" th:selected="${form.metadata.availability(person).isEmpty()}">nicht gepflegt</option>
                             <option th:each="level : ${availabilityLevels}" th:value="${level.name()}"
-                                    th:selected="${form.metadata.availability('GEORGIA') == level.name()}" th:text="${availabilityLabels.get(level)}">einfach</option>
+                                    th:selected="${form.metadata.availability(person) == level.name()}" th:text="${availabilityLabels.get(level)}">Stufe</option>
                         </select>
-                    </label>
-                    <label>Tobias
-                        <select name="availability[TOBIAS]">
-                            <option value="" th:selected="${form.metadata.availability('TOBIAS').isEmpty()}">nicht gepflegt</option>
-                            <option th:each="level : ${availabilityLevels}" th:value="${level.name()}"
-                                    th:selected="${form.metadata.availability('TOBIAS') == level.name()}" th:text="${availabilityLabels.get(level)}">einfach</option>
-                        </select>
-                    </label>
+                        <label th:for="|availability-note-${person}|">Beschaffbarkeitsnotiz</label>
+                        <textarea rows="3" th:id="|availability-note-${person}|" th:name="|availabilityNote[${person}]|"
+                                  th:text="${form.metadata.availabilityNote(person)}" aria-describedby="availability-note-help"></textarea>
+                    </div>
                 </div>
+                <p id="availability-note-help" class="muted-copy">Kurze konzeptspezifische Begründung je Person. Bei Stufenänderungen die Notiz prüfen. Zum Entfernen einer Bewertung Stufe und Notiz leeren.</p>
                 <div class="muted-copy" data-testid="availability-level-help"><p>Beschaffbarkeit wird pro Person und unabhängig von der Kochungewöhnlichkeit gepflegt.</p><p th:each="level : ${availabilityLevels}" th:text="|${availabilityLabels.get(level)}: ${availabilityDescriptions.get(level)}|">Spontan beschaffbar: Erklärung</p></div>
                 <p th:if="${formErrors != null and formErrors.get('availabilityGeorgia') != null}" class="field-error" th:text="${formErrors.get('availabilityGeorgia')}">Fehler</p>
                 <p th:if="${formErrors != null and formErrors.get('availabilityTobias') != null}" class="field-error" th:text="${formErrors.get('availabilityTobias')}">Fehler</p>

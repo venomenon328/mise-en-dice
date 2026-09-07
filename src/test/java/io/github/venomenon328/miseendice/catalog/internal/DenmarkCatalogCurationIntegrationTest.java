@@ -104,10 +104,8 @@ class DenmarkCatalogCurationIntegrationTest {
                 where concept.code = 'CONFECTIONERY'
                 """, Integer.class)).isZero();
 
-        assertThat(availability("DANBO", "TOBIAS")).isEqualTo("PLANNED");
-        assertThat(availability("DANBO", "GEORGIA")).isEqualTo("DIFFICULT");
-        assertThat(availability("ROD_POLSE", "TOBIAS")).isEqualTo("PLANNED");
-        assertThat(availability("ROD_POLSE", "GEORGIA")).isEqualTo("DIFFICULT");
+        // Availability was superseded by #189. Its generic migration contract is covered by
+        // AvailabilityNoveltyMigrationIntegrationTest; editorial values belong to the one-time review QA.
 
         assertThat(dimension("SALTY_LIQUORICE", "SALTINESS")).isEqualTo(5);
         assertThat(dimension("REMOULADE", "FATTINESS")).isEqualTo(5);
@@ -152,16 +150,6 @@ class DenmarkCatalogCurationIntegrationTest {
                 Boolean.class,
                 conceptCode
         ));
-    }
-
-    private String availability(String conceptCode, String participantCode) {
-        return jdbcTemplate.queryForObject("""
-                select availability.availability_level
-                from ingredient_availability availability
-                join ingredient_concept concept on concept.id = availability.ingredient_concept_id
-                join participant on participant.id = availability.participant_id
-                where concept.code = ? and participant.code = ?
-                """, String.class, conceptCode, participantCode);
     }
 
     private int dimension(String conceptCode, String dimensionCode) {
