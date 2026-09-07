@@ -164,8 +164,13 @@ Das Challenge-Modul greift nicht direkt auf Katalogtabellen oder interne Reposit
 Die personenspezifischen Availability-Notizen aus #189 gehören ausschließlich zur Katalogpflege und zum
 Audit. Sie sind kein Teil dieses Snapshots, seiner Fingerprints oder der Gewichtung. Die revidierten Live-Stufen
 und Novelty-Werte gelten für neue Snapshots; gespeicherte Generationen bleiben unverändert replayfähig.
-Die vorläufigen fünf Availability-Faktoren aus #187 bleiben bis zur Abnahme von #190 bestehen. #189 und #190
-bilden ein gemeinsames Release-Gate; technische Migrationsfähigkeit allein ist keine fachliche Produktionsfreigabe.
+Die vorläufigen fünf Availability-Faktoren aus #187 bleiben bis zur ausdrücklichen Abnahme und Übernahme in
+#190B bestehen. Die Messstufe #190A/#202 ist in
+[`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md)
+dokumentiert. #189 und #190 bilden ein gemeinsames Release-Gate; technische Migrationsfähigkeit und eine
+Kalibrierungsempfehlung allein sind keine fachliche Produktionsfreigabe. Der dort bestätigte Target-/Actual-
+Bandfehlfit und die gezielte `CAUTIOUS`-A/B-Nachmessung empfehlen zusätzlich stärker getrennte Novelty-Zielfaktoren;
+Load-Punkte, Caps und alle produktiven Werte bleiben bis #190B unverändert.
 
 ### 3.2 Visible History Snapshot
 
@@ -245,6 +250,10 @@ Maßgeblich ist der restriktivste vorhandene Beschaffbarkeitswert des vorab mate
 | kein Wert vorhanden | 1,00 (neutral) |
 
 `DIFFICULT` bleibt damit möglich, wird aber deutlich seltener. Die Satzselektion begrenzt zusätzlich Kandidaten mit schwieriger Beschaffbarkeit.
+Dies ist weiterhin der produktive Übergangsstand. #202 empfiehlt nach einer expliziten Stichprobe und einer gezielten
+Nachmessung bei festem `TARGET_FACTOR_REBALANCED` für die spätere menschliche Entscheidung `PLANNED = 0,22`,
+`SPECIALTY = 0,06` und `DIFFICULT = 0,01`; diese Werte sind hier nicht übernommen. Maßgeblich für Befund und Grenzen
+ist der verlinkte Kalibrierungsbericht.
 
 ### 5.3 Saisonfaktor
 
@@ -951,9 +960,11 @@ Die Implementierung bildet sämtliche Defaults in einem unveränderlichen fachli
 | Cooldown-Grenzen | 9 / 12 / 16 | streng aufsteigend, jeweils höchstens 104 |
 | Ausschluss-Hardcooldown | 4 Challenges | 0 bis 52 |
 | Ausschluss-Abklinggrenze | 7 Challenges | größer als Hardcooldown, höchstens 104 |
-| `PLANNED`-Faktor | 0,45 | größer als `DIFFICULT`, höchstens 1 |
-| `SPECIALTY`-Faktor | 0,15 | größer als `DIFFICULT`, kleiner als `PLANNED` |
-| `DIFFICULT`-Faktor | 0,03 | größer 0, kleiner als `PLANNED` |
+| `EASY`-Faktor | 1,00 | exakt 1 |
+| `PLANNED`-Faktor | 0,45 | kleiner als 1, größer als `SPECIALTY` |
+| `SPECIALTY`-Faktor | 0,15 | kleiner als `PLANNED`, größer als `DIFFICULT` |
+| `DIFFICULT`-Faktor | 0,03 | größer 0, kleiner als `SPECIALTY` |
+| `UNAVAILABLE`-Faktor | 0,00 | exakt 0 |
 | Stufe-5-Cap | 1 | 0 bis 4 |
 | Stufe-4/5-Cap | 2 | mindestens Stufe-5-Cap, höchstens 4 |
 | Neuigkeitslast-Cap | 11 | 0 bis 28 |
@@ -1002,7 +1013,8 @@ Der produktive Default für neue Sessions ist `generatorVersion = 1.2.0`,
 
 Fail-fast-Validierung mindestens für:
 
-- positive und endliche Faktoren,
+- endliche Faktoren und den Availability-Vertrag
+  `EASY = 1`, `UNAVAILABLE = 0`, `1 > PLANNED > SPECIALTY > DIFFICULT > 0`,
 - Score- und Ähnlichkeitsgewichte mit Summe 1,
 - jede Ähnlichkeits-Untergewichtsgruppe mit Summe exakt 1 und Vorfahrenanteil in `[0,1]`,
 - Zielquoten mit Summe 12 vor und nach jeder kontextabhängigen Projektion,
@@ -1301,9 +1313,18 @@ Sequenzfortschreibung, Timeout und technische Fehler ab.
 ### 20.4 Aktueller Kalibrierungsumfang
 
 Die begrenzte aktuelle Simulation deckt feste Seeds mit `AUTO`, `NONE` und `REQUIRED` ab; der normale Nachweis
-bleibt `./mvnw clean verify`. Die getrennte, reproduzierbare Availability-Kalibrierung aus Issue #152 ist in
+bleibt `./mvnw clean verify`. Die aktuelle Availability-/Novelty-Kalibrierungsstichprobe aus #202 ist in
+[`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md)
+dokumentiert. Sie läuft ausschließlich mit `-Dissue190.report=true`, umfasst Februar/August, zwei feste Seeds und
+alle fachlich wichtigeren Matrixachsen und wird niemals vom normalen Build oder CI gestartet. Der historische
+#152-Smoke bleibt unter
 [`analysis/availability-weight-calibration-2026-08-22.md`](analysis/availability-weight-calibration-2026-08-22.md)
-dokumentiert. Breite, künstliche Null-/Eins-Varianten werden nicht fortgeführt.
+erhalten. Der #202-Bericht empfiehlt nach der fokussierten Availability-Nachmessung
+`PLANNED = 0,22 / SPECIALTY = 0,06 / DIFFICULT = 0,01`, übernimmt die Faktoren aber nicht produktiv.
+Eine zusätzliche kleine A/B-Nachmessung umfasst nur 12 `CAUTIOUS`-Kernfälle je Novelty-Arm und empfiehlt
+`TARGET_FACTOR_REBALANCED`; sie kehrt weder zur großen Matrix zurück noch ändert sie Load-Punkte oder Caps.
+Die darauf folgende kleine Availability-Nachmessung hält genau diese Novelty-Variante fest und vergleicht
+`PLANNED = 0,30 / 0,22 / 0,15` bei unverändertem SPECIALTY/DIFFICULT, Load-Punkten und Caps.
 
 ## 21. Test- und Simulationsvertrag
 

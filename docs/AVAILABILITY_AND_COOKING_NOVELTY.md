@@ -430,7 +430,19 @@ effectiveWeight =
   × noveltyTargetFactor
 ```
 
-Die endgültigen fünfstufigen Beschaffbarkeitsfaktoren werden nach der Katalogrevision in #190 empirisch kalibriert.
+Der generische Konfigurationsvertrag lautet strikt:
+
+```text
+EASY = 1
+UNAVAILABLE = 0
+1 > PLANNED > SPECIALTY > DIFFICULT > 0
+```
+
+Die Kalibrierungsstichprobe aus #190A/#202 ist in
+[`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md)
+dokumentiert. Die gezielte Nachmessung bei festem `TARGET_FACTOR_REBALANCED` empfiehlt für die spätere menschliche
+Entscheidung `0,22 / 0,06 / 0,01`; sie übernimmt diese Werte nicht produktiv. Load-Punkte und Caps bleiben auch
+in dieser Nachmessung unverändert. Bis #190B bleiben Availability und Novelty produktiv unverändert.
 
 Verbindliche fachliche Zielrichtung:
 
@@ -553,8 +565,12 @@ Nach der Schärfung vom 4. September und der gezielten Novelty-Reaudit vom 6. Se
 3. **#189 – Freigegebene Werte und Notizen persistieren**  
    Reviewwerte append-only übernehmen, personenspezifische Beschaffbarkeitsnotizen pflegbar machen und pauschale Gewichtskopplungen entfernen.
 
-4. **#190 – Generator neu kalibrieren**  
-   Fünfstufige Beschaffbarkeitsfaktoren und Novelty-Ziele mit einer breiten reproduzierbaren PostgreSQL-Matrix prüfen, final entscheiden und dokumentieren.
+4. **#190A/#202 – Generator messen und Empfehlung dokumentieren**
+   Fünfstufige Beschaffbarkeitsfaktoren und zunächst unveränderte Novelty-Ziele mit einer expliziten reproduzierbaren
+   PostgreSQL-Stichprobe prüfen; bei bestätigtem Fehlfit eine kleine isolierte Novelty-A/B-Nachmessung durchführen;
+   keine produktiven Faktoren übernehmen.
+5. **#190B/#203 – Freigegebene Faktoren übernehmen**
+   Erst nach menschlicher Berichtsabnahme die numerische Entscheidung versioniert konfigurieren und regressionsprüfen.
 
 ## 14. Nicht-Ziele
 

@@ -234,7 +234,16 @@ Die bislang verwendeten Faktoren `PLANNED = 0,65` und `DIFFICULT = 0,20` gewicht
 
 `DIFFICULT` bezeichnet eine zwar nicht logisch unmögliche, praktisch aber nur mit unverhältnismäßigem Reise-, Import- oder Kostenaufwand realisierbare Beschaffung. Es soll deshalb selten, aber nicht vollständig ausgeschlossen bleiben.
 
-Im Übergangspaket gilt für `SPECIALTY` der Faktor `0,15`; die bestehenden Faktoren bleiben unverändert. Die spätere numerische Kalibrierung erfolgt bewusst in einem eigenen Paket und verändert nicht stillschweigend Neuigkeitsziele, Kandidaten-Caps oder andere Generatorparameter. Die fachliche Stufendefinition steht verbindlich in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md).
+Diese Tabelle bleibt der produktive Übergangsstand. Die Stichprobe aus #190A/#202 empfiehlt nach einer gezielten
+Nachmessung mit festem `TARGET_FACTOR_REBALANCED` für die menschliche Prüfung `PLANNED = 0,22`, `SPECIALTY = 0,06`
+und `DIFFICULT = 0,01`, übernimmt sie aber nicht; Details und Grenzen
+stehen in [`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md).
+Eine produktive Änderung einschließlich Konfigurationsversionswechsel gehört ausschließlich in #190B. Dabei werden
+Novelty-Ziele, Kandidaten-Caps und andere Generatorparameter nicht stillschweigend mitverändert. Der Bericht weist
+den Novelty-Target-/Actual-Fehlfit separat aus und empfiehlt nach einer kleinen isolierten A/B-Nachmessung konkret
+stärker getrennte Zielfaktoren; Load-Punkte und Caps bleiben dabei unverändert. Die fachliche Stufendefinition steht
+verbindlich in
+[`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md).
 
 ### 7.4 Katalogprojektion und Modulgrenze
 
@@ -381,7 +390,8 @@ Die Umsetzung wird in drei getrennte Pakete geschnitten:
 
 1. **Transportneutraler Teilnehmer-/Elektoratskern**: Schema, Application-APIs, frühes Session-Elektorat, sparse Beschaffbarkeit und Stilllegung der Participation-Autorität.
 2. **Discord-Administration und Legacy-Bootstrap**: `/teilnehmer`-Commands, DB-basierte Runtime-Auflösung und kontrollierte Übernahme der bisherigen Properties-Map.
-3. **Beschaffbarkeitskalibrierung**: reproduzierbare Vorher-/Nachher-Messung, Faktoren `0,45` und `0,03`, Konfigurationsversionswechsel und gezielte Regressionstests.
+3. **Beschaffbarkeitskalibrierung**: #190A/#202 misst read-only und dokumentiert eine Empfehlung; #190B/#203
+   übernimmt erst nach menschlicher Freigabe Faktoren und Konfigurationsversion und ergänzt gezielte Regressionstests.
 
 Die Pakete bauen in dieser Reihenfolge aufeinander auf. Die numerische Kalibrierung wird nicht in das strukturelle Kernpaket gemischt.
 

@@ -1,5 +1,8 @@
 # Availability-Gewichtung: Kalibrierungsbericht
 
+> Historischer Stand. Die aktuelle Kalibrierungsstichprobe auf dem nach #189 revidierten Katalog ist in
+> [`availability-novelty-calibration-20260907.md`](availability-novelty-calibration-20260907.md) dokumentiert.
+
 Stand: 22. August 2026
 Issue: #152
 

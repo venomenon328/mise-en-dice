@@ -306,9 +306,9 @@ public record GeneratorConfiguration(
         BigDecimal unavailable = factors.get(Availability.UNAVAILABLE);
         if (easy.compareTo(ONE) != 0 || unavailable.signum() != 0 || difficult.signum() <= 0
                 || specialty.compareTo(difficult) <= 0 || planned.compareTo(specialty) <= 0
-                || planned.compareTo(ONE) > 0) {
+                || planned.compareTo(ONE) >= 0) {
             throw new IllegalArgumentException(
-                    "Availability factors require EASY=1, UNAVAILABLE=0, and 0<DIFFICULT<SPECIALTY<PLANNED<=1");
+                    "Availability factors require EASY=1, UNAVAILABLE=0, and 0<DIFFICULT<SPECIALTY<PLANNED<1");
         }
     }
 
