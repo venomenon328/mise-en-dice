@@ -238,8 +238,10 @@ Diese Tabelle bleibt der produktive Übergangsstand. Die Stichprobe aus #190A/#2
 Prüfung `PLANNED = 0,30`, `SPECIALTY = 0,06` und `DIFFICULT = 0,01`, übernimmt sie aber nicht; Details und Grenzen
 stehen in [`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md).
 Eine produktive Änderung einschließlich Konfigurationsversionswechsel gehört ausschließlich in #190B. Dabei werden
-Novelty-Ziele, Kandidaten-Caps und andere Generatorparameter nicht stillschweigend mitverändert. Die fachliche
-Stufendefinition steht verbindlich in
+Novelty-Ziele, Kandidaten-Caps und andere Generatorparameter nicht stillschweigend mitverändert. Der Bericht weist
+den Novelty-Target-/Actual-Fehlfit separat aus und empfiehlt nach einer kleinen isolierten A/B-Nachmessung konkret
+stärker getrennte Zielfaktoren; Load-Punkte und Caps bleiben dabei unverändert. Die fachliche Stufendefinition steht
+verbindlich in
 [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md).
 
 ### 7.4 Katalogprojektion und Modulgrenze

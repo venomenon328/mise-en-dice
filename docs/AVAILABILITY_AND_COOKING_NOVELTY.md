@@ -441,7 +441,9 @@ UNAVAILABLE = 0
 Die Kalibrierungsstichprobe aus #190A/#202 ist in
 [`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md)
 dokumentiert. Sie empfiehlt für die spätere menschliche Entscheidung `0,30 / 0,06 / 0,01`, übernimmt diese Werte
-aber nicht produktiv. Bis #190B bleibt der Übergangsstand `0,45 / 0,15 / 0,03` gültig.
+aber nicht produktiv. Der dort direkt ausgewiesene Target-/Actual-Bandfehlfit führte zusätzlich zu einer kleinen
+isolierten A/B-Nachmessung auf `CAUTIOUS`; empfohlen werden stärker getrennte Novelty-Zielfaktoren bei unveränderten
+Load-Punkten und Caps. Bis #190B bleiben Availability und Novelty produktiv unverändert.
 
 Verbindliche fachliche Zielrichtung:
 
@@ -565,8 +567,9 @@ Nach der Schärfung vom 4. September und der gezielten Novelty-Reaudit vom 6. Se
    Reviewwerte append-only übernehmen, personenspezifische Beschaffbarkeitsnotizen pflegbar machen und pauschale Gewichtskopplungen entfernen.
 
 4. **#190A/#202 – Generator messen und Empfehlung dokumentieren**
-   Fünfstufige Beschaffbarkeitsfaktoren und unveränderte Novelty-Ziele mit einer expliziten reproduzierbaren
-   PostgreSQL-Stichprobe prüfen; keine produktiven Faktoren übernehmen.
+   Fünfstufige Beschaffbarkeitsfaktoren und zunächst unveränderte Novelty-Ziele mit einer expliziten reproduzierbaren
+   PostgreSQL-Stichprobe prüfen; bei bestätigtem Fehlfit eine kleine isolierte Novelty-A/B-Nachmessung durchführen;
+   keine produktiven Faktoren übernehmen.
 5. **#190B/#203 – Freigegebene Faktoren übernehmen**
    Erst nach menschlicher Berichtsabnahme die numerische Entscheidung versioniert konfigurieren und regressionsprüfen.
 

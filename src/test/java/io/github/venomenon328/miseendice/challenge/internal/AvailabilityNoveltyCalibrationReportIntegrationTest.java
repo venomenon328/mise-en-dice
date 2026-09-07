@@ -18,6 +18,7 @@ import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.Compar
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine.GeneratedCandidateSet;
 import io.github.venomenon328.miseendice.challenge.api.GenerationContext.ManualRequirement;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration;
+import io.github.venomenon328.miseendice.challenge.api.GeneratorConfiguration.NoveltyConfiguration;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorLaboratory.HistoryScenario;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.AttemptType;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.NoveltyBand;
@@ -74,8 +75,9 @@ import tools.jackson.databind.ObjectMapper;
 @Testcontainers
 class AvailabilityNoveltyCalibrationReportIntegrationTest {
     private static final String BASE_COMMIT = "e9f0637a0c0af7720bd79c2be45e92185b70c55b";
-    private static final String REPORT_VERSION = "ISSUE_202_AVAILABILITY_NOVELTY_CALIBRATION_REPORT_V1";
+    private static final String REPORT_VERSION = "ISSUE_202_AVAILABILITY_NOVELTY_CALIBRATION_REPORT_V2";
     private static final String SCENARIO_VERSION = "ISSUE_202_CALIBRATION_MATRIX_V1";
+    private static final String NOVELTY_AB_SCENARIO_VERSION = "ISSUE_202_NOVELTY_AB_MATRIX_V1";
     private static final int SCALE = 12;
     private static final RoundingMode ROUNDING = RoundingMode.HALF_EVEN;
     private static final Path OUTPUT = Path.of("target", "generator-simulation",
@@ -120,7 +122,9 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
         FrozenCatalog frozenCatalog = materializeCatalog();
         CatalogState catalogBefore = frozenCatalog.state();
         SimulationRequest matrix = calibrationRequest();
+        SimulationRequest noveltyAbMatrix = noveltyAbRequest();
         assertThat(matrix.plannedCases()).isEqualTo(96);
+        assertThat(noveltyAbMatrix.plannedCases()).isEqualTo(12);
 
         Map<String, CalibrationRun> runs = new TreeMap<>();
         Map<String, Long> runtimes = new TreeMap<>();
@@ -141,25 +145,48 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
             variantExecutor.shutdownNow();
         }
 
+        Map<String, CalibrationRun> noveltyAbRuns = new TreeMap<>();
+        Map<String, Long> noveltyAbRuntimes = new TreeMap<>();
+        ExecutorService noveltyExecutor = Executors.newFixedThreadPool(NoveltyVariant.values().length);
+        try {
+            Map<NoveltyVariant, CompletableFuture<VariantExecution>> executions =
+                    new EnumMap<>(NoveltyVariant.class);
+            for (NoveltyVariant variant : NoveltyVariant.values()) {
+                executions.put(variant, CompletableFuture.supplyAsync(
+                        () -> executeNoveltyVariant(variant, production, noveltyAbMatrix,
+                                frozenCatalog.snapshotsByMonth()),
+                        noveltyExecutor));
+            }
+            for (NoveltyVariant variant : NoveltyVariant.values()) {
+                VariantExecution execution = executions.get(variant).join();
+                noveltyAbRuns.put(variant.name(), execution.run());
+                noveltyAbRuntimes.put(variant.name(), execution.elapsedMillis());
+            }
+        } finally {
+            noveltyExecutor.shutdownNow();
+        }
+
         CatalogState catalogAfter = materializeCatalog().state();
         Map<String, Long> operationalAfter = operationalCounts();
         assertThat(operationalAfter).isEqualTo(operationalBefore);
         assertThat(catalogAfter.fingerprintsByMonth()).isEqualTo(catalogBefore.fingerprintsByMonth());
 
-        Map<String, Object> canonicalReport = canonicalReport(production, matrix, catalogBefore,
-                operationalBefore, operationalAfter, runs);
+        Map<String, Object> canonicalReport = canonicalReport(production, matrix, noveltyAbMatrix, catalogBefore,
+                operationalBefore, operationalAfter, runs, noveltyAbRuns);
         String canonicalFingerprint = sha256(CanonicalSetFingerprint.canonicalBytes(canonicalReport));
         Map<String, Object> document = map();
         document.put("canonicalFingerprint", canonicalFingerprint);
         document.put("canonicalReport", canonicalReport);
         document.put("runtime", Map.of(
                 "elapsedMillisByVariant", runtimes,
+                "noveltyAbElapsedMillisByVariant", noveltyAbRuntimes,
                 "totalElapsedMillis", elapsedMillis(startedNanos)));
         Files.createDirectories(OUTPUT.getParent());
         Files.write(OUTPUT, CanonicalSetFingerprint.canonicalBytes(document));
 
         assertThat(Files.readString(OUTPUT)).contains(canonicalFingerprint, REPORT_VERSION,
-                "HUMAN_REVIEW_REQUIRED", "STRONG", "SPECIALTY");
+                "HUMAN_REVIEW_REQUIRED", "STRONG", "SPECIALTY", "TARGET_FACTOR_REBALANCED",
+                "targetActualBandComparison");
     }
 
     private VariantExecution executeVariant(
@@ -181,6 +208,31 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
                 reproducibilityRequest(), catalogsByMonth);
         assertThat(firstProbe.canonicalDocument()).isEqualTo(secondProbe.canonicalDocument());
         System.out.printf("[issue-202] completed %s in %d ms%n", variant.name(), elapsedMillis);
+        return new VariantExecution(run, elapsedMillis);
+    }
+
+    private VariantExecution executeNoveltyVariant(
+            NoveltyVariant variant,
+            GeneratorConfiguration production,
+            SimulationRequest matrix,
+            Map<Integer, CatalogGeneratorSnapshot> catalogsByMonth
+    ) {
+        GeneratorConfiguration cautious = withAvailabilityFactors(production, Variant.CAUTIOUS.factors());
+        GeneratorConfiguration configuration = withNovelty(cautious, variant.novelty(cautious.novelty()));
+        assertNoveltyAbScope(production, configuration, variant);
+        long variantStarted = System.nanoTime();
+        System.out.printf("[issue-202] starting novelty A/B %s (%d cases)%n",
+                variant.name(), matrix.plannedCases());
+        CalibrationRun run = run("NOVELTY_AB_" + variant.name(), configuration, matrix, catalogsByMonth);
+        long elapsedMillis = elapsedMillis(variantStarted);
+        assertComplete(run.report(), matrix.plannedCases());
+
+        CalibrationRun firstProbe = run("NOVELTY_AB_" + variant.name() + "-probe-1", configuration,
+                reproducibilityRequest(), catalogsByMonth);
+        CalibrationRun secondProbe = run("NOVELTY_AB_" + variant.name() + "-probe-2", configuration,
+                reproducibilityRequest(), catalogsByMonth);
+        assertThat(firstProbe.canonicalDocument()).isEqualTo(secondProbe.canonicalDocument());
+        System.out.printf("[issue-202] completed novelty A/B %s in %d ms%n", variant.name(), elapsedMillis);
         return new VariantExecution(run, elapsedMillis);
     }
 
@@ -295,6 +347,21 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
                 GeneratorSimulation.SimulationControl.unbounded());
     }
 
+    private static SimulationRequest noveltyAbRequest() {
+        List<SimulationScenario> scenarios = new ArrayList<>();
+        ExplicitSeeds seeds = new ExplicitSeeds(SEEDS);
+        for (int month : SAMPLE_MONTHS) {
+            LocalDate date = LocalDate.of(2026, month, 15);
+            for (Map.Entry<NoveltyCadence, HistoryScenario> cadence : orderedHistories()) {
+                scenarios.add(scenario("NOVELTY_AB_%02d_%s".formatted(month, cadence.getKey()),
+                        seeds, date, cadence.getValue(), AttemptType.INITIAL, List.of(),
+                        io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode.NONE));
+            }
+        }
+        return new SimulationRequest(NOVELTY_AB_SCENARIO_VERSION, scenarios, 12,
+                GeneratorSimulation.SimulationControl.unbounded());
+    }
+
     private static List<Map.Entry<NoveltyCadence, HistoryScenario>> orderedHistories() {
         return HISTORIES.entrySet().stream().sorted(Map.Entry.comparingByKey()).toList();
     }
@@ -314,10 +381,12 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
     private Map<String, Object> canonicalReport(
             GeneratorConfiguration production,
             SimulationRequest matrix,
+            SimulationRequest noveltyAbMatrix,
             CatalogState catalog,
             Map<String, Long> operationalBefore,
             Map<String, Long> operationalAfter,
-            Map<String, CalibrationRun> runs
+            Map<String, CalibrationRun> runs,
+            Map<String, CalibrationRun> noveltyAbRuns
     ) {
         Map<String, Object> root = map();
         Map<String, Object> metadata = map();
@@ -352,7 +421,17 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
         method.put("samplingLimitation",
                 "FEBRUARY_AUGUST_AND_TWO_FIXED_SEEDS_BY_EXPLICIT_PROJECT_OWNER_RUNTIME_DECISION");
         method.put("seeds", SEEDS);
-        method.put("totalCases", matrix.plannedCases() * Variant.values().length);
+        method.put("noveltyAb", Map.of(
+                "availabilityVariant", Variant.CAUTIOUS.name(),
+                "casesPerVariant", noveltyAbMatrix.plannedCases(),
+                "months", SAMPLE_MONTHS,
+                "noveltyCadences", List.of("RECOVERY", "NEUTRAL", "SEEKING_VARIETY"),
+                "restrictionMode", "NONE",
+                "scenarioVersion", NOVELTY_AB_SCENARIO_VERSION,
+                "seeds", SEEDS,
+                "views", List.of("INITIAL")));
+        method.put("totalCases", matrix.plannedCases() * Variant.values().length
+                + noveltyAbMatrix.plannedCases() * NoveltyVariant.values().length);
         method.put("views", List.of("INITIAL", "REROLL"));
         root.put("method", method);
 
@@ -366,9 +445,24 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
         }
         root.put("configurationVariants", configurationVariants);
 
+        Map<String, Object> noveltyAbConfigurationVariants = map();
+        GeneratorConfiguration cautious = withAvailabilityFactors(production, Variant.CAUTIOUS.factors());
+        for (NoveltyVariant variant : NoveltyVariant.values()) {
+            GeneratorConfiguration configuration = withNovelty(cautious, variant.novelty(cautious.novelty()));
+            noveltyAbConfigurationVariants.put(variant.name(), Map.of(
+                    "availabilityFactors", stringFactors(configuration.availabilityFactors()),
+                    "configurationFingerprint",
+                    GeneratorSimulationReportCodec.configurationFingerprint(configuration),
+                    "novelty", noveltyDocument(configuration.novelty())));
+        }
+        root.put("noveltyAbConfigurationVariants", noveltyAbConfigurationVariants);
+
         Map<String, Object> variantReports = map();
         runs.forEach((name, run) -> variantReports.put(name, run.canonicalDocument()));
         root.put("variants", variantReports);
+        Map<String, Object> noveltyAbReports = map();
+        noveltyAbRuns.forEach((name, run) -> noveltyAbReports.put(name, run.canonicalDocument()));
+        root.put("noveltyAb", noveltyAbReports);
         root.put("readOnlyVerification", Map.of(
                 "catalogFingerprintsUnchanged", true,
                 "operationalRowCountsAfter", operationalAfter,
@@ -423,6 +517,52 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
                 source.fallbacks(), source.processingLease());
     }
 
+    private static GeneratorConfiguration withNovelty(
+            GeneratorConfiguration source,
+            NoveltyConfiguration novelty
+    ) {
+        return new GeneratorConfiguration(source.generatorVersion(), source.configurationVersion(),
+                source.rngAlgorithm(), source.canonicalPayloadVersion(), source.candidateSetSize(),
+                source.reservoirTarget(), source.reservoirStrictMinimum(), source.reservoirRelaxedOneMinimum(),
+                source.maximumProposalAttempts(), source.weightQuantization(), source.exclusionProbability(),
+                source.availabilityFactors(), source.cooldown(), source.exclusion(), novelty, source.anchorRoles(),
+                source.supportRoles(), source.flavorRoles(), source.profiles(), source.profileWeights(),
+                source.profileSetTargets(), source.specificityWeights(), source.specificitySetTargets(),
+                source.cadenceSetTargets(), source.scoreWeights(), source.similarityWeights(), source.similarity(),
+                source.selection(), source.fallbacks(), source.processingLease());
+    }
+
+    private static void assertNoveltyAbScope(
+            GeneratorConfiguration production,
+            GeneratorConfiguration measured,
+            NoveltyVariant variant
+    ) {
+        assertThat(measured.availabilityFactors()).isEqualTo(Variant.CAUTIOUS.factors());
+        assertThat(measured.novelty().loadPoints()).isEqualTo(production.novelty().loadPoints());
+        assertThat(measured.novelty().levelFiveCap()).isEqualTo(production.novelty().levelFiveCap());
+        assertThat(measured.novelty().highLevelCap()).isEqualTo(production.novelty().highLevelCap());
+        assertThat(measured.novelty().loadCap()).isEqualTo(production.novelty().loadCap());
+        assertThat(measured.novelty().targetFactors())
+                .isEqualTo(variant.novelty(production.novelty()).targetFactors());
+        assertThat(withAvailabilityFactors(measured, production.availabilityFactors()))
+                .isEqualTo(withNovelty(production, measured.novelty()));
+    }
+
+    private static Map<String, Object> noveltyDocument(NoveltyConfiguration novelty) {
+        Map<String, Object> factors = map();
+        novelty.targetFactors().forEach((band, byLevel) -> {
+            Map<String, String> values = new TreeMap<>();
+            byLevel.forEach((level, factor) -> values.put(Integer.toString(level), factor.toPlainString()));
+            factors.put(band.name(), Map.copyOf(values));
+        });
+        return Map.of(
+                "highLevelCap", novelty.highLevelCap(),
+                "levelFiveCap", novelty.levelFiveCap(),
+                "loadCap", novelty.loadCap(),
+                "loadPoints", novelty.loadPoints(),
+                "targetFactors", factors);
+    }
+
     private static Map<String, String> stringFactors(Map<Availability, BigDecimal> factors) {
         Map<String, String> result = new TreeMap<>();
         factors.forEach((key, value) -> result.put(key.name(), value.toPlainString()));
@@ -469,6 +609,33 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
 
         Map<Availability, BigDecimal> factors() {
             return factors;
+        }
+    }
+
+    private enum NoveltyVariant {
+        CURRENT,
+        TARGET_FACTOR_REBALANCED;
+
+        NoveltyConfiguration novelty(NoveltyConfiguration source) {
+            if (this == CURRENT) {
+                return source;
+            }
+            return new NoveltyConfiguration(source.loadPoints(), Map.of(
+                    NoveltyBand.FAMILIAR, factors("1.25", "1.10", "0.70", "0.15", "0.00"),
+                    NoveltyBand.BALANCED, factors("0.40", "0.75", "1.50", "1.20", "0.35"),
+                    NoveltyBand.ADVENTUROUS, factors("0.05", "0.15", "0.80", "2.00", "2.00")),
+                    source.levelFiveCap(), source.highLevelCap(), source.loadCap());
+        }
+
+        private static Map<Integer, BigDecimal> factors(
+                String one,
+                String two,
+                String three,
+                String four,
+                String five
+        ) {
+            return Map.of(1, new BigDecimal(one), 2, new BigDecimal(two), 3, new BigDecimal(three),
+                    4, new BigDecimal(four), 5, new BigDecimal(five));
         }
     }
 
@@ -647,6 +814,7 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
         private final Map<String, Long> noveltyRequirements = counts("1", "2", "3", "4", "5");
         private final Map<String, Long> actualNoveltyBands = counts("FAMILIAR", "BALANCED", "ADVENTUROUS");
         private final Map<String, Long> targetNoveltyBands = counts("FAMILIAR", "BALANCED", "ADVENTUROUS");
+        private final Map<String, Long> targetActualNoveltyBandCross = new TreeMap<>();
         private final Map<String, Long> availabilityFactors = new TreeMap<>();
         private final Map<String, Long> availabilityNoveltyCross = new TreeMap<>();
         private final Map<String, Long> hardRejections = new TreeMap<>();
@@ -683,8 +851,10 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
             for (AcceptedProposal candidate : set.candidates()) {
                 candidates++;
                 String band = candidate.evaluation().actualNoveltyBand().name();
+                String targetBand = candidate.targetNoveltyBand().name();
                 increment(actualNoveltyBands, band);
-                increment(targetNoveltyBands, candidate.targetNoveltyBand().name());
+                increment(targetNoveltyBands, targetBand);
+                increment(targetActualNoveltyBandCross, targetBand + "/" + band);
                 noveltyLoads.add(BigDecimal.valueOf(candidate.evaluation().knownNoveltyLoad()));
                 availabilityScores.add(candidate.evaluation().components().get(ScoreComponent.AVAILABILITY_LOAD));
                 EnumSet<Availability> present = EnumSet.noneOf(Availability.class);
@@ -753,6 +923,9 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
                     "usage", countsAndShares(fallbackUsage, sets)));
             result.put("novelty", Map.ofEntries(
                     Map.entry("actualBandFrequency", countsAndShares(actualNoveltyBands, candidates)),
+                    Map.entry("targetActualBandComparison", targetActualBandComparison()),
+                    Map.entry("targetActualBandCrossFrequency",
+                            countsAndShares(targetActualNoveltyBandCross, candidates)),
                     Map.entry("candidateLoad", summary(noveltyLoads)),
                     Map.entry("candidatesWithMultipleNovelty4Or5", Map.of(
                             "count", candidatesWithMultipleNoveltyFourOrFive,
@@ -770,6 +943,21 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
                     "plannedOrHarderWithNovelty4Or5", Map.of(
                             "count", requirementsPlannedOrHarderWithNoveltyFourOrFive,
                             "share", share(requirementsPlannedOrHarderWithNoveltyFourOrFive, randomRequirements))));
+            return result;
+        }
+
+        private Map<String, Object> targetActualBandComparison() {
+            Map<String, Object> result = map();
+            for (NoveltyBand band : NoveltyBand.values()) {
+                long target = targetNoveltyBands.get(band.name());
+                long actual = actualNoveltyBands.get(band.name());
+                result.put(band.name(), Map.of(
+                        "actualCount", actual,
+                        "actualShare", share(actual, candidates),
+                        "gapActualMinusTarget", share(actual - target, candidates),
+                        "targetCount", target,
+                        "targetShare", share(target, candidates)));
+            }
             return result;
         }
 

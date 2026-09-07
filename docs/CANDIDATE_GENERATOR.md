@@ -168,7 +168,9 @@ Die vorläufigen fünf Availability-Faktoren aus #187 bleiben bis zur ausdrückl
 #190B bestehen. Die Messstufe #190A/#202 ist in
 [`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md)
 dokumentiert. #189 und #190 bilden ein gemeinsames Release-Gate; technische Migrationsfähigkeit und eine
-Kalibrierungsempfehlung allein sind keine fachliche Produktionsfreigabe.
+Kalibrierungsempfehlung allein sind keine fachliche Produktionsfreigabe. Der dort bestätigte Target-/Actual-
+Bandfehlfit und die gezielte `CAUTIOUS`-A/B-Nachmessung empfehlen zusätzlich stärker getrennte Novelty-Zielfaktoren;
+Load-Punkte, Caps und alle produktiven Werte bleiben bis #190B unverändert.
 
 ### 3.2 Visible History Snapshot
 
@@ -1317,6 +1319,8 @@ alle fachlich wichtigeren Matrixachsen und wird niemals vom normalen Build oder 
 #152-Smoke bleibt unter
 [`analysis/availability-weight-calibration-2026-08-22.md`](analysis/availability-weight-calibration-2026-08-22.md)
 erhalten. Der #202-Bericht empfiehlt `CAUTIOUS`, übernimmt die Faktoren aber nicht produktiv.
+Eine zusätzliche kleine A/B-Nachmessung umfasst nur 12 `CAUTIOUS`-Kernfälle je Novelty-Arm und empfiehlt
+`TARGET_FACTOR_REBALANCED`; sie kehrt weder zur großen Matrix zurück noch ändert sie Load-Punkte oder Caps.
 
 ## 21. Test- und Simulationsvertrag
 

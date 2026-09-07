@@ -1,11 +1,11 @@
 # Availability-/Novelty-Kalibrierung aus #202
 
 Stand: 7. September 2026. Dieser Bericht ist der menschliche Haltepunkt zwischen #190A und #190B.
-Er empfiehlt eine Faktorvariante, übernimmt sie aber ausdrücklich nicht in die produktive Konfiguration.
+Er empfiehlt Faktorvarianten, übernimmt sie aber ausdrücklich nicht in die produktive Konfiguration.
 
 ## Ergebnis und Empfehlung
 
-Für eine spätere, ausdrücklich freizugebende Übernahme wird `CAUTIOUS` empfohlen:
+Für Availability wird weiterhin `CAUTIOUS` empfohlen:
 
 | Variante | `EASY` | `PLANNED` | `SPECIALTY` | `DIFFICULT` | `UNAVAILABLE` |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -17,39 +17,55 @@ Für eine spätere, ausdrücklich freizugebende Übernahme wird `CAUTIOUS` empfo
 Übergangsstand von 23,72 % auf 13,89 %, ohne eine Stufe vollständig aus der Stichprobe zu verdrängen.
 `STRONG` senkt nur noch auf 12,66 %, halbiert dabei aber `SPECIALTY` erneut und erzeugt kein einziges
 `DIFFICULT`-Requirement. Außerdem benötigte `CAUTIOUS` nie einen Fallback, während `TRANSITION` zwei und
-`STRONG` vier Sätze erst in `RELAXED_1` bilden konnten. Reservoirfüllung und Proposal-Aufwand zeigen keinen
-gegenläufigen technischen Vorteil von `STRONG`.
+`STRONG` vier Sätze erst in `RELAXED_1` bilden konnten.
 
-Die aktuelle Novelty-Konfiguration bleibt als Empfehlung unverändert. Strengere Availability-Faktoren verschieben
-die tatsächlichen Bänder sichtbar in Richtung `FAMILIAR`; die verkleinerte Stichprobe belegt aber keinen isolierten
-Novelty-Fehlfit und rechtfertigt daher weder Ziel-Faktor-, Load- noch Cap-Änderungen. Insbesondere ist dies keine
-Freigabe, die beobachtete geringe `ADVENTUROUS`-Rate über ein gekoppeltes Tuning zu kompensieren.
+Der Review-Befund zum Novelty-Fehlfit bestätigt sich. Die auf `CAUTIOUS` gezogenen Zielbänder werden von den
+tatsächlichen Kandidatenbändern systematisch in Richtung `FAMILIAR` verfehlt. Eine kleine isolierte A/B-Messung
+empfiehlt deshalb für die spätere menschliche Freigabe `TARGET_FACTOR_REBALANCED`: nur die Novelty-Zielfaktoren
+werden stärker nach Bändern getrennt; Load-Punkte und Caps bleiben unverändert.
+
+| Stufe | `FAMILIAR` | `BALANCED` | `ADVENTUROUS` |
+| ---: | ---: | ---: | ---: |
+| 1 | 1,25 | **0,40** | **0,05** |
+| 2 | 1,10 | **0,75** | **0,15** |
+| 3 | 0,70 | **1,50** | **0,80** |
+| 4 | 0,15 | **1,20** | **2,00** |
+| 5 | 0,00 | **0,35** | **2,00** |
+
+Der B-Arm erhöhte den tatsächlichen `ADVENTUROUS`-Anteil gegenüber A in `NEUTRAL` von 4,17 % auf 12,50 %
+und in `SEEKING_VARIETY` von 2,08 % auf 18,75 %. `RECOVERY` blieb bei 0 %. Alle A/B-Sätze blieben `STRICT`;
+es gab keine Erschöpfung, technischen Fehler, Novelty-Cap-/Load-Rejections oder Hard-Rule-Verletzungen.
+Die Empfehlung ist wegen der kleinen Nachmessung ein menschlich zu prüfender Messvorschlag, keine automatische
+Produktionsentscheidung.
 
 Entscheidungsstatus: **`HUMAN_REVIEW_REQUIRED`**. `application.yml`, `configuration-version`, Generatorversion,
-RNG, Katalogdaten und produktive Novelty-Werte bleiben unverändert.
+RNG, Katalogdaten und sämtliche produktiven Availability-/Novelty-Werte bleiben unverändert.
 
 ## Eingefrorene Eingaben und Fingerprints
 
 - Ausgangscommit: `e9f0637a0c0af7720bd79c2be45e92185b70c55b`
 - Generator: `1.2.0`; Konfiguration: `2026-09-03.1`; RNG: `SPLITMIX64_V1`
-- Reportversion: `ISSUE_202_AVAILABILITY_NOVELTY_CALIBRATION_REPORT_V1`
-- Szenarioversion: `ISSUE_202_CALIBRATION_MATRIX_V1`
+- Reportversion: `ISSUE_202_AVAILABILITY_NOVELTY_CALIBRATION_REPORT_V2`
+- Availability-Szenarioversion: `ISSUE_202_CALIBRATION_MATRIX_V1`
+- Novelty-A/B-Szenarioversion: `ISSUE_202_NOVELTY_AB_MATRIX_V1`
 - Run-Katalogfingerprint: `74fc5f93461c9c20f326a07af78a7f95f63b73538e1e07528668fb17ab599bab`
 - Februar-Snapshot: `7d5bb16b35029a92ea2fae59033643b78a9a605420821723a62867ce8f3c8569`
 - August-Snapshot: `250c75f6e0be47a1143c98df8f1f0b24c515d7f53cafb2f4f7eea76c4dc4b760`
 - Konfiguration `TRANSITION`: `8f75ed7e9f961bd82d4d4874003fc7fe00fe9e1bca30ddb3817f88887dba9cd3`
-- Konfiguration `CAUTIOUS`: `6349be167afc7c9bf304f1dff62b5fd4bb1909b863c2680164bf9f0c0f1386f7`
+- Konfiguration `CAUTIOUS` / Novelty A `CURRENT`: `6349be167afc7c9bf304f1dff62b5fd4bb1909b863c2680164bf9f0c0f1386f7`
+- Konfiguration Novelty B `TARGET_FACTOR_REBALANCED`: `972a7f9ae3d7dd2ba2a0068d7c491f11d6722992a378b9a07f4d262c2f616be1`
 - Konfiguration `STRONG`: `32a8d5a229cd9d57ff3d8582169046f6c735bcdbc66090a41fa489af4d6011f8`
-- kanonischer Reportfingerprint: `1cbe0eda0372f7ad20337f49a44dd42ab0c06bfe22e7069734e8d9ec2b6d69a2`
+- kanonischer Reportfingerprint: `59f89364f7e97f627042449dee7e7aa6c62951c1887f0b627098d6aac0edfae9`
 
 Laufzeitdaten liegen außerhalb des kanonischen Fingerprints. Der maschinenlesbare Bericht wird unter
 `target/generator-simulation/availability-novelty-calibration-report.json` erzeugt und nicht eingecheckt.
 
-## Stichprobenmatrix
+## Messaufbau
 
 Auf ausdrückliche Entscheidung des Projekteigners wurde die ursprünglich in #202 vorgesehene 4.608-Fall-Matrix
-wegen ihrer für dieses private Projekt unverhältnismäßigen mehrstündigen Laufzeit verkleinert. Die Stichprobe behält
-die fachlich wichtigeren Achsen vollständig und behandelt Saisonalität nur als Winter-/Sommer-Kontrast:
+wegen ihrer für dieses private Projekt unverhältnismäßigen mehrstündigen Laufzeit verkleinert. Die akzeptierte
+Availability-Stichprobe behält die fachlich wichtigeren Achsen vollständig und behandelt Saisonalität nur als
+Winter-/Sommer-Kontrast:
 
 - Februar und August;
 - `RECOVERY`, `NEUTRAL` und `SEEKING_VARIETY`;
@@ -58,17 +74,22 @@ die fachlich wichtigeren Achsen vollständig und behandelt Saisonalität nur als
 - in der Manual-Matrix ein beziehungsweise zwei unklassifizierte zulässige Manuals mit `AUTO`;
 - feste Seeds `190202001` und `190202008`.
 
-Das sind je Variante 48 Kern- und 48 Manual-Fälle, insgesamt 96; über drei Varianten wurden 288 vollständige
-Generatorfälle berechnet. Die Varianten liefen unabhängig parallel, der Fallloop innerhalb jeder Variante strikt
-sequenziell. Alle Varianten verwendeten dieselben vorab materialisierten Snapshots, Szenarien und Seeds. Ein
-zusätzlicher identischer Einzelfall wurde je Variante zweimal ausgeführt und kanonisch verglichen.
+Das sind je Availability-Variante 48 Kern- und 48 Manual-Fälle, insgesamt 96; über drei Varianten wurden 288
+vollständige Generatorfälle berechnet. Die Varianten liefen unabhängig parallel, der Fallloop innerhalb jeder
+Variante strikt sequenziell. Alle verwendeten dieselben vorab materialisierten Snapshots, Szenarien und Seeds.
 
-Gemessene Variantenlaufzeiten: `TRANSITION` 688.738 ms, `CAUTIOUS` 689.902 ms, `STRONG` 689.800 ms;
-Gesamtlaufzeit einschließlich PostgreSQL-Aufbau, Snapshot- und Read-only-Prüfung 698.871 ms.
+Die Novelty-Nachmessung kehrt ausdrücklich nicht zu dieser Matrix oder zur ursprünglich geplanten Großmatrix zurück.
+Sie vergleicht auf `CAUTIOUS` nur A `CURRENT` und B `TARGET_FACTOR_REBALANCED` über Februar/August, alle drei
+Kadenzen, `INITIAL`, `NONE` und dieselben zwei Seeds: 12 Fälle je Arm, 24 insgesamt. `NONE` isoliert die
+Novelty-Wirkung von Restriktionszufall; REROLL und Manuals werden nicht erneut vermessen. Ein zusätzlicher identischer
+Einzelfall wurde je Availability- und Novelty-Variante zweimal ausgeführt und kanonisch verglichen.
+
+Gemessene Laufzeiten: `TRANSITION` 636.887 ms, `CAUTIOUS` 634.928 ms, `STRONG` 636.231 ms; Novelty A 42.161 ms,
+Novelty B 42.402 ms. Gesamtlaufzeit einschließlich PostgreSQL-Aufbau, Snapshots und Read-only-Prüfung: 694.091 ms.
 
 ## Availability-Ergebnisse
 
-Jede Variante erzeugte 96 vollständige Sätze mit 1.152 Kandidaten und 3.744 zufälligen Requirements.
+Jede Availability-Variante erzeugte 96 vollständige Sätze mit 1.152 Kandidaten und 3.744 zufälligen Requirements.
 
 | Variante | `PLANNED` Requirements | `SPECIALTY` Requirements | `DIFFICULT` Requirements | Kandidaten mit P / S / D |
 | --- | ---: | ---: | ---: | ---: |
@@ -91,31 +112,71 @@ Maschinenreport weist je Availability-Stufe Verteilungen von `base_draw_weight`,
 Novelty-Ziel- und Effektivfaktor aus. Der Anteil zufälliger Requirements mit `PLANNED` oder schwieriger und zugleich
 Novelty 4/5 sank von 2,30 % (`TRANSITION`) auf 1,28 % (`CAUTIOUS`) und 1,12 % (`STRONG`).
 
-## Novelty-Ergebnisse
+## Target-/Actual-Bandbefund der Availability-Matrix
 
-Die Novelty-Konfiguration war in allen Varianten identisch (Load-Punkte 0/1/2/4/7, Stufe-5-Cap 1,
-Stufe-4/5-Cap 2, Load-Cap 11).
+`targetBandFrequency` bezeichnet das an jedem ausgewählten Kandidaten gespeicherte gezogene Zielband; `Actual`
+ist dessen aus Requirements und Load-Punkten berechnetes tatsächliches Band. Die konfigurierten Zwölfer-Baselines
+sind vor einer möglichen Kontextprojektion `5/7/0` für `RECOVERY`, `3/7/2` für `NEUTRAL` und `2/7/3` für
+`SEEKING_VARIETY`. Folgende Gegenüberstellung verwendet direkt die bereits im Maschinenreport erhobenen Target-
+und Actual-Werte:
 
-| Variante | N1 | N2 | N3 | N4 | N5 | tatsächliche Bänder F / B / A | mehrere N4/5 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `TRANSITION` | 45,30 % | 36,32 % | 13,19 % | 4,86 % | 0,32 % | 56,94 % / 40,97 % / 2,08 % | 0,52 % |
-| `CAUTIOUS` | 49,52 % | 35,95 % | 10,04 % | 4,11 % | 0,37 % | 65,28 % / 33,16 % / 1,56 % | 0,35 % |
-| `STRONG` | 51,98 % | 34,62 % | 9,08 % | 4,11 % | 0,21 % | 68,06 % / 31,25 % / 0,69 % | 0,00 % |
+| Variante | Kadenz | Target F / B / A | Actual F / B / A |
+| --- | --- | ---: | ---: |
+| `TRANSITION` | `RECOVERY` | 45,83 % / 54,17 % / 0,00 % | 66,15 % / 33,85 % / 0,00 % |
+| `TRANSITION` | `NEUTRAL` | 29,17 % / 56,25 % / 14,58 % | 55,21 % / 42,71 % / 2,08 % |
+| `TRANSITION` | `SEEKING_VARIETY` | 23,44 % / 49,48 % / 27,08 % | 49,48 % / 46,35 % / 4,17 % |
+| `CAUTIOUS` | `RECOVERY` | 58,85 % / 41,15 % / 0,00 % | 78,65 % / 21,35 % / 0,00 % |
+| `CAUTIOUS` | `NEUTRAL` | 36,46 % / 51,04 % / 12,50 % | 61,98 % / 36,98 % / 1,04 % |
+| `CAUTIOUS` | `SEEKING_VARIETY` | 25,52 % / 51,56 % / 22,92 % | 55,21 % / 41,15 % / 3,65 % |
+| `STRONG` | `RECOVERY` | 49,48 % / 50,52 % / 0,00 % | 75,00 % / 25,00 % / 0,00 % |
+| `STRONG` | `NEUTRAL` | 33,33 % / 50,52 % / 16,15 % | 66,15 % / 33,33 % / 0,52 % |
+| `STRONG` | `SEEKING_VARIETY` | 29,17 % / 51,56 % / 19,27 % | 63,02 % / 35,42 % / 1,56 % |
 
-Die mittlere Novelty-Last betrug 2,7431 / 2,4410 / 2,2986; kein finaler Kandidat überschritt die unveränderten
-Caps und die Reservoir-Metriken verzeichneten null Cap-/Load-bedingte harte Proposal-Ausschlüsse. `RECOVERY`
-erzeugte in allen Varianten 0 % `ADVENTUROUS`; `SEEKING_VARIETY` erhöhte den Anteil gegenüber
-`NEUTRAL` jeweils sichtbar (4,17 % gegenüber 2,08 % bei `TRANSITION`, 3,65 % gegenüber 1,04 % bei `CAUTIOUS`,
-1,56 % gegenüber 0,52 % bei `STRONG`). Die N3-Anteile je tatsächlichem Band und alle Availability-/Novelty-
-Kreuzhäufigkeiten stehen vollständig im Maschinenreport.
+Insgesamt liegt `CAUTIOUS` bei Target 40,28 % / 47,92 % / 11,81 %, tatsächlich aber bei
+65,28 % / 33,16 % / 1,56 %. Das ist kein Stichprobenargument gegen eine Nachmessung, sondern der bestätigte
+systematische Fehlfit: Das gezogene Band steuert die tatsächliche Kandidatenlast zu schwach.
+
+## Gezielte Novelty-A/B-Nachmessung auf `CAUTIOUS`
+
+Beide Arme verwendeten unveränderte Load-Punkte `0/1/2/4/7`, Stufe-5-Cap `1`, Stufe-4/5-Cap `2` und Load-Cap
+`11`. Nur B ersetzte die oben dokumentierten Zielfaktoren. Die Target-/Actual-Gegenüberstellung zeigt:
+
+| Arm | Kadenz | Target F / B / A | Actual F / B / A |
+| --- | --- | ---: | ---: |
+| A `CURRENT` | `RECOVERY` | 52,08 % / 47,92 % / 0,00 % | 68,75 % / 31,25 % / 0,00 % |
+| A `CURRENT` | `NEUTRAL` | 31,25 % / 52,08 % / 16,67 % | 45,83 % / 50,00 % / 4,17 % |
+| A `CURRENT` | `SEEKING_VARIETY` | 22,92 % / 50,00 % / 27,08 % | 45,83 % / 52,08 % / 2,08 % |
+| B `TARGET_FACTOR_REBALANCED` | `RECOVERY` | 39,58 % / 60,42 % / 0,00 % | 47,92 % / 52,08 % / 0,00 % |
+| B `TARGET_FACTOR_REBALANCED` | `NEUTRAL` | 14,58 % / 54,17 % / 31,25 % | 27,08 % / 60,42 % / 12,50 % |
+| B `TARGET_FACTOR_REBALANCED` | `SEEKING_VARIETY` | 12,50 % / 62,50 % / 25,00 % | 25,00 % / 56,25 % / 18,75 % |
+
+Über alle drei Kadenzen verbesserte B die tatsächlichen Bänder von 53,47 % / 44,44 % / 2,08 % auf
+33,33 % / 56,25 % / 10,42 %. Gegen seine gezogenen Zielbänder reduzierte sich der absolute Gap bei
+`FAMILIAR` von 18,06 auf 11,11 Prozentpunkte, bei `BALANCED` von 5,56 auf 2,78 und bei `ADVENTUROUS` von
+12,50 auf 8,33 Prozentpunkte. Der verbleibende Gap ist sichtbar und wird nicht als perfekte Kalibrierung ausgegeben.
+
+Die Requirement-Verteilung verschob sich von N1/N2/N3/N4/N5 = 45,49 % / 40,45 % / 10,59 % / 3,13 % /
+0,35 % auf 34,55 % / 40,28 % / 17,88 % / 6,94 % / 0,35 %. Die mittlere Kandidatenlast stieg von 3,0625
+auf 4,2500. Kandidaten mit mehreren N4/5-Requirements stiegen kontrolliert von 0,69 % auf 4,17 %; Requirements
+mit Novelty 4/5 und zugleich `PLANNED` oder schwieriger von 0,87 % auf 2,43 %. Kein Kandidat überschritt Caps
+oder Load-Grenze. Damit erhöht B insbesondere kontextgebundene N3- und ungewöhnliche N4-Verwendungen, ohne N5
+in dieser Stichprobe häufiger zu machen.
+
+Die kleine A/B-Matrix kann seltene Seed- oder Manual-Interaktionen nicht ausschließen. Ihr Ergebnis ist dennoch
+richtungskonsistent in `NEUTRAL` und `SEEKING_VARIETY`, erhält die Recovery-Hardrule und zeigt keinen technischen
+Trade-off: beide Arme benötigten im Mittel rund 145 Proposal Attempts, füllten alle Reservoirs vollständig und
+erzeugten ausschließlich `STRICT`-Sätze. Deshalb wird B konkret für die menschliche Entscheidung empfohlen;
+eine weitere große Matrix ist für #202 nicht erforderlich.
 
 ## Fallback, Integrität und Read-only-Grenze
 
-| Variante | `STRICT` | `RELAXED_1` | `RELAXED_2` | erschöpft | technische Fehler | Hard-Rule-Verletzungen |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `TRANSITION` | 94 | 2 | 0 | 0 | 0 | 0 |
-| `CAUTIOUS` | 96 | 0 | 0 | 0 | 0 | 0 |
-| `STRONG` | 92 | 4 | 0 | 0 | 0 | 0 |
+| Messbereich | Variante | `STRICT` | `RELAXED_1` | `RELAXED_2` | erschöpft | technische Fehler | Hard-Rule-Verletzungen |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Availability | `TRANSITION` | 94 | 2 | 0 | 0 | 0 | 0 |
+| Availability | `CAUTIOUS` | 96 | 0 | 0 | 0 | 0 | 0 |
+| Availability | `STRONG` | 92 | 4 | 0 | 0 | 0 | 0 |
+| Novelty A/B | `CURRENT` | 12 | 0 | 0 | 0 | 0 | 0 |
+| Novelty A/B | `TARGET_FACTOR_REBALANCED` | 12 | 0 | 0 | 0 | 0 | 0 |
 
 Cooldown-, Restriction-, Quoten-, Set-Cap-, strikte Paarmittel- und Recovery-Kadenz-Invarianten blieben ohne
 Verletzung. Vor und nach dem Lauf waren alle geprüften operativen Tabellen leer und die Katalogfingerprints gleich.
@@ -124,10 +185,11 @@ Calls, insbesondere keine OpenAI- oder Discord-Requests.
 
 ## Grenzen und Reproduktion
 
-Die Stichprobe kann seltene Erschöpfungen oder Seed-Ausreißer nicht statistisch ausschließen. Februar und August
-liefern nur einen groben Saisonkontrast; Monatsverläufe sind nicht ableitbar. Die Manual-Fälle verwenden absichtlich
-unklassifizierten Freitext und messen keine Verteilung konkreter manueller Katalogkonzepte. Deshalb ist `CAUTIOUS`
-eine begründete Empfehlung für die menschliche Prüfung, keine automatische Produktionsentscheidung.
+Die Availability-Stichprobe kann seltene Erschöpfungen oder Seed-Ausreißer nicht statistisch ausschließen. Februar
+und August liefern nur einen groben Saisonkontrast; Monatsverläufe sind nicht ableitbar. Die Manual-Fälle verwenden
+absichtlich unklassifizierten Freitext und messen keine Verteilung konkreter manueller Katalogkonzepte. Die Novelty-
+A/B-Nachmessung ist noch enger und isoliert absichtlich nur Zielfaktoren. Deshalb sind `CAUTIOUS` und
+`TARGET_FACTOR_REBALANCED` begründete Empfehlungen für die menschliche Prüfung, keine automatische Freigabe.
 
 Der Lauf ist hart opt-in und bleibt außerhalb normaler Builds und CI:
 
@@ -143,6 +205,7 @@ Der normale Nachweis bleibt:
 
 Lokale Abnahme am 7. September 2026:
 
-- Opt-in-Lauf erfolgreich: 1 Test, 288/288 Generatorfälle, 0 Fehler, 0 Überspringungen, 716,6 s Testzeit;
-- regulärer Lauf erfolgreich: 496 Tests, 0 Fehler, 1 erwarteter früher Skip der Opt-in-Klasse;
-- `git diff --check` ohne Befund.
+- Opt-in-Lauf erfolgreich: 1 Test, 312/312 dokumentierte Generatorfälle, 0 Fehler, 0 Überspringungen,
+  710,3 s Testzeit; davon 288 Availability- und 24 Novelty-A/B-Fälle;
+- regulärer Lauf erfolgreich: 496 Tests, 0 Fehler, 1 erwartete Überspringung der Opt-in-Klasse;
+- `git diff --check`: ohne Befund.
