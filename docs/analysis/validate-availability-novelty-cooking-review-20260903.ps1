@@ -21,6 +21,7 @@ function Assert-ReviewCondition {
 $inputPath = Join-Path $PSScriptRoot 'availability-novelty-cooking-input-20260903.csv'
 $reviewPath = Join-Path $PSScriptRoot 'availability-novelty-cooking-review-20260903.tsv'
 $comparisonPath = Join-Path $PSScriptRoot 'availability-novelty-cooking-comparison-20260903.tsv'
+$reauditPath = Join-Path $PSScriptRoot 'availability-novelty-cooking-low-level-reaudit-20260906.tsv'
 $ledgerPath = Join-Path $PSScriptRoot 'availability-novelty-review-ledger-20260903.csv'
 $anchorPath = Join-Path $PSScriptRoot 'availability-novelty-reference-anchor-decisions-20260903.csv'
 $structurePath = Join-Path $PSScriptRoot 'availability-novelty-structure-decisions-20260903.csv'
@@ -28,6 +29,7 @@ $structurePath = Join-Path $PSScriptRoot 'availability-novelty-structure-decisio
 $inputRows = @(Import-Csv -Encoding UTF8 $inputPath)
 $reviewRows = @(Import-Csv -Encoding UTF8 -Delimiter "`t" $reviewPath)
 $comparisonRows = @(Import-Csv -Encoding UTF8 -Delimiter "`t" $comparisonPath)
+$reauditRows = @(Import-Csv -Encoding UTF8 -Delimiter "`t" $reauditPath)
 $ledgerRows = @(Import-Csv -Encoding UTF8 $ledgerPath)
 $anchorRows = @(Import-Csv -Encoding UTF8 $anchorPath)
 $structureRows = @(Import-Csv -Encoding UTF8 $structurePath)
@@ -58,10 +60,23 @@ $expectedReviewColumns = @(
     'review_flags',
     'approval_status'
 )
+$expectedReauditColumns = @(
+    'concept_code',
+    'display_name',
+    'source_review_head',
+    'previous_proposed_cooking_novelty',
+    'reaudited_cooking_novelty',
+    'reaudit_outcome',
+    'reaudit_note',
+    'approval_status'
+)
+$reauditColumns = @($reauditRows[0].PSObject.Properties.Name)
 Assert-ReviewCondition (($inputColumns -join ',') -eq ($expectedInputColumns -join ',')) `
     'The blinded cooking input schema differs from the expected review-safe projection.'
 Assert-ReviewCondition (($reviewColumns -join ',') -eq ($expectedReviewColumns -join ',')) `
     'The cooking novelty review schema differs from the expected proposal schema.'
+Assert-ReviewCondition (($reauditColumns -join ',') -eq ($expectedReauditColumns -join ',')) `
+    'The cooking novelty re-audit schema differs from the expected audit schema.'
 foreach ($forbiddenColumn in $forbiddenInputColumns) {
     Assert-ReviewCondition ($forbiddenColumn -notin $inputColumns) `
         "The blinded cooking input unexpectedly contains '$forbiddenColumn'."
@@ -133,15 +148,14 @@ Assert-ReviewCondition ($invalidApplicableRows.Count -eq 0) `
 
 $approvedAnchorRows = @($reviewRows | Where-Object approval_status -eq 'APPROVED_ANCHOR')
 $approvedStructureRows = @($reviewRows | Where-Object approval_status -eq 'APPROVED_NOT_APPLICABLE')
+$approvedHumanCorrectionRows = @($reviewRows | Where-Object approval_status -eq 'APPROVED_HUMAN_CORRECTION_CHARGE_1')
 $proposedRows = @($reviewRows | Where-Object approval_status -eq 'PROPOSED_FOR_HUMAN_REVIEW')
 Assert-ReviewCondition ($approvedAnchorRows.Count -eq 38) `
     "Expected 38 approved numeric anchors, found $($approvedAnchorRows.Count)."
 Assert-ReviewCondition ($approvedStructureRows.Count -eq 7) `
     "Expected 7 approved structure rows, found $($approvedStructureRows.Count)."
-Assert-ReviewCondition ($proposedRows.Count -eq 815) `
-    "Expected 815 proposals for human review, found $($proposedRows.Count)."
 Assert-ReviewCondition (
-    ($approvedAnchorRows.Count + $approvedStructureRows.Count + $proposedRows.Count) -eq $reviewRows.Count
+    ($approvedAnchorRows.Count + $approvedStructureRows.Count + $approvedHumanCorrectionRows.Count + $proposedRows.Count) -eq $reviewRows.Count
 ) 'The novelty review contains an unknown or misplaced approval status.'
 
 $readyCurryPaste = @($reviewRows | Where-Object concept_code -eq 'READY_CURRY_PASTE')
@@ -155,6 +169,65 @@ $reviewByCode = @{}
 foreach ($row in $reviewRows) {
     $reviewByCode[$row.concept_code] = $row
 }
+
+$duplicateReauditCodes = @($reauditRows | Group-Object concept_code | Where-Object Count -ne 1)
+$unknownReauditCodes = @($reauditRows | Where-Object { -not $reviewByCode.ContainsKey($_.concept_code) })
+$invalidReauditRows = @(
+    $reauditRows |
+        Where-Object {
+            $_.source_review_head -ne '5cb9e82ec9e2d367a996c945750edf9c3bce7559' -or
+            $_.previous_proposed_cooking_novelty -notmatch '^[1-3]$' -or
+            $_.reaudited_cooking_novelty -notmatch '^[1-5]$' -or
+            [string]::IsNullOrWhiteSpace($_.reaudit_note) -or
+            $_.reaudit_outcome -notin @(
+                'REAUDITED_RETAINED',
+                'REAUDIT_CORRECTED_PROPOSAL',
+                'HUMAN_CORRECTION_CHARGE_1'
+            )
+        }
+)
+Assert-ReviewCondition ($reauditRows.Count -eq 816) `
+    "Expected the 816 source N1/N2/N3 concepts in the targeted re-audit, found $($reauditRows.Count)."
+Assert-ReviewCondition ($duplicateReauditCodes.Count -eq 0) 'The cooking novelty re-audit contains duplicate concept codes.'
+Assert-ReviewCondition ($unknownReauditCodes.Count -eq 0) 'The cooking novelty re-audit contains unknown concept codes.'
+Assert-ReviewCondition ($invalidReauditRows.Count -eq 0) 'The cooking novelty re-audit contains invalid lineage, values, outcomes, or notes.'
+
+$inconsistentReauditRows = @(
+    foreach ($auditRow in $reauditRows) {
+        $reviewRow = $reviewByCode[$auditRow.concept_code]
+        $previous = [int] $auditRow.previous_proposed_cooking_novelty
+        $reaudited = [int] $auditRow.reaudited_cooking_novelty
+        $reviewFlags = @($reviewRow.review_flags -split '\|')
+        $isChanged = $previous -ne $reaudited
+        $isHumanCorrection = $auditRow.reaudit_outcome -eq 'HUMAN_CORRECTION_CHARGE_1'
+
+        if ($reviewRow.proposed_cooking_novelty -ne $auditRow.reaudited_cooking_novelty -or
+            $reviewRow.approval_status -ne $auditRow.approval_status -or
+            ($auditRow.reaudit_outcome -eq 'REAUDITED_RETAINED') -ne (-not $isChanged) -or
+            ($auditRow.reaudit_outcome -eq 'REAUDIT_CORRECTED_PROPOSAL') -ne ($isChanged -and -not $isHumanCorrection) -or
+            ($isChanged -and 'LOW_LEVEL_REAUDIT_20260906' -notin $reviewFlags) -or
+            ($isHumanCorrection -and (
+                $reaudited -ne 3 -or
+                $reviewRow.approval_status -ne 'APPROVED_HUMAN_CORRECTION_CHARGE_1' -or
+                'HUMAN_CORRECTION_CHARGE_1' -notin $reviewFlags
+            ))) {
+            $auditRow.concept_code
+        }
+    }
+)
+Assert-ReviewCondition ($inconsistentReauditRows.Count -eq 0) `
+    "The re-audit and current review disagree for: $($inconsistentReauditRows -join ', ')."
+
+$sourceLowLevelRows = @($reauditRows | Where-Object previous_proposed_cooking_novelty -match '^[12]$')
+$sourceLevelThreeRows = @($reauditRows | Where-Object previous_proposed_cooking_novelty -eq '3')
+$correctedReauditRows = @($reauditRows | Where-Object reaudit_outcome -ne 'REAUDITED_RETAINED')
+$humanCorrectionAuditRows = @($reauditRows | Where-Object reaudit_outcome -eq 'HUMAN_CORRECTION_CHARGE_1')
+Assert-ReviewCondition ($humanCorrectionAuditRows.Count -eq $approvedHumanCorrectionRows.Count) `
+    'The human correction audit rows do not match the approved human correction status set.'
+$auditHumanCodes = @($humanCorrectionAuditRows.concept_code | Sort-Object)
+$reviewHumanCodes = @($approvedHumanCorrectionRows.concept_code | Sort-Object)
+Assert-ReviewCondition (@(Compare-Object $auditHumanCodes $reviewHumanCodes).Count -eq 0) `
+    'The approved human correction concepts differ between re-audit and review.'
 
 $applicableParentChildEdges = @()
 foreach ($inputRow in $inputRows) {
@@ -197,12 +270,12 @@ $flaggedParentChildRows = @(
 )
 Assert-ReviewCondition ($applicableParentChildEdges.Count -eq 861) `
     "Expected 861 applicable direct parent/child edges, found $($applicableParentChildEdges.Count)."
-Assert-ReviewCondition ($parentChildOutlierEdges.Count -eq 76) `
-    "Expected 76 reviewed parent/child gaps of at least two levels, found $($parentChildOutlierEdges.Count)."
 Assert-ReviewCondition ($missingParentChildExplanations.Count -eq 0) `
     'Every direct parent/child gap of at least two levels must be flagged and explained on its child.'
-Assert-ReviewCondition ($flaggedParentChildRows.Count -eq 73) `
-    "Expected 73 concepts flagged for parent/child review, found $($flaggedParentChildRows.Count)."
+$expectedFlaggedParentChildCodes = @($parentChildOutlierEdges.child_code | Sort-Object -Unique)
+$actualFlaggedParentChildCodes = @($flaggedParentChildRows.concept_code | Sort-Object -Unique)
+Assert-ReviewCondition (@(Compare-Object $expectedFlaggedParentChildCodes $actualFlaggedParentChildCodes).Count -eq 0) `
+    'The parent/child review flags do not exactly match the currently derived outlier concepts.'
 
 Assert-ReviewCondition ($anchorRows.Count -eq 39) `
     "Expected 39 approved anchors, found $($anchorRows.Count)."
@@ -244,8 +317,6 @@ $boundaryRows = @(
 $missingBoundaryRationales = @(
     $boundaryRows | Where-Object { [string]::IsNullOrWhiteSpace($_.novelty_rationale) }
 )
-Assert-ReviewCondition ($boundaryRows.Count -eq 70) `
-    "Expected 70 explicitly reviewed 2/3 or 3/4 boundary cases, found $($boundaryRows.Count)."
 Assert-ReviewCondition ($missingBoundaryRationales.Count -eq 0) `
     'Every flagged 2/3 or 3/4 boundary case must have a rationale.'
 
@@ -303,6 +374,7 @@ foreach ($level in 1..5) {
 
 Write-Output 'PASS: cooking novelty review is complete and structurally consistent.'
 Write-Output "Catalog codes: $($reviewRows.Count); structures: $($reviewStructureCodes.Count); applicable: $($applicableRows.Count)."
-Write-Output "Approved anchors preserved: $($anchorRows.Count); changed from baseline: $($expectedChanges.Count)."
+Write-Output "Targeted re-audit: N1/N2=$($sourceLowLevelRows.Count); N3 control=$($sourceLevelThreeRows.Count); corrections=$($correctedReauditRows.Count); approved human corrections=$($humanCorrectionAuditRows.Count)."
+Write-Output "Approved anchors preserved: $($anchorRows.Count); changed from catalog baseline: $($expectedChanges.Count)."
 Write-Output "Novelty distribution: 1=$($distribution[1]), 2=$($distribution[2]), 3=$($distribution[3]), 4=$($distribution[4]), 5=$($distribution[5])."
 Write-Output "Reviewed parent/child edges: $($applicableParentChildEdges.Count); gaps >= 2: $($parentChildOutlierEdges.Count); boundary cases: $($boundaryRows.Count)."

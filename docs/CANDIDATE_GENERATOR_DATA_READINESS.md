@@ -12,6 +12,18 @@ Die Messung wurde gegen echtes PostgreSQL 17.6 mit Testcontainers und dem vollst
 
 > **Gültigkeit seit Issue #150:** Die unten dokumentierten Katalogzahlen und Verteilungen bleiben als historische Baseline gültig und werden insbesondere für die Kalibrierung in Issue #152 weiterverwendet. Die damalige Forderung nach vollständiger Beschaffbarkeit aller aktiven Teilnehmer ist jedoch **keine aktuelle Generatorregel mehr**. Für neue Sessions sind [`PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md`](PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md) und [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md) autoritativ: Nur das feste Session-Elektorat ist relevant, nur tatsächlich gepflegte Werte werden berücksichtigt, fehlende Werte sind neutral und der restriktivste vorhandene Wert gewinnt. Dieses Dokument ist eine Mess- und Vergleichsreferenz, kein Runtime- oder Testfixture-Vertrag.
 
+## Aktueller Metadatenabschluss aus #189
+
+Die Migration vom 7. September 2026 umfasst 860 Konzepte, davon 853 anwendbare Entscheidungen und sieben
+explizite N/A-Strukturknoten. Alle 809 aktiven Ziehkandidaten besitzen Novelty sowie Georgia-/Tobias-Stufen
+und nichtleere Notizen. Insgesamt wurden 853 Novelty-Werte, 1.706 Personenstufen und 1.706 Notizen exakt
+gegen den autoritativen #188-Review geprüft. Es gibt keine Gewichtsänderungen.
+
+Der [Migrationsbericht](analysis/availability-novelty-migration-20260907.md) enthält Abgleich und Fingerprint.
+Die nachfolgenden Messungen bleiben historische Vergleichsdaten. Die Generator-Sparse-Semantik bleibt
+unverändert, Notizen fließen nicht in dessen Snapshots oder Fingerprints ein. Die fachliche Releasefreigabe
+setzt weiterhin die getrennte Kalibrierung aus #190 voraus.
+
 ## 1. Historische Gate-Definition für Phase 9
 
 ### 1.1 Damals hart erforderliche Daten

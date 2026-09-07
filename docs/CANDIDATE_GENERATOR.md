@@ -161,6 +161,12 @@ Der öffentliche Katalog-Use-Case liefert kanonisch sortiert mindestens:
 
 Das Challenge-Modul greift nicht direkt auf Katalogtabellen oder interne Repositories zu.
 
+Die personenspezifischen Availability-Notizen aus #189 gehören ausschließlich zur Katalogpflege und zum
+Audit. Sie sind kein Teil dieses Snapshots, seiner Fingerprints oder der Gewichtung. Die revidierten Live-Stufen
+und Novelty-Werte gelten für neue Snapshots; gespeicherte Generationen bleiben unverändert replayfähig.
+Die vorläufigen fünf Availability-Faktoren aus #187 bleiben bis zur Abnahme von #190 bestehen. #189 und #190
+bilden ein gemeinsames Release-Gate; technische Migrationsfähigkeit allein ist keine fachliche Produktionsfreigabe.
+
 ### 3.2 Visible History Snapshot
 
 Für den Phase-9-Bestand zählen bestätigte sichtbare Challenges mit den Statuswerten:

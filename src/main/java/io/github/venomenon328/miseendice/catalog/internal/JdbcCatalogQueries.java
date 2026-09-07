@@ -477,7 +477,7 @@ public class JdbcCatalogQueries implements CatalogQueries {
 
     private List<CatalogAvailabilityValue> findAvailabilityForDetail(long conceptId) {
         return jdbcTemplate.query("""
-                select p.code, p.display_name, null::text as description, ia.availability_level
+                select p.code, p.display_name, null::text as description, ia.availability_level, ia.curator_note
                 from participant p
                 left join ingredient_availability ia
                     on ia.participant_id = p.id and ia.ingredient_concept_id = ?
@@ -492,7 +492,8 @@ public class JdbcCatalogQueries implements CatalogQueries {
                         ),
                         resultSet.getString("availability_level") == null
                                 ? null
-                                : CatalogAvailability.valueOf(resultSet.getString("availability_level"))
+                                : CatalogAvailability.valueOf(resultSet.getString("availability_level")),
+                        resultSet.getString("curator_note")
                 ),
                 conceptId);
     }

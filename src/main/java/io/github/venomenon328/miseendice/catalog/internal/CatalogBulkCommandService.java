@@ -246,23 +246,6 @@ class CatalogBulkCommandService implements CatalogBulkCommands {
             return List.of();
         }
         List<String> warnings = new ArrayList<>();
-        if (detail.noveltyLevel() != null) {
-            BigDecimal cap = switch (detail.noveltyLevel()) {
-                case 5 -> new BigDecimal("0.25");
-                case 4 -> new BigDecimal("0.35");
-                case 3 -> new BigDecimal("0.55");
-                default -> null;
-            };
-            if (cap != null && detail.baseDrawWeight().compareTo(cap) > 0) {
-                warnings.add("\u201e%s\u201c: Kochungew\u00f6hnlichkeit Stufe %d hat einen Richtwert von h\u00f6chstens %s."
-                        .formatted(detail.displayName(), detail.noveltyLevel(), cap));
-            }
-        }
-        if (state.availabilityByParticipant.containsValue(CatalogAvailability.DIFFICULT)
-                && detail.baseDrawWeight().compareTo(new BigDecimal("0.35")) > 0) {
-            warnings.add("\u201e%s\u201c: schwierig beschaffbare Konzepte haben einen Richtwert von h\u00f6chstens 0.35."
-                    .formatted(detail.displayName()));
-        }
         if (directCookingAlcoholParent && detail.baseDrawWeight().compareTo(new BigDecimal("0.35")) > 0) {
             warnings.add("\u201e%s\u201c: direkte Konkretisierungen von Kochalkohol haben einen Richtwert von h\u00f6chstens 0.35."
                     .formatted(detail.displayName()));

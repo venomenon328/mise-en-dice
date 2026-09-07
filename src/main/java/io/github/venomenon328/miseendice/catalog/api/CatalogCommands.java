@@ -212,6 +212,9 @@ public interface CatalogCommands {
      * unspecified. Existing callers therefore preserve country relations until they explicitly
      * adopt the country-aware editor contract. A non-null country set, including an empty set,
      * is an exact replacement.</p>
+     *
+     * <p>Omitted availability-note keys preserve existing notes; a supplied blank/null value clears
+     * that note. Removing a participant's level removes the whole row.</p>
      */
     record CatalogMetadata(
             Set<String> functionalRoleCodes,
@@ -219,8 +222,21 @@ public interface CatalogCommands {
             Map<String, Integer> culinaryDimensionLevels,
             Map<String, CatalogQueries.CatalogAvailability> availabilityByParticipant,
             Map<Integer, BigDecimal> seasonalityByMonth,
-            Set<String> culinaryCountryCodes
+            Set<String> culinaryCountryCodes,
+            Map<String, String> availabilityNotesByParticipant
     ) {
+
+        public CatalogMetadata(
+                Set<String> functionalRoleCodes,
+                Set<String> culinaryFlagCodes,
+                Map<String, Integer> culinaryDimensionLevels,
+                Map<String, CatalogQueries.CatalogAvailability> availabilityByParticipant,
+                Map<Integer, BigDecimal> seasonalityByMonth,
+                Set<String> culinaryCountryCodes
+        ) {
+            this(functionalRoleCodes, culinaryFlagCodes, culinaryDimensionLevels,
+                    availabilityByParticipant, seasonalityByMonth, culinaryCountryCodes, Map.of());
+        }
 
         public CatalogMetadata(
                 Set<String> functionalRoleCodes,
@@ -238,11 +254,19 @@ public interface CatalogCommands {
             culinaryFlagCodes = normalizedCodes(culinaryFlagCodes);
             culinaryDimensionLevels = immutableMap(culinaryDimensionLevels);
             availabilityByParticipant = immutableMap(availabilityByParticipant);
+            availabilityNotesByParticipant = immutableMap(availabilityNotesByParticipant);
             seasonalityByMonth = immutableMap(seasonalityByMonth);
             culinaryCountryCodes = culinaryCountryCodes == null
                     ? null
                     : normalizedCountryCodes(culinaryCountryCodes);
             Map<String, String> errors = new LinkedHashMap<>();
+            for (var entry : availabilityNotesByParticipant.entrySet()) {
+                if (!Set.of("GEORGIA", "TOBIAS").contains(entry.getKey() == null ? "" : entry.getKey())
+                        || (!normalized(entry.getValue()).isEmpty()
+                        && !availabilityByParticipant.containsKey(entry.getKey()))) {
+                    errors.put("availability", "Eine Beschaffbarkeitsnotiz benötigt eine Stufe für Georgia oder Tobias.");
+                }
+            }
             if (culinaryDimensionLevels.entrySet().stream().anyMatch(entry -> entry.getKey() == null
                     || entry.getKey().isBlank() || entry.getValue() == null || entry.getValue() < 1 || entry.getValue() > 5)) {
                 errors.put("culinaryDimensions", "Kulinarische Dimensionen müssen zwischen 1 und 5 liegen.");

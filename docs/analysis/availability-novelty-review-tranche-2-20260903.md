@@ -6,6 +6,12 @@ Issue: #188, Tracking: #186
 
 Status: **Kochungewöhnlichkeits-Durchgang vollständig vorgeschlagen; 815 Nicht-Anker warten auf menschliche Freigabe. Schritt 5 wurde nicht begonnen.**
 
+> **Historischer Stand:** Dieses Dokument hält den Erstvorschlag vom 3. September fest. Der verbindliche aktuelle
+> Arbeitsstand nach Präzisierung der Exaktprodukt-Semantik ist die
+> [`gezielte Low-Level-Reaudit vom 6. September`](availability-novelty-cooking-low-level-reaudit-20260906.md).
+> Dort sind 679 bisherige N1/N2- und 137 N3-Konzepte geprüft, 54 Novelty-Korrekturen dokumentiert und sechs
+> menschliche Korrekturen aus Charge 1 freigegeben. Die folgenden Zahlen bleiben als historische Auditspur erhalten.
+
 ## 1. Umfang und Bewertungsdisziplin
 
 Maßgeblich ist weiterhin der eingefrorene Repository-Katalog auf `main` am Commit

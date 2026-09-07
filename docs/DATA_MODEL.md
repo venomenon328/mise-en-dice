@@ -1,6 +1,6 @@
 # Datenmodell
 
-Stand: 24. August 2026
+Stand: 7. September 2026
 
 Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt als explizit geordnete Liquibase-Changesets vor:
 
@@ -139,7 +139,34 @@ Die administrationsorientierte Katalogprojektion und das Audit führen Code und 
 
 Die verbindlichen Abgrenzungen, die vollständigen deutschen Hilfetexte und die Trennung von Kochungewöhnlichkeit stehen in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md). Ein fehlender Datensatz bedeutet `nicht gepflegt`, nicht eine sechste Stufe.
 
-Die Bezugsart wird nicht gespeichert.
+Die optionale Textspalte `ingredient_availability.curator_note` speichert seit #189 die kurze
+personenspezifische Beschaffbarkeitsbegründung direkt an derselben Zeile. `NULL` bedeutet nicht gepflegt;
+leerer oder ausschließlich aus Leerraum bestehender Text wird von PostgreSQL abgewiesen. Marktklasse,
+Händlerliste und Bezugsart erhalten keine eigenen strukturierten Felder.
+
+Der normale Catalog-Schreibvertrag und der Einzel-Editor lesen und ändern Stufe und Notiz gemeinsam.
+Nicht übermittelte Notizschlüssel erhalten bestehende Texte; explizit leere/null Notizen löschen nur den Text.
+Wird die Personenbewertung entfernt, entfällt ihre gesamte Zeile. Nichtleere Notizen ohne Stufe werden als
+Feldfehler zurückgewiesen. Bulk setzt ausschließlich die Stufe, erhält vorhandene Notizen und erzeugt keine Texte.
+Andere Teilnehmer behalten ihre Sparse-Semantik.
+
+`schema/019-availability-curator-note.sql` und `catalog/033-availability-novelty-final-review.sql` übernehmen
+append-only den [autoritativen Abschlussstand aus #188](analysis/availability-novelty-final-review-v1-20260907.md).
+Der private Endstand umfasst 853 anwendbare Novelty-Werte sowie 1.706 Georgia-/Tobias-Stufen mit nichtleeren Notizen.
+Sieben ausdrücklich freigegebene Strukturknoten besitzen danach `novelty_level = NULL` und keine G/T-Availability.
+Alle 809 aktiven zufällig ziehbaren Konzepte sind vollständig gepflegt; daraus entsteht keine universelle
+Datenbankpflicht für zusätzliche Teilnehmer oder spätere Sparse-Adminentwürfe.
+
+Vor dem ersten fachlichen Write prüft die Migration die vollständige Codemenge und SHA-256-Fingerprints
+aller vorausgesetzten Konzeptaggregate einschließlich Rollen, Flags, Dimensionen, Länder, Saison, Parents,
+G/T-Stufen, Status, Namen, Gewichten und Konzeptnotizen. Unbekannte Deltas scheitern mit betroffenen Codes.
+IDs, Zeitstempel und Versionszähler sind keine fachlichen Fingerprintwerte; andere Teilnehmer bleiben erhalten.
+Die 860 Aggregatversionen werden einmal erhöht, damit vor der Migration geöffnete Editoren einen Konflikt erhalten.
+Nach erfolgreicher Liquibase-Ausführung bleibt wieder die operative Datenbank autoritativ.
+
+Availability-Notizen gehören ausschließlich zur Katalogpflege und zum Aggregate-Audit. Generatorprojektion,
+Generatorfingerprint, `/zutat`, Gewichtung und historische Replaydaten enthalten sie nicht. Historische
+Auditpayloads ohne Notizschlüssel bleiben als damals ungepflegte Notiz lesbar.
 
 Die Beschaffbarkeit eines allgemeineren Konzepts wird **nicht aus seinen bekannten Konkretisierungen abgeleitet**. Beispielsweise kann `Chili` problemlos beschaffbar sein, obwohl keine der konkret benannten Chilisorten lokal zuverlässig verfügbar ist.
 
@@ -156,6 +183,9 @@ Drei unterschiedliche Konzepte bleiben getrennt:
 Ein fehlender Saisonwert bedeutet Faktor `1.0`. Saisonfaktoren müssen größer als null sein; echte Nichtverfügbarkeit gehört in die Beschaffbarkeit.
 
 Das effektive Ziehungsgewicht wird nicht persistiert, sondern zur Laufzeit berechnet.
+Seit #189 existieren weder im Einzelsave noch im Bulk pauschale Gewichtswarnungen aufgrund von Novelty oder
+Beschaffbarkeit. Der unabhängige Hinweis für direkte Konkretisierungen von `COOKING_ALCOHOL` bleibt erhalten.
+#189 ändert kein `base_draw_weight`; die Faktorkalibrierung aus #190 bleibt ein gemeinsames Release-Gate.
 
 `novelty_level` ist weder Beschaffbarkeit, Preis noch Vorrat. Seine Bezeichnungen und die redaktionelle Auslegung sind verbindlich in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md) festgelegt.
 

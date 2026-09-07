@@ -178,20 +178,20 @@ class CatalogCommandServiceIntegrationTest {
     }
 
     @Test
-    void requiresThenHonoursExplicitAcknowledgementForAWeightGuidelineWarning() {
-        long concept = insertConcept("WARNING", "Issue eleven warning", "SPECIFIC", true, false, 5);
-        assignRequiredDrawMetadata(concept);
-        var before = catalogQueries.findConcept(concept).orElseThrow();
-
-        assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(command(before, before.displayName(), true, true,
-                "SPECIFIC", new BigDecimal("0.50"), 5, null, false)))
-                .isInstanceOf(CatalogDrawWeightWarningException.class);
-        assertThat(auditCount()).isZero();
-
-        var result = catalogCommands.updateIngredientConcept(command(before, before.displayName(), true, true,
-                "SPECIFIC", new BigDecimal("0.50"), 5, null, true));
-        assertThat(result.version()).isEqualTo(1);
-        assertThat(auditCount()).isEqualTo(1);
+    void acceptsEveryNoveltyLevelAndAvailabilityWithoutWeightAcknowledgement() {
+        for (int novelty = 1; novelty <= 5; novelty++) {
+            for (var level : CatalogQueries.CatalogAvailability.values()) {
+                var metadata = new CatalogMetadata(Set.of("VEGETABLE"), Set.of(), Map.of(),
+                        Map.of("GEORGIA", level, "TOBIAS", level), Map.of());
+                var created = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                        PREFIX + "UNCOUPLED_" + novelty + "_" + level, "Uncoupled " + novelty + " " + level,
+                        true, true, "SPECIFIC", BigDecimal.ONE, novelty, "Technical fixture.", metadata, false, ACTOR));
+                var detail = catalogQueries.findConcept(created.conceptId()).orElseThrow();
+                assertThat(catalogCommands.updateIngredientConcept(metadataCommand(
+                        detail, true, new BigDecimal("1.2"), metadata, false)).version()).isEqualTo(1);
+            }
+        }
+        assertThat(auditCount()).isEqualTo(50);
     }
 
     @Test
@@ -299,7 +299,7 @@ class CatalogCommandServiceIntegrationTest {
     }
 
     @Test
-    void validatesDrawabilityAndDifficultWeightAgainstMetadataFromTheSameSave() {
+    void acceptsDifficultAvailabilityAgainstMetadataFromTheSameSave() {
         long concept = insertConcept("RESULT", "Issue twenty-four result state", "OPEN", true, false, null);
         CatalogQueries.CatalogConceptDetail before = catalogQueries.findConcept(concept).orElseThrow();
         CatalogMetadata difficult = new CatalogMetadata(
@@ -307,12 +307,7 @@ class CatalogCommandServiceIntegrationTest {
                 Map.of("GEORGIA", CatalogQueries.CatalogAvailability.DIFFICULT,
                         "TOBIAS", CatalogQueries.CatalogAvailability.EASY), Map.of());
 
-        assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(
-                metadataCommand(before, true, new BigDecimal("0.50"), difficult, false)))
-                .isInstanceOf(CatalogDrawWeightWarningException.class);
-        assertThat(version(concept)).isZero();
-
-        catalogCommands.updateIngredientConcept(metadataCommand(before, true, new BigDecimal("0.50"), difficult, true));
+        catalogCommands.updateIngredientConcept(metadataCommand(before, true, new BigDecimal("0.50"), difficult, false));
         CatalogQueries.CatalogConceptDetail difficultSaved = catalogQueries.findConcept(concept).orElseThrow();
         CatalogMetadata easy = new CatalogMetadata(
                 Set.of("VEGETABLE"), Set.of(), Map.of(),
@@ -345,14 +340,9 @@ class CatalogCommandServiceIntegrationTest {
                 Map.of("GEORGIA", CatalogQueries.CatalogAvailability.DIFFICULT,
                         "TOBIAS", CatalogQueries.CatalogAvailability.PLANNED), Map.of(6, new BigDecimal("1.3")));
 
-        assertThatThrownBy(() -> catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
-                PREFIX + "CREATE_METADATA", "Issue twenty-four creation", true, true, "OPEN", new BigDecimal("0.50"),
-                null, "Technische Testnotiz.", metadata, false, ACTOR)))
-                .isInstanceOf(CatalogDrawWeightWarningException.class);
-
         var result = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
                 PREFIX + "CREATE_METADATA", "Issue twenty-four creation", true, true, "OPEN", new BigDecimal("0.50"),
-                null, "Technische Testnotiz.", metadata, true, ACTOR));
+                null, "Technische Testnotiz.", metadata, false, ACTOR));
 
         CatalogQueries.CatalogConceptDetail detail = catalogQueries.findConcept(result.conceptId()).orElseThrow();
         assertThat(detail).extracting(CatalogQueries.CatalogConceptDetail::randomDrawEnabled,
@@ -360,6 +350,55 @@ class CatalogCommandServiceIntegrationTest {
                 CatalogQueries.CatalogConceptDetail::version).containsExactly(true, "OPEN", 0L);
         assertThat(detail.functionalRoles()).extracting(CatalogQueries.CatalogReferenceValue::code).containsExactly("VEGETABLE");
         assertThat(detail.availability()).allSatisfy(value -> assertThat(value.level()).isNotNull());
+    }
+
+    @Test
+    void availabilityNotesRoundTripPreserveOmittedNotesAndAuditNoteOnlyUpdates() {
+        long concept = insertConcept("NOTES", "Technical note roundtrip", "SPECIFIC", true, false, 1);
+        var levels = Map.of("GEORGIA", CatalogQueries.CatalogAvailability.SPECIALTY,
+                "TOBIAS", CatalogQueries.CatalogAvailability.PLANNED);
+        var first = new CatalogMetadata(Set.of(), Set.of(), Map.of(), levels, Map.of(), Set.of(),
+                Map.of("GEORGIA", "First technical note.", "TOBIAS", "Second technical note."));
+        var before = catalogQueries.findConcept(concept).orElseThrow();
+        catalogCommands.updateIngredientConcept(metadataCommand(before, false, BigDecimal.ONE, first, false));
+        var initial = catalogQueries.findConcept(concept).orElseThrow();
+        assertThat(initial.availability()).extracting(CatalogQueries.CatalogAvailabilityValue::curatorNote)
+                .containsExactly("First technical note.", "Second technical note.");
+        assertThat(latestAudit().afterState().values().get("availability").toString())
+                .contains("curatorNote=First technical note.", "curatorNote=Second technical note.");
+
+        var compatibility = new CatalogMetadata(Set.of(), Set.of(), Map.of(), levels, Map.of());
+        catalogCommands.updateIngredientConcept(metadataCommand(initial, false, BigDecimal.ONE, compatibility, false));
+        var preserved = catalogQueries.findConcept(concept).orElseThrow();
+        assertThat(preserved.availability()).isEqualTo(initial.availability());
+
+        var noteOnly = new CatalogMetadata(Set.of(), Set.of(), Map.of(), levels, Map.of(), Set.of(),
+                Map.of("GEORGIA", "Changed technical note."));
+        catalogCommands.updateIngredientConcept(metadataCommand(preserved, false, BigDecimal.ONE, noteOnly, false));
+        var changed = catalogQueries.findConcept(concept).orElseThrow();
+        assertThat(changed.availability()).extracting(CatalogQueries.CatalogAvailabilityValue::curatorNote)
+                .containsExactly("Changed technical note.", "Second technical note.");
+        var audit = latestAudit();
+        assertThat(CatalogAuditDiffFactory.diff(
+                io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.CatalogAuditEntityType.INGREDIENT_CONCEPT,
+                audit.beforeState(), audit.afterState())).singleElement().satisfies(diff -> {
+                    assertThat(diff.label()).isEqualTo("Beschaffbarkeitsnotiz · Georgia");
+                    assertThat(diff.beforeValue()).isEqualTo("First technical note.");
+                    assertThat(diff.afterValue()).isEqualTo("Changed technical note.");
+                });
+        assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(
+                metadataCommand(preserved, false, BigDecimal.ONE, first, false)))
+                .isInstanceOf(CatalogVersionConflictException.class);
+        assertThat(catalogQueries.findConcept(concept).orElseThrow()).isEqualTo(changed);
+
+        var cleared = new CatalogMetadata(Set.of(), Set.of(), Map.of(),
+                Map.of("GEORGIA", CatalogQueries.CatalogAvailability.EASY), Map.of(), Set.of(),
+                Map.of("GEORGIA", "   "));
+        catalogCommands.updateIngredientConcept(metadataCommand(changed, false, BigDecimal.ONE, cleared, false));
+        assertThat(catalogQueries.findConcept(concept).orElseThrow().availability())
+                .allSatisfy(value -> assertThat(value.curatorNote()).isNull());
+        assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_availability where ingredient_concept_id = ?",
+                Integer.class, concept)).isEqualTo(1);
     }
 
     private CatalogCommands.UpdateIngredientConceptCommand command(

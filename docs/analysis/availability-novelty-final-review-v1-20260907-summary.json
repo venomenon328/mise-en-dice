@@ -1,0 +1,59 @@
+{
+  "review_version": "AVAILABILITY_NOVELTY_V1_20260907",
+  "catalog_commit": "f8855121af336a7c13cd799cafede5f9b9420f28",
+  "review_lineage_head": "1808b6f716c19f76b9d6e04b5b80c628f2fb105c",
+  "concepts_total": 860,
+  "applicable_concepts": 853,
+  "not_applicable_structure_concepts": 7,
+  "cooking_novelty_distribution": {
+    "1": 328,
+    "2": 312,
+    "3": 176,
+    "4": 35,
+    "5": 2
+  },
+  "availability_georgia_distribution": {
+    "DIFFICULT": 61,
+    "EASY": 426,
+    "PLANNED": 254,
+    "SPECIALTY": 110,
+    "UNAVAILABLE": 2
+  },
+  "availability_tobias_distribution": {
+    "DIFFICULT": 66,
+    "EASY": 426,
+    "PLANNED": 248,
+    "SPECIALTY": 111,
+    "UNAVAILABLE": 2
+  },
+  "overall_approval_origin_distribution": {
+    "AI_BULK_ACCEPTED": 694,
+    "HUMAN_EXPLICIT": 122,
+    "MIXED": 44
+  },
+  "availability_note_georgia_approval_origin_distribution": {
+    "AI_BULK_ACCEPTED": 776,
+    "HUMAN_EXPLICIT": 77
+  },
+  "availability_note_tobias_approval_origin_distribution": {
+    "AI_BULK_ACCEPTED": 776,
+    "HUMAN_EXPLICIT": 77
+  },
+  "approved_base_draw_weight_corrections": 0,
+  "human_overlay_files": [
+    "availability-novelty-reference-anchor-decisions-20260903.csv",
+    "availability-reference-anchors-v2-20260904.csv",
+    "availability-reference-anchor-decisions-v2-20260904.csv",
+    "availability-novelty-human-approval-charge-1-corrections-20260906.csv",
+    "availability-novelty-human-approval-charge-2-20260906.csv",
+    "availability-novelty-human-approval-charge-3-20260906.csv",
+    "availability-novelty-human-approval-charge-4-20260906.csv",
+    "availability-novelty-human-approval-charge-5-20260906.csv",
+    "availability-novelty-human-approval-charge-6-20260906.csv"
+  ],
+  "source_files": [
+    "availability-novelty-availability-review-v2-20260904.tsv",
+    "availability-novelty-cooking-review-20260903.tsv",
+    "availability-novelty-structure-decisions-20260903.csv"
+  ]
+}

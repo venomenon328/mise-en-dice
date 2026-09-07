@@ -42,7 +42,7 @@ final class CatalogAuditDiffFactory {
             mapCollection(result, before, after, "culinaryFlags", "Kulinarische Eigenschaften", "code", "displayName", null);
             mapCollection(result, before, after, "culinaryDimensions", "Kulinarische Dimensionen", "code", "displayName", "level");
             mapCollection(result, before, after, "culinaryCountries", "Kulinarische Zuordnung", "code", "displayName", null);
-            mapCollection(result, before, after, "availability", "Beschaffbarkeit", "code", "displayName", "level");
+            availability(result, before, after);
             mapCollection(result, before, after, "seasonality", "Saison", "month", "month", "weightMultiplier");
         } else {
             scalar(result, before, after, "displayText", "Anzeigetext");
@@ -161,6 +161,29 @@ final class CatalogAuditDiffFactory {
             return bool ? "ja" : "nein";
         }
         return String.valueOf(value);
+    }
+
+    private static void availability(
+            List<CatalogAuditFieldDiff> result, Map<String, Object> before, Map<String, Object> after
+    ) {
+        var oldValues = mapByKey(before.get("availability"), "code");
+        var newValues = mapByKey(after.get("availability"), "code");
+        var keys = new java.util.TreeSet<>(oldValues.keySet());
+        keys.addAll(newValues.keySet());
+        for (String key : keys) {
+            var oldValue = oldValues.getOrDefault(key, Map.of());
+            var newValue = newValues.getOrDefault(key, Map.of());
+            String person = display(newValue.isEmpty() ? oldValue : newValue, "displayName", key);
+            Object oldLevel = oldValue.get("level");
+            Object newLevel = newValue.get("level");
+            if (!Objects.equals(oldLevel, newLevel)) {
+                result.add(new CatalogAuditFieldDiff("Beschaffbarkeit",
+                        oldLevel == null ? null : person + " · " + availabilityLabel(oldLevel),
+                        newLevel == null ? null : person + " · " + availabilityLabel(newLevel), kind(oldLevel, newLevel)));
+            }
+            // Missing keys in historical payload-v1 snapshots mean an unmanaged note.
+            scalar(result, oldValue, newValue, "curatorNote", "Beschaffbarkeitsnotiz · " + person);
+        }
     }
 
     private static String availabilityLabel(Object value) {

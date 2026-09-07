@@ -13,6 +13,26 @@ import org.junit.jupiter.api.Test;
 class CatalogAuditDiffFactoryTest {
 
     @Test
+    void historicalMissingNoteKeysAreNeutralAndNoteOnlyChangesRemainVisible() {
+        var historical = new LinkedHashMap<String, Object>(Map.of("code", "GEORGIA", "displayName", "Georgia", "level", "EASY"));
+        var current = new LinkedHashMap<>(historical);
+        current.put("curatorNote", null);
+        var before = new CatalogAggregateSnapshot(Map.of("availability", List.of(historical)));
+        assertThat(CatalogAuditDiffFactory.diff(CatalogAuditEntityType.INGREDIENT_CONCEPT, before,
+                new CatalogAggregateSnapshot(Map.of("availability", List.of(current))))).isEmpty();
+        current.put("curatorNote", "Technical reason.");
+        var after = new CatalogAggregateSnapshot(Map.of("availability", List.of(current)));
+        assertThat(CatalogAuditDiffFactory.diff(CatalogAuditEntityType.INGREDIENT_CONCEPT, before, after))
+                .singleElement().satisfies(diff -> {
+                    assertThat(diff.label()).isEqualTo("Beschaffbarkeitsnotiz · Georgia");
+                    assertThat(diff.kind()).isEqualTo(ChangeKind.ADDED);
+                    assertThat(diff.afterValue()).isEqualTo("Technical reason.");
+                });
+        assertThat(CatalogAuditDiffFactory.diff(CatalogAuditEntityType.INGREDIENT_CONCEPT, after, before))
+                .singleElement().satisfies(diff -> assertThat(diff.kind()).isEqualTo(ChangeKind.REMOVED));
+    }
+
+    @Test
     void rendersHumanReadableIngredientAndExclusionCollectionChangesWithoutRawJson() {
         var ingredientBefore = new CatalogAggregateSnapshot(Map.of(
                 "displayName", "Vorher", "functionalRoles", List.of(Map.of("code", "FRUIT", "displayName", "Obst")),

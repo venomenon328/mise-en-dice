@@ -10,7 +10,6 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogBulkCommands.BulkSel
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogMetadata;
-import io.github.venomenon328.miseendice.catalog.api.CatalogDrawWeightWarningException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
 import io.github.venomenon328.miseendice.catalog.api.CatalogVersionConflictException;
 import java.math.BigDecimal;
@@ -102,6 +101,29 @@ class CatalogBulkCommandServiceIntegrationTest {
     }
 
     @Test
+    void bulkAvailabilityPreservesNotesAndLeavesNewRowsUnannotated() {
+        long concept = insertConcept("NOTES", true, true, BigDecimal.ONE);
+        assignRoles(concept, "VEGETABLE");
+        assignAvailability(concept, "GEORGIA", "EASY");
+        jdbcTemplate.update("update ingredient_availability set curator_note = ? where ingredient_concept_id = ?",
+                "Existing technical reason.", concept);
+        for (var level : CatalogQueries.CatalogAvailability.values()) {
+            bulkCommands.execute(operation(concept, BulkAction.SET_GEORGIA_AVAILABILITY, null, level));
+            assertThat(jdbcTemplate.queryForObject("select curator_note from ingredient_availability where ingredient_concept_id = ?",
+                    String.class, concept)).isEqualTo("Existing technical reason.");
+        }
+        execute(concept, BulkAction.SET_TOBIAS_AVAILABILITY, null, CatalogQueries.CatalogAvailability.SPECIALTY);
+        assertThat(jdbcTemplate.queryForObject("""
+                select a.curator_note from ingredient_availability a join participant p on p.id = a.participant_id
+                where a.ingredient_concept_id = ? and p.code = 'TOBIAS'
+                """, String.class, concept)).isNull();
+        assertThat(jdbcTemplate.queryForList("""
+                select after_state::text from catalog_audit_entry where actor_key = ? and entity_id = ?
+                """, String.class, ACTOR, concept)).allSatisfy(snapshot ->
+                assertThat(snapshot).contains("Existing technical reason."));
+    }
+
+    @Test
     void rendersHumanReadableAvailabilityAndCookingNoveltyInBulkPreview() {
         long concept = insertConcept("PREVIEW_LABELS", true, true, new BigDecimal("0.8000"));
         assignRoles(concept, "VEGETABLE");
@@ -117,8 +139,7 @@ class CatalogBulkCommandServiceIntegrationTest {
         assertThat(preview.items()).singleElement().satisfies(item ->
                 assertThat(item.effects()).containsExactly("Georgia: Spezialbeschaffung"));
         assertThat(preview.items().getFirst().effects()).allMatch(effect -> !effect.contains("SPECIALTY"));
-        assertThat(preview.warnings()).anyMatch(warning -> warning.contains("Kochungewöhnlichkeit Stufe 4"));
-        assertThat(preview.warnings()).noneMatch(warning -> warning.contains("Ungewöhnlichkeit Stufe 4"));
+        assertThat(preview.warnings()).isEmpty();
     }
 
     @Test
@@ -142,7 +163,7 @@ class CatalogBulkCommandServiceIntegrationTest {
     }
 
     @Test
-    void validatesActivationAgainstTheResultingStateAndRequiresDifficultWeightAcknowledgement() {
+    void validatesActivationWithoutCouplingDifficultAvailabilityToWeight() {
         long invalidActivation = insertConcept("ACTIVATE_INVALID", false, true);
         assertThatThrownBy(() -> bulkCommands.execute(operation(invalidActivation, BulkAction.ACTIVATE, null, null)))
                 .isInstanceOf(CatalogCommandValidationException.class);
@@ -157,16 +178,8 @@ class CatalogBulkCommandServiceIntegrationTest {
                 List.of(new BulkSelection(difficult, 0)), BulkAction.SET_GEORGIA_AVAILABILITY,
                 null, CatalogQueries.CatalogAvailability.DIFFICULT, false, ACTOR);
 
-        assertThat(bulkCommands.preview(unacknowledged).warnings()).isNotEmpty();
-        assertThatThrownBy(() -> bulkCommands.execute(unacknowledged))
-                .isInstanceOf(CatalogDrawWeightWarningException.class);
-        assertThat(availability(difficult, "GEORGIA")).isEqualTo("EASY");
-        assertThat(version(difficult)).isZero();
-        assertThat(auditCount()).isZero();
-
-        BulkOperation acknowledged = new BulkOperation(
-                unacknowledged.selections(), unacknowledged.action(), null, unacknowledged.availability(), true, ACTOR);
-        bulkCommands.execute(acknowledged);
+        assertThat(bulkCommands.preview(unacknowledged).warnings()).isEmpty();
+        bulkCommands.execute(unacknowledged);
         assertThat(availability(difficult, "GEORGIA")).isEqualTo("DIFFICULT");
         assertThat(version(difficult)).isEqualTo(1);
         assertThat(auditCount()).isEqualTo(1);

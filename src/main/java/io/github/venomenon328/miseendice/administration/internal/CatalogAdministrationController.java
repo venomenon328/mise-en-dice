@@ -727,6 +727,7 @@ class CatalogAdministrationController {
             Set<String> culinaryCountryCodes,
             Map<String, String> culinaryDimensionLevels,
             Map<String, String> availabilityByParticipant,
+            Map<String, String> availabilityNotesByParticipant,
             Map<String, String> seasonalityByMonth,
             boolean submitted
     ) {
@@ -737,6 +738,7 @@ class CatalogAdministrationController {
             culinaryCountryCodes = normalizedCodes(culinaryCountryCodes);
             culinaryDimensionLevels = immutableTextMap(culinaryDimensionLevels);
             availabilityByParticipant = immutableTextMap(availabilityByParticipant);
+            availabilityNotesByParticipant = immutableTextMap(availabilityNotesByParticipant);
             seasonalityByMonth = immutableTextMap(seasonalityByMonth);
         }
 
@@ -745,7 +747,7 @@ class CatalogAdministrationController {
             for (int month = 1; month <= 12; month++) {
                 seasonality.put(Integer.toString(month), "1.0");
             }
-            return new FormMetadata(Set.of(), Set.of(), Set.of(), Map.of(), Map.of(), seasonality, false);
+            return new FormMetadata(Set.of(), Set.of(), Set.of(), Map.of(), Map.of(), Map.of(), seasonality, false);
         }
 
         static FormMetadata from(CatalogConceptDetail detail) {
@@ -764,10 +766,13 @@ class CatalogAdministrationController {
             Map<String, String> availability = new LinkedHashMap<>();
             detail.availability().forEach(value -> availability.put(value.participant().code(),
                     value.level() == null ? "" : value.level().name()));
+            Map<String, String> notes = new LinkedHashMap<>();
+            detail.availability().forEach(value -> notes.put(value.participant().code(),
+                    value.curatorNote() == null ? "" : value.curatorNote()));
             Map<String, String> seasonality = new LinkedHashMap<>();
             detail.seasonality().forEach(value -> seasonality.put(Integer.toString(value.month()),
                     value.weightMultiplier().toPlainString()));
-            return new FormMetadata(roles, flags, countries, dimensions, availability, seasonality, true);
+            return new FormMetadata(roles, flags, countries, dimensions, availability, notes, seasonality, true);
         }
 
         static FormMetadata from(MultiValueMap<String, String> parameters) {
@@ -775,7 +780,7 @@ class CatalogAdministrationController {
             Map<String, String> availability = indexedValues(parameters, "availability");
             Map<String, String> seasonality = indexedValues(parameters, "seasonality");
             return new FormMetadata(values(parameters, "functionalRole"), values(parameters, "culinaryFlag"),
-                    values(parameters, "culinaryCountry"), dimensions, availability, seasonality,
+                    values(parameters, "culinaryCountry"), dimensions, availability, indexedValues(parameters, "availabilityNote"), seasonality,
                     hasMetadataFields(parameters));
         }
 
@@ -799,6 +804,10 @@ class CatalogAdministrationController {
             return availabilityByParticipant.getOrDefault(participantCode, "");
         }
 
+        public String availabilityNote(String participantCode) {
+            return availabilityNotesByParticipant.getOrDefault(participantCode, "");
+        }
+
         public String availabilitySummary() {
             return availabilityByParticipant.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())
@@ -814,7 +823,7 @@ class CatalogAdministrationController {
             };
         }
 
-        private static String availabilityLabel(String value) {
+        public static String availabilityLabel(String value) {
             if (value == null || value.isBlank()) {
                 return "nicht gepflegt";
             }
@@ -867,14 +876,14 @@ class CatalogAdministrationController {
                 return new CatalogMetadata(Set.of(), Set.of(), Map.of(), Map.of(), Map.of(), Set.of());
             }
             return new CatalogMetadata(functionalRoleCodes, culinaryFlagCodes, dimensions, availability, seasonality,
-                    culinaryCountryCodes);
+                    culinaryCountryCodes, availabilityNotesByParticipant);
         }
 
         private static boolean hasMetadataFields(MultiValueMap<String, String> parameters) {
             return parameters.containsKey("functionalRole") || parameters.containsKey("culinaryFlag")
                     || parameters.containsKey("culinaryCountry")
                     || parameters.keySet().stream().anyMatch(name -> name.startsWith("dimension[")
-                    || name.startsWith("availability[") || name.startsWith("seasonality["));
+                    || name.startsWith("availabilityNote[") || name.startsWith("availability[") || name.startsWith("seasonality["));
         }
 
         private static Map<String, String> indexedValues(MultiValueMap<String, String> parameters, String prefix) {

@@ -1,6 +1,14 @@
 # Initialer Zutatenkatalog
 
-Stand: 13. August 2026
+Stand der historischen Baseline: 13. August 2026
+Aktualitätshinweis: 7. September 2026
+
+Die Abschnitte 1–12 beschreiben die historische Erstbefüllung. Der aktuelle migrationsgeführte
+Availability-/Novelty-Abschlussstand aus #189 ist in
+[availability-novelty-migration-20260907.md](analysis/availability-novelty-migration-20260907.md) dokumentiert:
+860 Konzepte, davon 853 fachlich anwendbar, sieben Strukturknoten und 809 aktive Ziehkandidaten.
+Die neuen 1.706 Personenwerte besitzen vollständig nichtleere Availability-Notizen. Historische Zahlen
+und Einzelbeispiele unten sind keine aktuellen Fachwerte oder dauerhaften Runtime-Caps.
 
 Dieses Dokument beschreibt die kuratierte Erstbefüllung der Zutatenbasis. Das fachliche Datenmodell selbst ist in [`DATA_MODEL.md`](DATA_MODEL.md) beschrieben; die konkreten Baseline-Changesets liegen unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog).
 
@@ -140,7 +148,7 @@ Die Gewichte folgen grob diesen Prinzipien:
 - schwierige oder teure Spezialzutaten werden deutlich seltener gezogen,
 - extreme Sonderfälle wie Trüffel, Safran, Froschschenkel oder Hummer bleiben möglich, aber selten.
 
-Für die unberührte Baseline gelten zusätzlich überprüfte Plausibilitätsgrenzen:
+Für die damalige unberührte Baseline wurden einmalig folgende historische Plausibilitätsgrenzen geprüft:
 
 - Ungewöhnlichkeit `5`: Gewicht höchstens `0.25`,
 - Ungewöhnlichkeit `4`: Gewicht höchstens `0.35`,
@@ -150,7 +158,11 @@ Für die unberührte Baseline gelten zusätzlich überprüfte Plausibilitätsgre
 
 Bier wurde dabei von `0.50` auf `0.25` abgesenkt. Es bleibt damit ein legitimer Kandidat, tritt aber nicht länger auf, als sei jeder zweite Kochtopf eigentlich ein Braukessel.
 
-Die Werte sind Startwerte für späteres empirisches Tuning und keine objektiven kulinarischen Naturkonstanten.
+Diese historischen Caps sind seit #189 ausdrücklich keine Novelty-/Availability-Regeln der laufenden
+Admin- oder Application-Validierung. Die alten Changesets bleiben append-only erhalten. `base_draw_weight`
+ist eine eigenständige redaktionelle Entscheidung; #188 hat keine Korrektur freigegeben und #189 verändert
+keinen Gewichtswert. Der separate Hinweis für direkte Kochalkohol-Konkretisierungen bleibt bestehen.
+Beschaffungsfaktoren und Novelty-Ziele werden erst in #190 kalibriert; #189 allein ist kein freigegebener Produktionsrelease.
 
 ## 9. Saisonfaktoren
 
@@ -247,13 +259,18 @@ Die exakten Baseline-Prüfungen werden bewusst übersprungen, sobald bereits ver
 
 Für jedes neue Zutatenkonzept müssen mindestens gepflegt werden:
 
-1. Zutatenkonzept mit Spezifität, Ziehungsgewicht und optionaler Ungewöhnlichkeit,
+1. Zutatenkonzept mit Spezifität und unabhängig begründetem Ziehungsgewicht,
 2. kurze sachliche Kuratornotiz mit kulinarischer Identität, sinnvollen Produktformen oder wichtigen Abgrenzungen.
 
 Soll der Eintrag zufällig ziehbar sein, kommen verpflichtend hinzu:
 
 3. mindestens eine funktionale Rolle,
-4. Beschaffbarkeit für Georgia und Tobias.
+4. freigegebene Kochungewöhnlichkeit,
+5. getrennt freigegebene Beschaffbarkeit für Georgia und Tobias mit je einer individuellen Kernnotiz.
+
+Maßgeblich sind [INGREDIENT_CONCEPT_CURATION.md](INGREDIENT_CONCEPT_CURATION.md) und
+[AVAILABILITY_AND_COOKING_NOVELTY.md](AVAILABILITY_AND_COOKING_NOVELTY.md). Fehlende Werte bleiben im
+technischen Sparse-Modell zulässig; die Freigabe vor zufälliger Aktivierung ist ein redaktionelles Gate.
 
 Optional folgen:
 

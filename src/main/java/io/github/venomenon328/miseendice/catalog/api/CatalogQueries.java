@@ -333,7 +333,10 @@ public interface CatalogQueries {
     record CatalogDimensionValue(CatalogReferenceValue dimension, Integer level) {
     }
 
-    record CatalogAvailabilityValue(CatalogReferenceValue participant, CatalogAvailability level) {
+    record CatalogAvailabilityValue(CatalogReferenceValue participant, CatalogAvailability level, String curatorNote) {
+        public CatalogAvailabilityValue(CatalogReferenceValue participant, CatalogAvailability level) {
+            this(participant, level, null);
+        }
     }
 
     record CatalogSeasonValue(int month, BigDecimal weightMultiplier) {
