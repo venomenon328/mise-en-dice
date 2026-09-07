@@ -1,6 +1,6 @@
 # Availability-/Novelty-Kalibrierung aus #202
 
-Stand: 7. September 2026, ergänzt um die gezielte Availability-Nachmessung nach menschlicher Zwischenprüfung.
+Stand: 8. September 2026, ergänzt um die gezielte Availability-Nachmessung nach menschlicher Zwischenprüfung.
 Dieser Bericht ist der menschliche Haltepunkt zwischen #190A und #190B.
 Er empfiehlt Faktorvarianten, übernimmt sie aber ausdrücklich nicht in die produktive Konfiguration.
 
@@ -112,9 +112,9 @@ Die drei Arme unterscheiden sich ausschließlich bei `PLANNED = 0,30 / 0,22 / 0,
 Generatorregler sind identisch. Der Test erzwingt diese Begrenzung zusätzlich per Konfigurationsvergleich.
 Eine identische INITIAL/AUTO-Determinismusprobe wurde je Arm doppelt ausgeführt.
 
-Gemessene Laufzeiten: `TRANSITION` 534.648 ms, `CAUTIOUS` 535.463 ms, `STRONG` 532.658 ms; Novelty A 37.597 ms,
-Novelty B 37.573 ms; fokussiert `PLANNED = 0,30 / 0,22 / 0,15`: 75.282 / 75.920 / 77.260 ms.
-Gesamtlaufzeit einschließlich PostgreSQL-Aufbau, Snapshots und Read-only-Prüfung: 669.004 ms.
+Gemessene Laufzeiten: `TRANSITION` 533.590 ms, `CAUTIOUS` 537.475 ms, `STRONG` 538.916 ms; Novelty A 40.032 ms,
+Novelty B 40.067 ms; fokussiert `PLANNED = 0,30 / 0,22 / 0,15`: 73.114 / 81.287 / 74.859 ms.
+Gesamtlaufzeit einschließlich PostgreSQL-Aufbau, Snapshots und Read-only-Prüfung: 678.456 ms.
 
 ## Availability-Ergebnisse
 
@@ -211,14 +211,46 @@ der kleinen festen Matrix, keine stillen Faktoränderungen.
 | **0,22** | **144 (12,50 %) / 23 (2,00 %) / 1 (0,09 %)** | **116 (40,28 %) / 21 (7,29 %) / 1 (0,35 %)** | **19 / 0 / 1; keine N5-Fälle** | **24 `STRICT`** |
 | 0,15 | 120 (10,42 %) / 36 (3,12 %) / 5 (0,43 %) | 100 (34,72 %) / 35 (12,15 %) / 5 (1,74 %) | 13 / 3 / 2; keine N5-Fälle | 23 `STRICT`, 1 `RELAXED_1` |
 
+### Target-/Actual-Bänder der fokussierten Arme
+
+Auch die fokussierten Läufe erheben die vollständig gezogenen Target- und tatsächlichen Novelty-Bänder pro
+Kadenz. Jede Zelle umfasst 96 Kandidaten (zwei Monate × `AUTO`/`NONE` × zwei Seeds × zwölf Kandidaten);
+`TARGET_FACTOR_REBALANCED`, Load-Punkte und Caps bleiben zwischen allen drei Armen fest. `Target` ist das
+gezogene Band, `Actual` das aus Requirements und Load-Punkten resultierende Band.
+
+| `PLANNED` | Kadenz | Target F / B / A | Actual F / B / A |
+| ---: | --- | ---: | ---: |
+| 0,30 | `RECOVERY` | 31,25 % / 68,75 % / 0,00 % | 44,79 % / 55,21 % / 0,00 % |
+| 0,30 | `NEUTRAL` | 17,71 % / 55,21 % / 27,08 % | 29,17 % / 58,33 % / 12,50 % |
+| 0,30 | `SEEKING_VARIETY` | 15,62 % / 58,33 % / 26,04 % | 25,00 % / 58,33 % / 16,67 % |
+| **0,22** | `RECOVERY` | 32,29 % / 67,71 % / 0,00 % | 52,08 % / 47,92 % / 0,00 % |
+| **0,22** | `NEUTRAL` | 15,62 % / 63,54 % / 20,83 % | **32,29 % / 57,29 % / 10,42 %** |
+| **0,22** | `SEEKING_VARIETY` | 14,58 % / 42,71 % / 42,71 % | **29,17 % / 54,17 % / 16,67 %** |
+| 0,15 | `RECOVERY` | 36,46 % / 63,54 % / 0,00 % | 47,92 % / 52,08 % / 0,00 % |
+| 0,15 | `NEUTRAL` | 14,58 % / 64,58 % / 20,83 % | 32,29 % / 58,33 % / 9,38 % |
+| 0,15 | `SEEKING_VARIETY` | 14,58 % / 38,54 % / 46,88 % | 23,96 % / 56,25 % / 19,79 % |
+
+Damit wird das gewünschte `TARGET_FACTOR_REBALANCED`-Profil in allen fokussierten Armen erhalten: `RECOVERY`
+bleibt ohne `ADVENTUROUS`; `NEUTRAL` und `SEEKING_VARIETY` behalten jeweils einen klaren tatsächlichen
+`ADVENTUROUS`-Anteil. Für den empfohlenen `0,22`-Arm sind das 10,42 % in `NEUTRAL` und 16,67 % in
+`SEEKING_VARIETY`. Die frühere isolierte Novelty-B-Messung ergab 12,50 % beziehungsweise 18,75 %; sie war
+jedoch `NONE`-only, während die fokussierte Matrix zusätzlich `AUTO` enthält. Die Differenzen von jeweils
+2,08 Prozentpunkten sind deshalb kein kausaler Nachweis für eine Verschlechterung durch `PLANNED = 0,22`,
+sondern ein transparenter Vergleich zweier unterschiedlicher kleiner Matrizen. Gegen den CURRENT-A-Arm
+bleibt die Rebalanced-Wirkung klar: dort lagen die Werte bei 4,17 % und 2,08 %.
+
 Alle 72 fokussierten Fälle füllten das Reservoir vollständig in Größe `LARGE`; es gab weder Erschöpfungen,
 technische Fehler noch Hard-Rule-Verletzungen. Der mittlere Proposal-Aufwand lag bei 145,00 (`0,30`), 144,83
 (`0,22`) und 145,63 (`0,15`). Die direkte Kreuztabelle im Maschinenreport enthält zusätzlich die vollständige
 Availability-×-Novelty-Verteilung; die Tabelle zeigt die risikorelevanten N4/5-Zellen explizit. Das einmalige
 DIFFICULT/N4-Ereignis bei `0,22` und die höheren SPECIALTY-/DIFFICULT-Anteile bei `0,15` sind bei diesem kleinen
 N keine belastbare Rangfolge der seltenen Stufen, machen aber sichtbar, dass die feste Matrix diese Interaktion
-nicht verdeckt. Für die Entscheidung spricht `0,22`: gegenüber `0,30` reduziert es PLANNED deutlich und erreicht
-nahezu den PLANNED-Requirement-Anteil der breiten CAUTIOUS-Matrix, ohne den beobachteten Fallback von `0,15`.
+nicht verdeckt. Für die Entscheidung spricht `0,22` gegen beide Ziele: Gegenüber `0,30` reduziert es PLANNED
+deutlich und erreicht nahezu den PLANNED-Requirement-Anteil der breiten CAUTIOUS-Matrix; zugleich erhält es
+das Rebalanced-Profil mit 10,42 % beziehungsweise 16,67 % `ADVENTUROUS` in den beiden progressiveren Kadenzen.
+`0,15` erreicht in `SEEKING_VARIETY` zwar 19,79 %, fällt aber in `NEUTRAL` auf 9,38 % und benötigt als einziger
+Arm einen `RELAXED_1`-Fallback. Es gibt daher keinen neuen Befund, der eine vierte Faktorvariante oder eine
+Änderung an der bereits empfohlenen Novelty-Matrix, ihren Load-Punkten oder Caps rechtfertigt.
 
 ## Fallback, Integrität und Read-only-Grenze
 
@@ -260,9 +292,9 @@ Der normale Nachweis bleibt:
 ./mvnw clean verify
 ```
 
-Lokale Abnahme am 7. September 2026:
+Lokale Abnahme am 8. September 2026:
 
 - Opt-in-Lauf erfolgreich: 1 Test, 384/384 dokumentierte Generatorfälle, 0 Fehler, 0 Überspringungen,
-  682,9 s Testzeit; davon 288 Availability-, 24 Novelty-A/B- und 72 fokussierte Availability-Fälle;
+  698,7 s Testzeit; davon 288 Availability-, 24 Novelty-A/B- und 72 fokussierte Availability-Fälle;
 - regulärer Lauf erfolgreich: 496 Tests, 0 Fehler, 1 erwartete Überspringung der Opt-in-Klasse;
 - `git diff --check`: ohne Befund.
