@@ -23,6 +23,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`analysis/candidate-generator-data-readiness.sql`](analysis/candidate-generator-data-readiness.sql): reproduzierbare PostgreSQL-Auswertung des aktiven Ziehpools
 - [`analysis/availability-novelty-final-review-v1-20260907.md`](analysis/availability-novelty-final-review-v1-20260907.md): autoritativer #188-Abschlussstand; ausschließlich das dort verlinkte TSV liefert die freigegebenen Einzelwerte und Notizen
 - [`analysis/availability-novelty-migration-20260907.md`](analysis/availability-novelty-migration-20260907.md): #189-Migrationsumfang, exakter einmaliger QA-Abgleich, technischer Fingerprint und Release-Gate #190
+- [`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md): #202-Stichprobenmatrix, Generatorfingerprints, Availability-/Novelty-Befunde und menschlicher Haltepunkt vor #190B
 - [`analysis/availability-reference-anchors-v2-20260904.md`](analysis/availability-reference-anchors-v2-20260904.md): historische Vorbereitung des strengeren Availability-Ankersatzes; durch den finalen #188-Vertrag abgelöst
 - [`analysis/final-catalog-review-20260813.md`](analysis/final-catalog-review-20260813.md): verbindlicher fachlicher Review für den finalen Katalog
 - [`analysis/final-catalog-snapshot-contract-20260813.md`](analysis/final-catalog-snapshot-contract-20260813.md): Normalisierung, Upgrade-Schutz, Endfingerprint und Dimensionsabdeckung aus Issue #52
@@ -70,6 +71,7 @@ Die vollständige Trennung und Neukalibrierung von Beschaffbarkeit und Kochungew
 1. #187 – technische Fünfer-Skala und Begriffsschärfung,
 2. #188 – katalogweiter fachlicher Vollreview mit menschlicher Freigabe,
 3. #189 – migrationsgeführte Übernahme der freigegebenen Werte und Entkopplung pauschaler Gewichtswarnungen,
-4. #190 – breite reproduzierbare Generator-Neukalibrierung auf dem revidierten Katalog.
+4. #190A/#202 – explizite reproduzierbare Generator-Kalibrierungsstichprobe und Empfehlung ohne produktive Übernahme,
+5. #190B/#203 – menschlich freigegebene Faktoren übernehmen und gezielt regressionsprüfen.
 
 #188 kann nach Freigabe der Spezifikation parallel zu #187 vorbereitet werden. #189 benötigt beide abgeschlossenen Vorgänger; #190 folgt auf #189. Produktive redaktionelle Einzelwerte werden dabei nicht als automatisiertes Test-Oracle dupliziert.

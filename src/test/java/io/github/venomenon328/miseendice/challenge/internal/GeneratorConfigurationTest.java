@@ -33,6 +33,24 @@ class GeneratorConfigurationTest {
         assertThatThrownBy(() -> copyWithAvailability(valid, invalid))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Availability factors");
+
+        Map<Availability, BigDecimal> plannedEqualToEasy = new EnumMap<>(calibrated.availabilityFactors());
+        plannedEqualToEasy.put(Availability.PLANNED, new BigDecimal("1.00"));
+        assertThatThrownBy(() -> copyWithAvailability(valid, plannedEqualToEasy))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("PLANNED<1");
+
+        Map<Availability, BigDecimal> difficultZero = new EnumMap<>(calibrated.availabilityFactors());
+        difficultZero.put(Availability.DIFFICULT, BigDecimal.ZERO);
+        assertThatThrownBy(() -> copyWithAvailability(valid, difficultZero))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Availability factors");
+
+        Map<Availability, BigDecimal> unavailablePositive = new EnumMap<>(calibrated.availabilityFactors());
+        unavailablePositive.put(Availability.UNAVAILABLE, new BigDecimal("0.01"));
+        assertThatThrownBy(() -> copyWithAvailability(valid, unavailablePositive))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Availability factors");
     }
 
     @Test
