@@ -9,6 +9,11 @@ Alle `APPROVED_FINAL`-Zeilen wurden unabhängig von ihrer Freigabeherkunft gleic
 
 ## Implementierung und Grenzen
 
+Implementierungscommit:
+[`8247e8fd4131c87ac2d89816746e6f9408c128d4`](https://github.com/venomenon328/mise-en-dice/commit/8247e8fd4131c87ac2d89816746e6f9408c128d4).
+Der dokumentierte persistierte Stand wurde auf isoliertem PostgreSQL verifiziert; eine Produktionsausrollung
+ist damit nicht behauptet oder freigegeben.
+
 Die Implementierung baut auf dem finalen #188-Commit
 `fcd418d6c4f78f2ac348b1b5bc5851150610d966` auf. Der eingefrorene Katalog-Ausgangscommit ist
 `f8855121af336a7c13cd799cafede5f9b9420f28`; der vorherige migrationsgeführte Katalog wurde
@@ -94,6 +99,13 @@ Generator-Compatibility-Test prüft seine unveränderten Erhaltungsassertions nu
 seinem eigenen Changeset, bevor spätere Katalogrevisionen die Aggregatversionen fortschreiben.
 
 ## Release-Gate und Betriebsgrenze
+
+Abschließende lokale Verifikation am 7. September 2026 auf dem Implementierungscommit:
+`./mvnw.cmd clean verify` (Windows-Wrapper für `./mvnw clean verify`) erfolgreich mit **495 Tests,
+0 Fehlern und 0 übersprungenen Tests**. Darin enthalten sind leerer PostgreSQL-Neuaufbau, Upgrade,
+die neun #189-Migrationsfälle sowie alle Katalog-, Admin-, Generator-, Discord- und Modulgrenzentests.
+`git diff --check` und die vollständige Diff-Prüfung sind erfolgt; die 20 Python-Tooltests aus
+`python -m unittest discover design/challenge-cards/tools` sind ebenfalls erfolgreich.
 
 #189 ist keine eigenständige fachliche Produktionsfreigabe. #190 muss die endgültigen
 Availability-Faktoren separat kalibrieren und abnehmen; insbesondere bleibt `SPECIALTY = 0.15`
