@@ -1,11 +1,12 @@
 # Availability-/Novelty-Kalibrierung aus #202
 
-Stand: 7. September 2026. Dieser Bericht ist der menschliche Haltepunkt zwischen #190A und #190B.
+Stand: 7. September 2026, ergänzt um die gezielte Availability-Nachmessung nach menschlicher Zwischenprüfung.
+Dieser Bericht ist der menschliche Haltepunkt zwischen #190A und #190B.
 Er empfiehlt Faktorvarianten, übernimmt sie aber ausdrücklich nicht in die produktive Konfiguration.
 
 ## Ergebnis und Empfehlung
 
-Für Availability wird weiterhin `CAUTIOUS` empfohlen:
+Die breite Availability-Matrix empfiehlt zunächst `CAUTIOUS`:
 
 | Variante | `EASY` | `PLANNED` | `SPECIALTY` | `DIFFICULT` | `UNAVAILABLE` |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -38,6 +39,16 @@ es gab keine Erschöpfung, technischen Fehler, Novelty-Cap-/Load-Rejections oder
 Die Empfehlung ist wegen der kleinen Nachmessung ein menschlich zu prüfender Messvorschlag, keine automatische
 Produktionsentscheidung.
 
+Die danach angeforderte fokussierte Availability-Nachmessung hält genau dieses
+`TARGET_FACTOR_REBALANCED` fest und variiert ausschließlich `PLANNED`. Für die gemeinsame menschliche
+Entscheidung wird damit präziser `PLANNED = 0,22`, `SPECIALTY = 0,06` und `DIFFICULT = 0,01` empfohlen.
+Unter der rebalancierten Novelty-Matrix liegt `PLANNED = 0,22` bei 12,50 % zufälligen PLANNED-Requirements
+und 40,28 % Kandidaten mit mindestens einem PLANNED-Requirement, bleibt in allen 24 Fällen `STRICT` und
+hält SPECIALTY/DIFFICULT selten. `0,30` ist in genau dieser Kombination mit 17,53 % beziehungsweise 56,60 %
+deutlich präsenter; `0,15` senkt PLANNED weiter, zeigte aber einen `RELAXED_1`-Satz und in der kleinen
+Stichprobe höhere SPECIALTY-/DIFFICULT-Anteile. Die Nachmessung ist zu klein für eine statistische
+Feinabstimmung; sie ersetzt keine menschliche Freigabe und ändert keine produktive Konfiguration.
+
 Entscheidungsstatus: **`HUMAN_REVIEW_REQUIRED`**. `application.yml`, `configuration-version`, Generatorversion,
 RNG, Katalogdaten und sämtliche produktiven Availability-/Novelty-Werte bleiben unverändert.
 
@@ -45,7 +56,7 @@ RNG, Katalogdaten und sämtliche produktiven Availability-/Novelty-Werte bleiben
 
 - Ausgangscommit: `e9f0637a0c0af7720bd79c2be45e92185b70c55b`
 - Generator: `1.2.0`; Konfiguration: `2026-09-03.1`; RNG: `SPLITMIX64_V1`
-- Reportversion: `ISSUE_202_AVAILABILITY_NOVELTY_CALIBRATION_REPORT_V2`
+- Reportversion: `ISSUE_202_AVAILABILITY_NOVELTY_CALIBRATION_REPORT_V3`
 - Availability-Szenarioversion: `ISSUE_202_CALIBRATION_MATRIX_V1`
 - Novelty-A/B-Szenarioversion: `ISSUE_202_NOVELTY_AB_MATRIX_V1`
 - Run-Katalogfingerprint: `74fc5f93461c9c20f326a07af78a7f95f63b73538e1e07528668fb17ab599bab`
@@ -54,8 +65,12 @@ RNG, Katalogdaten und sämtliche produktiven Availability-/Novelty-Werte bleiben
 - Konfiguration `TRANSITION`: `8f75ed7e9f961bd82d4d4874003fc7fe00fe9e1bca30ddb3817f88887dba9cd3`
 - Konfiguration `CAUTIOUS` / Novelty A `CURRENT`: `6349be167afc7c9bf304f1dff62b5fd4bb1909b863c2680164bf9f0c0f1386f7`
 - Konfiguration Novelty B `TARGET_FACTOR_REBALANCED`: `972a7f9ae3d7dd2ba2a0068d7c491f11d6722992a378b9a07f4d262c2f616be1`
+- Fokussiert `PLANNED = 0,22` bei festem `TARGET_FACTOR_REBALANCED`:
+  `1cea9436a41f77840729600a4d8509e33e41dad10ad5bcc5f635e4e4e260a9f9`
+- Fokussiert `PLANNED = 0,15` bei festem `TARGET_FACTOR_REBALANCED`:
+  `dc9d7223e75c9f8e753baef4305c0dca29e128997e3d05b8fcb896c64abf3db3`
 - Konfiguration `STRONG`: `32a8d5a229cd9d57ff3d8582169046f6c735bcdbc66090a41fa489af4d6011f8`
-- kanonischer Reportfingerprint: `59f89364f7e97f627042449dee7e7aa6c62951c1887f0b627098d6aac0edfae9`
+- kanonischer Reportfingerprint: `bb1f3583d17a76b87c114c2992b3b0419973016a430a4202d55265aa05926a2a`
 
 Laufzeitdaten liegen außerhalb des kanonischen Fingerprints. Der maschinenlesbare Bericht wird unter
 `target/generator-simulation/availability-novelty-calibration-report.json` erzeugt und nicht eingecheckt.
@@ -84,8 +99,22 @@ Kadenzen, `INITIAL`, `NONE` und dieselben zwei Seeds: 12 Fälle je Arm, 24 insge
 Novelty-Wirkung von Restriktionszufall; REROLL und Manuals werden nicht erneut vermessen. Ein zusätzlicher identischer
 Einzelfall wurde je Availability- und Novelty-Variante zweimal ausgeführt und kanonisch verglichen.
 
-Gemessene Laufzeiten: `TRANSITION` 636.887 ms, `CAUTIOUS` 634.928 ms, `STRONG` 636.231 ms; Novelty A 42.161 ms,
-Novelty B 42.402 ms. Gesamtlaufzeit einschließlich PostgreSQL-Aufbau, Snapshots und Read-only-Prüfung: 694.091 ms.
+Die nachfolgende Availability-Nachmessung ist ebenfalls absichtlich klein und verändert weder die breite Matrix
+noch die Novelty-A/B-Messung. Sie verwendet fest `TARGET_FACTOR_REBALANCED`, Februar/August, alle drei
+Kadenzen, `AUTO` und `NONE`, beide kanonischen Seeds sowie ausschließlich `INITIAL`:
+
+```text
+2 Monate × 3 Kadenzen × 2 Restriktionsmodi × 2 Seeds × INITIAL = 24 Fälle je Arm
+```
+
+Die drei Arme unterscheiden sich ausschließlich bei `PLANNED = 0,30 / 0,22 / 0,15`; `SPECIALTY = 0,06`,
+`DIFFICULT = 0,01`, EASY/UNAVAILABLE, Novelty-Zielfaktoren, Load-Punkte, Caps und alle übrigen
+Generatorregler sind identisch. Der Test erzwingt diese Begrenzung zusätzlich per Konfigurationsvergleich.
+Eine identische INITIAL/AUTO-Determinismusprobe wurde je Arm doppelt ausgeführt.
+
+Gemessene Laufzeiten: `TRANSITION` 534.648 ms, `CAUTIOUS` 535.463 ms, `STRONG` 532.658 ms; Novelty A 37.597 ms,
+Novelty B 37.573 ms; fokussiert `PLANNED = 0,30 / 0,22 / 0,15`: 75.282 / 75.920 / 77.260 ms.
+Gesamtlaufzeit einschließlich PostgreSQL-Aufbau, Snapshots und Read-only-Prüfung: 669.004 ms.
 
 ## Availability-Ergebnisse
 
@@ -168,6 +197,29 @@ Trade-off: beide Arme benötigten im Mittel rund 145 Proposal Attempts, füllten
 erzeugten ausschließlich `STRICT`-Sätze. Deshalb wird B konkret für die menschliche Entscheidung empfohlen;
 eine weitere große Matrix ist für #202 nicht erforderlich.
 
+## Gezielte Availability-Nachmessung bei festem `TARGET_FACTOR_REBALANCED`
+
+Diese Nachmessung beantwortet ausschließlich die nach der Zwischenprüfung offene Frage nach `PLANNED` in der
+bereits empfohlenen Kombination mit `TARGET_FACTOR_REBALANCED`. Sie misst 24 vollständige Sätze je Arm,
+also je 288 Kandidaten und 1.152 zufällige Requirements. `SPECIALTY = 0,06` und `DIFFICULT = 0,01` sind
+konfigurationsseitig exakt gleich geblieben; die folgenden beobachteten Unterschiede sind daher Verteilungen
+der kleinen festen Matrix, keine stillen Faktoränderungen.
+
+| `PLANNED` | Requirements P / S / D | Kandidaten mit P / S / D | hohe Novelty (N4/5) × P / S / D | Fallback |
+| ---: | ---: | ---: | ---: | ---: |
+| 0,30 | 202 (17,53 %) / 21 (1,82 %) / 3 (0,26 %) | 163 (56,60 %) / 21 (7,29 %) / 3 (1,04 %) | 27 / 0 / 0; keine N5-Fälle | 24 `STRICT` |
+| **0,22** | **144 (12,50 %) / 23 (2,00 %) / 1 (0,09 %)** | **116 (40,28 %) / 21 (7,29 %) / 1 (0,35 %)** | **19 / 0 / 1; keine N5-Fälle** | **24 `STRICT`** |
+| 0,15 | 120 (10,42 %) / 36 (3,12 %) / 5 (0,43 %) | 100 (34,72 %) / 35 (12,15 %) / 5 (1,74 %) | 13 / 3 / 2; keine N5-Fälle | 23 `STRICT`, 1 `RELAXED_1` |
+
+Alle 72 fokussierten Fälle füllten das Reservoir vollständig in Größe `LARGE`; es gab weder Erschöpfungen,
+technische Fehler noch Hard-Rule-Verletzungen. Der mittlere Proposal-Aufwand lag bei 145,00 (`0,30`), 144,83
+(`0,22`) und 145,63 (`0,15`). Die direkte Kreuztabelle im Maschinenreport enthält zusätzlich die vollständige
+Availability-×-Novelty-Verteilung; die Tabelle zeigt die risikorelevanten N4/5-Zellen explizit. Das einmalige
+DIFFICULT/N4-Ereignis bei `0,22` und die höheren SPECIALTY-/DIFFICULT-Anteile bei `0,15` sind bei diesem kleinen
+N keine belastbare Rangfolge der seltenen Stufen, machen aber sichtbar, dass die feste Matrix diese Interaktion
+nicht verdeckt. Für die Entscheidung spricht `0,22`: gegenüber `0,30` reduziert es PLANNED deutlich und erreicht
+nahezu den PLANNED-Requirement-Anteil der breiten CAUTIOUS-Matrix, ohne den beobachteten Fallback von `0,15`.
+
 ## Fallback, Integrität und Read-only-Grenze
 
 | Messbereich | Variante | `STRICT` | `RELAXED_1` | `RELAXED_2` | erschöpft | technische Fehler | Hard-Rule-Verletzungen |
@@ -177,6 +229,9 @@ eine weitere große Matrix ist für #202 nicht erforderlich.
 | Availability | `STRONG` | 92 | 4 | 0 | 0 | 0 | 0 |
 | Novelty A/B | `CURRENT` | 12 | 0 | 0 | 0 | 0 | 0 |
 | Novelty A/B | `TARGET_FACTOR_REBALANCED` | 12 | 0 | 0 | 0 | 0 | 0 |
+| Fokussiert Availability | `PLANNED = 0,30` | 24 | 0 | 0 | 0 | 0 | 0 |
+| Fokussiert Availability | `PLANNED = 0,22` | 24 | 0 | 0 | 0 | 0 | 0 |
+| Fokussiert Availability | `PLANNED = 0,15` | 23 | 1 | 0 | 0 | 0 | 0 |
 
 Cooldown-, Restriction-, Quoten-, Set-Cap-, strikte Paarmittel- und Recovery-Kadenz-Invarianten blieben ohne
 Verletzung. Vor und nach dem Lauf waren alle geprüften operativen Tabellen leer und die Katalogfingerprints gleich.
@@ -188,8 +243,10 @@ Calls, insbesondere keine OpenAI- oder Discord-Requests.
 Die Availability-Stichprobe kann seltene Erschöpfungen oder Seed-Ausreißer nicht statistisch ausschließen. Februar
 und August liefern nur einen groben Saisonkontrast; Monatsverläufe sind nicht ableitbar. Die Manual-Fälle verwenden
 absichtlich unklassifizierten Freitext und messen keine Verteilung konkreter manueller Katalogkonzepte. Die Novelty-
-A/B-Nachmessung ist noch enger und isoliert absichtlich nur Zielfaktoren. Deshalb sind `CAUTIOUS` und
-`TARGET_FACTOR_REBALANCED` begründete Empfehlungen für die menschliche Prüfung, keine automatische Freigabe.
+A/B-Nachmessung ist noch enger und isoliert absichtlich nur Zielfaktoren. Die fokussierte Availability-Nachmessung
+variiert nur PLANNED und deckt weder REROLL noch Manuals erneut ab. Deshalb sind `PLANNED = 0,22`, `SPECIALTY = 0,06`,
+`DIFFICULT = 0,01` und `TARGET_FACTOR_REBALANCED` begründete Empfehlungen für die menschliche Prüfung, keine
+automatische Freigabe.
 
 Der Lauf ist hart opt-in und bleibt außerhalb normaler Builds und CI:
 
@@ -205,7 +262,7 @@ Der normale Nachweis bleibt:
 
 Lokale Abnahme am 7. September 2026:
 
-- Opt-in-Lauf erfolgreich: 1 Test, 312/312 dokumentierte Generatorfälle, 0 Fehler, 0 Überspringungen,
-  710,3 s Testzeit; davon 288 Availability- und 24 Novelty-A/B-Fälle;
+- Opt-in-Lauf erfolgreich: 1 Test, 384/384 dokumentierte Generatorfälle, 0 Fehler, 0 Überspringungen,
+  682,9 s Testzeit; davon 288 Availability-, 24 Novelty-A/B- und 72 fokussierte Availability-Fälle;
 - regulärer Lauf erfolgreich: 496 Tests, 0 Fehler, 1 erwartete Überspringung der Opt-in-Klasse;
 - `git diff --check`: ohne Befund.

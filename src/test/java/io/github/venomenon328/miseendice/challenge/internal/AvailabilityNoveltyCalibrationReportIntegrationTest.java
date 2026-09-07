@@ -75,9 +75,11 @@ import tools.jackson.databind.ObjectMapper;
 @Testcontainers
 class AvailabilityNoveltyCalibrationReportIntegrationTest {
     private static final String BASE_COMMIT = "e9f0637a0c0af7720bd79c2be45e92185b70c55b";
-    private static final String REPORT_VERSION = "ISSUE_202_AVAILABILITY_NOVELTY_CALIBRATION_REPORT_V2";
+    private static final String REPORT_VERSION = "ISSUE_202_AVAILABILITY_NOVELTY_CALIBRATION_REPORT_V3";
     private static final String SCENARIO_VERSION = "ISSUE_202_CALIBRATION_MATRIX_V1";
     private static final String NOVELTY_AB_SCENARIO_VERSION = "ISSUE_202_NOVELTY_AB_MATRIX_V1";
+    private static final String FOCUSED_AVAILABILITY_SCENARIO_VERSION =
+            "ISSUE_202_FOCUSED_AVAILABILITY_MATRIX_V1";
     private static final int SCALE = 12;
     private static final RoundingMode ROUNDING = RoundingMode.HALF_EVEN;
     private static final Path OUTPUT = Path.of("target", "generator-simulation",
@@ -123,8 +125,10 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
         CatalogState catalogBefore = frozenCatalog.state();
         SimulationRequest matrix = calibrationRequest();
         SimulationRequest noveltyAbMatrix = noveltyAbRequest();
+        SimulationRequest focusedAvailabilityMatrix = focusedAvailabilityRequest();
         assertThat(matrix.plannedCases()).isEqualTo(96);
         assertThat(noveltyAbMatrix.plannedCases()).isEqualTo(12);
+        assertThat(focusedAvailabilityMatrix.plannedCases()).isEqualTo(24);
 
         Map<String, CalibrationRun> runs = new TreeMap<>();
         Map<String, Long> runtimes = new TreeMap<>();
@@ -166,13 +170,35 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
             noveltyExecutor.shutdownNow();
         }
 
+        Map<String, CalibrationRun> focusedAvailabilityRuns = new TreeMap<>();
+        Map<String, Long> focusedAvailabilityRuntimes = new TreeMap<>();
+        ExecutorService focusedAvailabilityExecutor =
+                Executors.newFixedThreadPool(FocusedAvailabilityVariant.values().length);
+        try {
+            Map<FocusedAvailabilityVariant, CompletableFuture<VariantExecution>> executions =
+                    new EnumMap<>(FocusedAvailabilityVariant.class);
+            for (FocusedAvailabilityVariant variant : FocusedAvailabilityVariant.values()) {
+                executions.put(variant, CompletableFuture.supplyAsync(
+                        () -> executeFocusedAvailabilityVariant(variant, production, focusedAvailabilityMatrix,
+                                frozenCatalog.snapshotsByMonth()), focusedAvailabilityExecutor));
+            }
+            for (FocusedAvailabilityVariant variant : FocusedAvailabilityVariant.values()) {
+                VariantExecution execution = executions.get(variant).join();
+                focusedAvailabilityRuns.put(variant.name(), execution.run());
+                focusedAvailabilityRuntimes.put(variant.name(), execution.elapsedMillis());
+            }
+        } finally {
+            focusedAvailabilityExecutor.shutdownNow();
+        }
+
         CatalogState catalogAfter = materializeCatalog().state();
         Map<String, Long> operationalAfter = operationalCounts();
         assertThat(operationalAfter).isEqualTo(operationalBefore);
         assertThat(catalogAfter.fingerprintsByMonth()).isEqualTo(catalogBefore.fingerprintsByMonth());
 
-        Map<String, Object> canonicalReport = canonicalReport(production, matrix, noveltyAbMatrix, catalogBefore,
-                operationalBefore, operationalAfter, runs, noveltyAbRuns);
+        Map<String, Object> canonicalReport = canonicalReport(production, matrix, noveltyAbMatrix,
+                focusedAvailabilityMatrix, catalogBefore, operationalBefore, operationalAfter, runs, noveltyAbRuns,
+                focusedAvailabilityRuns);
         String canonicalFingerprint = sha256(CanonicalSetFingerprint.canonicalBytes(canonicalReport));
         Map<String, Object> document = map();
         document.put("canonicalFingerprint", canonicalFingerprint);
@@ -180,13 +206,14 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
         document.put("runtime", Map.of(
                 "elapsedMillisByVariant", runtimes,
                 "noveltyAbElapsedMillisByVariant", noveltyAbRuntimes,
+                "focusedAvailabilityElapsedMillisByVariant", focusedAvailabilityRuntimes,
                 "totalElapsedMillis", elapsedMillis(startedNanos)));
         Files.createDirectories(OUTPUT.getParent());
         Files.write(OUTPUT, CanonicalSetFingerprint.canonicalBytes(document));
 
         assertThat(Files.readString(OUTPUT)).contains(canonicalFingerprint, REPORT_VERSION,
                 "HUMAN_REVIEW_REQUIRED", "STRONG", "SPECIALTY", "TARGET_FACTOR_REBALANCED",
-                "targetActualBandComparison");
+                "PLANNED_0_15", "targetActualBandComparison", "focusedAvailability");
     }
 
     private VariantExecution executeVariant(
@@ -233,6 +260,35 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
                 reproducibilityRequest(), catalogsByMonth);
         assertThat(firstProbe.canonicalDocument()).isEqualTo(secondProbe.canonicalDocument());
         System.out.printf("[issue-202] completed novelty A/B %s in %d ms%n", variant.name(), elapsedMillis);
+        return new VariantExecution(run, elapsedMillis);
+    }
+
+    private VariantExecution executeFocusedAvailabilityVariant(
+            FocusedAvailabilityVariant variant,
+            GeneratorConfiguration production,
+            SimulationRequest matrix,
+            Map<Integer, CatalogGeneratorSnapshot> catalogsByMonth
+    ) {
+        GeneratorConfiguration rebalanced = withNovelty(
+                withAvailabilityFactors(production, Variant.CAUTIOUS.factors()),
+                NoveltyVariant.TARGET_FACTOR_REBALANCED.novelty(production.novelty()));
+        GeneratorConfiguration configuration = withAvailabilityFactors(rebalanced, variant.factors());
+        assertFocusedAvailabilityScope(production, configuration, variant);
+        long variantStarted = System.nanoTime();
+        System.out.printf("[issue-202] starting focused availability %s (%d cases)%n",
+                variant.name(), matrix.plannedCases());
+        CalibrationRun run = run("FOCUSED_AVAILABILITY_" + variant.name(), configuration, matrix,
+                catalogsByMonth);
+        long elapsedMillis = elapsedMillis(variantStarted);
+        assertComplete(run.report(), matrix.plannedCases());
+
+        CalibrationRun firstProbe = run("FOCUSED_AVAILABILITY_" + variant.name() + "-probe-1", configuration,
+                reproducibilityRequest(), catalogsByMonth);
+        CalibrationRun secondProbe = run("FOCUSED_AVAILABILITY_" + variant.name() + "-probe-2", configuration,
+                reproducibilityRequest(), catalogsByMonth);
+        assertThat(firstProbe.canonicalDocument()).isEqualTo(secondProbe.canonicalDocument());
+        System.out.printf("[issue-202] completed focused availability %s in %d ms%n",
+                variant.name(), elapsedMillis);
         return new VariantExecution(run, elapsedMillis);
     }
 
@@ -362,6 +418,24 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
                 GeneratorSimulation.SimulationControl.unbounded());
     }
 
+    private static SimulationRequest focusedAvailabilityRequest() {
+        List<SimulationScenario> scenarios = new ArrayList<>();
+        ExplicitSeeds seeds = new ExplicitSeeds(SEEDS);
+        for (int month : SAMPLE_MONTHS) {
+            LocalDate date = LocalDate.of(2026, month, 15);
+            for (Map.Entry<NoveltyCadence, HistoryScenario> cadence : orderedHistories()) {
+                for (io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode mode
+                        : List.of(io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode.AUTO,
+                        io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode.NONE)) {
+                    scenarios.add(scenario("FOCUSED_AVAILABILITY_%02d_%s_%s".formatted(month, cadence.getKey(),
+                                    mode), seeds, date, cadence.getValue(), AttemptType.INITIAL, List.of(), mode));
+                }
+            }
+        }
+        return new SimulationRequest(FOCUSED_AVAILABILITY_SCENARIO_VERSION, scenarios, 24,
+                GeneratorSimulation.SimulationControl.unbounded());
+    }
+
     private static List<Map.Entry<NoveltyCadence, HistoryScenario>> orderedHistories() {
         return HISTORIES.entrySet().stream().sorted(Map.Entry.comparingByKey()).toList();
     }
@@ -382,11 +456,13 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
             GeneratorConfiguration production,
             SimulationRequest matrix,
             SimulationRequest noveltyAbMatrix,
+            SimulationRequest focusedAvailabilityMatrix,
             CatalogState catalog,
             Map<String, Long> operationalBefore,
             Map<String, Long> operationalAfter,
             Map<String, CalibrationRun> runs,
-            Map<String, CalibrationRun> noveltyAbRuns
+            Map<String, CalibrationRun> noveltyAbRuns,
+            Map<String, CalibrationRun> focusedAvailabilityRuns
     ) {
         Map<String, Object> root = map();
         Map<String, Object> metadata = map();
@@ -430,8 +506,20 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
                 "scenarioVersion", NOVELTY_AB_SCENARIO_VERSION,
                 "seeds", SEEDS,
                 "views", List.of("INITIAL")));
+        method.put("focusedAvailability", Map.of(
+                "availabilityFactorsFixed", Map.of("DIFFICULT", "0.01", "SPECIALTY", "0.06"),
+                "casesPerVariant", focusedAvailabilityMatrix.plannedCases(),
+                "months", SAMPLE_MONTHS,
+                "noveltyVariant", NoveltyVariant.TARGET_FACTOR_REBALANCED.name(),
+                "noveltyCadences", List.of("RECOVERY", "NEUTRAL", "SEEKING_VARIETY"),
+                "plannedFactors", List.of("0.30", "0.22", "0.15"),
+                "restrictionModes", List.of("AUTO", "NONE"),
+                "scenarioVersion", FOCUSED_AVAILABILITY_SCENARIO_VERSION,
+                "seeds", SEEDS,
+                "views", List.of("INITIAL")));
         method.put("totalCases", matrix.plannedCases() * Variant.values().length
-                + noveltyAbMatrix.plannedCases() * NoveltyVariant.values().length);
+                + noveltyAbMatrix.plannedCases() * NoveltyVariant.values().length
+                + focusedAvailabilityMatrix.plannedCases() * FocusedAvailabilityVariant.values().length);
         method.put("views", List.of("INITIAL", "REROLL"));
         root.put("method", method);
 
@@ -457,12 +545,30 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
         }
         root.put("noveltyAbConfigurationVariants", noveltyAbConfigurationVariants);
 
+        Map<String, Object> focusedAvailabilityConfigurationVariants = map();
+        GeneratorConfiguration rebalanced = withNovelty(
+                withAvailabilityFactors(production, Variant.CAUTIOUS.factors()),
+                NoveltyVariant.TARGET_FACTOR_REBALANCED.novelty(production.novelty()));
+        for (FocusedAvailabilityVariant variant : FocusedAvailabilityVariant.values()) {
+            GeneratorConfiguration configuration = withAvailabilityFactors(rebalanced, variant.factors());
+            focusedAvailabilityConfigurationVariants.put(variant.name(), Map.of(
+                    "availabilityFactors", stringFactors(configuration.availabilityFactors()),
+                    "configurationFingerprint",
+                    GeneratorSimulationReportCodec.configurationFingerprint(configuration),
+                    "novelty", noveltyDocument(configuration.novelty())));
+        }
+        root.put("focusedAvailabilityConfigurationVariants", focusedAvailabilityConfigurationVariants);
+
         Map<String, Object> variantReports = map();
         runs.forEach((name, run) -> variantReports.put(name, run.canonicalDocument()));
         root.put("variants", variantReports);
         Map<String, Object> noveltyAbReports = map();
         noveltyAbRuns.forEach((name, run) -> noveltyAbReports.put(name, run.canonicalDocument()));
         root.put("noveltyAb", noveltyAbReports);
+        Map<String, Object> focusedAvailabilityReports = map();
+        focusedAvailabilityRuns.forEach((name, run) -> focusedAvailabilityReports.put(name,
+                run.canonicalDocument()));
+        root.put("focusedAvailability", focusedAvailabilityReports);
         root.put("readOnlyVerification", Map.of(
                 "catalogFingerprintsUnchanged", true,
                 "operationalRowCountsAfter", operationalAfter,
@@ -546,6 +652,22 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
                 .isEqualTo(variant.novelty(production.novelty()).targetFactors());
         assertThat(withAvailabilityFactors(measured, production.availabilityFactors()))
                 .isEqualTo(withNovelty(production, measured.novelty()));
+    }
+
+    private static void assertFocusedAvailabilityScope(
+            GeneratorConfiguration production,
+            GeneratorConfiguration measured,
+            FocusedAvailabilityVariant variant
+    ) {
+        assertThat(measured.availabilityFactors()).isEqualTo(variant.factors());
+        assertThat(measured.availabilityFactors().get(Availability.SPECIALTY))
+                .isEqualByComparingTo(new BigDecimal("0.06"));
+        assertThat(measured.availabilityFactors().get(Availability.DIFFICULT))
+                .isEqualByComparingTo(new BigDecimal("0.01"));
+        assertThat(measured.novelty())
+                .isEqualTo(NoveltyVariant.TARGET_FACTOR_REBALANCED.novelty(production.novelty()));
+        assertThat(withNovelty(measured, production.novelty()))
+                .isEqualTo(withAvailabilityFactors(production, variant.factors()));
     }
 
     private static Map<String, Object> noveltyDocument(NoveltyConfiguration novelty) {
@@ -636,6 +758,28 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
         ) {
             return Map.of(1, new BigDecimal(one), 2, new BigDecimal(two), 3, new BigDecimal(three),
                     4, new BigDecimal(four), 5, new BigDecimal(five));
+        }
+    }
+
+    private enum FocusedAvailabilityVariant {
+        PLANNED_0_30("0.30"),
+        PLANNED_0_22("0.22"),
+        PLANNED_0_15("0.15");
+
+        private final Map<Availability, BigDecimal> factors;
+
+        FocusedAvailabilityVariant(String planned) {
+            EnumMap<Availability, BigDecimal> values = new EnumMap<>(Availability.class);
+            values.put(Availability.EASY, new BigDecimal("1.00"));
+            values.put(Availability.PLANNED, new BigDecimal(planned));
+            values.put(Availability.SPECIALTY, new BigDecimal("0.06"));
+            values.put(Availability.DIFFICULT, new BigDecimal("0.01"));
+            values.put(Availability.UNAVAILABLE, new BigDecimal("0.00"));
+            factors = Map.copyOf(values);
+        }
+
+        Map<Availability, BigDecimal> factors() {
+            return factors;
         }
     }
 

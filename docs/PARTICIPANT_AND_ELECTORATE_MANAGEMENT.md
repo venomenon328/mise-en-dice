@@ -234,8 +234,9 @@ Die bislang verwendeten Faktoren `PLANNED = 0,65` und `DIFFICULT = 0,20` gewicht
 
 `DIFFICULT` bezeichnet eine zwar nicht logisch unmögliche, praktisch aber nur mit unverhältnismäßigem Reise-, Import- oder Kostenaufwand realisierbare Beschaffung. Es soll deshalb selten, aber nicht vollständig ausgeschlossen bleiben.
 
-Diese Tabelle bleibt der produktive Übergangsstand. Die Stichprobe aus #190A/#202 empfiehlt für die menschliche
-Prüfung `PLANNED = 0,30`, `SPECIALTY = 0,06` und `DIFFICULT = 0,01`, übernimmt sie aber nicht; Details und Grenzen
+Diese Tabelle bleibt der produktive Übergangsstand. Die Stichprobe aus #190A/#202 empfiehlt nach einer gezielten
+Nachmessung mit festem `TARGET_FACTOR_REBALANCED` für die menschliche Prüfung `PLANNED = 0,22`, `SPECIALTY = 0,06`
+und `DIFFICULT = 0,01`, übernimmt sie aber nicht; Details und Grenzen
 stehen in [`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md).
 Eine produktive Änderung einschließlich Konfigurationsversionswechsel gehört ausschließlich in #190B. Dabei werden
 Novelty-Ziele, Kandidaten-Caps und andere Generatorparameter nicht stillschweigend mitverändert. Der Bericht weist

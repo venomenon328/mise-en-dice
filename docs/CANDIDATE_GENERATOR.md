@@ -250,9 +250,10 @@ Maßgeblich ist der restriktivste vorhandene Beschaffbarkeitswert des vorab mate
 | kein Wert vorhanden | 1,00 (neutral) |
 
 `DIFFICULT` bleibt damit möglich, wird aber deutlich seltener. Die Satzselektion begrenzt zusätzlich Kandidaten mit schwieriger Beschaffbarkeit.
-Dies ist weiterhin der produktive Übergangsstand. #202 empfiehlt nach einer expliziten Stichprobe für die spätere
-menschliche Entscheidung `PLANNED = 0,30`, `SPECIALTY = 0,06` und `DIFFICULT = 0,01`; diese Werte sind hier nicht
-übernommen. Maßgeblich für Befund und Grenzen ist der verlinkte Kalibrierungsbericht.
+Dies ist weiterhin der produktive Übergangsstand. #202 empfiehlt nach einer expliziten Stichprobe und einer gezielten
+Nachmessung bei festem `TARGET_FACTOR_REBALANCED` für die spätere menschliche Entscheidung `PLANNED = 0,22`,
+`SPECIALTY = 0,06` und `DIFFICULT = 0,01`; diese Werte sind hier nicht übernommen. Maßgeblich für Befund und Grenzen
+ist der verlinkte Kalibrierungsbericht.
 
 ### 5.3 Saisonfaktor
 
@@ -1318,9 +1319,12 @@ dokumentiert. Sie läuft ausschließlich mit `-Dissue190.report=true`, umfasst F
 alle fachlich wichtigeren Matrixachsen und wird niemals vom normalen Build oder CI gestartet. Der historische
 #152-Smoke bleibt unter
 [`analysis/availability-weight-calibration-2026-08-22.md`](analysis/availability-weight-calibration-2026-08-22.md)
-erhalten. Der #202-Bericht empfiehlt `CAUTIOUS`, übernimmt die Faktoren aber nicht produktiv.
+erhalten. Der #202-Bericht empfiehlt nach der fokussierten Availability-Nachmessung
+`PLANNED = 0,22 / SPECIALTY = 0,06 / DIFFICULT = 0,01`, übernimmt die Faktoren aber nicht produktiv.
 Eine zusätzliche kleine A/B-Nachmessung umfasst nur 12 `CAUTIOUS`-Kernfälle je Novelty-Arm und empfiehlt
 `TARGET_FACTOR_REBALANCED`; sie kehrt weder zur großen Matrix zurück noch ändert sie Load-Punkte oder Caps.
+Die darauf folgende kleine Availability-Nachmessung hält genau diese Novelty-Variante fest und vergleicht
+`PLANNED = 0,30 / 0,22 / 0,15` bei unverändertem SPECIALTY/DIFFICULT, Load-Punkten und Caps.
 
 ## 21. Test- und Simulationsvertrag
 

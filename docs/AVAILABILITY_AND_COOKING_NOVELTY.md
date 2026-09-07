@@ -440,10 +440,9 @@ UNAVAILABLE = 0
 
 Die Kalibrierungsstichprobe aus #190A/#202 ist in
 [`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md)
-dokumentiert. Sie empfiehlt für die spätere menschliche Entscheidung `0,30 / 0,06 / 0,01`, übernimmt diese Werte
-aber nicht produktiv. Der dort direkt ausgewiesene Target-/Actual-Bandfehlfit führte zusätzlich zu einer kleinen
-isolierten A/B-Nachmessung auf `CAUTIOUS`; empfohlen werden stärker getrennte Novelty-Zielfaktoren bei unveränderten
-Load-Punkten und Caps. Bis #190B bleiben Availability und Novelty produktiv unverändert.
+dokumentiert. Die gezielte Nachmessung bei festem `TARGET_FACTOR_REBALANCED` empfiehlt für die spätere menschliche
+Entscheidung `0,22 / 0,06 / 0,01`; sie übernimmt diese Werte nicht produktiv. Load-Punkte und Caps bleiben auch
+in dieser Nachmessung unverändert. Bis #190B bleiben Availability und Novelty produktiv unverändert.
 
 Verbindliche fachliche Zielrichtung:
 
