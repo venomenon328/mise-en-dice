@@ -69,10 +69,11 @@ final class DiscordIngredientLookupRenderer {
     RenderedEmbed profile(IngredientLookupProfile profile, CountryBrowseOrigin countryOrigin) {
         List<IngredientLookupRelation> parents = sortedRelations(profile.activeDirectParents());
         List<IngredientLookupRelation> children = sortedRelations(profile.activeDirectChildren());
+        List<AvailabilityField> availabilityFields = availabilityFields(profile.availabilityNotes());
         String title = "🥢 " + oneLine(profile.displayName(), TITLE_LIMIT - 3);
         BoundedEmbed embed = new BoundedEmbed(title, codeBlock(baseLines(profile)));
-        int availabilityReservation = profile.availabilityNotes().stream()
-                .mapToInt(note -> availabilityFieldName(note).length() + AVAILABILITY_NOTE_VALUE_LIMIT)
+        int availabilityReservation = availabilityFields.stream()
+                .mapToInt(field -> field.name().length() + AVAILABILITY_NOTE_VALUE_LIMIT)
                 .sum();
         embed.reserve(HIERARCHY_RESERVATION + availabilityReservation);
 
@@ -88,8 +89,8 @@ final class DiscordIngredientLookupRenderer {
             embed.addText("💡 Hinweis aus dem Zutatenkatalog", safe(profile.curatorNote()), MAX_CURATOR_NOTE_FIELDS);
         }
         embed.release(availabilityReservation);
-        for (IngredientLookupAvailabilityNote note : profile.availabilityNotes()) {
-            embed.addLimitedText(availabilityFieldName(note), safe(note.note()), AVAILABILITY_NOTE_VALUE_LIMIT);
+        for (AvailabilityField field : availabilityFields) {
+            embed.addLimitedText(field.name(), safe(field.note()), AVAILABILITY_NOTE_VALUE_LIMIT);
         }
         embed.release(HIERARCHY_RESERVATION);
         embed.addRelationList(PARENT_FIELD_NAME, parents);
@@ -171,8 +172,19 @@ final class DiscordIngredientLookupRenderer {
         return UK_SUBDIVISION_TAG_CODES.contains(countryCode) ? emojiTagSequence(countryCode) : NEUTRAL_COUNTRY_FALLBACK;
     }
 
-    private static String availabilityFieldName(IngredientLookupAvailabilityNote note) {
-        return "📦 Beschaffbarkeit – " + note.participantDisplayName();
+    private static List<AvailabilityField> availabilityFields(List<IngredientLookupAvailabilityNote> notes) {
+        IngredientLookupAvailabilityNote georgia = notes.stream()
+                .filter(note -> note.participantCode().equals("GEORGIA"))
+                .findFirst().orElse(null);
+        IngredientLookupAvailabilityNote tobias = notes.stream()
+                .filter(note -> note.participantCode().equals("TOBIAS"))
+                .findFirst().orElse(null);
+        if (georgia != null && tobias != null && georgia.note().equals(tobias.note())) {
+            return List.of(new AvailabilityField("📦 Verfügbarkeit", georgia.note()));
+        }
+        return notes.stream()
+                .map(note -> new AvailabilityField("📦 Verfügbarkeit – " + note.participantDisplayName(), note.note()))
+                .toList();
     }
 
     private static String emojiTagSequence(String countryCode) {
@@ -321,6 +333,9 @@ final class DiscordIngredientLookupRenderer {
 
     private static String pad(String value, int width) {
         return value + " ".repeat(Math.max(0, width - value.length()));
+    }
+
+    private record AvailabilityField(String name, String note) {
     }
 
     sealed interface RenderedResponse permits RenderedText, RenderedSelection, RenderedEmbed, RenderedCountryText,

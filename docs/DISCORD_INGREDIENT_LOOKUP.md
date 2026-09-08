@@ -139,14 +139,14 @@ Das fertige Profil ist ein kompaktes Discord-Embed mit einer festen zurückhalte
 4. `🍽️ Geschmacksprofil`,
 5. optional `🌍 Kulinarische Zuordnung`,
 6. optional `💡 Hinweis aus dem Zutatenkatalog`,
-7. optional je ein Feld `📦 Beschaffbarkeit – Georgia` beziehungsweise `📦 Beschaffbarkeit – Tobias` für vorhandene individuelle Availability-Notizen,
+7. optional ein gemeinsames Feld `📦 Verfügbarkeit` bei exakt identischen Georgia-/Tobias-Notizen; bei unterschiedlichen oder nur einseitig vorhandenen Notizen personenspezifische Felder `📦 Verfügbarkeit – Georgia` beziehungsweise `📦 Verfügbarkeit – Tobias`,
 8. `⬆️ Allgemeinere Begriffe`,
 9. `⬇️ Bekannte Konkretisierungen`,
 10. direkt unter dem Embed die String-Select-Navigation für vorhandene direkte Beziehungen.
 
 Die beiden Inline-Felder werden nicht durch Leerzeichen oder Tabulatoren als Texttabelle simuliert. Lange Werte im linken Feld verschieben daher die rechte Spalte nicht. Mehrere Werte stehen innerhalb ihres Feldes untereinander; leere Listen erscheinen als `keine`. Auf schmalen Clients darf Discord die Felder untereinander stapeln.
 
-Die individuellen Notizen zeigen weder eine Availability-Stufe noch eine Ersatzbeschreibung bei fehlendem fachlich anwendbarem Text. Sie sind gespeicherter Katalogtext, keine Discord-seitige Bewertung oder Zusammenfassung. Die Hierarchie steht bewusst am Ende, damit zunächst sämtliche Informationen zum konkret angezeigten Konzept zusammenbleiben und erst danach die Katalognavigation folgt.
+Die individuellen Notizen zeigen weder eine Availability-Stufe noch eine Ersatzbeschreibung bei fehlendem fachlich anwendbarem Text. Sind die Georgia- und Tobias-Texte exakt gleich, wird dieser unveränderte Text einmal neutral angezeigt. Bei jeder Abweichung – auch nur bei Satzzeichen oder Leerraum – sowie bei einer einseitig vorhandenen Notiz bleibt die Personenzuordnung sichtbar. Die Prüfung nimmt keine semantische oder fuzzy Deduplizierung vor. Die Notizen sind gespeicherter Katalogtext, keine Discord-seitige Bewertung oder Zusammenfassung. Die Hierarchie steht bewusst am Ende, damit zunächst sämtliche Informationen zum konkret angezeigten Konzept zusammenbleiben und erst danach die Katalognavigation folgt.
 
 ### 6.1 Kulinarische Länderzuordnung
 
@@ -208,7 +208,7 @@ Die verpflichtende `curator_note` wird als `💡 Hinweis aus dem Zutatenkatalog`
 
 Katalogtexte einschließlich der individuellen Availability-Notizen werden so gerendert, dass sie keine unbeabsichtigten Mentions, Codeblöcke, Links oder Markdown-Strukturen auslösen. Allowed Mentions bleiben vollständig deaktiviert. Unvertrauenswürdiger Katalogtext wird nicht in die ausgerichteten Codeblöcke übernommen.
 
-Kuratornotizen dürfen über mehrere Felder geteilt werden; individuelle Availability-Notizen erhalten bei Bedarf jeweils ein technisch begrenztes eigenes Feld. Das Embed-Budget reserviert vorab Platz für jede vorhandene persönliche Notiz und die beiden Hierarchiefelder. Dadurch verschwinden weder gekürzte Availability-Notizen noch die Hierarchie stillschweigend; jede technische Kürzung zeigt die ausgelassene Zeichenzahl sichtbar an.
+Kuratornotizen dürfen über mehrere Felder geteilt werden; individuelle Availability-Notizen erhalten bei Bedarf jeweils ein technisch begrenztes Feld. Das Embed-Budget reserviert vorab Platz für jedes nach der exakten Gleichheitsprüfung auszugebende Feld und die beiden Hierarchiefelder. Dadurch verschwinden weder gekürzte Availability-Notizen noch die Hierarchie stillschweigend; jede technische Kürzung zeigt die ausgelassene Zeichenzahl sichtbar an.
 
 ## 9. Direkte Hierarchienavigation
 

@@ -58,24 +58,52 @@ class DiscordIngredientLookupRendererTest {
     }
 
     @Test
-    void rendersAvailableNotesForEachPersonSafelyAndKeepsHierarchyWithinBudget() {
-        String longNote = "@here **Markdown** `code` https://example.test ".repeat(200);
-        var embed = renderer.profile(profile(true, 2, List.of(), longNote,
+    void rendersDifferentAvailabilityNotesForEachPersonSafelyAndKeepsHierarchyWithinBudget() {
+        String georgiaNote = "@here **Markdown** `code` https://example.test ".repeat(200);
+        String tobiasNote = "Eigener Hinweis zur Verfügbarkeit. ".repeat(200);
+        var embed = renderer.profile(profile(true, 2, List.of(), georgiaNote,
                 List.of(relation(1, "Oberbegriff")), List.of(relation(2, "Konkretisierung")), List.of(), List.of(), List.of(),
                 List.of(
-                        new IngredientLookupAvailabilityNote("GEORGIA", "Georgia", longNote),
-                        new IngredientLookupAvailabilityNote("TOBIAS", "Tobias", longNote))));
+                        new IngredientLookupAvailabilityNote("GEORGIA", "Georgia", georgiaNote),
+                        new IngredientLookupAvailabilityNote("TOBIAS", "Tobias", tobiasNote))));
 
         assertThat(embed.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
-                .containsSubsequence("📦 Beschaffbarkeit – Georgia", "📦 Beschaffbarkeit – Tobias",
+                .containsSubsequence("📦 Verfügbarkeit – Georgia", "📦 Verfügbarkeit – Tobias",
                         "⬆️ Allgemeinere Begriffe", "⬇️ Bekannte Konkretisierungen");
-        assertThat(field(embed, "📦 Beschaffbarkeit – Georgia"))
+        assertThat(field(embed, "📦 Verfügbarkeit – Georgia"))
                 .contains("@\u200Bhere", "\\*\\*Markdown\\*\\*", "ˋcodeˋ", "h\u200Bttps", "Zeichen)");
-        assertThat(field(embed, "📦 Beschaffbarkeit – Tobias")).contains("Zeichen)");
+        assertThat(field(embed, "📦 Verfügbarkeit – Tobias")).contains("Zeichen)");
         assertThat(field(embed, "⬆️ Allgemeinere Begriffe")).isEqualTo("Oberbegriff");
         assertThat(field(embed, "⬇️ Bekannte Konkretisierungen")).isEqualTo("Konkretisierung");
         assertThat(embed.title().length() + embed.description().length() + embed.fields().stream()
                 .mapToInt(field -> field.name().length() + field.value().length()).sum()).isLessThanOrEqualTo(6_000);
+    }
+
+    @Test
+    void rendersIdenticalGeorgiaAndTobiasAvailabilityNotesOnceWithoutPersonLabel() {
+        String sharedNote = "Für beide dieselbe konkrete Beschaffungsinformation.";
+        var embed = renderer.profile(profile(true, 2, List.of(), null,
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(
+                        new IngredientLookupAvailabilityNote("GEORGIA", "Georgia", sharedNote),
+                        new IngredientLookupAvailabilityNote("TOBIAS", "Tobias", sharedNote))));
+
+        assertThat(embed.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
+                .contains("📦 Verfügbarkeit")
+                .doesNotContain("📦 Verfügbarkeit – Georgia", "📦 Verfügbarkeit – Tobias");
+        assertThat(field(embed, "📦 Verfügbarkeit")).isEqualTo(sharedNote);
+    }
+
+    @Test
+    void keepsAOneSidedAvailabilityNotePersonSpecific() {
+        String georgiaNote = "Nur für Georgia gepflegte Beschaffungsinformation.";
+        var embed = renderer.profile(profile(true, 2, List.of(), null,
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(
+                        new IngredientLookupAvailabilityNote("GEORGIA", "Georgia", georgiaNote))));
+
+        assertThat(embed.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
+                .contains("📦 Verfügbarkeit – Georgia")
+                .doesNotContain("📦 Verfügbarkeit", "📦 Verfügbarkeit – Tobias");
+        assertThat(field(embed, "📦 Verfügbarkeit – Georgia")).isEqualTo(georgiaNote);
     }
 
     @Test
@@ -84,7 +112,7 @@ class DiscordIngredientLookupRendererTest {
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of()));
 
         assertThat(embed.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
-                .noneMatch(name -> name.startsWith("📦 Beschaffbarkeit"));
+                .noneMatch(name -> name.startsWith("📦 Verfügbarkeit"));
     }
 
     @Test
