@@ -1,5 +1,6 @@
 package io.github.venomenon328.miseendice.catalog.internal;
 
+import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountry;
@@ -142,8 +143,8 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
 
     @Override
     public Optional<CulinaryCountryIngredientPage> findActiveByCulinaryCountry(String countryCode, int page, int pageSize) {
-        if (countryCode == null || !countryCode.matches("[A-Z]{2}")) {
-            throw new IllegalArgumentException("countryCode must be an ISO alpha-2 code");
+        if (countryCode == null || !countryCode.matches(CatalogCommands.CULINARY_COUNTRY_CODE_PATTERN)) {
+            throw new IllegalArgumentException("countryCode must be an ISO alpha-2 or supported extended code");
         }
         if (page < 1 || pageSize < 1 || pageSize > 25) {
             throw new IllegalArgumentException("Invalid culinary-country page request");

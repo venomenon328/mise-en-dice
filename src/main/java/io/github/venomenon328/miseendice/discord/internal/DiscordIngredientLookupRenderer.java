@@ -1,5 +1,6 @@
 package io.github.venomenon328.miseendice.discord.internal;
 
+import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupDimension;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredientPage;
@@ -14,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /** Pure, bounded Discord presentation mapping for the ingredient lookup. */
 final class DiscordIngredientLookupRenderer {
@@ -28,6 +30,8 @@ final class DiscordIngredientLookupRenderer {
     private static final int SELECT_RELATION_LIMIT = 25;
     private static final int MAX_CURATOR_NOTE_FIELDS = 2;
     private static final String EMPTY_SCALE = "▫️";
+    private static final String NEUTRAL_COUNTRY_FALLBACK = "🌐";
+    private static final Set<String> UK_SUBDIVISION_TAG_CODES = Set.of("GB-ENG", "GB-SCT", "GB-WLS", "GB-NIR");
     private static final Map<String, String> DIMENSION_SYMBOLS = Map.of(
             "DOMINANCE", "📣",
             "SWEETNESS", "🍯",
@@ -93,7 +97,8 @@ final class DiscordIngredientLookupRenderer {
     }
 
     RenderedCountryIngredients countryIngredients(CulinaryCountryIngredientPage page) {
-        String title = countryFlag(page.country().code()) + " " + oneLine(page.country().displayName(), TITLE_LIMIT - 5);
+        String countryFlag = countryFlag(page.country().code());
+        String title = countryFlag + " " + oneLine(page.country().displayName(), TITLE_LIMIT - countryFlag.length() - 1);
         String amount = page.totalIngredients() == 1 ? "1 Zutat" : page.totalIngredients() + " Zutaten";
         String content = page.ingredients().isEmpty()
                 ? amount + "\n\nDerzeit sind diesem Land keine aktiven Zutaten zugeordnet."
@@ -137,15 +142,26 @@ final class DiscordIngredientLookupRenderer {
         return new ScaleLine(label, verbalLevel(level), symbol.repeat(level) + EMPTY_SCALE.repeat(5 - level));
     }
 
-    static String countryFlag(String isoAlpha2Code) {
-        if (isoAlpha2Code == null || !isoAlpha2Code.matches("[A-Z]{2}")) {
-            throw new IllegalArgumentException("ISO alpha-2 code required");
+    static String countryFlag(String countryCode) {
+        if (countryCode == null || !countryCode.matches(CatalogCommands.CULINARY_COUNTRY_CODE_PATTERN)) {
+            return NEUTRAL_COUNTRY_FALLBACK;
         }
         StringBuilder flag = new StringBuilder(4);
-        for (int index = 0; index < isoAlpha2Code.length(); index++) {
-            flag.appendCodePoint(0x1F1E6 + isoAlpha2Code.charAt(index) - 'A');
+        if (countryCode.length() == 2) {
+            for (int index = 0; index < countryCode.length(); index++) {
+                flag.appendCodePoint(0x1F1E6 + countryCode.charAt(index) - 'A');
+            }
+            return flag.toString();
         }
-        return flag.toString();
+        return UK_SUBDIVISION_TAG_CODES.contains(countryCode) ? emojiTagSequence(countryCode) : NEUTRAL_COUNTRY_FALLBACK;
+    }
+
+    private static String emojiTagSequence(String countryCode) {
+        StringBuilder sequence = new StringBuilder(14);
+        sequence.appendCodePoint(0x1F3F4);
+        countryCode.toLowerCase(Locale.ROOT).chars().filter(character -> character != '-').forEach(character ->
+                sequence.appendCodePoint(0xE0061 + character - 'a'));
+        return sequence.appendCodePoint(0xE007F).toString();
     }
 
     private static String countryFlags(List<IngredientLookupCountry> countries) {

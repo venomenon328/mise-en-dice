@@ -1,5 +1,7 @@
 package io.github.venomenon328.miseendice.discord.internal;
 
+import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
+
 /** Versioned, stateless identifiers for Discord ingredient lookup components. */
 final class DiscordIngredientComponentId {
     private static final String PREFIX = "med:v1:ingredient:";
@@ -239,8 +241,8 @@ final class DiscordIngredientComponentId {
 
     record CountryBrowseContext(String countryCode, int page) {
         CountryBrowseContext {
-            if (countryCode == null || !countryCode.matches("[A-Z]{2}")) {
-                throw new IllegalArgumentException("countryCode must be an ISO alpha-2 code");
+            if (countryCode == null || !countryCode.matches(CatalogCommands.CULINARY_COUNTRY_CODE_PATTERN)) {
+                throw new IllegalArgumentException("countryCode must be an ISO alpha-2 or supported extended code");
             }
             positivePage(page);
         }

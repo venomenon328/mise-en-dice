@@ -57,6 +57,29 @@ class DiscordIngredientLookupRendererTest {
     }
 
     @Test
+    void rendersUkSubdivisionTagSequencesByCodePointAndUsesNeutralFallbackForUnknownExtendedCodes() {
+        assertThat(DiscordIngredientLookupRenderer.countryFlag("GB-ENG").codePoints().boxed().toList())
+                .containsExactly(0x1F3F4, 0xE0067, 0xE0062, 0xE0065, 0xE006E, 0xE0067, 0xE007F);
+        assertThat(DiscordIngredientLookupRenderer.countryFlag("GB-SCT").codePoints().boxed().toList())
+                .containsExactly(0x1F3F4, 0xE0067, 0xE0062, 0xE0073, 0xE0063, 0xE0074, 0xE007F);
+        assertThat(DiscordIngredientLookupRenderer.countryFlag("GB-WLS").codePoints().boxed().toList())
+                .containsExactly(0x1F3F4, 0xE0067, 0xE0062, 0xE0077, 0xE006C, 0xE0073, 0xE007F);
+        assertThat(DiscordIngredientLookupRenderer.countryFlag("GB-NIR").codePoints().boxed().toList())
+                .containsExactly(0x1F3F4, 0xE0067, 0xE0062, 0xE006E, 0xE0069, 0xE0072, 0xE007F);
+        assertThat(DiscordIngredientLookupRenderer.countryFlag("GB-XYZ")).isEqualTo("🌐");
+    }
+
+    @Test
+    void rendersAnEnglandTagSequenceForAnIngredientProfile() {
+        var embed = renderer.profile(profile(true, 2, List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(
+                new IngredientLookupCountry("GB-ENG", "England")
+        )));
+
+        assertThat(field(embed, "🌍 Kulinarische Zuordnung"))
+                .isEqualTo(DiscordIngredientLookupRenderer.countryFlag("GB-ENG"));
+    }
+
+    @Test
     void rendersFunctionAndPropertiesAsIndependentInlineFieldsRegardlessOfLeftTextLength() {
         var embed = renderer.profile(profile(true, 2, List.of(), null, List.of(), List.of(),
                 List.of("Extrem langer funktionaler Rollenname der die rechte Spalte nicht verschieben darf", "zweite Rolle"),
@@ -174,13 +197,13 @@ class DiscordIngredientLookupRendererTest {
 
     @Test
     void rendersCountryPageAndEmptyStateWithoutIngredientDetailsOrTechnicalIds() {
-        var page = new CulinaryCountryIngredientPage(new CulinaryCountry("XA", "Testland Alpha"), 1, 20, 21,
+        var page = new CulinaryCountryIngredientPage(new CulinaryCountry("GB-ENG", "England"), 1, 20, 21,
                 java.util.stream.LongStream.rangeClosed(1, 20)
                         .mapToObj(id -> new CulinaryCountryIngredient(id, "Zutat " + id)).toList());
 
         var rendered = renderer.countryIngredients(page);
 
-        assertThat(rendered.title()).isEqualTo(DiscordIngredientLookupRenderer.countryFlag("XA") + " Testland Alpha");
+        assertThat(rendered.title()).isEqualTo(DiscordIngredientLookupRenderer.countryFlag("GB-ENG") + " England");
         assertThat(rendered.description()).contains("21 Zutaten", "• Zutat 1", "Seite 1/2")
                 .doesNotContain("Gewichtung", "Ungewöhnlichkeit", "Rolle", "1:");
         assertThat(rendered.options()).hasSize(20).allSatisfy(option -> {

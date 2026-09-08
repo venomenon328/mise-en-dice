@@ -99,7 +99,7 @@ Das aktive Profil enthält ausschließlich:
 - direkt gepflegte funktionale Rollen,
 - direkt gepflegte kulinarische Flags,
 - direkt gepflegte kulinarische Dimensionen,
-- direkt gepflegte kulinarische Länderzuordnungen mit ISO-Alpha-2-Code und Anzeigename,
+- direkt gepflegte kulinarische Länderzuordnungen mit ISO-Alpha-2- oder kontrolliertem erweitertem Code und Anzeigename,
 - verpflichtende Kuratornotiz.
 
 Die Relation-ID dient ausschließlich der eindeutigen stateless Discord-Navigation. Sie wird nicht als Nutztext angezeigt. Suchtreffer dürfen für ihre optionale Parent-Beschreibung weiterhin ausschließlich Namen transportieren.
@@ -108,7 +108,7 @@ Nicht Teil der Projektion beziehungsweise Darstellung sind Saison, Beschaffbarke
 
 Nur direkte und zum Zeitpunkt der Abfrage aktive Beziehungen werden geliefert. Rollen, Flags und Dimensionen werden nicht über den Konkretisierungsgraphen vererbt.
 
-Kulinarische Länderzuordnungen gelten ebenfalls ausschließlich für das konkret angezeigte Konzept. Die Lookup-Projektion liefert sie stabil nach ISO-Code sortiert mit Code und Anzeigename; sie leitet weder Parent→Child noch Child→Parent ab.
+Kulinarische Länderzuordnungen gelten ebenfalls ausschließlich für das konkret angezeigte Konzept. Die Lookup-Projektion liefert sie stabil nach kulinarischem Ländercode sortiert mit Code und Anzeigename; sie leitet weder Parent→Child noch Child→Parent ab.
 
 ## 5. Gewichtung und Kochungewöhnlichkeit
 
@@ -155,7 +155,7 @@ Hat das angezeigte Konzept mindestens eine explizit gepflegte kulinarische Länd
 🇵🇭 🇹🇭 🇻🇳
 ```
 
-Die zugrunde liegende Lookup-Projektion transportiert weiterhin ISO-Code und ausgeschriebenen Ländernamen. Der Discord-Renderer verwendet jedoch ausschließlich den gültigen ISO-Alpha-2-Code und bildet daraus deterministisch das Regionalindikator-Flag. Die Card zeigt weder Ländernamen noch Codes; die Flaggen sind kein gespeicherter Fachwert.
+Die zugrunde liegende Lookup-Projektion transportiert weiterhin den kulinarischen Ländercode und ausgeschriebenen Ländernamen. Der Discord-Renderer bildet klassische ISO-3166-1-Alpha-2-Codes deterministisch als Regional-Indicator-Flagge ab. Für `GB-ENG`, `GB-SCT`, `GB-WLS` und `GB-NIR` erzeugt er zentral eine Emoji-Tag-Sequenz aus Black Flag, den kleingeschriebenen Codezeichen ohne Bindestrich und Cancel Tag. Das gilt auch für `GB-NIR`, obwohl dessen Sequenz nicht RGI ist und daher je nach Discord-Client anders oder nur als schwarze Flagge erscheinen kann; es gibt keinen Union-Jack-Fallback. Andere künftig zulässige erweiterte Codes zeigen neutral `🌐`. Die Card zeigt weder Ländernamen noch Codes; die Flaggen sind kein gespeicherter Fachwert.
 
 Der Discord-Adapter besitzt dafür weder einen eigenen Länderreferenzbestand noch Länderfachlogik. Bei sehr vielen Zuordnungen darf er die Flaggen ohne Trennzeichen verdichten, damit das Discord-Field-Limit ohne Weglassen einer Zuordnung eingehalten bleibt. Fehlen Zuordnungen, existiert kein Länderabschnitt. Die Flaggen auf einer `/zutat`-Card selbst bleiben nicht navigierbar; die davon getrennte Länderübersicht wird ausschließlich mit `/zutaten` gemäß Abschnitt 12 geöffnet.
 
@@ -254,7 +254,7 @@ Discord-Grenzen werden vor dem Senden deterministisch eingehalten. Eine überlan
 - Navigation wird auf maximal 25 Optionen je Richtung beschränkt.
 - Die Hierarchiefelder bleiben auch bei langen Kuratornotizen erhalten.
 - Die gesamte Card bleibt innerhalb der Embed-, Field-, Component-, Label- und `custom_id`-Grenzen.
-- Der Länderabschnitt enthält ausschließlich aus ISO-Codes abgeleitete Flaggen und bleibt auch zusammen mit maximalen übrigen Card-Inhalten innerhalb der Field- und Embed-Grenzen.
+- Der Länderabschnitt enthält ausschließlich aus kulinarischen Ländercodes zentral abgeleitete Flaggen beziehungsweise den neutralen Fallback und bleibt auch zusammen mit maximalen übrigen Card-Inhalten innerhalb der Field- und Embed-Grenzen.
 
 ## 11. Modul- und Adaptergrenze
 
@@ -276,13 +276,13 @@ Die `/challenge`-Startautorisierung verwendet separat `mise-en-dice.discord.chal
 
 ## 12. Länderliste, Detail- und Rücknavigation
 
-Neben `/zutat` steht `/zutaten land:<Land>` als Guild-weiter, ausschließlich lesender Command zur Verfügung. `land` ist ein erforderlicher String mit Autocomplete. Die Vorschläge stammen ausschließlich aus der öffentlichen `IngredientLookupQueries`-Projektion des migrationsgeführten `culinary_country`-Referenzbestands: höchstens 25 Treffer, case-insensitive im deutschen Anzeigenamen, Namensanfänge vor sonstigen Teilstrings und anschließend stabil nach Anzeigename und ISO-Code. Sichtbar darf die aus dem ISO-Code abgeleitete Flagge stehen; der Choice-Wert ist ausschließlich der ISO-Alpha-2-Code. Der tatsächliche Command löst diesen Code oder einen getrimmten, case-insensitive exakt passenden deutschen Namen auf. Alias-, Übersetzungs-, Fuzzy- und Regionslogik existieren nicht.
+Neben `/zutat` steht `/zutaten land:<Land>` als Guild-weiter, ausschließlich lesender Command zur Verfügung. `land` ist ein erforderlicher String mit Autocomplete. Die Vorschläge stammen ausschließlich aus der öffentlichen `IngredientLookupQueries`-Projektion des migrationsgeführten `culinary_country`-Referenzbestands: höchstens 25 Treffer, case-insensitive im deutschen Anzeigenamen, Namensanfänge vor sonstigen Teilstrings und anschließend stabil nach Anzeigename und Code. Sichtbar darf die zentral abgeleitete Flagge stehen; der Choice-Wert ist ausschließlich der kulinarische Ländercode. Der tatsächliche Command löst diesen Code oder einen getrimmten, case-insensitive exakt passenden deutschen Namen auf. Alias-, Übersetzungs-, Fuzzy- und Regionslogik existieren nicht.
 
 Die Ergebnisansicht zeigt Flagge, deutschen Ländernamen, die Gesamtzahl und ausschließlich aktive Konzepte mit einer **explizit** gepflegten Relation alphabetisch in Seiten zu 20 Zutaten. `random_draw_enabled` ist unerheblich. Gewichtung, Rollen, Flags, Dimensionen, Notizen, Hierarchie- und technische Daten bleiben aus der Liste heraus. Ein Land ohne aktive Zuordnung ist ein gültiger öffentlicher leerer Zustand. Bei mehreren Seiten ersetzen deaktivierbare `◀ Zurück`-/`Weiter ▶`-Buttons dieselbe Nachricht; jede Seite wird frisch gelesen und eine nach Katalogänderung ungültige Seite sicher auf die letzte aktuelle Seite beziehungsweise den leeren Zustand zurückgeführt.
 
-Das genau eine Select einer nicht leeren Seite öffnet die bestehende vollständige `/zutat`-Card per frischem `findActiveProfile`-Read. Diese Card erhält `↩ Zurück zu <Land>`. ISO-Code und Listenposition bleiben auch über die bestehende Parent-/Child-Navigation erhalten, selbst wenn das aktuell geöffnete Ziel keine Relation zu diesem Land besitzt. Die Rückkehr lädt die aktuelle Länderseite; eine inzwischen deaktivierte Zutat zeigt eine sichere Stale-Antwort mit diesem Rückweg. Direkt über `/zutat` geöffnete Cards bleiben unverändert ohne Länder-Rückbutton.
+Das genau eine Select einer nicht leeren Seite öffnet die bestehende vollständige `/zutat`-Card per frischem `findActiveProfile`-Read. Diese Card erhält `↩ Zurück zu <Land>`. Kulinarischer Ländercode und Listenposition bleiben auch über die bestehende Parent-/Child-Navigation erhalten, selbst wenn das aktuell geöffnete Ziel keine Relation zu diesem Land besitzt. Die Rückkehr lädt die aktuelle Länderseite; eine inzwischen deaktivierte Zutat zeigt eine sichere Stale-Antwort mit diesem Rückweg. Direkt über `/zutat` geöffnete Cards bleiben unverändert ohne Länder-Rückbutton.
 
-Alle Länderlisten-, Paging-, Auswahl-, Detail-, Hierarchie- und Rückkomponenten tragen Owner, ISO-Code und Seite in versionierten Component-IDs. Sie benötigen weder Session noch Message-State oder Persistenz und funktionieren nach einem App-Restart weiter, soweit die aktuellen Katalogdaten die Handlung zulassen. Eine fremde Interaktion wird vor jeder Katalogabfrage und Nachrichtenänderung ephemer abgewiesen. Bestehende `/zutat`-Component-IDs bleiben parsebar und gültig.
+Alle Länderlisten-, Paging-, Auswahl-, Detail-, Hierarchie- und Rückkomponenten tragen Owner, kulinarischen Ländercode und Seite in versionierten Component-IDs. Sie benötigen weder Session noch Message-State oder Persistenz und funktionieren nach einem App-Restart weiter, soweit die aktuellen Katalogdaten die Handlung zulassen. Eine fremde Interaktion wird vor jeder Katalogabfrage und Nachrichtenänderung ephemer abgewiesen. Bestehende `/zutat`-Component-IDs bleiben parsebar und gültig.
 
 ## 13. Fehlerdarstellung und Verifikation
 
@@ -297,7 +297,7 @@ Automatisierte Tests decken mindestens ab:
 - ziehbare/nicht ziehbare Profile und fehlende Werte,
 - native Inline-Felder mit langen linken Inhalten,
 - Lookup-Profil ohne, mit einer und mit mehreren expliziten Länderzuordnungen in stabiler Code-Reihenfolge ohne Parent-/Child-Vererbung,
-- korrekte deterministische ISO-Alpha-2→Flaggen-Darstellung ohne Ländertexte oder Codes sowie ohne leeren Länderabschnitt,
+- korrekte deterministische Flaggen-/Tag-Sequenzdarstellung aus kulinarischen Ländercodes ohne Ländertexte oder Codes sowie ohne leeren Länderabschnitt,
 - Länderabschnitt zusammen mit maximalen übrigen Card-Inhalten innerhalb der Discord-Limits,
 - verbale Stufen, `○`-Leersymbol und exakt fünf Skalenpositionen,
 - Kuratornotiz- und Längenbegrenzung,
@@ -311,7 +311,7 @@ Automatisierte Tests decken mindestens ab:
 - JDA-Routing der Zutaten-Navigation als String Select,
 - `/zutaten`-Autocomplete mit höchstens 25 Ländern aus der öffentlichen Katalogprojektion und einer Antwort, die nicht
   hinter Arbeiten des primären Discord-Executors wartet,
-- Länderauflösung per ISO-Code oder exaktem deutschen Namen, aktive explizite Relation, Pagination, Leerzustand,
+- Länderauflösung per kulinarischem Ländercode oder exaktem deutschen Namen, aktive explizite Relation, Pagination, Leerzustand,
   Rücknavigation und fremde Owner-Interaktionen ohne Katalogabfrage,
 - `/challenge`-Start nur mit Operator-Rolle und unabhängig von einer Teilnehmeridentität,
 - bestehende Challenge-Interaktions-/Voting-Regressionen.
