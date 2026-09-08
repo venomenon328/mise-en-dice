@@ -115,3 +115,9 @@ databaseChangeLog:
       file: db/changelog/schema/020-remove-generator-replay-result.sql
   - include:
       file: db/changelog/catalog/034-austria-curation.sql
+  - include:
+      file: db/changelog/schema/021-culinary-country-subdivision-codes.sql
+  - include:
+      file: db/changelog/reference/003-england-culinary-country.sql
+  - include:
+      file: db/changelog/catalog/035-england-curation.sql
