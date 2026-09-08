@@ -1,6 +1,6 @@
 # Datenmodell
 
-Stand: 7. September 2026
+Stand: 8. September 2026
 
 Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt als explizit geordnete Liquibase-Changesets vor:
 
@@ -125,7 +125,7 @@ Eine Zuordnung ist eine kuratierte positive Aussage über kulinarische Relevanz 
 
 Die Relation gilt ausschließlich für das konkret gepflegte Konzept. Weder Parent→Child noch Child→Parent wird über `ingredient_refinement` abgeleitet. Eine Deaktivierung löscht vorhandene Länderzuordnungen nicht. Die Relation besitzt im ersten Stand keine Gewichtung, Stärke oder Typisierung.
 
-Die administrationsorientierte Katalogprojektion und das Audit führen Code und Anzeigename. Länderzuordnungen sind ausdrücklich nicht Teil von `CatalogGeneratorProjection`, Generation Context, Candidate-Signatur, Replay, Fingerprints, Kuration oder Challenge-Semantik. Die ausführlichen Redaktionsregeln stehen in [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md).
+Die administrationsorientierte Katalogprojektion und das Audit führen Code und Anzeigename. Länderzuordnungen sind ausdrücklich nicht Teil von `CatalogGeneratorProjection`, Generation Context, Candidate-Signatur, Fingerprints, Kuration oder Challenge-Semantik. Die ausführlichen Redaktionsregeln stehen in [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md).
 
 ## 6. Beschaffbarkeit
 
@@ -165,7 +165,7 @@ Die 860 Aggregatversionen werden einmal erhöht, damit vor der Migration geöffn
 Nach erfolgreicher Liquibase-Ausführung bleibt wieder die operative Datenbank autoritativ.
 
 Availability-Notizen gehören ausschließlich zur Katalogpflege und zum Aggregate-Audit. Generatorprojektion,
-Generatorfingerprint, `/zutat`, Gewichtung und historische Replaydaten enthalten sie nicht. Historische
+Generatorfingerprint, `/zutat`, Gewichtung und historische Generatorsnapshots enthalten sie nicht. Historische
 Auditpayloads ohne Notizschlüssel bleiben als damals ungepflegte Notiz lesbar.
 
 Die Beschaffbarkeit eines allgemeineren Konzepts wird **nicht aus seinen bekannten Konkretisierungen abgeleitet**. Beispielsweise kann `Chili` problemlos beschaffbar sein, obwohl keine der konkret benannten Chilisorten lokal zuverlässig verfügbar ist.
@@ -395,7 +395,7 @@ Phase 10A erzeugt weiterhin ausschließlich `CURATED_UNPRESENTED`; Phase 11A üb
 
 Eine operative `challenge` entsteht erst, wenn genau ein `curated_offer` ausdrücklich bestätigt wird. `challenge.curated_offer_id` ist dafür die neue autoritative, eindeutige Fremdreferenz. `legacy_pre_offer_decision` wird einmalig durch Migration 008 für damals bereits vorhandene Challenge-Zeilen ohne Offer gesetzt und ist danach unveränderlich; ein späterer Insert kann ihn nicht setzen. Das Legacy-Feld `is_selected` bleibt nur für diese historische Lesbarkeit erhalten. Datenbank und Application Service stellen sicher, dass Session, Attempt, Offer Set, Offer, Candidate und dessen vier Requirements zusammengehören.
 
-Wird eine Option normal bestätigt, bleiben die übrigen Angebote für Audit, Replay und Diagnose erhalten, sind aber **keine Historienexposition**. Sie erzeugen weder Cooldown noch Neuigkeitswirkung.
+Wird eine Option normal bestätigt, bleiben die übrigen Angebote für Audit und Diagnose erhalten, sind aber **keine Historienexposition**. Sie erzeugen weder Cooldown noch Neuigkeitswirkung.
 
 Davon getrennt ist der freiwillige Reroll **vor** Bestätigung einer Option. Das vollständig präsentierte Offer Set wird dabei verworfen. Es entsteht keine `challenge`, aber die exakten Katalogkonzepte aller tatsächlich gezeigten 1–3 Optionen erzeugen als eine gemeinsame Position eine Cooldown-only-Exposition. Diese Exposition:
 
@@ -414,13 +414,15 @@ Die Exposition liegt als genau eine `reroll_offer_exposure` pro Session und rero
 
 Die Fremdschlüssel auf die aktuellen Katalogeinträge bleiben für Auswertungen erhalten, während die damalige Darstellung unabhängig von späteren Umbenennungen nachvollziehbar bleibt.
 
-Phase 9 erweitert die Snapshots um sämtliche replay- und diagnosewirksamen Werte. Auf Attempt-/Context-Ebene gehören dazu insbesondere Konfiguration, Katalogprojektion, sichtbare Historie, Attempt-Seed, RNG, Versionen und Ausschlussentscheidung. Auf Batch-Ebene liegen Batchnummer, abgeleiteter Batch-Seed, Rejection-Zähler, Fallbackstufe und Set-Fingerprint. Kandidaten und Requirements speichern damalige Rollen, Neuigkeit, Beschaffbarkeit, verwendete Gewichtsfaktoren, relevante bekannte Eigenschaften, Scores und Reason-Codes.
+Phase 9 erweitert die Snapshots um sämtliche für Recovery, Batch-2-Reuse und Diagnose benötigten Werte. Auf Attempt-/Context-Ebene gehören dazu insbesondere Konfiguration, Katalogprojektion, sichtbare Historie, Attempt-Seed, RNG, Versionen und Ausschlussentscheidung. Auf Batch-Ebene liegen Batchnummer, abgeleiteter Batch-Seed, Rejection-Zähler, Fallbackstufe und Set-Fingerprint. Kandidaten und Requirements speichern damalige Rollen, Neuigkeit, Beschaffbarkeit, verwendete Gewichtsfaktoren, relevante bekannte Eigenschaften, Scores und Reason-Codes.
 
 Phase 10A ergänzt Kuratorrequest/-response, qualitative Bewertungen, Ränge, Kandidatenteilnahme je Kurationsrunde, Carry-over-/Locked-Kontext und das finale Offer Set. Phase 11A ergänzt die tatsächliche Präsentation, die autoritative Offer-Bestätigung und den freiwilligen vollständigen Offer-Set-Reroll mit dessen reproduzierbarer Snapshot-Exposition ohne Rückgriff auf aktuelle Katalogwerte. Phase 11B speichert davon getrennt Electorate, bis zum Abschluss geheime aktuelle Votes, das einmalige Ergebnis samt Tie-Break sowie die spätere Challenge-Teilnahme; sie erzeugt weder einen zweiten Challenge-Snapshot noch eigene Historienexposition.
 
 Diese Daten dürfen nicht mit bestätigter Challenge-Historie gleichgesetzt werden: Bestätigte Challenges wirken auf den vollständigen Historienvertrag; ein rerolltes unbestätigtes Offer Set wirkt nur auf den exakten Zutaten-Cooldown; intern verworfene oder normal nicht gewählte Angebote wirken gar nicht.
 
-Replay verwendet den gespeicherten 1.2-Snapshot und nicht den aktuellen Katalog. Eine nicht unterstützte Generatorversion wird ausdrücklich als nicht unterstützt klassifiziert; sie wird nicht mit aktuellen Regeln scheinbar reproduziert.
+Gemäß [ADR 0009](adr/0009-determinism-without-historical-generator-replay.md) werden abgeschlossene historische Batches nicht erneut berechnet. Ihre read-only Projektionen benötigen keine unterstützte damalige Konfiguration. `GenerationSnapshotCodec` verwendet und verifiziert den gespeicherten Kontext weiterhin für `CONTEXT_READY`-Recovery und Batch 2; Katalog und Historie werden dabei nicht neu geladen.
+
+Migration [`020-remove-generator-replay-result.sql`](../src/main/resources/db/changelog/schema/020-remove-generator-replay-result.sql) entfernt ausschließlich `generation_batch.result_snapshot`, die ungenutzte zusätzliche vollständige Result-Payload. Alle übrigen Bestandteile der Batch-Result-Constraint bleiben unverändert. Eigenständige Batchdiagnosen, Candidate-/Requirement-Snapshots, Offers, Challenges und persönliche Ergebnisse bleiben vollständig erhalten. Die Context-Komponentenfingerprints besitzen weiterhin konkrete Integritäts- und Anzeigeconsumer und bleiben bestehen; der vollständige Persistenzaudit steht in ADR 0009.
 
 ## 13. Administrationsversionen und Katalog-Audit
 

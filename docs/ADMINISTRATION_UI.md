@@ -1,6 +1,6 @@
 # Spezifikation der privaten Webverwaltung
 
-Stand: 7. September 2026
+Stand: 8. September 2026
 
 Dieses Dokument beschreibt die verbindliche fachliche, gestalterische und technische Spezifikation der privaten Webverwaltung von Mise en Dice. Es konkretisiert die in [`ARCHITECTURE.md`](ARCHITECTURE.md) festgelegten Leitplanken und bildet die Grundlage für die anschließenden Implementierungspakete.
 
@@ -1187,9 +1187,10 @@ Autorität des Paarvergleichs. Rohsnapshots sind nur ergänzende einklappbare Di
 
 Ein Persisted-Abschnitt lädt Attempt und Batch ausschließlich über `GenerationQueries`: Datum, Statuszeiten,
 Versionen, Fingerprints, historische Candidate-/Requirement-Snapshots und Legacy-Grenzen bleiben sichtbar.
-Replay ist ein read-only POST mit CSRF-Schutz und zeigt Match, nicht unterstützte Version, ungültigen Snapshot oder
-die erste strukturierte Differenz. Aktuelle Katalogwerte reparieren keine historischen Anzeige- oder Replaydaten.
-Nicht unterstützte Snapshotversionen werden sichtbar als nicht unterstützt ausgewiesen und nicht nachgebildet.
+Historische Anzeige führt keine Neuberechnung aus und funktioniert auch bei älterer Generator-/Konfigurationsversion.
+Replayendpoint (`POST /admin/generator/replay`), Formular, Ergebnisfragment und Differenzdarstellung sind gemäß
+[ADR 0009](adr/0009-determinism-without-historical-generator-replay.md) entfernt. Aktuelle Katalogwerte reparieren
+keine historischen Anzeigedaten; fehlende Legacy-Snapshots bleiben ausdrücklich erkennbar.
 
 ### Simulation (Phase 9E3 / Issue #54)
 
@@ -1209,15 +1210,16 @@ Simulation
   [Simulation starten]
 
   Status: vollständig / TIMED_OUT / ABORTED / INCOMPLETE
-  Fälle, Erfolge, Erschöpfungen und technische Fehler
+  Fälle, Erfolge, Erschöpfungen, technische Fehler und Determinismusabweichungen
   begrenzte Reportaggregate, Versionen, Seedpläne und Katalogfingerprints
 ```
 
 Ein Request umfasst höchstens 64 expandierte Fälle und erhält ausschließlich serverseitig eine feste Deadline mit
 `FAIL_FAST` für unbekannte technische Fehler. Jeder Monat ist ein eigener Single-Step-Szenarioschritt; die gewählte
 Historie startet je Monat neu. Die Seite zeigt unvollständige Läufe ausdrücklich als Teilreport und trennt fachliche
-Erschöpfung von technischen Fehlern. Frequenzlisten werden ohne erneute Sortierung oder Erweiterung aus dem begrenzt
-gelieferten Report gerendert.
+Erschöpfung von technischen Fehlern. Der unmittelbare Vergleich zweier Berechnungen derselben eingefrorenen
+Eingaben bleibt als Determinismuscheck erhalten; die Anzeige verwendet `determinismMismatches` aus Reportversion
+`2026-09-08.1`. Frequenzlisten werden ohne erneute Sortierung oder Erweiterung aus dem begrenzt gelieferten Report gerendert.
 
 `POST /admin/generator/simulation` besitzt CSRF-Schutz und funktioniert als vollständiger servergerenderter POST ohne
 JavaScript. Mit HTMX liefert derselbe Endpunkt nur das Ergebnisfragment; das Submit wird währenddessen deaktiviert.

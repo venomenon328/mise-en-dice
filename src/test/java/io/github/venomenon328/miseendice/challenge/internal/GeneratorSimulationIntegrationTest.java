@@ -79,8 +79,8 @@ class GeneratorSimulationIntegrationTest {
         assertThat(first.metrics().successfulSets()).isEqualTo(8);
         assertThat(first.metrics().exhaustedSets()).isZero();
         assertThat(first.metrics().technicalErrors()).isZero();
-        assertThat(first.metrics().replayChecks()).isEqualTo(8);
-        assertThat(first.metrics().replayIntegrityMismatches()).isZero();
+        assertThat(first.metrics().determinismChecks()).isEqualTo(8);
+        assertThat(first.metrics().determinismMismatches()).isZero();
         assertThat(first.metrics().hardRuleViolations()).isZero();
         assertThat(first.metrics().quotaViolations()).isZero();
         assertThat(first.metrics().setCapViolations()).isZero();
@@ -92,7 +92,9 @@ class GeneratorSimulationIntegrationTest {
         Path output = Path.of("target", "generator-simulation", "ci-scenarios-report.json");
         GeneratorSimulationReportCodec.write(first, output);
         String json = Files.readString(output);
-        assertThat(json).contains("canonicalReport", "runCatalogFingerprint", "elapsedMillis", "ISSUE_53_CI_V1");
+        assertThat(json).contains("canonicalReport", "runCatalogFingerprint", "elapsedMillis", "ISSUE_53_CI_V1",
+                "\"reportVersion\":\"2026-09-08.1\"", "\"determinismChecks\":8", "\"determinismMismatches\":0")
+                .doesNotContain("replayChecks", "replayIntegrityMismatches");
     }
 
     @Test void frozenInputsProduceTheSameCanonicalReport() {

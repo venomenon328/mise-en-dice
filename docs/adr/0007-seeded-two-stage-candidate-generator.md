@@ -4,6 +4,11 @@
 - Datum: 12. August 2026
 - Entscheidungsträger: Projektverantwortlicher
 
+> Ergänzung vom 8. September 2026: [ADR 0009](0009-determinism-without-historical-generator-replay.md)
+> löst ausschließlich die historische Replayentscheidung dieses ADR ab. Seed-Determinismus,
+> zweistufige Generierung und alle übrigen Entscheidungen bleiben gültig. Die folgenden
+> Replayaussagen dokumentieren den damaligen Stand und sind kein aktueller Produktvertrag.
+
 ## Kontext
 
 Mise en Dice benötigt pro Auswahlrunde zwölf Kandidaten mit jeweils vier Vorgaben. Der Zufall soll aus der Anwendung stammen, während ein späterer externer Kurator ausschließlich unter bereits gültigen Kandidaten auswählt.

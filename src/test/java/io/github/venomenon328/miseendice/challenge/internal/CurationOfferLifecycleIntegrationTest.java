@@ -241,11 +241,11 @@ class CurationOfferLifecycleIntegrationTest {
                     insert into generation_batch (
                         generation_attempt_id, batch_number, batch_seed, status, fallback_level,
                         reservoir_metrics, fallback_attempts, set_evaluation, diagnostics,
-                        result_snapshot, set_fingerprint
+                        set_fingerprint
                     )
                     select generation_attempt_id, 2, batch_seed, status, fallback_level,
                            reservoir_metrics, fallback_attempts, set_evaluation, diagnostics,
-                           result_snapshot, set_fingerprint
+                           set_fingerprint
                     from generation_batch where id = ?
                     returning id
                     """, Long.class, firstBatchId);

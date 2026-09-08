@@ -115,7 +115,7 @@ Nicht öffentlich angezeigt oder transportiert werden:
 - Teilnehmer-/Electorate-Snapshots,
 - Kuratorbewertung, Reason Codes, Prompt- oder Contractversion,
 - Modell, Tokens, Kosten, Providerrequest oder technische Diagnose,
-- Generatorversion, Seed, Fingerprint oder Replaydaten,
+- Generatorversion, Seed, Fingerprint oder interne Generatorsnapshots,
 - interne Challenge-Statuswerte.
 
 Die vorhandenen Audit- und Workflow-Projektionen werden deshalb nicht direkt als Discord-Archivmodell wiederverwendet. Der Challenge-Core erhält eine eigene schmale öffentliche Projektion.

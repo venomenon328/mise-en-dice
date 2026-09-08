@@ -160,7 +160,7 @@ class GeneratorSimulationService implements GeneratorSimulation {
                         aggregates.recordCommon(result);
                         if (result instanceof GeneratedCandidateSet generated) {
                             aggregates.recordSuccess(scenario, execution.preparedAttempt(), generated);
-                            verifyFrozenReplay(runInput, generated, aggregates);
+                            verifyDeterminism(runInput, generated, aggregates);
                             history = appendSyntheticExposure(history, scenario, seed, step, date, generated);
                         } else if (result instanceof ExhaustedCandidateSet) {
                             // Exhaustion is a processed domain result. It creates no exposure, but later steps still run.
@@ -265,19 +265,19 @@ class GeneratorSimulationService implements GeneratorSimulation {
                 catalog, history, BATCH_NUMBER, scenario.restrictionMode());
     }
 
-    private void verifyFrozenReplay(
+    private void verifyDeterminism(
             GeneratorRunExecution.Input input,
             GeneratedCandidateSet generated,
             Aggregates aggregates
     ) {
-        aggregates.replayChecks++;
+        aggregates.determinismChecks++;
         try {
-            GeneratorRunExecution.Result replay = GeneratorRunExecution.execute(
+            GeneratorRunExecution.Result repeated = GeneratorRunExecution.execute(
                     input, properties.configuration(), defaultReservoirEngine, defaultSetEngine);
-            if (!(replay.candidateSet() instanceof GeneratedCandidateSet replayed)
-                    || !generated.fingerprint().equals(replayed.fingerprint())
-                    || !signatures(generated).equals(signatures(replayed))) {
-                aggregates.replayIntegrityMismatches++;
+            if (!(repeated.candidateSet() instanceof GeneratedCandidateSet repeatedSet)
+                    || !generated.fingerprint().equals(repeatedSet.fingerprint())
+                    || !signatures(generated).equals(signatures(repeatedSet))) {
+                aggregates.determinismMismatches++;
             }
         } catch (RuntimeException exception) {
             aggregates.technicalErrors++;
@@ -368,8 +368,8 @@ class GeneratorSimulationService implements GeneratorSimulation {
         private long successfulSets;
         private long exhaustedSets;
         private long technicalErrors;
-        private long replayChecks;
-        private long replayIntegrityMismatches;
+        private long determinismChecks;
+        private long determinismMismatches;
         private long hardRuleViolations;
         private long cooldownViolations;
         private long restrictionViolations;
@@ -516,8 +516,8 @@ class GeneratorSimulationService implements GeneratorSimulation {
             if (omitted > 0) {
                 variations = variations.subList(0, MAXIMUM_REPORT_ENTRIES);
             }
-            return new Metrics(attempts, successfulSets, exhaustedSets, technicalErrors, replayChecks,
-                    replayIntegrityMismatches, hardRuleViolations, cooldownViolations, restrictionViolations,
+            return new Metrics(attempts, successfulSets, exhaustedSets, technicalErrors, determinismChecks,
+                    determinismMismatches, hardRuleViolations, cooldownViolations, restrictionViolations,
                     quotaViolations, setCapViolations, strictPairMeanViolations,
                     recoveryCadenceViolations, incompleteSuccesses, restrictedCandidates, frequencies(fallbackUsage),
                     frequencies(hardRejections), frequencies(fallbackRejections), frequencies(concepts), concentration(concepts),

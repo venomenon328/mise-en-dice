@@ -5,7 +5,7 @@ Status: verbindliche Spezifikation für Phase 12B.5A/B
 
 Dieses Dokument präzisiert die Restriktionssemantik von Mise en Dice vor der vollständigen Live-Abnahme in Phase 12C. Es ist gemeinsam mit `VISION.md`, `CANDIDATE_GENERATOR.md`, `CURATION_AND_CHALLENGE_SELECTION.md`, `DATA_MODEL.md`, `CHALLENGE_VOTING_AND_PARTICIPATION.md` und den zugehörigen Issues verbindlich.
 
-Für Generator 1.2 gilt ausschließlich die hier beschriebene kandidatenspezifische Restriktionssemantik. Frühere Generatorversionen und attempt-weite Ausschlussentscheidungen werden weder ausgeführt noch replaybar gehalten.
+Für Generator 1.2 gilt ausschließlich die hier beschriebene kandidatenspezifische Restriktionssemantik. Frühere Generatorversionen und attempt-weite Ausschlussentscheidungen werden nicht ausgeführt.
 
 ## 1. Produktziel
 
@@ -51,11 +51,11 @@ Ein neuer Kandidat speichert neben seinen vier Requirement-Snapshots mindestens:
 
 Dieser Snapshot ist autoritativ. Spätere Änderungen an der Ausschlussregel dürfen bereits erzeugte Kandidaten, Offers oder Challenges nicht verändern.
 
-Die Restriktion ist Bestandteil der kanonischen Kandidatensignatur, Set-Fingerprint- und Replay-Semantik. Derselbe Vierersatz mit einer anderen Restriktion ist nicht derselbe Kandidat.
+Die Restriktion ist Bestandteil der kanonischen Kandidatensignatur, Set-Fingerprint- und Determinismus-Semantik. Derselbe Vierersatz mit einer anderen Restriktion ist nicht derselbe Kandidat.
 
-## 5. Generator- und Replay-Versionierung
+## 5. Generatorversion und Determinismus
 
-Die Umstellung ist replayrelevant und erfordert eine neue Generator-Minorversion, vorgesehen `1.2.0`.
+Die kandidatenspezifische Umstellung verwendet Generator-Minorversion `1.2.0`. Der aktuelle Determinismusvertrag bleibt erhalten; historisches Neuberechnen abgeschlossener Batches entfällt gemäß ADR 0009.
 
 Für neue Läufe gilt ausschließlich die kandidatenspezifische Semantik dieses Dokuments.
 
@@ -133,7 +133,7 @@ Die Änderung rechtfertigt gezielte Tests, aber keine zweite Vollkalibrierung:
 
 - deterministische feste Seeds für `AUTO`, `NONE`, `REQUIRED`,
 - eine kompakte reine Generatorstichprobe zur 20-%-AUTO-Wahrscheinlichkeit,
-- Konflikt-, Signatur-, Fingerprint- und Replayfälle,
+- Konflikt-, Signatur-, Fingerprint- und Determinismusfälle,
 - PostgreSQL-Snapshot-/Migrationsfälle,
 - Curation-Contract-V2-Fälle,
 - bestätigte versus gererollte Restriction-Exposition,

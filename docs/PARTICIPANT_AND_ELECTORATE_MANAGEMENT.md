@@ -252,7 +252,7 @@ Der Catalog Snapshot enthält:
 - pro Konzept nur die tatsächlich vorhandenen Beschaffbarkeitswerte dieser Personen,
 - keine erfundenen Lückenfüllwerte.
 
-Replay und Audit verwenden denselben gespeicherten Snapshot; spätere Änderungen an Elektorat oder Beschaffbarkeit verändern alte Attempts nicht.
+Recovery, Batch 2 und Audit verwenden denselben gespeicherten Snapshot; spätere Änderungen an Elektorat oder Beschaffbarkeit verändern alte Attempts nicht.
 
 ## 8. Bestehende Webverwaltung
 

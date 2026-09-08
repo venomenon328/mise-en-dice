@@ -68,11 +68,11 @@ class CandidateSetEngineTest {
     }
 
     @Test
-    void identicalInputReplaysTheCompleteSetAndDifferentSeedsVaryTheControlledTopBand() {
+    void identicalInputProducesTheSameCompleteSetAndDifferentSeedsVaryTheControlledTopBand() {
         Fixture fixture = fixture(72, ignored -> bd("60"), Availability.EASY);
 
         GeneratedCandidateSet first = generate(fixture, 81_200L);
-        GeneratedCandidateSet replay = generate(fixture, 81_200L);
+        GeneratedCandidateSet repeated = generate(fixture, 81_200L);
         GeneratedCandidateSet varied = generate(fixture, 81_201L);
         List<AcceptedProposal> reversedReservoir = new ArrayList<>(fixture.candidates());
         Collections.reverse(reversedReservoir);
@@ -80,7 +80,7 @@ class CandidateSetEngineTest {
                 new StubReservoirEngine(reversedReservoir, fixture.plan()), new ObjectMapper())
                 .generate(prepared(fixture, 81_200L), 1);
 
-        assertThat(first).isEqualTo(replay).isEqualTo(reorderedInput);
+        assertThat(first).isEqualTo(repeated).isEqualTo(reorderedInput);
         assertThat(first.candidates()).extracting(AcceptedProposal::canonicalSignature)
                 .isNotEqualTo(varied.candidates().stream().map(AcceptedProposal::canonicalSignature).toList());
         assertThat(first.evaluation().selectionDecisions()).allSatisfy(decision -> {

@@ -21,7 +21,7 @@ public interface GeneratorSimulation {
 
     int MAXIMUM_CASES = 4_096;
     int MAXIMUM_REPORT_ENTRIES = 50;
-    String REPORT_VERSION = "2026-08-18.1";
+    String REPORT_VERSION = "2026-09-08.1";
 
     SimulationReport simulate(SimulationRequest request);
 
@@ -259,8 +259,8 @@ public interface GeneratorSimulation {
             long successfulSets,
             long exhaustedSets,
             long technicalErrors,
-            long replayChecks,
-            long replayIntegrityMismatches,
+            long determinismChecks,
+            long determinismMismatches,
             long hardRuleViolations,
             long cooldownViolations,
             long restrictionViolations,

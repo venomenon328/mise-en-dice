@@ -127,4 +127,4 @@ Vor einer verbindlichen Modus-Spezifikation sind insbesondere noch zu klären:
 - Wie die gemeinsame Gesamtwahrscheinlichkeit für Spezialmodi konfiguriert und versioniert wird.
 - Welche Modusdaten in öffentlicher Challenge-Anzeige, Historie und Ergebnisdarstellung sichtbar werden.
 - Welche Fallbacks pro Modus gelten und welche Standard-Kurationsregeln ausdrücklich überschrieben werden.
-- Wie Modus, Beiträge, Auswahlentscheidungen und feste Vorgaben für Restart, Audit und Replay persistiert werden.
+- Wie Modus, Beiträge, Auswahlentscheidungen und feste Vorgaben für Restart und Audit persistiert werden.

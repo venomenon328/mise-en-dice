@@ -2,8 +2,15 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import io.github.venomenon328.miseendice.MiseEnDiceApplication;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection;
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Availability;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
@@ -15,8 +22,6 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Manual
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartExistingSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
-import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayDifferenceType;
-import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayStatus;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantCommands;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantIdentityConflictException;
@@ -73,6 +78,9 @@ class PersistedGenerationIntegrationTest {
     @Autowired ParticipantQueries participantQueries;
     @Autowired JdbcGenerationRepository repository;
     @Autowired CandidateSetEngine candidateSetEngine;
+    @Autowired CandidateReservoirEngine reservoirEngine;
+    @Autowired JdbcParticipantElectorateRepository electorateRepository;
+    @Autowired GeneratorProperties properties;
     @Autowired JdbcTemplate jdbcTemplate;
     @Autowired PlatformTransactionManager transactionManager;
 
@@ -100,7 +108,7 @@ class PersistedGenerationIntegrationTest {
     }
 
     @Test
-    void persistsBatchOneWithoutCurationAndReplaysEverySnapshot() {
+    void persistsBatchOneWithoutCurationAndReadsHistoricalSnapshots() {
         Generated generated = generated(commands.startNewSession(
                 new StartNewSession(DATE, List.of(), 47_000_001L, 1, RestrictionMode.AUTO)));
 
@@ -153,84 +161,16 @@ class PersistedGenerationIntegrationTest {
                 "select count(*) from challenge_candidate", Integer.class);
         int persistedBatches = jdbcTemplate.queryForObject(
                 "select count(*) from generation_batch", Integer.class);
-        assertThat(queries.replay(generated.attemptId(), 1).status()).isEqualTo(ReplayStatus.MATCH);
+        jdbcTemplate.update("update generation_attempt set configuration_version = 'historical-config' where id = ?",
+                generated.attemptId());
+        assertThat(queries.findAttempt(generated.attemptId()).orElseThrow().configurationVersion())
+                .isEqualTo("historical-config");
+        assertThat(queries.findBatch(generated.attemptId(), 1)).contains(batch);
+        assertThat(queries.findContext(generated.attemptId())).contains(context);
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from challenge_candidate", Integer.class)).isEqualTo(persistedCandidates);
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from generation_batch", Integer.class)).isEqualTo(persistedBatches);
-    }
-
-    @Test
-    void replayReportsTheFirstPersistedDifferenceThroughThePublicReadOnlyQuery() {
-        Generated generated = generated(commands.startNewSession(
-                new StartNewSession(DATE, List.of(), 47_000_002L, 1, RestrictionMode.AUTO)));
-        GenerationQueries.BatchView batch = queries.findBatch(generated.attemptId(), 1).orElseThrow();
-        GenerationQueries.CandidateView candidate = batch.candidates().getFirst();
-
-        assertThat(queries.replay(generated.attemptId(), 1).difference()).isNull();
-
-        jdbcTemplate.update("update generation_batch set set_fingerprint = ? where id = ?",
-                "0".repeat(64), batch.batchId());
-        assertDifference(generated.attemptId(), ReplayDifferenceType.SET_FINGERPRINT, "setFingerprint");
-        jdbcTemplate.update("update generation_batch set set_fingerprint = ? where id = ?",
-                batch.setFingerprint(), batch.batchId());
-
-        jdbcTemplate.update("update challenge_candidate set canonical_signature = ? where id = ?",
-                candidate.canonicalSignature() + "-changed", candidate.candidateId());
-        assertDifference(generated.attemptId(), ReplayDifferenceType.CANDIDATE_SIGNATURE,
-                "candidates[" + candidate.candidateNumber() + "].canonicalSignature");
-        jdbcTemplate.update("update challenge_candidate set canonical_signature = ? where id = ?",
-                candidate.canonicalSignature(), candidate.candidateId());
-
-        jdbcTemplate.update("update challenge_candidate set total_score = total_score + 0.001 where id = ?",
-                candidate.candidateId());
-        assertDifference(generated.attemptId(), ReplayDifferenceType.CANDIDATE_TOTAL_SCORE,
-                "candidates[" + candidate.candidateNumber() + "].totalScore");
-        jdbcTemplate.update("update challenge_candidate set total_score = ? where id = ?",
-                candidate.totalScore(), candidate.candidateId());
-
-        jdbcTemplate.update("""
-                update challenge_candidate
-                set component_scores = jsonb_set(component_scores, '{review_probe}', '0'::jsonb)
-                where id = ?
-                """, candidate.candidateId());
-        assertDifference(generated.attemptId(), ReplayDifferenceType.CANDIDATE_COMPONENT_SCORES,
-                "candidates[" + candidate.candidateNumber() + "].componentScores");
-        jdbcTemplate.update("update challenge_candidate set component_scores = cast(? as jsonb) where id = ?",
-                candidate.componentScoresJson(), candidate.candidateId());
-
-        jdbcTemplate.update("update challenge_candidate set generator_reason_codes = '[\"REVIEW_PROBE\"]'::jsonb where id = ?",
-                candidate.candidateId());
-        assertDifference(generated.attemptId(), ReplayDifferenceType.CANDIDATE_REASON_CODES,
-                "candidates[" + candidate.candidateNumber() + "].reasonCodes");
-        jdbcTemplate.update("update challenge_candidate set generator_reason_codes = cast(? as jsonb) where id = ?",
-                candidate.reasonCodesJson(), candidate.candidateId());
-
-        jdbcTemplate.update("""
-                update generation_batch
-                set set_evaluation = jsonb_set(set_evaluation, '{review_probe}', 'true'::jsonb)
-                where id = ?
-                """, batch.batchId());
-        assertDifference(generated.attemptId(), ReplayDifferenceType.SET_EVALUATION, "setEvaluation");
-    }
-
-    @Test
-    void replayKeepsMatchAndNonMismatchStatesFreeOfDifferences() {
-        Generated generated = generated(commands.startNewSession(
-                new StartNewSession(DATE, List.of(), 47_000_003L, 1, RestrictionMode.AUTO)));
-
-        assertThat(queries.replay(generated.attemptId(), 1))
-                .extracting(GenerationQueries.ReplayResult::status, GenerationQueries.ReplayResult::difference)
-                .containsExactly(ReplayStatus.MATCH, null);
-        assertThat(queries.replay(Long.MAX_VALUE, 1))
-                .extracting(GenerationQueries.ReplayResult::status, GenerationQueries.ReplayResult::difference)
-                .containsExactly(ReplayStatus.NOT_FOUND, null);
-
-        jdbcTemplate.update("update generation_attempt set configuration_version = 'unsupported-review-test' where id = ?",
-                generated.attemptId());
-        assertThat(queries.replay(generated.attemptId(), 1))
-                .extracting(GenerationQueries.ReplayResult::status, GenerationQueries.ReplayResult::difference)
-                .containsExactly(ReplayStatus.UNSUPPORTED_VERSION, null);
     }
 
     @Test
@@ -280,8 +220,17 @@ class PersistedGenerationIntegrationTest {
                 new StartNewSession(DATE, List.of(), 47_000_021L, 1, RestrictionMode.AUTO)));
         var prepared = repository.snapshotCodec().decodeAndVerify(repository.loadContext(initial.attemptId()));
         var second = candidateSetEngine.generate(prepared, 2);
-        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
-                repository.saveAdditionalBatch(initial.attemptId(), second));
+        var guardedRepository = spy(org.springframework.test.util.AopTestUtils.<JdbcGenerationRepository>getUltimateTargetObject(repository));
+        doThrow(new AssertionError("Batch 2 must not reload history")).when(guardedRepository).visibleHistory();
+        var secondBatchService = new SecondBatchGenerationService(
+                guardedRepository, candidateSetEngine, transactionManager);
+        assertThat(secondBatchService.ensure(initial.attemptId()))
+                .isInstanceOf(SecondBatchGenerationService.Generated.class);
+        verify(guardedRepository, never()).visibleHistory();
+        assertThat(queries.findBatch(initial.attemptId(), 2).orElseThrow().setFingerprint())
+                .isEqualTo(((CandidateSetEngine.GeneratedCandidateSet) second).fingerprint());
+        assertThat(repository.snapshotCodec().decodeAndVerify(repository.loadContext(initial.attemptId())))
+                .isEqualTo(prepared);
 
         assertThat(queries.findAttempt(initial.attemptId()).orElseThrow().batchNumbers()).containsExactly(1, 2);
         assertThat(queries.findBatch(initial.attemptId(), 1).orElseThrow().candidates())
@@ -298,7 +247,7 @@ class PersistedGenerationIntegrationTest {
     }
 
     @Test
-    void staleContextReadyAttemptReplaysAfterRestartWithoutChangingItsSet() {
+    void staleContextReadyAttemptResumesAfterRestartWithoutChangingItsSet() {
         Generated first = generated(commands.startNewSession(
                 new StartNewSession(DATE, List.of(), 47_000_031L, 1, RestrictionMode.AUTO)));
         jdbcTemplate.update("delete from generation_batch where generation_attempt_id = ?", first.attemptId());
@@ -309,11 +258,49 @@ class PersistedGenerationIntegrationTest {
                 where id = ?
                 """, UUID.randomUUID(), first.attemptId());
 
-        Generated recovered = generated(commands.startInitial(new StartExistingSession(
+        var frozenContext = queries.findContext(first.attemptId()).orElseThrow();
+        var guardedRepository = spy(org.springframework.test.util.AopTestUtils.<JdbcGenerationRepository>getUltimateTargetObject(repository));
+        doThrow(new AssertionError("Recovery must not reload history")).when(guardedRepository).visibleHistory();
+        CatalogGeneratorProjection forbiddenCatalog = mock(CatalogGeneratorProjection.class);
+        // A fresh service has no in-memory state from the original attempt.
+        var restartedService = new GenerationApplicationService(guardedRepository, electorateRepository,
+                forbiddenCatalog, reservoirEngine, candidateSetEngine,
+                () -> { throw new AssertionError("Recovery must retain the seed"); }, properties, transactionManager);
+        Generated recovered = generated(restartedService.startInitial(new StartExistingSession(
                 first.sessionId(), DATE.plusMonths(1), List.of(), 999L)));
+        verifyNoInteractions(forbiddenCatalog);
+        verify(guardedRepository, never()).visibleHistory();
+        assertThat(queries.findContext(first.attemptId())).contains(frozenContext);
         assertThat(recovered.attemptId()).isEqualTo(first.attemptId());
         assertThat(recovered.setFingerprint()).isEqualTo(first.setFingerprint());
-        assertThat(queries.replay(recovered.attemptId(), 1).status()).isEqualTo(ReplayStatus.MATCH);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+            "catalog_snapshot = jsonb_set(catalog_snapshot, '{seasonMonth}', '1')",
+            "prepared_attempt_snapshot = jsonb_set(prepared_attempt_snapshot, '{noveltyCadence}', '\"RECOVERY\"')",
+            "context_fingerprint = repeat('0', 64)"
+    })
+    void corruptedFrozenContextRejectsBothSecondBatchAndRecovery(String mutation) {
+        Generated initial = generated(commands.startNewSession(
+                new StartNewSession(DATE, List.of(), 47_000_033L, 1, RestrictionMode.AUTO)));
+        jdbcTemplate.update("update generation_context_snapshot set " + mutation
+                + " where generation_attempt_id = ?", initial.attemptId());
+        var second = new SecondBatchGenerationService(repository, candidateSetEngine, transactionManager)
+                .ensure(initial.attemptId());
+        assertThat(second).isInstanceOfSatisfying(SecondBatchGenerationService.Failed.class,
+                failure -> assertThat(failure.reasonCode()).isEqualTo("CONTEXT_SNAPSHOT_INVALID"));
+        assertThat(queries.findBatch(initial.attemptId(), 2)).isEmpty();
+        jdbcTemplate.update("delete from generation_batch where generation_attempt_id = ?", initial.attemptId());
+        jdbcTemplate.update("""
+                update generation_attempt set status = 'CONTEXT_READY', completed_at = null,
+                    operation_token = ?, lease_expires_at = now() - interval '1 minute' where id = ?
+                """, UUID.randomUUID(), initial.attemptId());
+        assertThat(commands.startInitial(new StartExistingSession(initial.sessionId(), DATE, List.of(), 999L)))
+                .isInstanceOfSatisfying(GenerationCommands.Failed.class,
+                        failure -> assertThat(failure.reasonCode()).isEqualTo("CONTEXT_SNAPSHOT_INVALID"));
+        assertThat(queries.findAttempt(initial.attemptId()).orElseThrow().status()).isEqualTo("FAILED");
+        assertThat(queries.findBatch(initial.attemptId(), 1)).isEmpty();
     }
 
     @Test
@@ -520,14 +507,6 @@ class PersistedGenerationIntegrationTest {
             throw new IllegalStateException("Concurrent identity-resolution test did not start");
         }
         return participantCommands.resolveOrCreateParticipant(command);
-    }
-
-    private void assertDifference(long attemptId, ReplayDifferenceType type, String path) {
-        assertThat(queries.replay(attemptId, 1))
-                .extracting(GenerationQueries.ReplayResult::status,
-                        replay -> replay.difference().type(),
-                        replay -> replay.difference().path())
-                .containsExactly(ReplayStatus.MISMATCH, type, path);
     }
 
     private long conceptId(int offset) {

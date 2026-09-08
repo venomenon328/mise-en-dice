@@ -272,12 +272,12 @@ class JdbcGenerationRepository {
         long batchId = jdbcTemplate.queryForObject("""
                 insert into generation_batch (
                     generation_attempt_id, batch_number, batch_seed, status, reservoir_metrics,
-                    fallback_attempts, diagnostics, result_snapshot
-                ) values (?, ?, ?, 'EXHAUSTED', cast(? as jsonb), cast(? as jsonb), cast(? as jsonb), cast(? as jsonb))
+                    fallback_attempts, diagnostics
+                ) values (?, ?, ?, 'EXHAUSTED', cast(? as jsonb), cast(? as jsonb), cast(? as jsonb))
                 returning id
                 """, Long.class, attemptId, exhausted.batchNumber(), exhausted.batchSeed(),
                 snapshotCodec.json(exhausted.reservoir().metrics()), snapshotCodec.json(exhausted.fallbackAttempts()),
-                reasonJson(exhausted.diagnostics()), snapshotCodec.json(exhausted));
+                reasonJson(exhausted.diagnostics()));
         return new PersistedBatch(batchId, result.batchNumber(), "EXHAUSTED", null);
     }
 
@@ -286,14 +286,14 @@ class JdbcGenerationRepository {
                 insert into generation_batch (
                     generation_attempt_id, batch_number, batch_seed, status, fallback_level,
                     reservoir_metrics, fallback_attempts, set_evaluation, diagnostics,
-                    result_snapshot, set_fingerprint
+                    set_fingerprint
                 ) values (?, ?, ?, 'GENERATED', ?, cast(? as jsonb), cast(? as jsonb), cast(? as jsonb),
-                          cast(? as jsonb), cast(? as jsonb), ?)
+                          cast(? as jsonb), ?)
                 returning id
                 """, Long.class, attemptId, generated.batchNumber(), generated.batchSeed(),
                 generated.fallbackLevel().name(), snapshotCodec.json(generated.reservoir().metrics()),
                 snapshotCodec.json(generated.fallbackAttempts()), snapshotCodec.json(generated.evaluation()),
-                reasonJson(generated.diagnostics()), snapshotCodec.json(generated), generated.fingerprint());
+                reasonJson(generated.diagnostics()), generated.fingerprint());
     }
 
     private long insertCandidate(long batchId, int number, AcceptedProposal candidate) {
@@ -463,7 +463,7 @@ class JdbcGenerationRepository {
         return jdbcTemplate.query("""
                 select id, generation_attempt_id, batch_number, legacy_migrated, batch_seed, status, fallback_level,
                        set_fingerprint, reservoir_metrics::text, fallback_attempts::text,
-                       set_evaluation::text, diagnostics::text, result_snapshot::text, completed_at
+                       set_evaluation::text, diagnostics::text, completed_at
                 from generation_batch
                 where generation_attempt_id = ? and batch_number = ?
                 """, (result, row) -> new BatchView(
@@ -473,7 +473,7 @@ class JdbcGenerationRepository {
                 result.getString("fallback_level"), result.getString("set_fingerprint"),
                 result.getString("reservoir_metrics"), result.getString("fallback_attempts"),
                 result.getString("set_evaluation"), result.getString("diagnostics"),
-                result.getString("result_snapshot"), candidates(result.getLong("id")),
+                candidates(result.getLong("id")),
                 instant(result, "completed_at")), attemptId, batchNumber).stream().findFirst();
     }
 

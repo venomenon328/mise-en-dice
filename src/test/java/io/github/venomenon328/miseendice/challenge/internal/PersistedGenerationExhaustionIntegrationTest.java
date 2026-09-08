@@ -66,7 +66,8 @@ class PersistedGenerationExhaustionIntegrationTest {
         assertThat(batch.status()).isEqualTo("EXHAUSTED");
         assertThat(batch.candidates()).isEmpty();
         assertThat(batch.diagnosticsJson()).contains(GeneratorReasonCode.GENERATION_EXHAUSTED.name());
-        assertThat(batch.resultSnapshotJson()).isNotBlank();
+        assertThat(batch.reservoirMetricsJson()).isNotBlank();
+        assertThat(batch.fallbackAttemptsJson()).isNotBlank();
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from generation_batch where generation_attempt_id = ?",
                 Integer.class, exhausted.attemptId())).isEqualTo(1);

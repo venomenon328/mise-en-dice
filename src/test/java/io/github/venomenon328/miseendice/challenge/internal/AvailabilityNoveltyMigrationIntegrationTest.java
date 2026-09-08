@@ -44,7 +44,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @Testcontainers
 class AvailabilityNoveltyMigrationIntegrationTest {
     private static final String BEFORE = "db/changelog/db.changelog-before-availability-novelty.yaml";
-    private static final String MASTER = "db/changelog/db.changelog-master.yaml";
+    private static final String MASTER = "db/changelog/db.changelog-before-remove-generator-replay.yaml";
     @Container
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6");
 
@@ -66,7 +66,10 @@ class AvailabilityNoveltyMigrationIntegrationTest {
     @Autowired CurationOrchestrationIntegrationTest.ScriptedCuratorClient curator;
 
     @Test
-    void upgradesTheImmediatePredecessorPreservingMetadataHistoryAndReplay() throws Exception {
+    void upgradesTheImmediatePredecessorPreservingMetadataAndHistoricalResults() throws Exception {
+        // The current writer no longer supplies the obsolete duplicate result payload.
+        // This test targets the pre-020 schema; its legacy column is irrelevant to catalog migration.
+        jdbc.execute("alter table generation_batch alter column result_snapshot set default '{}'::jsonb");
         curator.script(CurationOrchestrationIntegrationTest.Script.success(1));
         var generated = (GenerationCommands.Generated) generation.startNewSession(new GenerationCommands.StartNewSession(
                 LocalDate.of(2026, 9, 7), List.of(), 76100061L, 1, RestrictionMode.NONE));
@@ -84,6 +87,7 @@ class AvailabilityNoveltyMigrationIntegrationTest {
                 select (select min(id) from ingredient_concept), id, 'PLANNED'
                 from participant where code = 'TEST_189_SPARSE'
                 """);
+        var storedBatch = generationQueries.findBatch(generated.attemptId(), 1).orElseThrow();
         var preservedTables = preservedTables();
         String protectedConcepts = protectedConcepts(jdbc);
         var versions = jdbc.queryForList("select id, version from ingredient_concept order by id");
@@ -101,7 +105,7 @@ class AvailabilityNoveltyMigrationIntegrationTest {
                 Long.class, row.get("id"))).isEqualTo(((Number) row.get("version")).longValue() + 1));
         var catalogAfter = projection.snapshotForMonth(9, participants());
         assertThat(catalogAfter).isNotEqualTo(catalogBefore);
-        assertThat(generationQueries.replay(generated.attemptId(), 1).status()).isEqualTo(GenerationQueries.ReplayStatus.MATCH);
+        assertThat(generationQueries.findBatch(generated.attemptId(), 1)).contains(storedBatch);
 
         // Notes are deliberately absent from the generator catalog and thus its serialized fingerprint input.
         jdbc.update("update ingredient_availability set curator_note = 'Technical note-only change.'");

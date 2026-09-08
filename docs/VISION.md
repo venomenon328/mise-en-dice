@@ -1,6 +1,6 @@
 # Produktvision: Mise en Dice
 
-Stand: 21. August 2026
+Stand: 8. September 2026
 
 ## 1. Zweck
 
@@ -176,8 +176,9 @@ Alle Zufallsentscheidungen verwenden einen gespeicherten Seed, einen benannten R
 Ab Generator `1.2.0` wird eine optionale Restriktion pro Kandidat und vor dessen Requirement-Ziehungen bestimmt:
 `AUTO` ist der persistierte Default und zieht deterministisch mit 20 %, `NONE` zieht keine, `REQUIRED` verlangt
 eine eligible Restriktion. Candidate-Signatur, Satzdiversität, Kuratorrequest, Offer, bestätigte Challenge und
-Reroll-Historie tragen genau diesen Snapshot. Andere Generatorversionen werden nicht unterstützt oder für Replay
-und Audit nachgebildet.
+Reroll-Historie tragen genau diesen Snapshot. Andere Generatorversionen werden nicht ausgeführt oder nachgebildet. Historische Ergebnisse bleiben lesbar.
+Gemäß ADR 0009 entfällt die Neuberechnung abgeschlossener historischer Batches; Seed-Determinismus,
+der eingefrorene Kontext für Recovery laufender Attempts und dessen Wiederverwendung für Batch 2 bleiben erhalten.
 
 ### 5.3 Rolle des Sprachmodells und Auswahl mehrerer Angebote
 
@@ -304,7 +305,7 @@ Discord ist vorgesehen für:
 - Entscheidungen beider Personen gleichzeitig offenlegen,
 - später gegebenenfalls Ergebnisse und Bewertungen dokumentieren.
 
-Im normalen Auswahlweg wird nur die ausdrücklich bestätigte Option zur operativen Challenge und beeinflusst Cooldown und Neuigkeitskadenz. Nicht gewählte Angebote bleiben für Audit und Replay nachvollziehbar, sind für den Generator aber so zu behandeln, als wären sie nie angeboten worden. Nur wenn das **gesamte** sichtbare Offer Set stattdessen rerollt wird, erzeugen seine exakten Katalogkonzepte die in Abschnitt 6 definierte Cooldown-only-Exposition.
+Im normalen Auswahlweg wird nur die ausdrücklich bestätigte Option zur operativen Challenge und beeinflusst Cooldown und Neuigkeitskadenz. Nicht gewählte Angebote bleiben für Audit und historische Anzeige nachvollziehbar, sind für den Generator aber so zu behandeln, als wären sie nie angeboten worden. Nur wenn das **gesamte** sichtbare Offer Set stattdessen rerollt wird, erzeugen seine exakten Katalogkonzepte die in Abschnitt 6 definierte Cooldown-only-Exposition.
 
 Die öffentliche Challenge-Historie zeigt ausschließlich die bestätigten Fakten und niemals Abstimmungs-, Offer-, Reroll-, Kurator- oder Providerdetails. Die zuletzt bestätigte Challenge gilt im ersten Stand als aktuell. Eine optionale Challenge-Card ist lediglich ein Darstellungsartefakt; die persistierten Requirement- und Restriction-Snapshots bleiben Autorität. Die vollständige Spezifikation steht in [`CHALLENGE_ARCHIVE_AND_CARDS.md`](CHALLENGE_ARCHIVE_AND_CARDS.md).
 
@@ -369,7 +370,7 @@ Bereits abgeschlossen sind:
 3. Spring-Boot-/Liquibase-/PostgreSQL-Anwendungsfundament,
 4. Spezifikation und Umsetzung der privaten Katalogverwaltung,
 5. Spezifikation sowie fachlicher Kern des reproduzierbaren Kandidatengenerators bis einschließlich diverser Zwölfer-Auswahl,
-6. persistente Generator-, Replay-, Konkurrenz- und Kalibrierungsgrundlage,
+6. persistente Generator-, Recovery-, Konkurrenz- und Kalibrierungsgrundlage,
 7. strukturierter Kuratorvertrag, begrenzte produktive Orchestrierung und Multi-Offer-Lifecycle,
 8. transportneutraler Offer-Decision-/Reroll-Lifecycle für Auswahl von `1..3` Angeboten und Bestätigung genau einer Challenge,
 9. transportneutraler Teilnehmer-, Electorate- und Voting-Core mit persistenter Teilnahme,

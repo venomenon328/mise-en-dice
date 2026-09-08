@@ -24,7 +24,7 @@ class CurrentGeneratorContractRegressionTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void current12CanonicalContextKeepsThePublishedSnapshotShapeAndReplays() {
+    void current12CanonicalContextKeepsThePublishedSnapshotShapeForRecovery() {
         GeneratorConfiguration configuration = TestGeneratorConfiguration.defaults();
         Fixture fixture = fixture(configuration);
         GenerationAttemptRequest request = request(configuration);
@@ -62,7 +62,7 @@ class CurrentGeneratorContractRegressionTest {
 
     @Test
     void currentSimulationReportSchemaHasItsOwnVersion() {
-        assertThat(GeneratorSimulation.REPORT_VERSION).isEqualTo("2026-08-18.1");
+        assertThat(GeneratorSimulation.REPORT_VERSION).isEqualTo("2026-09-08.1");
     }
 
     private Fixture fixture(GeneratorConfiguration configuration) {
