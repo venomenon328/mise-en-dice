@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.catalog.internal;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupAvailabilityNote;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountry;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredient;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredientPage;
@@ -105,6 +106,7 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
                         """, (resultSet, rowNumber) -> new IngredientLookupDimension(
                         resultSet.getString("code"), resultSet.getString("display_name"), resultSet.getInt("level")), conceptId),
                 findCulinaryCountries(conceptId),
+                findAvailabilityNotes(conceptId),
                 row.curatorNote()
         ));
     }
@@ -250,6 +252,20 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
                 order by cc.code
                 """, (resultSet, rowNumber) -> new IngredientLookupCountry(
                 resultSet.getString("code"), resultSet.getString("display_name")), conceptId);
+    }
+
+    private List<IngredientLookupAvailabilityNote> findAvailabilityNotes(long conceptId) {
+        return jdbcTemplate.query("""
+                select participant.code, participant.display_name, availability.curator_note
+                from ingredient_availability availability
+                join participant on participant.id = availability.participant_id
+                where availability.ingredient_concept_id = ?
+                  and participant.code in ('GEORGIA', 'TOBIAS')
+                  and availability.curator_note is not null
+                  and btrim(availability.curator_note) <> ''
+                order by case participant.code when 'GEORGIA' then 1 when 'TOBIAS' then 2 end
+                """, (resultSet, rowNumber) -> new IngredientLookupAvailabilityNote(
+                resultSet.getString("code"), resultSet.getString("display_name"), resultSet.getString("curator_note")), conceptId);
     }
 
     private CulinaryCountry mapCulinaryCountry(ResultSet resultSet, int rowNumber) throws SQLException {

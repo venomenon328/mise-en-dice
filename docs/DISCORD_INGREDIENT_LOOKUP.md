@@ -100,11 +100,12 @@ Das aktive Profil enthält ausschließlich:
 - direkt gepflegte kulinarische Flags,
 - direkt gepflegte kulinarische Dimensionen,
 - direkt gepflegte kulinarische Länderzuordnungen mit ISO-Alpha-2- oder kontrolliertem erweitertem Code und Anzeigename,
+- die aktuell gepflegten individuellen Availability-Notizen von Georgia und Tobias mit Personenzuordnung,
 - verpflichtende Kuratornotiz.
 
 Die Relation-ID dient ausschließlich der eindeutigen stateless Discord-Navigation. Sie wird nicht als Nutztext angezeigt. Suchtreffer dürfen für ihre optionale Parent-Beschreibung weiterhin ausschließlich Namen transportieren.
 
-Nicht Teil der Projektion beziehungsweise Darstellung sind Saison, Beschaffbarkeit, technischer Code, Version, Änderungszeitpunkt, Auditdaten, Challenge-Spezifität, transitive Vorfahren/Nachfahren oder Ausschlussregeln.
+Nicht Teil der Projektion beziehungsweise Darstellung sind Saison, Availability-Stufen, technischer Code, Version, Änderungszeitpunkt, Auditdaten, Challenge-Spezifität, transitive Vorfahren/Nachfahren oder Ausschlussregeln. Die gespeicherten individuellen Availability-Notizen sind die enge Ausnahme: Sie werden unverändert als Katalogtext transportiert, aber nicht neu bewertet, abgeleitet oder zusammengefasst.
 
 Nur direkte und zum Zeitpunkt der Abfrage aktive Beziehungen werden geliefert. Rollen, Flags und Dimensionen werden nicht über den Konkretisierungsgraphen vererbt.
 
@@ -126,7 +127,7 @@ Bei einem aktiven, aber nicht eigenständig ziehbaren Konzept wird stattdessen a
 Gewichtung        nicht eigenständig ziehbar
 ```
 
-Die Kochungewöhnlichkeit beschreibt ausschließlich die Außergewöhnlichkeit als Kochzutat und verwendet dieselbe fünfstufige verbale Skala wie das Datenmodell. Ein fehlender Wert erscheint ausdrücklich als `nicht gepflegt`; er wird weder als Stufe 0 noch als Stufe 1 interpretiert. Die verbindliche Begriffsabgrenzung steht in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md); Beschaffbarkeit bleibt ausdrücklich nicht Teil dieses Discord-Profils.
+Die Kochungewöhnlichkeit beschreibt ausschließlich die Außergewöhnlichkeit als Kochzutat und verwendet dieselbe fünfstufige verbale Skala wie das Datenmodell. Ein fehlender Wert erscheint ausdrücklich als `nicht gepflegt`; er wird weder als Stufe 0 noch als Stufe 1 interpretiert. Die verbindliche Begriffsabgrenzung steht in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md); Availability-Stufen bleiben ausdrücklich nicht Teil dieses Discord-Profils.
 
 ## 6. Zutaten-Card
 
@@ -138,13 +139,14 @@ Das fertige Profil ist ein kompaktes Discord-Embed mit einer festen zurückhalte
 4. `🍽️ Geschmacksprofil`,
 5. optional `🌍 Kulinarische Zuordnung`,
 6. optional `💡 Hinweis aus dem Zutatenkatalog`,
-7. `⬆️ Allgemeinere Begriffe`,
-8. `⬇️ Bekannte Konkretisierungen`,
-9. direkt unter dem Embed die String-Select-Navigation für vorhandene direkte Beziehungen.
+7. optional ein gemeinsames Feld `📦 Verfügbarkeit` bei exakt identischen Georgia-/Tobias-Notizen; bei unterschiedlichen oder nur einseitig vorhandenen Notizen personenspezifische Felder `📦 Verfügbarkeit – Georgia` beziehungsweise `📦 Verfügbarkeit – Tobias`,
+8. `⬆️ Allgemeinere Begriffe`,
+9. `⬇️ Bekannte Konkretisierungen`,
+10. direkt unter dem Embed die String-Select-Navigation für vorhandene direkte Beziehungen.
 
 Die beiden Inline-Felder werden nicht durch Leerzeichen oder Tabulatoren als Texttabelle simuliert. Lange Werte im linken Feld verschieben daher die rechte Spalte nicht. Mehrere Werte stehen innerhalb ihres Feldes untereinander; leere Listen erscheinen als `keine`. Auf schmalen Clients darf Discord die Felder untereinander stapeln.
 
-Die Hierarchie steht bewusst am Ende, damit zunächst sämtliche Informationen zum konkret angezeigten Konzept zusammenbleiben und erst danach die Katalognavigation folgt.
+Die individuellen Notizen zeigen weder eine Availability-Stufe noch eine Ersatzbeschreibung bei fehlendem fachlich anwendbarem Text. Sind die Georgia- und Tobias-Texte exakt gleich, wird dieser unveränderte Text einmal neutral angezeigt. Bei jeder Abweichung – auch nur bei Satzzeichen oder Leerraum – sowie bei einer einseitig vorhandenen Notiz bleibt die Personenzuordnung sichtbar. Die Prüfung nimmt keine semantische oder fuzzy Deduplizierung vor. Die Notizen sind gespeicherter Katalogtext, keine Discord-seitige Bewertung oder Zusammenfassung. Die Hierarchie steht bewusst am Ende, damit zunächst sämtliche Informationen zum konkret angezeigten Konzept zusammenbleiben und erst danach die Katalognavigation folgt.
 
 ### 6.1 Kulinarische Länderzuordnung
 
@@ -204,9 +206,9 @@ Umami     mittel  🍄🍄🍄○○
 
 Die verpflichtende `curator_note` wird als `💡 Hinweis aus dem Zutatenkatalog` angezeigt. Der Renderer behandelt einen entgegen der zentralen Datenbankinvariante leeren Wert weiterhin defensiv und erzeugt dafür keinen Abschnitt.
 
-Katalogtexte werden so gerendert, dass sie keine unbeabsichtigten Mentions, Codeblöcke, Links oder Markdown-Strukturen auslösen. Allowed Mentions bleiben vollständig deaktiviert. Unvertrauenswürdiger Katalogtext wird nicht in die ausgerichteten Codeblöcke übernommen.
+Katalogtexte einschließlich der individuellen Availability-Notizen werden so gerendert, dass sie keine unbeabsichtigten Mentions, Codeblöcke, Links oder Markdown-Strukturen auslösen. Allowed Mentions bleiben vollständig deaktiviert. Unvertrauenswürdiger Katalogtext wird nicht in die ausgerichteten Codeblöcke übernommen.
 
-Kuratornotizen dürfen über mehrere Felder geteilt werden; die Card begrenzt ihre Zahl jedoch so, dass die beiden Hierarchiefelder am Ende nicht durch das Embed-Budget verdrängt werden können. Eine notwendige Kürzung bleibt sichtbar.
+Kuratornotizen dürfen über mehrere Felder geteilt werden; individuelle Availability-Notizen erhalten bei Bedarf jeweils ein technisch begrenztes Feld. Das Embed-Budget reserviert vorab Platz für jedes nach der exakten Gleichheitsprüfung auszugebende Feld und die beiden Hierarchiefelder. Dadurch verschwinden weder gekürzte Availability-Notizen noch die Hierarchie stillschweigend; jede technische Kürzung zeigt die ausgelassene Zeichenzahl sichtbar an.
 
 ## 9. Direkte Hierarchienavigation
 

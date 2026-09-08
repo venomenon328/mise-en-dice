@@ -110,6 +110,8 @@ class IngredientLookupQueriesIntegrationTest {
         assignDimension(selected, "SALTINESS", 2);
         assignCountry(activeParentA, "PH");
         assignCountry(activeChildA, "TH");
+        assignAvailabilityNote(selected, "GEORGIA", "Synthetische Georgia-Notiz.");
+        assignAvailabilityNote(selected, "TOBIAS", "Synthetische Tobias-Notiz.");
         long auditBefore = jdbcTemplate.queryForObject("select count(*) from catalog_audit_entry", Long.class);
 
         var search = queries.searchActiveByDisplayName("profil", 25);
@@ -135,6 +137,10 @@ class IngredientLookupQueriesIntegrationTest {
                         org.assertj.core.groups.Tuple.tuple("SALTINESS", 2),
                         org.assertj.core.groups.Tuple.tuple("UMAMI", 4));
         assertThat(profile.culinaryCountries()).isEmpty();
+        assertThat(profile.availabilityNotes()).extracting(note -> note.participantCode(), note -> note.participantDisplayName(), note -> note.note())
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("GEORGIA", "Georgia", "Synthetische Georgia-Notiz."),
+                        org.assertj.core.groups.Tuple.tuple("TOBIAS", "Tobias", "Synthetische Tobias-Notiz."));
         assertThat(profile.curatorNote()).isEqualTo("  Kurator @here *Hinweis*  ");
         assertThat(queries.findActiveProfile(inactiveChild)).isEmpty();
         assertThat(auditAfter).isEqualTo(auditBefore);
@@ -274,6 +280,15 @@ class IngredientLookupQueriesIntegrationTest {
         jdbcTemplate.update(
                 "insert into ingredient_culinary_country (ingredient_concept_id, country_code) values (?, ?)",
                 conceptId, countryCode);
+    }
+
+    private void assignAvailabilityNote(long conceptId, String participantCode, String note) {
+        jdbcTemplate.update("""
+                insert into ingredient_availability (ingredient_concept_id, participant_id, availability_level, curator_note)
+                select ?, id, 'EASY', ?
+                from participant
+                where code = ?
+                """, conceptId, note, participantCode);
     }
 
     private void insertCountry(String code, String displayName) {
