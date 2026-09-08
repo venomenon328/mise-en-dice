@@ -345,7 +345,7 @@ public interface CatalogQueries {
     record CatalogFilterOptions(
             List<CatalogReferenceValue> functionalRoles,
             List<CatalogReferenceValue> culinaryFlags,
-            List<CatalogDimensionValue> culinaryDimensions,
+            List<CatalogReferenceValue> culinaryDimensions,
             List<CatalogCountry> culinaryCountries
     ) {
 
