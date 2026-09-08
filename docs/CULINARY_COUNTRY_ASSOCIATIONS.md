@@ -1,8 +1,10 @@
 # Kulinarische Länderzuordnungen
 
-Stand: 24. August 2026
+Stand: 8. September 2026
 
 Dieses Dokument beschreibt die redaktionelle Bedeutung und technische Pflege der kulinarischen Länderzuordnungen im Zutatenkatalog. Maßgeblich für die ursprüngliche fachliche Entscheidung ist Issue #165.
+
+Der verbindliche operative Ablauf von Recherchebeginn über die erste Aufnahme-/Relationsfreigabe und die zweite vollständige Metadatenfreigabe bis zur Einpflege steht in [CULINARY_CATALOG_WORKFLOW.md](CULINARY_CATALOG_WORKFLOW.md). Für neue Konzepte sind außerdem [INGREDIENT_CONCEPT_CURATION.md](INGREDIENT_CONCEPT_CURATION.md) und [AVAILABILITY_AND_COOKING_NOVELTY.md](AVAILABILITY_AND_COOKING_NOVELTY.md) Pflichtquellen. Issue #172 bleibt der aktuelle Sammelauftrag und das landweise Entscheidungsprotokoll.
 
 ## 1. Bedeutung einer Zuordnung
 

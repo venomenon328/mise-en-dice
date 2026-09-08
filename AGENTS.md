@@ -15,6 +15,13 @@ Vor Änderungen sind mindestens zu lesen:
 
 Das aktuelle Issue und konkrete Review-Anforderungen bestimmen den Lieferumfang. Architektur- oder Fachentscheidungen dürfen nicht stillschweigend umgedeutet werden. Bei einem echten Widerspruch ist dieser sichtbar zu machen, statt eine beliebige Variante zu implementieren.
 
+Bei kulinarischen Länderreviews nach #172 ist vor der Analyse zusätzlich
+[`docs/CULINARY_CATALOG_WORKFLOW.md`](docs/CULINARY_CATALOG_WORKFLOW.md) mit seinen Pflichtquellen zu lesen.
+Jede Konzeptneuaufnahme oder wesentliche Produktformänderung folgt außerdem
+[`docs/INGREDIENT_CONCEPT_CURATION.md`](docs/INGREDIENT_CONCEPT_CURATION.md) und
+[`docs/AVAILABILITY_AND_COOKING_NOVELTY.md`](docs/AVAILABILITY_AND_COOKING_NOVELTY.md).
+Historische Baseline-Beispiele ersetzen die aktuellen Bewertungs- und Notizregeln nicht.
+
 ## 2. Umfang und Branch
 
 - Arbeite ausschließlich auf dem im Auftrag genannten Branch.
@@ -59,6 +66,11 @@ Das aktuelle Issue und konkrete Review-Anforderungen bestimmen den Lieferumfang.
 - Entwicklungsumgebungen und automatisierte Tests dürfen niemals echte Requests an die OpenAI API senden. Echter OpenAI-Zugriff ist ausschließlich im explizit aktivierten Produktivbetrieb zulässig; verbindlich ist [`ADR 0008`](docs/adr/0008-production-only-openai-access.md).
 - Kurator- und OpenAI-Adaptertests verwenden deterministische Fakes, Fixtures beziehungsweise lokale HTTP-Stubs. CI und normale Entwicklungsprofile benötigen keinen `OPENAI_API_KEY`; ein zufällig vorhandener Key darf keinen Live-Zugriff aktivieren.
 - Führe nach Vorhandensein des Maven Wrappers mindestens `./mvnw verify` aus.
+- Für rein redaktionelle Länder-/Katalogbatches nach #172 gilt dessen bereits festgelegte
+  [Batch-Verify- und technische Teststrategie](docs/CULINARY_CATALOG_WORKFLOW.md#verbindliche-teststrategie-keine-fachlichkeit-im-automatisierten-testbestand):
+  keine produktiven Content-Assertions und kein Vollsuite-Pflichtlauf pro Land;
+  vollständiges `./mvnw clean verify` bei Merge-Vorbereitung oder konkretem technischem Anlass.
+  Technische Anwendungsänderungen erhalten dadurch keine pauschale Ausnahme.
 - Eng begrenzte Ausnahme: Für eine von
   `design/challenge-cards/tools/classify_challenge_card_changes.py` eindeutig
   als `challenge-card-assets-only` klassifizierte Änderung sind der vollständige

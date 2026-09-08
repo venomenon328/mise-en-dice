@@ -257,6 +257,8 @@ Die exakten Baseline-Prüfungen werden bewusst übersprungen, sobald bereits ver
 
 ## 13. Pflegeprinzip für neue Zutaten
 
+Für den laufenden Länderreview nach #172 ist [CULINARY_CATALOG_WORKFLOW.md](CULINARY_CATALOG_WORKFLOW.md) der verbindliche Ablauf einschließlich beider Freigaben und Einpflege.
+
 Für jedes neue Zutatenkonzept müssen mindestens gepflegt werden:
 
 1. Zutatenkonzept mit Spezifität und unabhängig begründetem Ziehungsgewicht,

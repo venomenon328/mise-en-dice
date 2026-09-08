@@ -9,6 +9,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md): verbindliche Ziel- und Redaktionssemantik für die getrennte Bewertung von personenspezifischer Beschaffbarkeit und gemeinsamer Kochungewöhnlichkeit einschließlich des katalogweiten Reviewprozesses
 - [`INGREDIENT_CONCEPT_CURATION.md`](INGREDIENT_CONCEPT_CURATION.md): verbindliche operative Checkliste für jede neue Zutatenkonzeptanlage, Konkretisierung und wesentliche Produktformänderung einschließlich Availability-Marktbreite, Evidenz und Freigabe-Gates
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
+- [`CULINARY_CATALOG_WORKFLOW.md`](CULINARY_CATALOG_WORKFLOW.md): verbindlicher Länderworkflow nach #172 von Recherchebeginn und aktuellem Katalogabgleich über zwei menschliche Freigaben bis zu Einpflege, Protokoll und Batch-Verify; enthält den wiederverwendbaren Startprompt
 - [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md): redaktionelle Semantik und technische Pflege der expliziten kulinarischen Länderzuordnungen
 - [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md): verbindliche Bedien-, Interaktions-, Locking-, Audit- und Sicherheitsentscheidungen für die private Katalogverwaltung
 - [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md): verbindliche Regeln für Gewichtung, harte Kandidatengültigkeit, Scores, Diversität, Determinismus, Recovery und Simulation

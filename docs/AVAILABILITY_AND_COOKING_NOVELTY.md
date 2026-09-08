@@ -1,6 +1,6 @@
 # Beschaffbarkeit und Kochungewöhnlichkeit
 
-Stand: 7. September 2026
+Stand: 8. September 2026
 Status: verbindliche Ziel-, Redaktions- und Pflegespezifikation; technische und katalogweite Umsetzung in #187–#190
 
 Dieses Dokument trennt zwei Metadaten, die technisch eigenständig und redaktionell strikt unabhängig gepflegt werden:
@@ -364,6 +364,8 @@ Die Notiz nennt knapp:
 Nicht hinein gehören Rezeptideen, Kochungewöhnlichkeit, persönlicher Vorrat oder eine vollständige Händlerliste.
 
 Notizen müssen nicht künstlich eindeutig sein. Wo Georgia und Tobias dieselbe reale Markt- und Logistiksituation haben, darf derselbe sachlich passende Text verwendet werden. Ungeprüfte Telefonate, Ladenbesuche, digitale Bestandsabfragen oder bestätigte Filialbestände dürfen nicht als Routine erfunden werden; Geschmack, Verwendung und vollständige Konzeptdefinitionen werden nicht als Fülltext übernommen.
+
+Der verbindliche Stil- und Längenmaßstab für neue Texte steht in [INGREDIENT_CONCEPT_CURATION.md, Abschnitt 3, Schritt 6](INGREDIENT_CONCEPT_CURATION.md#schritt-6-individuelle-notiz-schreiben): passende finale #188-Notizen lesen, meist ein bis zwei kurze Sätze mit konkretem Beschaffungskern, keine starre Zeichenprüfung. Stufen und exakte Notiztexte werden getrennt freigegeben. Für Länderpakete verknüpft [CULINARY_CATALOG_WORKFLOW.md](CULINARY_CATALOG_WORKFLOW.md) diese Anforderungen mit beiden menschlichen Freigaben und der technischen Einpflege.
 
 ### 8.2 Mindeststandard nach Stufe
 

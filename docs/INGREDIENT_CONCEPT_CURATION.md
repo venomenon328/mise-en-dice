@@ -1,11 +1,13 @@
 # Operative Kurationsregeln für neue Zutatenkonzepte
 
-Stand: 6. September 2026
+Stand: 8. September 2026
 Status: verbindliche Arbeitscheckliste für Neuaufnahmen und wesentliche Konzeptänderungen
 
 Dieses Dokument operationalisiert die fachliche Semantik aus [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md). Es ist bei jeder neuen Konzeptanlage, neuen Konkretisierung und jeder Änderung zu verwenden, die Name, Produktform, Ziehbarkeit oder Beschaffungsrealität eines bestehenden Konzepts wesentlich verändert.
 
 Es ersetzt keine fachliche Einzelfallentscheidung. Es verhindert lediglich, dass neue Katalogeinträge mit hübschem Namen, drei Parents und ansonsten metaphysischem Metadatenzustand aktiviert werden.
+
+Für Länderpakete gilt zusätzlich der vollständige [Recherche-/Freigabe-/Einpflegeworkflow](CULINARY_CATALOG_WORKFLOW.md). Er bindet diese Checkliste ausdrücklich in die zweite menschliche Freigabe nach #172 ein. Die allgemeinen Aktivierungsgates unten lockern dessen Pflicht zur vollständigen Metadatenvorlage vor der Einpflege nicht.
 
 ## 1. Pflichtangaben vor der Freigabe
 
@@ -17,7 +19,7 @@ Für jedes neue oder wesentlich geänderte Konzept müssen vor einer zufälligen
 - eindeutiger deutscher Anzeigename,
 - kurze fachliche Kuratornotiz,
 - Status `OPEN` oder `SPECIFIC`,
-- Entscheidung `random_draw_enabled`,
+- Entscheidungen `active` und `random_draw_enabled`,
 - zulässige Produktform oder Produktformen,
 - ausdrücklich ausgeschlossene Ersatzformen.
 
@@ -59,6 +61,20 @@ Eine Beschaffbarkeitsnotiz darf nicht bloß den Enum-Wert ausformulieren. Auch b
 - keine mechanische Ableitung aus Kochungewöhnlichkeit oder Beschaffbarkeit,
 - keine doppelte Bestrafung schwieriger Beschaffung,
 - gegebenenfalls ausdrücklich begründete Absenkung wegen Breite, Dominanz, Kombinationseignung oder Katalogbalance.
+
+## 1a. Redaktion der allgemeinen Kuratornotiz
+
+Für jedes neu angelegte Zutatenkonzept ist eine **echte, nichtleere deutsche Kuratornotiz verpflichtender Bestandteil des Metadatenentwurfs und seiner Freigabe**; im Länderworkflow nach #172 gehört sie zur zweiten menschlichen Freigabe. Die mit #178 etablierte Redaktion gilt auch hier verbindlich, damit neue Länderpakete stilistisch und inhaltlich zum bestehenden Katalog passen.
+
+- In der Regel genügen **ein bis zwei kurze Sätze**; nur bei echtem Abgrenzungsbedarf höchstens drei. Als redaktioneller Richtwert sollen die meisten Notizen deutlich unter etwa **400 Zeichen** bleiben. Daraus wird kein technisches Zeichenlimit abgeleitet.
+- Die Notiz beschreibt nur Informationen mit echtem kulinarischem Mehrwert: insbesondere den sinnvollen Bedeutungsumfang des Konzepts, typische relevante Produktformen oder Verarbeitung, charakteristische sensorische beziehungsweise kochrelevante Eigenschaften und – wenn nötig – eine hilfreiche Abgrenzung zu leicht verwechselbaren Produkten. Bei breiten Konzepten kann der beabsichtigte Spielraum knapp erläutert werden.
+- Nicht jede Notiz muss dasselbe Schema abarbeiten. Keine künstlichen Zusatzsätze nur zur vermeintlichen Vollständigkeit, keine Lexikonminiatur und keine Herkunftserzählung, sofern Herkunft oder Region nicht zum Verständnis oder zur Abgrenzung des Produkts beiträgt.
+- **Nicht in die Kuratornotiz gehören** technische Codes, IDs oder Migrationsdetails, `OPEN`/`SPECIFIC`, Aktivstatus oder Ziehbarkeit, Ziehungsgewicht oder Novelty, Parent-/Child-Kanten, Rollen, Dimensionen, Flags, Saisonalität oder Beschaffbarkeit als bloße Metadatenwiederholung, Generator-/Admin-/Discord-/Datenbankverhalten, Listen von Länderrelationen, Quellen-URLs oder Rechercheprotokolle.
+- Strukturierte Metadaten dürfen nur dann in natürlicher Sprache anklingen, wenn genau diese Information zum kulinarischen Verständnis notwendig ist; die Notiz darf sie nicht mechanisch abschreiben.
+- Bei spezialisierten, regionalen, fermentierten, verarbeiteten, mehrdeutigen oder leicht verwechselbaren Konzepten ist die Formulierung bei Bedarf gegen die ohnehin für den Länderreview recherchierten belastbaren Quellen abzusichern. Unklare Details werden nicht plausibel klingend ergänzt.
+- **Keine Dummy-, Platzhalter- oder rein technischen Notizen**, nur um die Datenbankinvariante zu erfüllen. Die technische Pflicht ersetzt die redaktionelle Prüfung nicht.
+
+Diese kulinarische Notiz gehört zum Konzept. Die davon getrennten Availability-Notizen erklären ausschließlich die Beschaffung für die jeweilige Person.
 
 ## 2. Verbindlicher Ablauf der Kochungewöhnlichkeitsbewertung
 
@@ -175,6 +191,18 @@ Die Stufe richtet sich nach dem besten **realistisch nutzbaren**, nicht bloß th
 | `UNAVAILABLE` | kein realistischer wiederholbarer Weg |
 
 ### Schritt 6: Individuelle Notiz schreiben
+
+#### Stil- und Längenmaßstab nach der Konsolidierung
+
+Vor jedem neuen Metadatenpaket den [finalen #188-Review](analysis/availability-novelty-final-review-v1-20260907.md) und passende Referenzzeilen aus dessen [TSV](analysis/availability-novelty-final-review-v1-20260907.tsv) heranziehen. Maßgeblich für die Textkalibrierung sind `availability_note_georgia` und `availability_note_tobias`, keine alten Rohnotizen oder allgemeinen Konzeptnotizen.
+
+- Auf Deutsch, üblicherweise ein konkreter Satz; ein zweiter kurzer Satz nur bei zusätzlichem Beschaffungs- oder Abgrenzungsbedarf.
+- Orientierung: meist etwa **100–200 Zeichen**, einfachere Fälle dürfen kürzer sein; bei notwendiger Form-/Logistikabgrenzung sind ungefähr **250 Zeichen** plausibel. Dies ist ein redaktioneller Maßstab, weder Mindestlänge noch technisches Maximum.
+- Der konsolidierte Stand enthält 853 Notizen je Person; Median Georgia 124, Tobias 127 Zeichen, längste Notizen 253 beziehungsweise 259 Zeichen. Diese historischen Messwerte erläutern den Stil und sind keine später einzuhaltenden Katalogzahlen oder Testassertions.
+- Entscheidend ist die kurze konkrete Aussage, die die Stufe trägt. Keine Händlerchronik, Quellen-URLs, technischen Codes, Freigabestatus, Bewertungsmethodik oder angehängten Sätze nur zum Erreichen einer Länge. Ausführliche Evidenz separat dokumentieren.
+- Jeweils passende Bestandsbeispiele zu Produktform, Markt und gegebenenfalls Personenunterschied lesen, statt Texte oder Ratings schematisch zu kopieren. Gleiche reale Beschaffung darf identische Personentexte haben; „individuell“ erzwingt keine künstlich unterschiedlichen Formulierungen.
+
+Geeignete **historische Stilanker im finalen TSV** sind `ONION` (Alltagssortiment), `MISO` (allgemeiner planbarer Handel), `GOCHUJANG` (breiter Spezialmarkt), `BAGOONG` (enge Importmarktbreite), `STOCKFISH` (Ersatzproduktgefahr) sowie `THAI_BASIL` und `MILKFISH` (Frische-/TK-Logistik und Personenbezug). Diese Auswahl ist keine vollständige Liste und kein heutiger Verfügbarkeitsnachweis. Die Werte neuer Konzepte werden weiterhin einzeln recherchiert und freigegeben.
 
 Die Notiz beantwortet knapp:
 
@@ -340,38 +368,50 @@ Kleine Preisänderungen oder ein einzelner temporärer Ausverkauf lösen allein 
 ```text
 Konzeptcode:
 Anzeigename:
+Aktiv:
 Spezifität:
 Zulässige Produktform:
 Ausgeschlossene Ersatzformen:
 Kuratornotiz:
-Parents/Children:
+Parents/Children (explizite Kantenänderungen auch an bestehenden Konzepten):
+Funktionale Rollen:
+Kulinarische Dimensionen (je Dimension Wert oder nicht gepflegt mit Grund):
+Kulinarische Flags (explizite Menge, gegebenenfalls keine):
 Ziehbar:
 
-Kochungewöhnlichkeit:
+Kochungewöhnlichkeit (Stufe und Bezeichnung):
 Begründung:
 Parent-/Exaktprodukt-Kontrolle:
+Küchentisch-Kontrolle:
 
 Georgia:
-- Beschaffbarkeit:
+- Beschaffbarkeit (Stufe und Bezeichnung):
 - Marktklasse:
 - Marktbreite/Zuverlässigkeit:
 - Logistik:
 - Individuelle Notiz (konzeptspezifischer Kern):
-- Evidenz:
+- Evidenz (Prüfdatum und konkrete Quellen beziehungsweise Einkaufsevidenz):
+- Ratingfreigabe:
+- Freigabe des exakten Notiztextes:
 
 Tobias:
-- Beschaffbarkeit:
+- Beschaffbarkeit (Stufe und Bezeichnung):
 - Marktklasse:
 - Marktbreite/Zuverlässigkeit:
 - Logistik:
 - Individuelle Notiz (konzeptspezifischer Kern):
-- Evidenz:
+- Evidenz (Prüfdatum und konkrete Quellen beziehungsweise Einkaufsevidenz):
+- Ratingfreigabe:
+- Freigabe des exakten Notiztextes:
 
 Base Draw Weight:
 Eigenständige Gewichtsbegründung:
-Saisonalität:
-Länderzuordnungen:
-Freigabestatus:
+Saisonalität (Monate/Faktoren oder keine Abweichung von 1,0):
+Länderzuordnungen (explizite Länder/ISO-Codes):
+Exclusions und weitere besondere Metadaten (oder nicht erforderlich):
+Katalog-Ausgangscommit und Metadatenversion:
+Freigabe der Katalogaufnahme/Länderrelation:
+Freigabe der vollständigen Metadaten einschließlich aller Notiztexte:
 ```
 
 Diese Vorlage ist bei neuen Paketen und bei späteren Katalogerweiterungen als Mindestinhalt zu verwenden.
