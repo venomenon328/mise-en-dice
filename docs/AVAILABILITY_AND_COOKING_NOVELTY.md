@@ -440,9 +440,27 @@ UNAVAILABLE = 0
 
 Die Kalibrierungsstichprobe aus #190A/#202 ist in
 [`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md)
-dokumentiert. Die gezielte Nachmessung bei festem `TARGET_FACTOR_REBALANCED` empfiehlt für die spätere menschliche
-Entscheidung `0,22 / 0,06 / 0,01`; sie übernimmt diese Werte nicht produktiv. Load-Punkte und Caps bleiben auch
-in dieser Nachmessung unverändert. Bis #190B bleiben Availability und Novelty produktiv unverändert.
+dokumentiert und menschlich abgenommen. #190B/#203 übernimmt ihre freigegebene Endkombination produktiv in
+Konfigurationsversion `2026-09-08.1`:
+
+| restriktivster Availability-Wert | Faktor |
+|---|---:|
+| `EASY` | 1,00 |
+| `PLANNED` | 0,22 |
+| `SPECIALTY` | 0,06 |
+| `DIFFICULT` | 0,01 |
+| `UNAVAILABLE` | 0,00 |
+
+| Neuigkeitsstufe | `FAMILIAR` | `BALANCED` | `ADVENTUROUS` |
+|---:|---:|---:|---:|
+| 1 | 1,25 | 0,40 | 0,05 |
+| 2 | 1,10 | 0,75 | 0,15 |
+| 3 | 0,70 | 1,50 | 0,80 |
+| 4 | 0,15 | 1,20 | 2,00 |
+| 5 | 0,00 | 0,35 | 2,00 |
+
+Novelty-Load-Punkte `0 / 1 / 2 / 4 / 7`, Stufe-5-Cap `1`, Stufe-4/5-Cap `2` und Load-Cap `11` bleiben
+unverändert.
 
 Verbindliche fachliche Zielrichtung:
 
@@ -570,7 +588,7 @@ Nach der Schärfung vom 4. September und der gezielten Novelty-Reaudit vom 6. Se
    PostgreSQL-Stichprobe prüfen; bei bestätigtem Fehlfit eine kleine isolierte Novelty-A/B-Nachmessung durchführen;
    keine produktiven Faktoren übernehmen.
 5. **#190B/#203 – Freigegebene Faktoren übernehmen**
-   Erst nach menschlicher Berichtsabnahme die numerische Entscheidung versioniert konfigurieren und regressionsprüfen.
+   Nach menschlicher Berichtsabnahme die numerische Entscheidung versioniert konfigurieren und regressionsprüfen.
 
 ## 14. Nicht-Ziele
 

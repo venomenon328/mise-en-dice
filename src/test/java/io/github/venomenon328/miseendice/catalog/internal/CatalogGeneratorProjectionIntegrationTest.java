@@ -7,6 +7,10 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.SessionParticipant;
 import io.github.venomenon328.miseendice.challenge.api.CandidateProposalEngine;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +27,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @Testcontainers
 class CatalogGeneratorProjectionIntegrationTest {
     private static final String TEST_PREFIX = "TEST_GENERATOR_PROJECTION_";
+    private static final String PRODUCTION_CONFIGURATION_FINGERPRINT =
+            "c681b49f50f02299aa25cb50e209e524490cb79ecf05f0ba31f2c72e498ba288";
 
     @Container
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
@@ -164,11 +170,14 @@ class CatalogGeneratorProjectionIntegrationTest {
         var descriptor = proposalEngine.descriptor();
 
         assertThat(descriptor.generatorVersion()).isEqualTo("1.2.0");
-        assertThat(descriptor.configurationVersion()).isEqualTo("2026-09-03.1");
+        assertThat(descriptor.configurationVersion()).isEqualTo("2026-09-08.1");
         assertThat(descriptor.canonicalConfigurationSnapshot())
-                .contains("PLANNED", "0.45", "SPECIALTY", "0.15", "DIFFICULT", "0.03");
+                .contains("PLANNED", "0.22", "SPECIALTY", "0.06", "DIFFICULT", "0.01",
+                        "0.4", "1.5", "2.0");
         assertThat(descriptor.canonicalConfigurationSnapshot()).contains(
                 "candidateSetSize", "scoreWeights", "SPLITMIX64_V1");
+        assertThat(sha256(descriptor.canonicalConfigurationSnapshot()))
+                .isEqualTo(PRODUCTION_CONFIGURATION_FINGERPRINT);
     }
 
     @Test
@@ -230,5 +239,14 @@ class CatalogGeneratorProjectionIntegrationTest {
                 .sorted(java.util.Comparator.comparing(SessionParticipant::participantCode)
                         .thenComparingLong(SessionParticipant::participantId))
                 .toList();
+    }
+
+    private static String sha256(String value) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 muss in der Java-Laufzeit verfuegbar sein.", exception);
+        }
     }
 }

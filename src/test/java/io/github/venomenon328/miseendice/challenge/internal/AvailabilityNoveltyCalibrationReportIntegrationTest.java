@@ -74,8 +74,8 @@ import tools.jackson.databind.ObjectMapper;
 @SpringBootTest(classes = MiseEnDiceApplication.class)
 @Testcontainers
 class AvailabilityNoveltyCalibrationReportIntegrationTest {
-    private static final String BASE_COMMIT = "e9f0637a0c0af7720bd79c2be45e92185b70c55b";
-    private static final String REPORT_VERSION = "ISSUE_202_AVAILABILITY_NOVELTY_CALIBRATION_REPORT_V3";
+    private static final String BASE_COMMIT = "8b44d103e51505a941396f0d8035039cbb9aa565";
+    private static final String REPORT_VERSION = "ISSUE_203_APPLIED_CALIBRATION_RELEASE_QA_V1";
     private static final String SCENARIO_VERSION = "ISSUE_202_CALIBRATION_MATRIX_V1";
     private static final String NOVELTY_AB_SCENARIO_VERSION = "ISSUE_202_NOVELTY_AB_MATRIX_V1";
     private static final String FOCUSED_AVAILABILITY_SCENARIO_VERSION =
@@ -118,7 +118,7 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
     void writesTheReadOnlyDeterministicCalibrationSampleReport() throws IOException {
         long startedNanos = System.nanoTime();
         GeneratorConfiguration production = generatorProperties.configuration();
-        assertProductionConfigurationRemainsTheTransitionBaseline(production);
+        assertProductionConfigurationMatchesTheApprovedRelease(production);
 
         Map<String, Long> operationalBefore = operationalCounts();
         FrozenCatalog frozenCatalog = materializeCatalog();
@@ -212,7 +212,7 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
         Files.write(OUTPUT, CanonicalSetFingerprint.canonicalBytes(document));
 
         assertThat(Files.readString(OUTPUT)).contains(canonicalFingerprint, REPORT_VERSION,
-                "HUMAN_REVIEW_REQUIRED", "STRONG", "SPECIALTY", "TARGET_FACTOR_REBALANCED",
+                "HUMAN_APPROVED_PRODUCTION_CONFIGURATION", "STRONG", "SPECIALTY", "TARGET_FACTOR_REBALANCED",
                 "PLANNED_0_15", "targetActualBandComparison", "focusedAvailability");
     }
 
@@ -339,11 +339,13 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
         return new CalibrationRun(summary, aggregate);
     }
 
-    private static void assertProductionConfigurationRemainsTheTransitionBaseline(GeneratorConfiguration current) {
+    private static void assertProductionConfigurationMatchesTheApprovedRelease(GeneratorConfiguration current) {
         assertThat(current.generatorVersion()).isEqualTo("1.2.0");
-        assertThat(current.configurationVersion()).isEqualTo("2026-09-03.1");
-        Variant.TRANSITION.factors().forEach((availability, expected) ->
+        assertThat(current.configurationVersion()).isEqualTo("2026-09-08.1");
+        FocusedAvailabilityVariant.PLANNED_0_22.factors().forEach((availability, expected) ->
                 assertThat(current.availabilityFactors().get(availability)).isEqualByComparingTo(expected));
+        assertThat(current.novelty().targetFactors()).isEqualTo(
+                NoveltyVariant.TARGET_FACTOR_REBALANCED.novelty(current.novelty()).targetFactors());
         assertThat(current.novelty().loadPoints()).containsExactlyInAnyOrderEntriesOf(
                 Map.of(1, 0, 2, 1, 3, 2, 4, 4, 5, 7));
         assertThat(current.novelty().levelFiveCap()).isEqualTo(1);
@@ -470,8 +472,12 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
         metadata.put("canonicalPayloadVersion", production.canonicalPayloadVersion());
         metadata.put("catalogAvailabilityZeroPathsByMonth", catalog.unavailableDrawableConceptsByMonth());
         metadata.put("catalogFingerprintsByMonth", catalog.fingerprintsByMonth());
+        metadata.put("productionAvailabilityFactors", stringFactors(production.availabilityFactors()));
+        metadata.put("productionConfigurationFingerprint",
+                GeneratorSimulationReportCodec.configurationFingerprint(production));
+        metadata.put("productionNovelty", noveltyDocument(production.novelty()));
         metadata.put("configurationVersion", production.configurationVersion());
-        metadata.put("decisionGate", "HUMAN_REVIEW_REQUIRED");
+        metadata.put("decisionGate", "HUMAN_APPROVED_PRODUCTION_CONFIGURATION");
         metadata.put("generatorVersion", production.generatorVersion());
         metadata.put("reportVersion", REPORT_VERSION);
         metadata.put("rngAlgorithm", production.rngAlgorithm().name());
@@ -668,6 +674,9 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
                 .isEqualTo(NoveltyVariant.TARGET_FACTOR_REBALANCED.novelty(production.novelty()));
         assertThat(withNovelty(measured, production.novelty()))
                 .isEqualTo(withAvailabilityFactors(production, variant.factors()));
+        if (variant == FocusedAvailabilityVariant.PLANNED_0_22) {
+            assertThat(measured).isEqualTo(production);
+        }
     }
 
     private static Map<String, Object> noveltyDocument(NoveltyConfiguration novelty) {
@@ -740,7 +749,11 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
 
         NoveltyConfiguration novelty(NoveltyConfiguration source) {
             if (this == CURRENT) {
-                return source;
+                return new NoveltyConfiguration(source.loadPoints(), Map.of(
+                        NoveltyBand.FAMILIAR, factors("1.25", "1.10", "0.70", "0.15", "0.00"),
+                        NoveltyBand.BALANCED, factors("0.80", "1.00", "1.20", "0.75", "0.20"),
+                        NoveltyBand.ADVENTUROUS, factors("0.35", "0.65", "1.00", "1.30", "1.15")),
+                        source.levelFiveCap(), source.highLevelCap(), source.loadCap());
             }
             return new NoveltyConfiguration(source.loadPoints(), Map.of(
                     NoveltyBand.FAMILIAR, factors("1.25", "1.10", "0.70", "0.15", "0.00"),
