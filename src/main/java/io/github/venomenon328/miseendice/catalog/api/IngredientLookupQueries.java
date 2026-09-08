@@ -76,6 +76,7 @@ public interface IngredientLookupQueries {
             List<String> culinaryFlags,
             List<IngredientLookupDimension> culinaryDimensions,
             List<IngredientLookupCountry> culinaryCountries,
+            List<IngredientLookupAvailabilityNote> availabilityNotes,
             String curatorNote
     ) {
 
@@ -94,7 +95,26 @@ public interface IngredientLookupQueries {
         ) {
             this(conceptId, displayName, randomDrawEnabled, baseDrawWeight, noveltyLevel,
                     activeDirectParents, activeDirectChildren, functionalRoles, culinaryFlags,
-                    culinaryDimensions, List.of(), curatorNote);
+                    culinaryDimensions, List.of(), List.of(), curatorNote);
+        }
+
+        public IngredientLookupProfile(
+                long conceptId,
+                String displayName,
+                boolean randomDrawEnabled,
+                BigDecimal baseDrawWeight,
+                Integer noveltyLevel,
+                List<IngredientLookupRelation> activeDirectParents,
+                List<IngredientLookupRelation> activeDirectChildren,
+                List<String> functionalRoles,
+                List<String> culinaryFlags,
+                List<IngredientLookupDimension> culinaryDimensions,
+                List<IngredientLookupCountry> culinaryCountries,
+                String curatorNote
+        ) {
+            this(conceptId, displayName, randomDrawEnabled, baseDrawWeight, noveltyLevel,
+                    activeDirectParents, activeDirectChildren, functionalRoles, culinaryFlags,
+                    culinaryDimensions, culinaryCountries, List.of(), curatorNote);
         }
 
         public IngredientLookupProfile {
@@ -112,6 +132,17 @@ public interface IngredientLookupQueries {
             culinaryFlags = List.copyOf(culinaryFlags);
             culinaryDimensions = List.copyOf(culinaryDimensions);
             culinaryCountries = List.copyOf(culinaryCountries);
+            availabilityNotes = List.copyOf(availabilityNotes);
+        }
+    }
+
+    /** A current, participant-specific availability explanation, without exposing its availability level. */
+    record IngredientLookupAvailabilityNote(String participantCode, String participantDisplayName, String note) {
+
+        public IngredientLookupAvailabilityNote {
+            participantCode = required(participantCode, "participantCode");
+            participantDisplayName = required(participantDisplayName, "participantDisplayName");
+            note = required(note, "note");
         }
     }
 

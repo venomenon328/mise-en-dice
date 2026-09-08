@@ -3,6 +3,7 @@ package io.github.venomenon328.miseendice.discord.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupDimension;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupAvailabilityNote;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountry;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredient;
@@ -54,6 +55,36 @@ class DiscordIngredientLookupRendererTest {
         assertThat(DiscordIngredientLookupRenderer.countryFlag("DE")).isEqualTo("🇩🇪");
         assertThat(DiscordIngredientLookupRenderer.countryFlag("PH")).isEqualTo("🇵🇭");
         assertThat(DiscordIngredientLookupRenderer.countryFlag("TH")).isEqualTo("🇹🇭");
+    }
+
+    @Test
+    void rendersAvailableNotesForEachPersonSafelyAndKeepsHierarchyWithinBudget() {
+        String longNote = "@here **Markdown** `code` https://example.test ".repeat(200);
+        var embed = renderer.profile(profile(true, 2, List.of(), longNote,
+                List.of(relation(1, "Oberbegriff")), List.of(relation(2, "Konkretisierung")), List.of(), List.of(), List.of(),
+                List.of(
+                        new IngredientLookupAvailabilityNote("GEORGIA", "Georgia", longNote),
+                        new IngredientLookupAvailabilityNote("TOBIAS", "Tobias", longNote))));
+
+        assertThat(embed.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
+                .containsSubsequence("📦 Beschaffbarkeit – Georgia", "📦 Beschaffbarkeit – Tobias",
+                        "⬆️ Allgemeinere Begriffe", "⬇️ Bekannte Konkretisierungen");
+        assertThat(field(embed, "📦 Beschaffbarkeit – Georgia"))
+                .contains("@\u200Bhere", "\\*\\*Markdown\\*\\*", "ˋcodeˋ", "h\u200Bttps", "Zeichen)");
+        assertThat(field(embed, "📦 Beschaffbarkeit – Tobias")).contains("Zeichen)");
+        assertThat(field(embed, "⬆️ Allgemeinere Begriffe")).isEqualTo("Oberbegriff");
+        assertThat(field(embed, "⬇️ Bekannte Konkretisierungen")).isEqualTo("Konkretisierung");
+        assertThat(embed.title().length() + embed.description().length() + embed.fields().stream()
+                .mapToInt(field -> field.name().length() + field.value().length()).sum()).isLessThanOrEqualTo(6_000);
+    }
+
+    @Test
+    void omitsMissingAvailabilityNotesWithoutInventingFallbackText() {
+        var embed = renderer.profile(profile(true, 2, List.of(), null,
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of()));
+
+        assertThat(embed.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
+                .noneMatch(name -> name.startsWith("📦 Beschaffbarkeit"));
     }
 
     @Test
@@ -226,8 +257,16 @@ class DiscordIngredientLookupRendererTest {
                                                    String note, List<IngredientLookupRelation> parents,
                                                    List<IngredientLookupRelation> children, List<String> roles, List<String> flags,
                                                    List<IngredientLookupCountry> countries) {
+        return profile(drawable, novelty, dimensions, note, parents, children, roles, flags, countries, List.of());
+    }
+
+    private static IngredientLookupProfile profile(boolean drawable, Integer novelty, List<IngredientLookupDimension> dimensions,
+                                                   String note, List<IngredientLookupRelation> parents,
+                                                   List<IngredientLookupRelation> children, List<String> roles, List<String> flags,
+                                                   List<IngredientLookupCountry> countries,
+                                                   List<IngredientLookupAvailabilityNote> availabilityNotes) {
         return new IngredientLookupProfile(42, "Testzutat", drawable, new BigDecimal("0.8500"), novelty, parents,
-                children, roles, flags, dimensions, countries, note);
+                children, roles, flags, dimensions, countries, availabilityNotes, note);
     }
 
     private static IngredientLookupRelation relation(long id, String name) {

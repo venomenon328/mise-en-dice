@@ -2,6 +2,7 @@ package io.github.venomenon328.miseendice.discord.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupDimension;
+import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupAvailabilityNote;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupCountry;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.CulinaryCountryIngredientPage;
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries.IngredientLookupProfile;
@@ -29,6 +30,11 @@ final class DiscordIngredientLookupRenderer {
     private static final int LIST_VALUE_LIMIT = 620;
     private static final int SELECT_RELATION_LIMIT = 25;
     private static final int MAX_CURATOR_NOTE_FIELDS = 2;
+    private static final int AVAILABILITY_NOTE_VALUE_LIMIT = 512;
+    private static final String PARENT_FIELD_NAME = "⬆️ Allgemeinere Begriffe";
+    private static final String CHILD_FIELD_NAME = "⬇️ Bekannte Konkretisierungen";
+    private static final int HIERARCHY_RESERVATION = PARENT_FIELD_NAME.length() + CHILD_FIELD_NAME.length()
+            + (2 * LIST_VALUE_LIMIT);
     private static final String EMPTY_SCALE = "▫️";
     private static final String NEUTRAL_COUNTRY_FALLBACK = "🌐";
     private static final Set<String> UK_SUBDIVISION_TAG_CODES = Set.of("GB-ENG", "GB-SCT", "GB-WLS", "GB-NIR");
@@ -65,6 +71,10 @@ final class DiscordIngredientLookupRenderer {
         List<IngredientLookupRelation> children = sortedRelations(profile.activeDirectChildren());
         String title = "🥢 " + oneLine(profile.displayName(), TITLE_LIMIT - 3);
         BoundedEmbed embed = new BoundedEmbed(title, codeBlock(baseLines(profile)));
+        int availabilityReservation = profile.availabilityNotes().stream()
+                .mapToInt(note -> availabilityFieldName(note).length() + AVAILABILITY_NOTE_VALUE_LIMIT)
+                .sum();
+        embed.reserve(HIERARCHY_RESERVATION + availabilityReservation);
 
         embed.addList("Funktion im Gericht", profile.functionalRoles(), true);
         embed.addList("Besondere Eigenschaften", profile.culinaryFlags(), true);
@@ -77,8 +87,13 @@ final class DiscordIngredientLookupRenderer {
         if (profile.curatorNote() != null && !profile.curatorNote().isBlank()) {
             embed.addText("💡 Hinweis aus dem Zutatenkatalog", safe(profile.curatorNote()), MAX_CURATOR_NOTE_FIELDS);
         }
-        embed.addRelationList("⬆️ Allgemeinere Begriffe", parents);
-        embed.addRelationList("⬇️ Bekannte Konkretisierungen", children);
+        embed.release(availabilityReservation);
+        for (IngredientLookupAvailabilityNote note : profile.availabilityNotes()) {
+            embed.addLimitedText(availabilityFieldName(note), safe(note.note()), AVAILABILITY_NOTE_VALUE_LIMIT);
+        }
+        embed.release(HIERARCHY_RESERVATION);
+        embed.addRelationList(PARENT_FIELD_NAME, parents);
+        embed.addRelationList(CHILD_FIELD_NAME, children);
 
         return embed.toRendered(navigationRows(parents, children), countryOrigin);
     }
@@ -154,6 +169,10 @@ final class DiscordIngredientLookupRenderer {
             return flag.toString();
         }
         return UK_SUBDIVISION_TAG_CODES.contains(countryCode) ? emojiTagSequence(countryCode) : NEUTRAL_COUNTRY_FALLBACK;
+    }
+
+    private static String availabilityFieldName(IngredientLookupAvailabilityNote note) {
+        return "📦 Beschaffbarkeit – " + note.participantDisplayName();
     }
 
     private static String emojiTagSequence(String countryCode) {
@@ -422,6 +441,7 @@ final class DiscordIngredientLookupRenderer {
         private final String description;
         private final List<EmbedField> fields = new ArrayList<>();
         private int usedLength;
+        private int reservedLength;
 
         private BoundedEmbed(String title, String description) {
             this.title = truncate(title, TITLE_LIMIT);
@@ -434,10 +454,21 @@ final class DiscordIngredientLookupRenderer {
                 return;
             }
             String safeName = truncate(name, FIELD_NAME_LIMIT);
-            int valueLimit = Math.min(FIELD_VALUE_LIMIT, Math.max(1, EMBED_TOTAL_LIMIT - usedLength - safeName.length()));
+            int valueLimit = Math.min(FIELD_VALUE_LIMIT, EMBED_TOTAL_LIMIT - usedLength - reservedLength - safeName.length());
+            if (valueLimit < 1) {
+                return;
+            }
             String safeValue = truncate(value, valueLimit);
             fields.add(new EmbedField(safeName, safeValue, inline));
             usedLength += safeName.length() + safeValue.length();
+        }
+
+        private void reserve(int length) {
+            reservedLength += length;
+        }
+
+        private void release(int length) {
+            reservedLength -= length;
         }
 
         private void addList(String name, List<String> values, boolean inline) {
@@ -506,6 +537,19 @@ final class DiscordIngredientLookupRenderer {
                 remaining = remaining.substring(splitAt).stripLeading();
                 part++;
             }
+        }
+
+        private void addLimitedText(String name, String value, int maximumValueLength) {
+            if (fields.size() >= MAX_FIELDS) {
+                return;
+            }
+            String safeName = truncate(name, FIELD_NAME_LIMIT);
+            int room = Math.min(maximumValueLength,
+                    Math.min(FIELD_VALUE_LIMIT, EMBED_TOTAL_LIMIT - usedLength - reservedLength - safeName.length()));
+            if (room < 1) {
+                return;
+            }
+            add(safeName, truncate(value, room), false);
         }
 
         private RenderedEmbed toRendered(List<NavigationRow> navigationRows, CountryBrowseOrigin countryOrigin) {

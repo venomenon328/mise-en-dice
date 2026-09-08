@@ -164,8 +164,9 @@ IDs, Zeitstempel und Versionszähler sind keine fachlichen Fingerprintwerte; and
 Die 860 Aggregatversionen werden einmal erhöht, damit vor der Migration geöffnete Editoren einen Konflikt erhalten.
 Nach erfolgreicher Liquibase-Ausführung bleibt wieder die operative Datenbank autoritativ.
 
-Availability-Notizen gehören ausschließlich zur Katalogpflege und zum Aggregate-Audit. Generatorprojektion,
-Generatorfingerprint, `/zutat`, Gewichtung und historische Generatorsnapshots enthalten sie nicht. Historische
+Availability-Notizen gehören zur Katalogpflege und zum Aggregate-Audit. Die schmale öffentliche `/zutat`-Lookup-Projektion
+transportiert ausschließlich die aktuell gepflegten individuellen Georgia-/Tobias-Notizen zur sicheren Darstellung; sie
+enthält keine Availability-Stufen und leitet keine Texte ab. Generatorprojektion, Generatorfingerprint, Gewichtung und historische Generatorsnapshots enthalten sie nicht. Historische
 Auditpayloads ohne Notizschlüssel bleiben als damals ungepflegte Notiz lesbar.
 
 Die Beschaffbarkeit eines allgemeineren Konzepts wird **nicht aus seinen bekannten Konkretisierungen abgeleitet**. Beispielsweise kann `Chili` problemlos beschaffbar sein, obwohl keine der konkret benannten Chilisorten lokal zuverlässig verfügbar ist.
