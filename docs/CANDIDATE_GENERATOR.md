@@ -164,13 +164,11 @@ Das Challenge-Modul greift nicht direkt auf Katalogtabellen oder interne Reposit
 Die personenspezifischen Availability-Notizen aus #189 gehören ausschließlich zur Katalogpflege und zum
 Audit. Sie sind kein Teil dieses Snapshots, seiner Fingerprints oder der Gewichtung. Die revidierten Live-Stufen
 und Novelty-Werte gelten für neue Snapshots; gespeicherte Generationen bleiben unverändert replayfähig.
-Die vorläufigen fünf Availability-Faktoren aus #187 bleiben bis zur ausdrücklichen Abnahme und Übernahme in
-#190B bestehen. Die Messstufe #190A/#202 ist in
+Die menschlich freigegebene Kombination aus Availability-Faktoren und `TARGET_FACTOR_REBALANCED` ist in
+Konfigurationsversion `2026-09-08.1` übernommen. Die Messstufe #190A/#202 ist in
 [`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md)
-dokumentiert. #189 und #190 bilden ein gemeinsames Release-Gate; technische Migrationsfähigkeit und eine
-Kalibrierungsempfehlung allein sind keine fachliche Produktionsfreigabe. Der dort bestätigte Target-/Actual-
-Bandfehlfit und die gezielte `CAUTIOUS`-A/B-Nachmessung empfehlen zusätzlich stärker getrennte Novelty-Zielfaktoren;
-Load-Punkte, Caps und alle produktiven Werte bleiben bis #190B unverändert.
+dokumentiert. Der dort bestätigte Target-/Actual-Bandfehlfit und die gezielte `CAUTIOUS`-A/B-Nachmessung
+begründen die übernommenen stärker getrennten Novelty-Zielfaktoren; Load-Punkte und Caps bleiben unverändert.
 
 ### 3.2 Visible History Snapshot
 
@@ -243,17 +241,16 @@ Maßgeblich ist der restriktivste vorhandene Beschaffbarkeitswert des vorab mate
 | schlechtester Wert | Faktor |
 |---|---:|
 | `EASY` | 1,00 |
-| `PLANNED` | 0,45 |
-| `SPECIALTY` | 0,15 |
-| `DIFFICULT` | 0,03 |
+| `PLANNED` | 0,22 |
+| `SPECIALTY` | 0,06 |
+| `DIFFICULT` | 0,01 |
 | `UNAVAILABLE` | 0,00 |
 | kein Wert vorhanden | 1,00 (neutral) |
 
-`DIFFICULT` bleibt damit möglich, wird aber deutlich seltener. Die Satzselektion begrenzt zusätzlich Kandidaten mit schwieriger Beschaffbarkeit.
-Dies ist weiterhin der produktive Übergangsstand. #202 empfiehlt nach einer expliziten Stichprobe und einer gezielten
-Nachmessung bei festem `TARGET_FACTOR_REBALANCED` für die spätere menschliche Entscheidung `PLANNED = 0,22`,
-`SPECIALTY = 0,06` und `DIFFICULT = 0,01`; diese Werte sind hier nicht übernommen. Maßgeblich für Befund und Grenzen
-ist der verlinkte Kalibrierungsbericht.
+`DIFFICULT` bleibt damit möglich, wird aber deutlich seltener. Die Satzselektion begrenzt zusätzlich Kandidaten mit
+schwieriger Beschaffbarkeit. Nach menschlicher Abnahme des #202-Berichts übernimmt #203 diese Faktoren produktiv
+zusammen mit der rebalancierten Novelty-Matrix. Maßgeblich für Messaufbau, Freigabe und Release-QA ist der
+verlinkte Kalibrierungsbericht.
 
 ### 5.3 Saisonfaktor
 
@@ -281,11 +278,11 @@ Jedes Proposal besitzt ein Zielband. Die Faktoren steuern die Auswahl einzelner 
 
 | Neuigkeitsstufe | `FAMILIAR` | `BALANCED` | `ADVENTUROUS` |
 |---:|---:|---:|---:|
-| 1 | 1,25 | 0,80 | 0,35 |
-| 2 | 1,10 | 1,00 | 0,65 |
-| 3 | 0,70 | 1,20 | 1,00 |
-| 4 | 0,15 | 0,75 | 1,30 |
-| 5 | 0,00 | 0,20 | 1,15 |
+| 1 | 1,25 | 0,40 | 0,05 |
+| 2 | 1,10 | 0,75 | 0,15 |
+| 3 | 0,70 | 1,50 | 0,80 |
+| 4 | 0,15 | 1,20 | 2,00 |
+| 5 | 0,00 | 0,35 | 2,00 |
 
 Ein zufällig ziehbares Konzept ohne Neuigkeitsstufe ist bereits hart ungeeignet. Unklassifizierte manuelle Vorgaben erhalten keinen erfundenen Faktor.
 
@@ -961,9 +958,9 @@ Die Implementierung bildet sämtliche Defaults in einem unveränderlichen fachli
 | Ausschluss-Hardcooldown | 4 Challenges | 0 bis 52 |
 | Ausschluss-Abklinggrenze | 7 Challenges | größer als Hardcooldown, höchstens 104 |
 | `EASY`-Faktor | 1,00 | exakt 1 |
-| `PLANNED`-Faktor | 0,45 | kleiner als 1, größer als `SPECIALTY` |
-| `SPECIALTY`-Faktor | 0,15 | kleiner als `PLANNED`, größer als `DIFFICULT` |
-| `DIFFICULT`-Faktor | 0,03 | größer 0, kleiner als `SPECIALTY` |
+| `PLANNED`-Faktor | 0,22 | kleiner als 1, größer als `SPECIALTY` |
+| `SPECIALTY`-Faktor | 0,06 | kleiner als `PLANNED`, größer als `DIFFICULT` |
+| `DIFFICULT`-Faktor | 0,01 | größer 0, kleiner als `SPECIALTY` |
 | `UNAVAILABLE`-Faktor | 0,00 | exakt 0 |
 | Stufe-5-Cap | 1 | 0 bis 4 |
 | Stufe-4/5-Cap | 2 | mindestens Stufe-5-Cap, höchstens 4 |
@@ -992,7 +989,7 @@ Die vollständigen Faktor-, Punkte-, Profil- und Quotentabellen aus den vorangeh
 Mindestens enthalten:
 
 - `generatorVersion = 1.2.0`,
-- `configurationVersion = 2026-09-03.1`,
+- `configurationVersion = 2026-09-08.1`,
 - `rngAlgorithm = SPLITMIX64_V1`,
 - `candidateSetSize = 12`,
 - Reservoir- und Versuchslimits,
@@ -1008,7 +1005,7 @@ Mindestens enthalten:
 - alle Fallbackstufen.
 
 Der produktive Default für neue Sessions ist `generatorVersion = 1.2.0`,
-`configurationVersion = 2026-09-03.1`, `candidateRestrictionProbability = 0.20` und eine vollständige
+`configurationVersion = 2026-09-08.1`, `candidateRestrictionProbability = 0.20` und eine vollständige
 `RESTRICTION`-Ähnlichkeitsgewichtung.
 
 Fail-fast-Validierung mindestens für:
@@ -1319,10 +1316,9 @@ dokumentiert. Sie läuft ausschließlich mit `-Dissue190.report=true`, umfasst F
 alle fachlich wichtigeren Matrixachsen und wird niemals vom normalen Build oder CI gestartet. Der historische
 #152-Smoke bleibt unter
 [`analysis/availability-weight-calibration-2026-08-22.md`](analysis/availability-weight-calibration-2026-08-22.md)
-erhalten. Der #202-Bericht empfiehlt nach der fokussierten Availability-Nachmessung
-`PLANNED = 0,22 / SPECIALTY = 0,06 / DIFFICULT = 0,01`, übernimmt die Faktoren aber nicht produktiv.
-Eine zusätzliche kleine A/B-Nachmessung umfasst nur 12 `CAUTIOUS`-Kernfälle je Novelty-Arm und empfiehlt
-`TARGET_FACTOR_REBALANCED`; sie kehrt weder zur großen Matrix zurück noch ändert sie Load-Punkte oder Caps.
+erhalten. Nach menschlicher Abnahme übernimmt #203 die fokussiert gemessene Kombination
+`PLANNED = 0,22 / SPECIALTY = 0,06 / DIFFICULT = 0,01` und `TARGET_FACTOR_REBALANCED` produktiv.
+Die kleine A/B-Nachmessung, die diese Novelty-Matrix begründet, verändert weder Load-Punkte noch Caps.
 Die darauf folgende kleine Availability-Nachmessung hält genau diese Novelty-Variante fest und vergleicht
 `PLANNED = 0,30 / 0,22 / 0,15` bei unverändertem SPECIALTY/DIFFICULT, Load-Punkten und Caps.
 

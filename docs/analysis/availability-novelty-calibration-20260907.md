@@ -1,8 +1,9 @@
 # Availability-/Novelty-Kalibrierung aus #202
 
-Stand: 8. September 2026, ergänzt um die gezielte Availability-Nachmessung nach menschlicher Zwischenprüfung.
-Dieser Bericht ist der menschliche Haltepunkt zwischen #190A und #190B.
-Er empfiehlt Faktorvarianten, übernimmt sie aber ausdrücklich nicht in die produktive Konfiguration.
+Stand: 8. September 2026, ergänzt um die gezielte Availability-Nachmessung nach menschlicher Zwischenprüfung und
+die produktive Übernahme in #190B/#203.
+Der Bericht dokumentiert die abgeschlossene menschliche Entscheidung zwischen #190A und #190B sowie den
+technischen Release-QA-Vertrag für den übernommenen Konfigurationsstand.
 
 ## Ergebnis und Empfehlung
 
@@ -36,23 +37,61 @@ werden stärker nach Bändern getrennt; Load-Punkte und Caps bleiben unveränder
 Der B-Arm erhöhte den tatsächlichen `ADVENTUROUS`-Anteil gegenüber A in `NEUTRAL` von 4,17 % auf 12,50 %
 und in `SEEKING_VARIETY` von 2,08 % auf 18,75 %. `RECOVERY` blieb bei 0 %. Alle A/B-Sätze blieben `STRICT`;
 es gab keine Erschöpfung, technischen Fehler, Novelty-Cap-/Load-Rejections oder Hard-Rule-Verletzungen.
-Die Empfehlung ist wegen der kleinen Nachmessung ein menschlich zu prüfender Messvorschlag, keine automatische
-Produktionsentscheidung.
+Die Empfehlung war wegen der kleinen Nachmessung ein menschlich zu prüfender Messvorschlag. Die menschliche
+Fachabnahme ist erfolgt und hat genau diese Novelty-Matrix freigegeben.
 
 Die danach angeforderte fokussierte Availability-Nachmessung hält genau dieses
-`TARGET_FACTOR_REBALANCED` fest und variiert ausschließlich `PLANNED`. Für die gemeinsame menschliche
-Entscheidung wird damit präziser `PLANNED = 0,22`, `SPECIALTY = 0,06` und `DIFFICULT = 0,01` empfohlen.
+`TARGET_FACTOR_REBALANCED` fest und variiert ausschließlich `PLANNED`. Für die menschliche
+Entscheidung wurden damit präziser `PLANNED = 0,22`, `SPECIALTY = 0,06` und `DIFFICULT = 0,01` empfohlen.
 Unter der rebalancierten Novelty-Matrix liegt `PLANNED = 0,22` bei 12,50 % zufälligen PLANNED-Requirements
 und 40,28 % Kandidaten mit mindestens einem PLANNED-Requirement, bleibt in allen 24 Fällen `STRICT` und
 hält SPECIALTY/DIFFICULT selten. `0,30` ist in genau dieser Kombination mit 17,53 % beziehungsweise 56,60 %
 deutlich präsenter; `0,15` senkt PLANNED weiter, zeigte aber einen `RELAXED_1`-Satz und in der kleinen
 Stichprobe höhere SPECIALTY-/DIFFICULT-Anteile. Die Nachmessung ist zu klein für eine statistische
-Feinabstimmung; sie ersetzt keine menschliche Freigabe und ändert keine produktive Konfiguration.
+Feinabstimmung; die menschliche Freigabe hat diese begründete Endkombination dennoch verbindlich gewählt.
 
-Entscheidungsstatus: **`HUMAN_REVIEW_REQUIRED`**. `application.yml`, `configuration-version`, Generatorversion,
-RNG, Katalogdaten und sämtliche produktiven Availability-/Novelty-Werte bleiben unverändert.
+## Menschliche Freigabe und produktive Übernahme
 
-## Eingefrorene Eingaben und Fingerprints
+Die menschliche Fachabnahme von #202 hat die gemeinsame Endkombination freigegeben. #203 übernimmt sie als
+produktiven Default für neue Generationen:
+
+| Availability | Faktor |
+|---|---:|
+| `EASY` | 1,00 |
+| `PLANNED` | 0,22 |
+| `SPECIALTY` | 0,06 |
+| `DIFFICULT` | 0,01 |
+| `UNAVAILABLE` | 0,00 |
+
+| Stufe | `FAMILIAR` | `BALANCED` | `ADVENTUROUS` |
+|---:|---:|---:|---:|
+| 1 | 1,25 | 0,40 | 0,05 |
+| 2 | 1,10 | 0,75 | 0,15 |
+| 3 | 0,70 | 1,50 | 0,80 |
+| 4 | 0,15 | 1,20 | 2,00 |
+| 5 | 0,00 | 0,35 | 2,00 |
+
+`configuration-version` ist `2026-09-08.1`. Generator `1.2.0`, RNG `SPLITMIX64_V1`, Novelty-Load-Punkte
+`0 / 1 / 2 / 4 / 7`, Stufe-5-Cap `1`, Stufe-4/5-Cap `2` und Load-Cap `11` bleiben unverändert. Katalogdaten,
+`base_draw_weight`, Score-/Similarity-Gewichte, Profile, Cooldowns, Restriction-Wahrscheinlichkeit,
+Setquoten, Reservoir-/Fallback-Regeln sowie Adapterlogik wurden nicht verändert.
+
+Entscheidungsstatus: **`HUMAN_APPROVED_PRODUCTION_CONFIGURATION`**. Der weiterhin explizite Release-QA-Lauf
+prüft bei Bedarf, dass sein fokussierter `PLANNED = 0,22`-Arm exakt dem produktiven Konfigurationssnapshot
+entspricht.
+
+## Produktiver Konfigurationssnapshot und Fingerprint
+
+- Ausgangscommit für #190B/#203: `8b44d103e51505a941396f0d8035039cbb9aa565`
+- Generator: `1.2.0`; Konfiguration: `2026-09-08.1`; RNG: `SPLITMIX64_V1`
+- kanonischer Konfigurationsfingerprint:
+  `c681b49f50f02299aa25cb50e209e524490cb79ecf05f0ba31f2c72e498ba288`
+
+Der produktive Spring-Integrationstest bindet exakt diesen Snapshot und Fingerprint. Der gespeicherte
+Konfigurationssnapshot bleibt damit Teil des unveränderten deterministischen Replayvertrags; Generatoralgorithmus,
+RNG, Load-Punkte und Caps werden nicht neu interpretiert.
+
+## Historische eingefrorene Eingaben und Fingerprints (#202)
 
 - Ausgangscommit: `e9f0637a0c0af7720bd79c2be45e92185b70c55b`
 - Generator: `1.2.0`; Konfiguration: `2026-09-03.1`; RNG: `SPLITMIX64_V1`
@@ -276,9 +315,10 @@ Die Availability-Stichprobe kann seltene Erschöpfungen oder Seed-Ausreißer nic
 und August liefern nur einen groben Saisonkontrast; Monatsverläufe sind nicht ableitbar. Die Manual-Fälle verwenden
 absichtlich unklassifizierten Freitext und messen keine Verteilung konkreter manueller Katalogkonzepte. Die Novelty-
 A/B-Nachmessung ist noch enger und isoliert absichtlich nur Zielfaktoren. Die fokussierte Availability-Nachmessung
-variiert nur PLANNED und deckt weder REROLL noch Manuals erneut ab. Deshalb sind `PLANNED = 0,22`, `SPECIALTY = 0,06`,
-`DIFFICULT = 0,01` und `TARGET_FACTOR_REBALANCED` begründete Empfehlungen für die menschliche Prüfung, keine
-automatische Freigabe.
+variiert nur PLANNED und deckt weder REROLL noch Manuals erneut ab. Deshalb waren `PLANNED = 0,22`,
+`SPECIALTY = 0,06`, `DIFFICULT = 0,01` und `TARGET_FACTOR_REBALANCED` zum Messzeitpunkt begründete
+Empfehlungen für die menschliche Prüfung, keine automatische Freigabe. Die nachfolgende menschliche Fachabnahme
+hat diese Freigabe erteilt.
 
 Der Lauf ist hart opt-in und bleibt außerhalb normaler Builds und CI:
 
@@ -292,9 +332,25 @@ Der normale Nachweis bleibt:
 ./mvnw clean verify
 ```
 
-Lokale Abnahme am 8. September 2026:
+Historischer Mess- und Abnahmenachweis vom 8. September 2026:
 
 - Opt-in-Lauf erfolgreich: 1 Test, 384/384 dokumentierte Generatorfälle, 0 Fehler, 0 Überspringungen,
   698,7 s Testzeit; davon 288 Availability-, 24 Novelty-A/B- und 72 fokussierte Availability-Fälle;
 - regulärer Lauf erfolgreich: 496 Tests, 0 Fehler, 1 erwartete Überspringung der Opt-in-Klasse;
 - `git diff --check`: ohne Befund.
+
+Die produktive Übernahme führt keine neue Kalibrierungsentscheidung ein. Der Opt-in-Matrixlauf bleibt deshalb
+hart opt-in und dient weiter als reproduzierbarer Messnachweis; der aktuelle Produktionssnapshot wird zusätzlich
+durch den regulären Integrations- und Replaytestpfad abgesichert.
+
+Aktuelle Release-Verifikation für #190B/#203 am 8. September 2026:
+
+- hard opt-in Release-QA erfolgreich: `./mvnw clean verify
+  -Dtest=AvailabilityNoveltyCalibrationReportIntegrationTest -Dissue190.report=true` führte 1 Test mit
+  384/384 dokumentierten Generatorfällen (288 Availability-, 24 Novelty-A/B- und 72 fokussierte
+  Availability-Fälle), 0 Fehlern und 0 Überspringungen aus. Testzeit: 674,4 s; kanonischer
+  Report-Fingerprint: `7d050a361cc46885c72011e1aafaae07145e2c0b6514ef1ff5373600d1a3db8f`;
+- `./mvnw clean verify` erfolgreich: 496 Tests, 0 Fehler, 0 Errors, 1 erwartete Überspringung der
+  hart opt-in geschützten Reportklasse;
+- der Produktionssnapshot einschließlich seiner Availability- und Novelty-Faktoren, Konfigurationsversion und
+  kanonischem Fingerprint wird durch den Spring-Integrationstest festgeschrieben.
