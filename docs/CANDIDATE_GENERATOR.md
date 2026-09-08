@@ -1,9 +1,9 @@
 # Kandidatengenerator
 
-Stand: 16. August 2026  
+Stand: 8. September 2026
 Status: verbindliche Spezifikation für den Kandidatengenerator 1.2.0
 
-Dieses Dokument konkretisiert die Produktvision für die Erzeugung von Challenge-Kandidaten. Es ist gemeinsam mit [`VISION.md`](VISION.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`DATA_MODEL.md`](DATA_MODEL.md) und ADR 0007 verbindlich. Bei Implementierungsdetails ist dieses Dokument die fachliche Hauptquelle; harte Produktregeln aus der Vision bleiben vorrangig.
+Dieses Dokument konkretisiert die Produktvision für die Erzeugung von Challenge-Kandidaten. Es ist gemeinsam mit [`VISION.md`](VISION.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`DATA_MODEL.md`](DATA_MODEL.md) und ADR 0007 sowie [ADR 0009](adr/0009-determinism-without-historical-generator-replay.md) verbindlich. Bei Implementierungsdetails ist dieses Dokument die fachliche Hauptquelle; harte Produktregeln aus der Vision bleiben vorrangig.
 
 Der Generator soll weder ein Rezept erraten noch aus möglichst vielen ungewöhnlichen Zutaten ein Kuriositätenquartett bauen. Seine Aufgabe ist enger und zugleich anspruchsvoll genug:
 
@@ -24,7 +24,7 @@ Der Generator verantwortet:
 - die Erzeugung eines ausreichend großen Reservoirs,
 - die Qualität jedes einzelnen Kandidaten,
 - die Vielfalt und Zielverteilung des vollständigen Zwölfer-Satzes,
-- begrenzte Suche, Diagnose und reproduzierbares Replay.
+- begrenzte Suche, Diagnose und deterministische Wiederholbarkeit auf identischen materialisierten Eingaben.
 
 Der Generator verantwortet ausdrücklich nicht:
 
@@ -163,7 +163,7 @@ Das Challenge-Modul greift nicht direkt auf Katalogtabellen oder interne Reposit
 
 Die personenspezifischen Availability-Notizen aus #189 gehören ausschließlich zur Katalogpflege und zum
 Audit. Sie sind kein Teil dieses Snapshots, seiner Fingerprints oder der Gewichtung. Die revidierten Live-Stufen
-und Novelty-Werte gelten für neue Snapshots; gespeicherte Generationen bleiben unverändert replayfähig.
+und Novelty-Werte gelten für neue Snapshots; gespeicherte Generatorergebnisse bleiben unverändert lesbar. Laufende Attempts verwenden für Recovery und Batch 2 weiterhin ihren eingefrorenen Kontext.
 Die menschlich freigegebene Kombination aus Availability-Faktoren und `TARGET_FACTOR_REBALANCED` ist in
 Konfigurationsversion `2026-09-08.1` übernommen. Die Messstufe #190A/#202 ist in
 [`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md)
@@ -352,7 +352,7 @@ Die ersten acht Digest-Bytes in Big-Endian-Reihenfolge werden unverändert als v
 
 Verbindlicher Scope ist `batch/<batchNumber>` für alle Kandidaten- und Satzentscheidungen eines Batches.
 
-Der persistierte Batch-Seed ist die Ableitung mit Purpose `batch-root` und Ordinal `0`. Weitere Substreams werden direkt aus dem Attempt-Seed und ihrem Scope abgeleitet; der Batch-Seed dient als expliziter Replaywert und Kontrollfingerprint.
+Der persistierte Batch-Seed ist die Ableitung mit Purpose `batch-root` und Ordinal `0`. Weitere Substreams werden direkt aus dem Attempt-Seed und ihrem Scope abgeleitet; der Batch-Seed dient als technischer Diagnosewert und Kontrolle der Seedableitung.
 
 Verbindliche Zwecke sind mindestens:
 
@@ -378,7 +378,7 @@ Gleicher Generatorstand, gleicher Konfigurationssnapshot, gleicher Generation Co
 - denselben Fingerprint.
 
 Der Generator verwendet `1.2.0` und leitet seine Candidate-Restriction-Substreams isoliert aus der gespeicherten
-Version ab. Andere Versionen werden nicht unterstützt und niemals als `1.2.0`-Match ausgegeben.
+Version ab. Andere Versionen werden nicht ausgeführt; historische Ergebnisse bleiben unabhängig davon lesbar.
 
 ## 7. Manuelle Vorgaben
 
@@ -1114,7 +1114,6 @@ Reason-Codes sind stabile maschinenlesbare Großschreibungswerte. Freitext ist e
 - `GENERATION_EXHAUSTED`
 - `INVALID_GENERATION_REQUEST`
 - `UNSUPPORTED_GENERATOR_VERSION`
-- `REPLAY_FINGERPRINT_MISMATCH`
 - `TECHNICAL_GENERATION_FAILURE`
 - `ATTEMPT_IN_PROGRESS`
 - `STALE_PENDING_ATTEMPT`
@@ -1176,6 +1175,9 @@ Ein Batch speichert ausschließlich seine rundenbezogenen Werte:
 - Satzquoten, Ähnlichkeitsstatistik und weitere Setdiagnosen,
 - Set-Fingerprint.
 
+Die zusätzliche vollständige `result_snapshot`-Payload entfällt mit Migration 020. Die eigenständigen
+Batchdiagnosen, Kandidaten und Requirements bleiben gespeichert und lesbar; siehe Persistenzaudit in ADR 0009.
+
 Ein `GENERATED`-Batch enthält genau zwölf eindeutige Kandidaten. Ein `EXHAUSTED`-Batch enthält keine scheinbar teilweise erfolgreichen Kandidaten, aber vollständige Diagnose. Technische Fehler erzeugen keinen als fachlich erschöpft markierten Batch.
 
 ### 19.3 Candidate, Requirement und Kuratorbewertung
@@ -1214,31 +1216,27 @@ Phase 10 darf den Lifecycle um erfolgreiche Kuratierung beziehungsweise sichtbar
 
 Phase 9D implementiert ausschließlich Batch 1. Phase 10B erzeugt bei Bedarf genau einen Batch 2 unter demselben unveränderlichen, persistierten Context Snapshot und dem bestehenden Seedvertrag; sie lädt weder Katalog noch Historie neu. Batch 3 und unbeschränkte interne Regeneration werden verhindert. Diese Orchestrierung verändert keine Phase-9-Generatorregel und erzeugt keine sichtbare Historienexposition.
 
-## 20. Replay
+## 20. Determinismus, Recovery und historische Anzeige
 
-Replay verwendet ausschließlich:
+Gemäß [ADR 0009](adr/0009-determinism-without-historical-generator-replay.md) gibt es keine
+Neuberechnung abgeschlossener historischer Batches und keine öffentliche Replay-API.
+`GenerationQueries` liest gespeicherte Attempts, Contexts, Batches, Kandidaten und Requirements;
+Anzeige und Historie benötigen keine ausführbare damalige Generator-/Konfigurationsversion.
 
-- gespeicherten Input-/Katalog-/Historiensnapshot,
-- gespeicherten Konfigurationssnapshot,
-- Attempt-Seed, Batchnummer, abgeleiteten Batch-Seed und RNG,
-- exakt unterstützte Generatorversion.
+Für die Fortsetzung eines stale `CONTEXT_READY`-Attempts sowie Batch 2 verwendet
+`GenerationSnapshotCodec.decodeAndVerify` ausschließlich den gespeicherten Request, Katalog,
+die sichtbare Historie, Konfiguration und Attempt-Vorbereitung. Komponentenfingerprints,
+Gesamtfingerprint und die vollständige Prüfung der aktuell unterstützten Konfiguration bleiben
+verbindlich. Die aus dem eingefrorenen Request wiederhergestellte Vorbereitung muss dem
+vorbereiteten Snapshot entsprechen. Ein Fehler bleibt `CONTEXT_SNAPSHOT_INVALID`.
+Katalog und Historie werden in diesen beiden Pfaden nicht neu materialisiert.
 
-Aktuelle Katalogwerte überschreiben historische Snapshots nicht. Replay schreibt keine operativen Daten und erzeugt keine Exposition.
-
-Verglichen werden in dieser Reihenfolge:
-
-1. Request- und Snapshotfingerprints,
-2. Attempt-Ausschlussentscheidung,
-3. Restriction-Rule-Evaluations, Rejection-Zähler und Reservoirsignaturen,
-4. Kandidatensignaturen,
-5. Scores und Reason-Codes,
-6. Setreihenfolge und Set-Fingerprint.
-
-Die erste Abweichungsstelle wird diagnostiziert. Eine nicht unterstützte Version liefert `UNSUPPORTED_GENERATOR_VERSION`, nicht einen scheinbaren Zufallsfehler.
+Der Seed-/Substream-Vertrag aus Abschnitt 6 bleibt unverändert. Es entsteht keine historische
+Versionsregistry; abgeschlossene Contexts werden nicht automatisch gelöscht.
 
 ### 20.1 Kanonische Serialisierung und Fingerprints
 
-Replayrelevante Payloads verwenden `canonicalPayloadVersion = 1` und folgenden Bytevertrag:
+Kanonische Context- und Ergebnis-Payloads verwenden `canonicalPayloadVersion = 1` und folgenden Bytevertrag:
 
 - UTF-8 ohne BOM,
 - JSON-Objektschlüssel lexikografisch nach Unicode-Codepoint,
@@ -1256,7 +1254,7 @@ Zeichenfolge gespeichert. Der Set-Fingerprint umfasst Generator- und Konfigurati
 Batchnummer und abgeleiteten Batch-Seed, den Restriction Mode sowie die Restriktion jedes Kandidaten, verwendete Fallbackstufe,
 Setdiagnose einschließlich Reservoirmetriken und Fallbackversuchen sowie die geordnete vollständige
 Kandidatenliste in Auswahlreihenfolge. Nicht ausgewählte Reservoirkandidaten gehören nicht zur Set-Payload.
-Separate Snapshotfingerprints erlauben, eine Abweichung vor dem eigentlichen Generatorlauf zu lokalisieren.
+Separate Snapshotfingerprints sichern Recovery und Batch 2 ab und lokalisieren inkonsistente Eingaben vor dem Generatorlauf.
 
 ### 20.2 Generator-Labor (Phase 9E1 / Issue #37)
 
@@ -1267,10 +1265,7 @@ Es entstehen weder Session, Attempt, Batch, Candidate noch Historienexposition.
 
 Das Labor besitzt keine editierbaren REROLL-Hardblock-IDs. Ein diagnostischer REROLL wird ausschließlich durch Attempt-Typ, Katalog, Manuals, Seed, Restriction Mode und den gewählten Historiensnapshot bestimmt; exakte Cooldowns kommen aus diesem Snapshot.
 
-Persistierte Attempts und Batches werden ausschließlich aus ihren gespeicherten Snapshots angezeigt. Replay ist
-ebenfalls read-only und vergleicht Fingerprint, Kandidatenreihenfolge/-signatur, Gesamt- und Komponentenscores,
-Reason-Codes sowie Setevaluation. Die erste relevante Abweichung ist als begrenzter strukturierter Wert sichtbar;
-eine nicht unterstützte Version bleibt ausdrücklich kein Mismatch.
+Persistierte Attempts, Batches, Kandidaten und Requirements werden ausschließlich aus ihren gespeicherten Snapshots angezeigt. Es gibt keine historische Neuberechnung, keinen Replaybutton und keinen `POST /admin/generator/replay`. Eine ältere Konfigurationsversion verhindert die read-only Anzeige nicht.
 
 ### 20.3 Begrenzte Simulation und kanonischer Report (Phase 9E2 / Issue #53)
 
@@ -1289,7 +1284,13 @@ synthetische, nicht persistierte Exposure aus der gewählten Kandidatenposition,
 Ist-Neuigkeit und Kandidatenrestriktion fort. Erschöpfung oder ein technischer Fehler erzeugen keine Exposure und
 lassen die betroffene Sequenz ausdrücklich unvollständig.
 
-Der `SimulationReport` trennt fachliche Erschöpfung, technische Fehler und Replay-/Integritätsabweichungen. Seine
+Jeder erfolgreiche Fall wird unmittelbar mit denselben in-memory eingefrorenen Eingaben und
+derselben aktuellen Konfiguration ein zweites Mal berechnet (`verifyDeterminism`). Verglichen
+werden Set-Fingerprint und geordnete Kandidatensignaturen. `determinismChecks` zählt diese
+Prüfungen; `determinismMismatches` zählt Abweichungen. Die kanonische Reportversion ist seit
+Issue #206 `2026-09-08.1` statt `2026-08-18.1`; frühere dokumentierte Reports bleiben unverändert.
+
+Der `SimulationReport` trennt fachliche Erschöpfung, technische Fehler und Determinismusabweichungen. Seine
 Invariantenzähler lesen ausschließlich vorhandene Set-, Weight- und Diagnoseartefakte; er enthält keinen zweiten
 Hard-Rule- oder Statistikpfad. Restriction-Frequenz und Restriction-Verletzungen werden direkt aus den Candidate-Snapshots berechnet. Frequenz- und Fingerprintlisten sind nach stabilen Schlüsseln sortiert und jeweils auf
 50 Einträge begrenzt. Der JSON-Report unter `target/generator-simulation/ci-scenarios-report.json` enthält eine
@@ -1328,7 +1329,7 @@ Die darauf folgende kleine Availability-Nachmessung hält genau diese Novelty-Va
 
 Kleine synthetische Kataloge decken mindestens ab:
 
-- identisches Replay innerhalb derselben unterstützten Generatorversion,
+- identisches vollständiges Ergebnis bei gleichem Seed, gleicher Konfiguration und identischen materialisierten Eingaben,
 - Variation verschiedener Seeds,
 - Gewicht, Saison und Beschaffbarkeit,
 - alle Cooldownstufen,
@@ -1361,7 +1362,7 @@ H2 ist kein Ersatz.
 
 ### 21.3 Aktuelle Kontextfixtures
 
-Feste 1.2-Kontexte prüfen die reale PostgreSQL-`CatalogGeneratorProjection`, deterministische Reservoir-/Set-Replays,
+Feste 1.2-Kontexte prüfen die reale PostgreSQL-`CatalogGeneratorProjection`, deterministische Reservoir-/Set-Wiederholungen,
 REROLL-Historie sowie die drei Restriction Modes. Gezielte synthetische Fixtures ergänzen dünne Rollenpools,
 fehlende optionale Dimensionen und echte Erschöpfung.
 
@@ -1375,7 +1376,7 @@ Fixtureversion und Konfigurationsversion bleiben im Report gespeichert.
 Mindestens zu berichten sind:
 
 - Hard-Rule-Verletzungen und manuell erzwungene Ausnahmen getrennt,
-- Replay- und Fingerprintabweichungen,
+- Determinismus- und Fingerprintabweichungen,
 - Erschöpfungsquote getrennt nach regulärer Baseline und absichtlichem Dünnpool,
 - Proposal-Trefferquote, Median, 95. Perzentil und Maximum der Versuche,
 - erreichte Reservoirgröße,
@@ -1395,7 +1396,7 @@ Mindestens zu berichten sind:
 Für den regulären Repository-Baseline-Katalog gelten vor der manuellen Abnahme:
 
 - exakt 0 Generator-Hard-Rule-Verletzungen,
-- exakt 0 unerklärte Replay- oder Fingerprintabweichungen,
+- exakt 0 unerklärte Determinismus- oder Fingerprintabweichungen,
 - exakt 0 Erschöpfungen und 0 unvollständige Erfolgssätze,
 - exakt 0 Cooldown- und Restriction-Verletzungen,
 - 100 % der erfolgreichen Sätze mit zwölf eindeutigen Kandidaten und je vier Requirements,
@@ -1409,7 +1410,7 @@ Für den regulären Repository-Baseline-Katalog gelten vor der manuellen Abnahme
 - Restriction-Mode `NONE` erzeugt keine Restriktionen und `REQUIRED` erzeugt nur gültige Restriktionen,
 - kein einzelnes zufälliges Konzept über 5 % und die zehn häufigsten zusammen nicht über 30 % aller zufälligen Requirement-Slots der geprüften Fixtures.
 
-Die Konzentrations- und Restriction-Grenzen sind bewusst breit. Schlagen sie fehl, wird die Ursache untersucht; die Grenzen werden nicht nachträglich bequem um das erste Ergebnis gemalt. Synthetische Dünnpools dürfen erwartbar erschöpfen oder Fallbacks nutzen, müssen aber ebenfalls null Hard-Rule- und Replayverletzungen besitzen.
+Die Konzentrations- und Restriction-Grenzen sind bewusst breit. Schlagen sie fehl, wird die Ursache untersucht; die Grenzen werden nicht nachträglich bequem um das erste Ergebnis gemalt. Synthetische Dünnpools dürfen erwartbar erschöpfen oder Fallbacks nutzen, müssen aber ebenfalls null Hard-Rule- und Determinismusverletzungen besitzen.
 
 ## 22. Beispiele
 
@@ -1493,6 +1494,6 @@ Für Generator `1.2.0` gilt als Nachweis:
 - Parent-/Child-/Sibling-Expansion findet beim Cooldown nicht statt,
 - Restriction Mode und Candidate-Restriction sind in Signatur, Snapshot und Curation Contract enthalten,
 - Labor und Simulation besitzen nur die drei aktuellen Restriction Modes,
-- gezielte Restriction-/Cooldown-/Replaytests sowie `./mvnw clean verify` sind grün.
+- gezielte Restriction-/Cooldown-/Determinismus- und Recoverytests sowie `./mvnw clean verify` sind grün.
 
 Phase 11A implementiert die persistente Cooldown-only-Exposition eines vollständig rerollten Offer Sets mit 1–3 sichtbaren Optionen. Weder der nachfolgende transportneutrale 11B-Voting-/Participation-Core noch der spätere 11C-Discord-Adapter verändern diese Generator-Hardrule.

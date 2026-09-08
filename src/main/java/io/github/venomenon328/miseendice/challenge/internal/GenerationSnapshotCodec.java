@@ -96,9 +96,9 @@ final class GenerationSnapshotCodec {
                 requestSnapshot.attemptType(), requestSnapshot.effectiveDate(), requestSnapshot.seasonMonth(),
                 catalog, history, manuals, configuration, requestSnapshot.attemptSeed(), requestSnapshot.restrictionMode());
         PreparedGenerationAttempt prepared = reservoirEngine.prepare(request);
-        String replayedPrepared = canonicalJson(prepared(prepared));
-        if (!fingerprintJson(replayedPrepared).equals(fingerprintJson(stored.preparedAttemptSnapshot()))) {
-            throw new InvalidContextSnapshotException("Prepared attempt snapshot does not replay exactly");
+        String restoredPrepared = canonicalJson(prepared(prepared));
+        if (!fingerprintJson(restoredPrepared).equals(fingerprintJson(stored.preparedAttemptSnapshot()))) {
+            throw new InvalidContextSnapshotException("Prepared attempt does not match the frozen snapshot");
         }
 
         Map<String, Object> complete = sortedMap();

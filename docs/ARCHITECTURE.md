@@ -1,6 +1,6 @@
 # Architektur von Mise en Dice
 
-Stand: 12. August 2026
+Stand: 8. September 2026
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für die nächsten Entwicklungsabschnitte. Die Produktregeln stehen in [`VISION.md`](VISION.md), das fachliche Datenmodell in [`DATA_MODEL.md`](DATA_MODEL.md). Einzelne Architekturentscheidungen werden zusätzlich unter [`adr`](adr) begründet.
 
@@ -346,7 +346,7 @@ Vor einem INITIAL-Attempt materialisiert das Challenge-Modul zuerst das mutable 
 
 Das Modell führt `generation_batch` als eigene Ebene unter `generation_attempt` ein. Kandidaten gehören eindeutig zum Batch. Eine spätere `curation_round` besitzt erst dort Modell-, Prompt-, Request- und Responseinformationen und kann über die erst in Phase 10 eingeführte Teilnahmerelation Kandidaten beider Batches desselben Attempts referenzieren. Fake-Kuratormodelle und eine starre Runde→Batch-Kardinalität sind unzulässig.
 
-Der vollständige erfolgreiche Zwölfer-Satz wird mit Attempt-Status, Kandidaten und Requirements atomar in einer kurzen Schreibtransaktion gespeichert; die reine `CandidateSetEngine`-Berechnung liegt außerhalb davon. Operationstoken, Lease, Zeilensperre und eindeutige Attempt-/Batchschlüssel tragen Retry, Konkurrenz und Restart. Erschöpfung ist ein fachliches Ergebnis; unbekannte PostgreSQL- oder Laufzeitfehler bleiben technisch. Replay verwendet ausschließlich gespeicherte Snapshots, Versionen, RNG und Seed, schreibt nichts und erzeugt keine neue Historienexposition.
+Der vollständige erfolgreiche Zwölfer-Satz wird mit Attempt-Status, Kandidaten und Requirements atomar in einer kurzen Schreibtransaktion gespeichert; die reine `CandidateSetEngine`-Berechnung liegt außerhalb davon. Operationstoken, Lease, Zeilensperre und eindeutige Attempt-/Batchschlüssel tragen Retry, Konkurrenz und Restart. Erschöpfung ist ein fachliches Ergebnis; unbekannte PostgreSQL- oder Laufzeitfehler bleiben technisch. Gemäß [ADR 0009](adr/0009-determinism-without-historical-generator-replay.md) werden abgeschlossene historische Batches ausschließlich gelesen, nie erneut berechnet. `GenerationQueries` besitzt keine Replayoperation. Der verifizierte Frozen Context bleibt für die Fortsetzung von `CONTEXT_READY` und Batch 2 erhalten, ohne Katalog oder Historie neu zu laden. Seine Komponentenfingerprints bleiben Integritätssicherungen; nur die ungenutzte zusätzliche `generation_batch.result_snapshot`-Payload entfällt per Migration 020.
 
 Phase 10A ergänzt im Challenge-Modul die öffentlichen, transportneutralen APIs `CurationCommands` und `CurationQueries`. Ein Command plant genau eine `PENDING`-Runde mitsamt immutablem Request und Kandidatenteilnahmen in einer kurzen Transaktion. Ein getrenntes Command validiert und persistiert später die vollständige strukturierte Response oder beendet die Runde typisiert technisch beziehungsweise als strukturell ungültig. Weder diese API noch ihr JDBC-Adapter kennt OpenAI-, HTTP- oder SDK-Typen.
 
@@ -368,7 +368,9 @@ Das Generator-Labor aus Issue #37 und die nachgelagerten, getrennten Simulations
 reinen `GeneratorRunExecution`-Kern über bereits materialisierten Katalog- und Historien-Snapshots auf wie spätere
 Adapter. Ein #53-Simulationslauf friert alle benötigten Monatskataloge und gegebenenfalls die produktive sichtbare
 Historie einmal unter `REPEATABLE READ` ein; im anschließenden streng sequenziellen Fallloop gibt es weder JDBC noch
-`SeedSource`, parallele Verarbeitung oder operative Writes. Der gemeinsame Report-/Aggregationskern ist die einzige
+`SeedSource`, parallele Verarbeitung oder operative Writes. Die unmittelbare zweite Berechnung jedes erfolgreichen
+Falls bleibt als Determinismuscheck mit identischen eingefrorenen Eingaben erhalten (`determinismChecks`,
+`determinismMismatches`, Reportversion `2026-09-08.1`). Der gemeinsame Report-/Aggregationskern ist die einzige
 Grundlage für die explizite #47-Baseline. #54 darf ihn nur als begrenzten Adminadapter aufrufen und #40 nur für
 Kalibrierung auswerten; beide schaffen keine zweite Generator-, Historien-, Hard-Rule- oder Statistikimplementierung.
 
@@ -402,3 +404,4 @@ Die einzelnen Pakete sollen jeweils nur den für ihren Zweck notwendigen Umfang 
 - [`ADR 0005`](adr/0005-server-rendered-administration-ui.md): serverseitig gerenderte Webverwaltung
 - [`ADR 0006`](adr/0006-spring-jdbc-persistence.md): explizite Persistenz mit Spring JDBC
 - [`ADR 0007`](adr/0007-seeded-two-stage-candidate-generator.md): seedbarer zweistufiger Kandidatengenerator und Trennung von Generation und Kuratierung
+- [`ADR 0009`](adr/0009-determinism-without-historical-generator-replay.md): Determinismus und Frozen-Context-Recovery ohne historisches Generator-Replay

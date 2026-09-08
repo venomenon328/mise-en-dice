@@ -1,6 +1,6 @@
 # Entwicklungsplan
 
-Stand: 21. August 2026
+Stand: 8. September 2026
 
 Dieses Dokument beschreibt die aktuelle Umsetzungsreihenfolge. Die [`VISION.md`](VISION.md) beschreibt das gewünschte Produkt; dieser Plan legt fest, in welcher technischen Reihenfolge die dafür notwendigen Bausteine entstehen. Die konkrete Webspezifikation steht in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md).
 
@@ -259,7 +259,7 @@ Dieses Paket schließt die vollständige Katalogverwaltung ab.
 
 Phase 9 liefert einen reproduzierbaren, historienbewussten und kontrolliert zufälligen Zwölfer-Satz. Der spätere Kurator erhält ausschließlich harte gültige und als Satz ausreichend diverse Kandidaten; er ist nicht dafür verantwortlich, einen schwachen Zufallsgenerator zu retten.
 
-Verbindliche Hauptquelle ist [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md). ADR 0007 hält die Architekturentscheidung fest. Die spätere Mehrfachauswahl und Kuratororchestrierung ist davon getrennt in [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) spezifiziert.
+Verbindliche Hauptquelle ist [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md). ADR 0007 hält die Architekturentscheidung fest; [ADR 0009](adr/0009-determinism-without-historical-generator-replay.md) ersetzt ausschließlich deren historischen Replayanspruch. Die spätere Mehrfachauswahl und Kuratororchestrierung ist davon getrennt in [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md) spezifiziert.
 
 ### Phase 9A: Spezifikation und Datenreife (Issue #33)
 
@@ -268,7 +268,7 @@ Verbindliche Hauptquelle ist [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md).
 - Profile und harte Kandidatenregeln,
 - versioniertes Score- und Ähnlichkeitsmodell,
 - Neuigkeitskadenz und diverse Zwölfer-Auswahl,
-- deterministischer RNG-, Snapshot- und Replayvertrag,
+- deterministischer RNG- und Snapshotvertrag,
 - Lifecycleentscheidung `generation_batch` getrennt von `curation_round`,
 - Simulations- und Kalibrierungsvertrag,
 - reproduzierbare Messung der Katalogdatenreife.
@@ -294,7 +294,7 @@ Das Repository-Baseline-Gate ist bestanden: Rollen, Neuigkeit und Beschaffbarkei
 - kanonische Signaturdeduplizierung sowie Proposal-, Treffer-, Duplicate- und Hard-Rejection-Metriken,
 - alle eindeutigen hard-valid Kandidaten unabhängig vom späteren Soft-Mindestscore behalten,
 - typisierte Erschöpfung unter zwölf eindeutigen Kandidaten,
-- repräsentative feste Seeds und Monate gegen die reale PostgreSQL-Katalogprojektion replayen,
+- repräsentative feste Seeds und Monate gegen die reale PostgreSQL-Katalogprojektion deterministisch wiederholen,
 - keine Historien-JDBC-Projektion und keine Liquibase-Änderung.
 
 ### Phase 9C2: Satzdiversität und Baselinesimulation (abgeschlossen mit Issue #47)
@@ -314,7 +314,7 @@ Die Phase-9D-Commands erzeugen ausschließlich Batch 1; Schema und interne Persi
 - historisch vollständige PostgreSQL-Materialisierung und Persistenz des `VisibleHistorySnapshot`,
 - atomare Persistenz von zwölf Kandidaten, Snapshots und Diagnosen,
 - öffentliche Generation Commands und Queries,
-- Replay gegen gespeicherte Versionen und Snapshots,
+- Frozen-Context-Recovery und persistierte historische Anzeige (historisches Replay mit Issue #206 entfernt),
 - Idempotenz, Konkurrenz, Retry und Restart gegen echtes PostgreSQL,
 - keine Kuratorauswahl und keine sichtbare Challenge,
 - die Persistenz darf die für Phase 10 benötigten höchstens zwei Kurationsrunden, kandidatenübergreifenden Carry-over-Referenzen und ein finales Multi-Offer-Set nicht durch eine starre Ein-Batch-/Ein-Selected-Kardinalität verbauen.
@@ -336,7 +336,7 @@ Issue #37 und Issue #40 bleiben eigenständige nachgelagerte Pakete; ihre Labor-
 - geschützte, strikt nicht persistierende Vorschau,
 - verständliche Kandidaten- und Setdiagnosen einschließlich PairAssessment-basierter Paarerklärung,
 - read-only Anzeige persistierter Batches ausschließlich aus ihren Snapshots,
-- Replaydarstellung mit strukturierter erster Abweichung,
+- keine historische Neuberechnung oder Replaydarstellung mehr seit Issue #206,
 - keine Simulations- oder Kalibrierungslogik.
 
 ### Phase 9E2: Begrenzte Simulations- und Reportlogik (Issue #53, abgeschlossen)
@@ -379,9 +379,9 @@ kleine feste 1.2-Szenarien im normalen Verify.
 
 Phase 9 ist abgeschlossen:
 
-- Hard Rules, Scores, Diversität und Replay sind implementiert,
+- Hard Rules, Scores, Diversität und Determinismus sind implementiert,
 - Seed, Versionen und vollständige Eingabe-/Konfigurationssnapshots werden persistiert,
-- PostgreSQL-, Konkurrenz-, Restart- und Replaytests sind grün,
+- PostgreSQL-, Konkurrenz-, Restart- und Determinismustests sind grün,
 - die ausgeführten fokussierten und operativen Simulationen zeigen keine Hard-Rule-Verletzung oder unkontrollierte Erschöpfung,
 - der operative Kataloglauf ist dokumentiert,
 - und die repräsentative Seed-Auswahl wurde ausdrücklich fachlich abgenommen.
@@ -396,6 +396,16 @@ Die isolierten Generator-Labor-UX-Nacharbeiten aus Issues #60 und #61 verändern
 - Die persistente Exposition eines vollständig rerollten sichtbaren Offer Sets mit 1–3 Optionen ist in Phase 11A umgesetzt.
 
 OpenAI-Aufruf, Kuratorauswahl, sichtbare Challenge und Discord bleiben außerhalb von Phase 9. Die künftige Historienprojektion unterscheidet bestätigte Challenges, Cooldown-only-Exposition rerollter Offer Sets und vollständig interne/nicht gewählte Kandidaten ausdrücklich.
+
+### Vereinfachung nach Kalibrierungsübernahme (Issue #206)
+
+Nach Merge von PR #205 und Abschluss von #190/#203 entfernt ADR 0009 das historische Replay
+abgeschlossener Batches: öffentliche Replay-API, Application-Vergleiche und Adminaktion entfallen.
+Deterministische Generierung und der unmittelbare Simulations-Determinismuscheck bleiben bestehen;
+der Report verwendet `determinismChecks`/`determinismMismatches` mit Version `2026-09-08.1`.
+`CONTEXT_READY`-Recovery und Batch 2 verwenden weiterhin ausschließlich den verifizierten Frozen Context.
+Migration 020 entfernt nur die verbraucherlose zusätzliche Result-Payload; Historie und eigenständige
+Ergebnisdaten bleiben lesbar. Generatorparameter und Katalogwerte werden nicht verändert.
 
 ## Phase 10: Begrenzte Kuratierung, Multi-Offer-Lifecycle und OpenAI-Adapter
 
@@ -416,7 +426,7 @@ Dieses Paket schafft die fachliche und persistente Grenze noch ohne Discord-Adap
 - persistierbarer Präsentationszustand des Offer Sets als Vorbereitung auf Bestätigung oder den einmaligen freiwilligen Reroll,
 - fachlich saubere Möglichkeit, ein vollständig präsentiertes und später rerolltes Offer Set samt seinen exakten Candidate-/Requirement-Snapshots historisch zu referenzieren,
 - klare Trennung von Generatorstatus, Kuratorstatus, Offerstatus und späterer Challenge-Bestätigung,
-- Replay-/Auditdaten für Request, Response, Modell, Promptversion, Bewertungen und Auswahlpfad.
+- Providerresponse-Fixtures und Auditdaten für Request, Response, Modell, Promptversion, Bewertungen und Auswahlpfad.
 
 #### Gate
 
@@ -473,7 +483,7 @@ Dieses Paket implementiert den tatsächlichen externen Kurator und die höchsten
 - Providerrequest, Raw-Response beziehungsweise Transportfehler, Response-ID, Tokenverbrauch und Diagnose werden auf der tatsächlich verbrauchten Runde auditiert. Der Netzwerkzugriff liegt zwischen zwei kurzen Datenbanktransaktionen.
 - Batch 2 wird ausschließlich aus dem verifizierten, gespeicherten Context Snapshot desselben Attempts berechnet. Runde-1-`GOOD`s bleiben Locked Context; nur die besten benötigten `ACCEPTABLE`/`BAD` werden Carry-over; alle zwölf Kandidaten aus Batch 2 sind `NEW`.
 - Ein technischer Fehler in Runde 1 kann den zweiten Request als `TECHNICAL_RETRY` verbrauchen und schließt damit eine Qualitätsrunde aus. Ungültiger strukturierter Output wird nie erneut gesendet. Bei technischem Fehler der Qualitätsrunde oder erschöpftem Batch 2 gilt der dokumentierte Runde-1-Fallback nur, wenn dort mindestens ein `GOOD` vorliegt.
-- Lokale HTTP-Adaptertests und echte PostgreSQL-Tests decken Statusklassen einschließlich Responses-`failed`, Header und Timeouts, Prompt/Schema, Konkurrenz, gespeicherte Result-Replays bei deaktiviertem Adapter, unklare Crash-Ausgänge, Migration und die Ein-/Zwei-Request-Pfade ab. Der normale Build ruft OpenAI nicht auf.
+- Lokale HTTP-Adaptertests und echte PostgreSQL-Tests decken Statusklassen einschließlich Responses-`failed`, Header und Timeouts, Prompt/Schema, Konkurrenz, erneute lokale Interpretation gespeicherter Providerantworten bei deaktiviertem Adapter, unklare Crash-Ausgänge, Migration und die Ein-/Zwei-Request-Pfade ab. Der normale Build ruft OpenAI nicht auf.
 - Discord-Präsentation, Bestätigung, sichtbare Challenge, freiwilliger Reroll und dessen Historienexposition verbleiben vollständig in Phase 11.
 
 ## Phase 11: Entscheidung über kuratierte Angebote
@@ -529,7 +539,7 @@ Discord- und OpenAI-Aufrufe bleiben ausdrücklich außerhalb von CI, Maven-Tests
 
 ### Phase 12B.5A: Kandidatenspezifischer Restriction-Core (Issue #93)
 
-Issue #93 schließt eine replayrelevante Kernkorrektur vor der manuellen Abnahme ab, ohne Discord-Bedienung oder
+Issue #93 schließt eine determinismusrelevante Kernkorrektur vor der manuellen Abnahme ab, ohne Discord-Bedienung oder
 Darstellung vorwegzunehmen:
 
 - Generator `1.2.0` führt `AUTO` (deterministisch 20 %), `NONE` und `REQUIRED` als persistierten Sessionmodus ein;

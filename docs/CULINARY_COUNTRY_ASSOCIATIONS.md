@@ -92,7 +92,7 @@ Kulinarische Länderzuordnungen gehören im ersten Stand **nicht** zu
 - `CatalogGeneratorProjection`,
 - Generation Context oder dessen Fingerprint,
 - Candidate-Signatur oder Candidate-Snapshot,
-- Replay,
+- Frozen-Context-Recovery,
 - Kuration,
 - Challenge-Semantik,
 - automatischer Küchenklassifikation.

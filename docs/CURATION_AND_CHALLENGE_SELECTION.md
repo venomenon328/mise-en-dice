@@ -171,7 +171,7 @@ Die Response soll mindestens für alle bewerteten, nicht gelockten Kandidaten en
 - stabile Reason-Codes,
 - optional wenige strukturierte Diagnosefelder für spätere Analyse.
 
-Freie Prosa ist für den produktiven Ablauf nicht erforderlich. Modellname, Promptversion, exakter Request und exakte Response werden für Replay, Diagnose und Kostenanalyse persistiert.
+Freie Prosa ist für den produktiven Ablauf nicht erforderlich. Modellname, Promptversion, exakter Request und exakte Response werden für lokale Providerresponse-Fixtures gemäß ADR 0008, Diagnose und Kostenanalyse persistiert.
 
 Die Anwendung validiert die Response vollständig. Unbekannte Kandidaten-IDs, fehlende Bewertungen, doppelte Ränge oder strukturell ungültige Antworten werden nicht stillschweigend interpretiert.
 
@@ -208,7 +208,7 @@ Im normalen Erfolgsweg wählt der Nutzer genau eine Option und bestätigt sie au
 
 Nicht gewählte Angebote eines **normal bestätigten** Offer Sets:
 
-- bleiben aus technischen Gründen für Audit, Replay und Diagnose nachvollziehbar,
+- bleiben aus technischen Gründen für Audit und historische Diagnose nachvollziehbar,
 - erzeugen **keinen** Cooldown,
 - beeinflussen **keine** Neuigkeitskadenz,
 - zählen **nicht** als normale sichtbare Challenge-Historie,

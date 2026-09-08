@@ -111,5 +111,3 @@ databaseChangeLog:
       file: db/changelog/schema/019-availability-curator-note.sql
   - include:
       file: db/changelog/catalog/033-availability-novelty-final-review.sql
-  - include:
-      file: db/changelog/schema/020-remove-generator-replay-result.sql

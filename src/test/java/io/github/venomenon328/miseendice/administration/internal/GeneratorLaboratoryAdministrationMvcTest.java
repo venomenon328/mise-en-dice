@@ -1,6 +1,7 @@
 package io.github.venomenon328.miseendice.administration.internal;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -111,7 +112,7 @@ class GeneratorLaboratoryAdministrationMvcTest {
 
     @Test
     @WithMockUser(username = "generator-lab-admin")
-    void normalAuditRenderingDoesNotRequireAReplayResult() throws Exception {
+    void normalAuditRenderingRemainsAvailable() throws Exception {
         mockMvc.perform(get("/admin/audit"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-testid=\"audit-list\"")))
@@ -266,7 +267,7 @@ class GeneratorLaboratoryAdministrationMvcTest {
 
     @Test
     @WithMockUser(username = "generator-lab-admin")
-    void persistedBatchAndReplayUseReadOnlyQueries() throws Exception {
+    void persistedBatchUsesReadOnlyQueriesAndHasNoHistoricalRecalculation() throws Exception {
         Generated generated = (Generated) generationCommands.startNewSession(
                 new StartNewSession(LocalDate.of(2026, 8, 13), List.of(), 37_000_031L, 1, RestrictionMode.AUTO));
         int beforeAttempts = count("generation_attempt");
@@ -280,13 +281,13 @@ class GeneratorLaboratoryAdministrationMvcTest {
                 .andExpect(content().string(containsString("Persistierter Attempt")))
                 .andExpect(content().string(containsString("Datum 2026-08-13")))
                 .andExpect(content().string(containsString("Erstellt")))
-                .andExpect(content().string(containsString(generated.setFingerprint())));
+                .andExpect(content().string(containsString(generated.setFingerprint())))
+                .andExpect(content().string(not(containsString("/admin/generator/replay"))));
 
         mockMvc.perform(post("/admin/generator/replay").with(csrf())
                         .param("attemptId", Long.toString(generated.attemptId()))
                         .param("batchNumber", "1"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Replay stimmt vollständig überein")));
+                .andExpect(status().isNotFound());
 
         org.assertj.core.api.Assertions.assertThat(count("generation_attempt")).isEqualTo(beforeAttempts);
         org.assertj.core.api.Assertions.assertThat(count("generation_batch")).isEqualTo(beforeBatches);

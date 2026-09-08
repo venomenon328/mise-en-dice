@@ -24,7 +24,7 @@ public interface OfferDecisionCommands {
         }
     }
 
-    /** An explicit seed is reserved for deterministic tests and replay; transports do not choose it. */
+    /** An explicit seed is reserved for deterministic tests; transports do not choose it. */
     record RerollOfferSet(long offerSetId, Long explicitSeed) {
         public RerollOfferSet {
             requireId(offerSetId, "Offer set");

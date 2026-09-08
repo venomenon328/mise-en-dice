@@ -118,12 +118,6 @@ class AdministrationEntryPointController {
         return simulationView(htmx);
     }
 
-    @PostMapping("/admin/generator/replay")
-    String generatorReplay(@RequestParam long attemptId, @RequestParam int batchNumber, Model model) {
-        model.addAttribute("replayResult", generationQueries.replay(attemptId, batchNumber));
-        return "admin/audit :: generatorReplay";
-    }
-
     @GetMapping("/admin/generator/concepts")
     String generatorConcepts(
             @RequestParam(defaultValue = "") String search,

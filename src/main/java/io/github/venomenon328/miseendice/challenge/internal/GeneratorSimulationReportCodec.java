@@ -126,8 +126,8 @@ final class GeneratorSimulationReportCodec {
         value.put("proposalAttempts", summary(metrics.proposalAttempts()));
         value.put("quotaViolations", metrics.quotaViolations());
         value.put("recoveryCadenceViolations", metrics.recoveryCadenceViolations());
-        value.put("replayChecks", metrics.replayChecks());
-        value.put("replayIntegrityMismatches", metrics.replayIntegrityMismatches());
+        value.put("determinismChecks", metrics.determinismChecks());
+        value.put("determinismMismatches", metrics.determinismMismatches());
         value.put("roleFrequency", frequencies(metrics.roleFrequency()));
         value.put("restrictedCandidates", metrics.restrictedCandidates());
         value.put("setCapViolations", metrics.setCapViolations());

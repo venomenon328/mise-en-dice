@@ -11,7 +11,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
 - [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md): redaktionelle Semantik und technische Pflege der expliziten kulinarischen Länderzuordnungen
 - [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md): verbindliche Bedien-, Interaktions-, Locking-, Audit- und Sicherheitsentscheidungen für die private Katalogverwaltung
-- [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md): verbindliche Regeln für Gewichtung, harte Kandidatengültigkeit, Scores, Diversität, Determinismus, Replay und Simulation
+- [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md): verbindliche Regeln für Gewichtung, harte Kandidatengültigkeit, Scores, Diversität, Determinismus, Recovery und Simulation
 - [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md): verbindlicher Vertrag für 1–3 kuratierte Angebote, maximal zwei externe Kuratoraufrufe, Carry-over, Nutzerbestätigung und Historienwirkung
 - [`CHALLENGE_VOTING_AND_PARTICIPATION.md`](CHALLENGE_VOTING_AND_PARTICIPATION.md): verbindliche Mehrnutzer-Semantik des bestehenden Voting-Cores; die frühere eigenständige Challenge-Teilnahme und das fest codierte Default-Elektorat werden für neue Pakete durch die nachfolgende Spezifikation ersetzt
 - [`PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md`](PARTICIPANT_AND_ELECTORATE_MANAGEMENT.md): verbindliche Semantik für stabile Personenidentitäten, persistentes Standard-Elektorat, frühe Session-Snapshots, optionale sessiongebundene Beschaffbarkeit und die Stilllegung von `challenge_participation` als Fachautorität
@@ -27,7 +27,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`analysis/availability-reference-anchors-v2-20260904.md`](analysis/availability-reference-anchors-v2-20260904.md): historische Vorbereitung des strengeren Availability-Ankersatzes; durch den finalen #188-Vertrag abgelöst
 - [`analysis/final-catalog-review-20260813.md`](analysis/final-catalog-review-20260813.md): verbindlicher fachlicher Review für den finalen Katalog
 - [`analysis/final-catalog-snapshot-contract-20260813.md`](analysis/final-catalog-snapshot-contract-20260813.md): Normalisierung, Upgrade-Schutz, Endfingerprint und Dimensionsabdeckung aus Issue #52
-- [`analysis/generator-laboratory-implementation-notes.md`](analysis/generator-laboratory-implementation-notes.md): kompakte Implementierungsgrenze des read-only Preview-/Replay-Kerns aus Phase 9E1
+- [`analysis/generator-laboratory-implementation-notes.md`](analysis/generator-laboratory-implementation-notes.md): historische Implementierungsgrenze des damaligen Preview-/Replay-Kerns aus Phase 9E1; der aktuelle Vertrag steht in ADR 0009
 
 ## Architektur, Betrieb und Umsetzung
 
@@ -37,6 +37,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`adr`](adr): einzelne grundlegende Architekturentscheidungen mit Kontext und Konsequenzen
 - [`ADR 0007`](adr/0007-seeded-two-stage-candidate-generator.md): seedbarer zweistufiger Kandidatengenerator und Trennung von Generation und Kuratierung
 - [`ADR 0008`](adr/0008-production-only-openai-access.md): echte OpenAI-Aufrufe ausschließlich im explizit aktivierten Produktivbetrieb; Entwicklung und automatisierte Tests bleiben vollständig providerfrei
+- [`ADR 0009`](adr/0009-determinism-without-historical-generator-replay.md): Determinismus, Frozen-Context-Recovery und Batch 2 bleiben; historisches Generator-Replay entfällt
 
 ## Reihenfolge der Verbindlichkeit bei Entwicklungsarbeit
 

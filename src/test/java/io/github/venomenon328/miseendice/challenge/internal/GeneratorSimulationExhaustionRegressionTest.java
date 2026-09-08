@@ -95,7 +95,7 @@ class GeneratorSimulationExhaustionRegressionTest {
         assertThat(report.metrics().exhaustedSets()).isEqualTo(1);
         assertThat(report.metrics().successfulSets()).isEqualTo(1);
         assertThat(report.metrics().technicalErrors()).isZero();
-        assertThat(report.metrics().replayChecks()).isEqualTo(1);
+        assertThat(report.metrics().determinismChecks()).isEqualTo(1);
     }
 
     @Test
@@ -146,6 +146,32 @@ class GeneratorSimulationExhaustionRegressionTest {
         assertThat(alteredStrictSet).isTrue();
         assertThat(report.metrics().quotaViolations()).isZero();
         assertThat(report.metrics().hardRuleViolations()).isZero();
+    }
+
+    @Test
+    void immediateDeterminismCheckDetectsAChangedResult() {
+        AtomicInteger calls = new AtomicInteger();
+        CandidateSetEngine changingEngine = (prepared, batchNumber) -> {
+            var result = (GeneratedCandidateSet) setEngine.generate(prepared, batchNumber);
+            if (calls.incrementAndGet() == 1) {
+                return result;
+            }
+            return new GeneratedCandidateSet(result.reservoir(), result.batchNumber(), result.batchSeed(),
+                    result.fallbackLevel(), result.candidates(), result.evaluation(), "0".repeat(64),
+                    result.fallbackAttempts(), result.diagnostics());
+        };
+        var scenario = new SimulationScenario("DETERMINISM_MISMATCH", new SeedRange(53_000_001L, 1),
+                List.of(LocalDate.of(2026, 8, 13)), HistoryScenario.EMPTY_HISTORY, AttemptType.INITIAL,
+                List.of(), 1, RestrictionMode.AUTO);
+        var report = simulationWith(changingEngine).simulate(new SimulationRequest(
+                "DETERMINISM_CHECK_V1", List.of(scenario), 1, GeneratorSimulation.SimulationControl.unbounded()));
+
+        assertThat(calls).hasValue(2);
+        assertThat(report.metrics().successfulSets()).isOne();
+        assertThat(report.metrics().determinismChecks()).isOne();
+        assertThat(report.metrics().determinismMismatches()).isOne();
+        assertThat(report.metrics().technicalErrors()).isZero();
+        assertThat(report.metrics().exhaustedSets()).isZero();
     }
 
     private GeneratorSimulation simulationWith(CandidateSetEngine scriptedSetEngine) {

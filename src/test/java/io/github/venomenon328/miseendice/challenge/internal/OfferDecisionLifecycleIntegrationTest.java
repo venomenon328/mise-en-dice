@@ -35,7 +35,6 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.Genera
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.ManualRequirementInput;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands.StartNewSession;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
-import io.github.venomenon328.miseendice.challenge.api.GenerationQueries.ReplayStatus;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands.Confirmation;
@@ -480,7 +479,7 @@ class OfferDecisionLifecycleIntegrationTest {
         assertThat(generationRepository.visibleHistory().cooldownExposuresNewestFirst()).hasSize(1);
         assertThat(rerollContext.visibleHistorySnapshotJson()).contains("rerollExposuresNewestFirst");
         assertThat(rerollContext.preparedAttemptSnapshotJson()).contains("\"noveltyCadence\": \"NEUTRAL\"");
-        assertThat(generationQueries.replay(outcome.rerollAttemptId(), 1).status()).isEqualTo(ReplayStatus.MATCH);
+        assertThat(generationQueries.findBatch(outcome.rerollAttemptId(), 1)).isPresent();
         assertThat(curationQueries.findAttempt(outcome.rerollAttemptId()).orElseThrow().requestedOfferCount()).isEqualTo(2);
         assertThat(jdbcTemplate.queryForList("""
                 select position || ':' || display_text || ':' || coalesce(matched_ingredient_concept_id::text, '')
