@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
 public interface CatalogCommands {
 
     String INGREDIENT_CONCEPT_CODE_PATTERN = "[A-Z][A-Z0-9_]*";
-    String CULINARY_COUNTRY_CODE_PATTERN = "[A-Z]{2}";
+    String CULINARY_COUNTRY_CODE_PATTERN = "[A-Z]{2}(?:-[A-Z0-9]{1,3})?";
 
     CatalogCommandResult createIngredientConcept(CreateIngredientConceptCommand command);
 
@@ -282,7 +282,8 @@ public interface CatalogCommands {
             }
             if (culinaryCountryCodes != null
                     && culinaryCountryCodes.stream().anyMatch(code -> !Pattern.matches(CULINARY_COUNTRY_CODE_PATTERN, code))) {
-                errors.put("culinaryCountries", "Ländercodes müssen gültige ISO-Alpha-2-Codes sein.");
+                errors.put("culinaryCountries",
+                        "Ländercodes müssen gültige ISO-Alpha-2- oder freigegebene erweiterte Codes sein.");
             }
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);

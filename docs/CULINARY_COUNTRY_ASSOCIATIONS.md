@@ -41,14 +41,13 @@ Die Deaktivierung eines Zutatenkonzepts löscht seine vorhandenen redaktionellen
 
 ## 3. Länder-Referenzbestand
 
-`culinary_country` enthält den migrationsgeführten ISO-3166-1-Alpha-2-Referenzbestand aus
+`culinary_country` enthält als Grundbestand den migrationsgeführten ISO-3166-1-Alpha-2-Referenzbestand aus stabilem Code und deutschem Anzeigenamen.
 
-- stabilem zweistelligem Code und
-- deutschem Anzeigenamen.
+Wenn die redaktionelle Länderarbeit eine konstituierende Nation oder vergleichbare Untereinheit ausdrücklich getrennt behandelt, darf der Referenzbestand zusätzlich einen kontrollierten erweiterten Code aufnehmen. Für das Vereinigte Königreich folgt das Projekt dabei dem von GOV.UK veröffentlichten [erweiterten Country-Code-Standard](https://www.gov.uk/government/publications/open-standards-for-government/country-codes): `GB` bleibt das Vereinigte Königreich, während beispielsweise `GB-ENG` England bezeichnet. Solche Einträge werden nur bei konkretem redaktionellem Bedarf ergänzt; es wird nicht pauschal ein vollständiger Subdivision-Bestand vorbefüllt.
 
-Der vollständige Referenzbestand ist **keine Liste redaktionell verwendeter Küchen** und keine Aussage darüber, dass für jedes ISO-Gebiet eine eigenständige nationale Küchenzuordnung gepflegt werden soll. Er stellt lediglich den stabilen technischen Auswahlraum bereit.
+Der vollständige Referenzbestand ist **keine Liste redaktionell verwendeter Küchen** und keine Aussage darüber, dass für jedes ISO-Gebiet oder jede Untereinheit eine eigenständige Küchenzuordnung gepflegt werden soll. Er stellt lediglich den stabilen technischen Auswahlraum bereit.
 
-Flaggen sind kein persistierter Fachwert. Spätere Darstellungen dürfen sie aus dem ISO-Code ableiten.
+Flaggen sind kein persistierter Fachwert. Für reine ISO-3166-1-Alpha-2-Codes dürfen Darstellungen sie weiterhin aus dem Code ableiten. Erweiterte Codes wie `GB-ENG` benötigen dagegen eine explizite Darstellung oder einen neutralen Fallback und dürfen nicht wie ein zweistelliger Regional-Indicator-Code behandelt werden.
 
 ## 4. Redaktionelle Entscheidung
 

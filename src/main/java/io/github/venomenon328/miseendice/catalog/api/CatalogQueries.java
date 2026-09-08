@@ -321,8 +321,8 @@ public interface CatalogQueries {
     record CatalogCountry(String code, String displayName) {
 
         public CatalogCountry {
-            if (code == null || !code.matches("[A-Z]{2}")) {
-                throw new IllegalArgumentException("country code must be an ISO alpha-2 code");
+            if (code == null || !code.matches(CatalogCommands.CULINARY_COUNTRY_CODE_PATTERN)) {
+                throw new IllegalArgumentException("country code must be an ISO alpha-2 or supported extended code");
             }
             if (displayName == null || displayName.isBlank()) {
                 throw new IllegalArgumentException("country displayName is required");
