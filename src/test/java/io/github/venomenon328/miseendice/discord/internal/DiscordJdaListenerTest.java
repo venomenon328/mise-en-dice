@@ -472,7 +472,7 @@ class DiscordJdaListenerTest {
         when(focusedOption.getValue()).thenReturn("test");
         when(lookupWorkflow.acceptsGuild(99L)).thenReturn(true);
         when(lookupWorkflow.autocompleteCountries("test"))
-                .thenReturn(List.of(new CulinaryCountry("XA", "Testland Alpha")));
+                .thenReturn(List.of(new CulinaryCountry("GB-ENG", "England")));
         when(event.replyChoices(org.mockito.ArgumentMatchers.<Collection<Choice>>any())).thenReturn(reply);
         Executor blockedPrimaryExecutor = command -> {
         };
@@ -484,8 +484,8 @@ class DiscordJdaListenerTest {
         org.mockito.Mockito.verify(lookupWorkflow).autocompleteCountries("test");
         org.mockito.Mockito.verify(event).replyChoices(org.mockito.ArgumentMatchers.<Collection<Choice>>argThat(choices ->
                 choices.stream().map(choice -> choice.getName()).toList().equals(List.of(
-                        DiscordIngredientLookupRenderer.countryFlag("XA") + " Testland Alpha"))
-                        && choices.stream().map(choice -> choice.getAsString()).toList().equals(List.of("XA"))));
+                        DiscordIngredientLookupRenderer.countryFlag("GB-ENG") + " England"))
+                        && choices.stream().map(choice -> choice.getAsString()).toList().equals(List.of("GB-ENG"))));
         org.mockito.Mockito.verifyNoInteractions(challengeWorkflow);
     }
 

@@ -23,7 +23,7 @@ public interface IngredientLookupQueries {
      */
     List<CulinaryCountry> searchCulinaryCountries(String searchText, int limit);
 
-    /** Resolves either an ISO alpha-2 value or an exact German display name from the reference data. */
+    /** Resolves either a supported culinary-country code or an exact German display name from the reference data. */
     Optional<CulinaryCountry> resolveCulinaryCountry(String input);
 
     /**
@@ -118,8 +118,8 @@ public interface IngredientLookupQueries {
     record CulinaryCountry(String code, String displayName) {
 
         public CulinaryCountry {
-            if (code == null || !code.matches("[A-Z]{2}")) {
-                throw new IllegalArgumentException("country code must be an ISO alpha-2 code");
+            if (code == null || !code.matches(CatalogCommands.CULINARY_COUNTRY_CODE_PATTERN)) {
+                throw new IllegalArgumentException("country code must be an ISO alpha-2 or supported extended code");
             }
             displayName = required(displayName, "displayName");
         }
@@ -179,8 +179,8 @@ public interface IngredientLookupQueries {
     record IngredientLookupCountry(String code, String displayName) {
 
         public IngredientLookupCountry {
-            if (code == null || !code.matches("[A-Z]{2}")) {
-                throw new IllegalArgumentException("country code must be an ISO alpha-2 code");
+            if (code == null || !code.matches(CatalogCommands.CULINARY_COUNTRY_CODE_PATTERN)) {
+                throw new IllegalArgumentException("country code must be an ISO alpha-2 or supported extended code");
             }
             displayName = required(displayName, "displayName");
         }

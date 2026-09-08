@@ -167,7 +167,7 @@ Das Bootstrap-Paket enthält den Anwendungseinstieg und technische Konfiguration
 
 ## 5. Abhängigkeitsregeln
 
-Die lesende Discord-Ländernavigation verwendet für `/zutaten` ausschließlich die öffentliche `catalog :: api`-Projektion `IngredientLookupQueries`. Der Adapter besitzt weder JDBC-Zugriff noch eine eigene Länderreferenzliste, eine Hierarchieableitung oder einen persistierten Message-State; ISO-Flaggen und versionierte ownergebundene Component-IDs sind reine Adapterdarstellung.
+Die lesende Discord-Ländernavigation verwendet für `/zutaten` ausschließlich die öffentliche `catalog :: api`-Projektion `IngredientLookupQueries`. Der Adapter besitzt weder JDBC-Zugriff noch eine eigene Länderreferenzliste, eine Hierarchieableitung oder einen persistierten Message-State; klassische ISO-Flaggen, kontrollierte UK-Subdivision-Tag-Sequenzen und versionierte ownergebundene Component-IDs sind reine Adapterdarstellung.
 
 Folgende Regeln werden durch Struktur, Sichtbarkeit und Spring-Modulith-Tests abgesichert:
 

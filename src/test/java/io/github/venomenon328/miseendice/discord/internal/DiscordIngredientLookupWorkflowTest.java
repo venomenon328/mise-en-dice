@@ -167,21 +167,32 @@ class DiscordIngredientLookupWorkflowTest {
     }
 
     @Test
-    void countryBrowseResolvesAutocompleteValuesAndExactGermanNamesWithoutAnyLocalCountryList() {
+    void countryBrowseResolvesEnglandAutocompleteAndNameThenKeepsItsExtendedCodeThroughPagination() {
         var queries = new FakeQueries();
-        queries.countries = List.of(new CulinaryCountry("XA", "Testland Alpha"));
-        queries.countryPages.put("XA:1", countryPage("XA", "Testland Alpha", 1, 1, 7));
+        queries.countries = List.of(new CulinaryCountry("GB-ENG", "England"));
+        queries.countryPages.put("GB-ENG:1", countryPage("GB-ENG", "England", 1, 21,
+                java.util.stream.LongStream.rangeClosed(1, 20).toArray()));
+        queries.countryPages.put("GB-ENG:2", countryPage("GB-ENG", "England", 2, 21, 21));
         var delivery = new CapturingDelivery();
         var feedback = new CapturingFeedback();
+        var workflow = workflow(queries);
 
-        assertThat(workflow(queries).autocompleteCountries("test")).containsExactly(new CulinaryCountry("XA", "Testland Alpha"));
-        workflow(queries).browseCountry("  testland alpha  ", "10001", delivery, feedback);
+        assertThat(workflow.autocompleteCountries("eng")).containsExactly(new CulinaryCountry("GB-ENG", "England"));
+        workflow.browseCountry("  england  ", "10001", delivery, feedback);
 
         assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedCountryIngredients.class);
-        var page = (DiscordIngredientLookupRenderer.RenderedCountryIngredients) delivery.response;
-        assertThat(page.countryContext()).isEqualTo(new DiscordIngredientComponentId.CountryBrowseContext("XA", 1));
-        assertThat(page.options()).singleElement().extracting(DiscordIngredientLookupRenderer.SelectionOption::value)
-                .isEqualTo(DiscordIngredientComponentId.conceptValue(7));
+        var firstPage = (DiscordIngredientLookupRenderer.RenderedCountryIngredients) delivery.response;
+        assertThat(firstPage.countryContext()).isEqualTo(new DiscordIngredientComponentId.CountryBrowseContext("GB-ENG", 1));
+        assertThat(firstPage.title()).isEqualTo(DiscordIngredientLookupRenderer.countryFlag("GB-ENG") + " England");
+        assertThat(firstPage.options()).hasSize(20);
+
+        workflow.countryPage(DiscordIngredientComponentId.countryPage(firstPage.countryContext(), "10001", 2), "10001", delivery, feedback);
+
+        var secondPage = (DiscordIngredientLookupRenderer.RenderedCountryIngredients) delivery.response;
+        assertThat(secondPage.countryContext()).isEqualTo(new DiscordIngredientComponentId.CountryBrowseContext("GB-ENG", 2));
+        assertThat(secondPage.title()).isEqualTo(DiscordIngredientLookupRenderer.countryFlag("GB-ENG") + " England");
+        assertThat(secondPage.options()).singleElement().extracting(DiscordIngredientLookupRenderer.SelectionOption::value)
+                .isEqualTo(DiscordIngredientComponentId.conceptValue(21));
         assertThat(feedback.messages).isEmpty();
     }
 

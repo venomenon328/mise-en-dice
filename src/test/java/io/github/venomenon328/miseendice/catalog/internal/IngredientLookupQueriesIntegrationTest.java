@@ -51,7 +51,7 @@ class IngredientLookupQueriesIntegrationTest {
                    or child_concept_id in (select id from ingredient_concept where code like ?)
                 """, PREFIX + "%", PREFIX + "%");
         jdbcTemplate.update("delete from ingredient_concept where code like ?", PREFIX + "%");
-        jdbcTemplate.update("delete from culinary_country where code in ('XA', 'XB', 'XC')");
+        jdbcTemplate.update("delete from culinary_country where code in ('XA', 'XB', 'XC', 'GB-TST')");
     }
 
     @Test
@@ -251,6 +251,23 @@ class IngredientLookupQueriesIntegrationTest {
         assertThat(secondCountry.totalIngredients()).isEqualTo(1);
         assertThat(secondCountry.ingredients()).singleElement().extracting(ingredient -> ingredient.conceptId())
                 .isEqualTo(multipleCountries);
+    }
+
+    @Test
+    void supportsControlledExtendedCountryCodesInTheLookupProjectionAndPagination() {
+        insertCountry("GB-TST", "Testland Erweiterung");
+        long concept = insertConcept("EXTENDED_COUNTRY", "Landzutat Erweiterung", true, true, null,
+                "Technische Testnotiz.");
+        assignCountry(concept, "GB-TST");
+
+        assertThat(queries.searchCulinaryCountries("erweiterung", 25))
+                .containsExactly(new IngredientLookupQueries.CulinaryCountry("GB-TST", "Testland Erweiterung"));
+        assertThat(queries.resolveCulinaryCountry("gb-tst"))
+                .contains(new IngredientLookupQueries.CulinaryCountry("GB-TST", "Testland Erweiterung"));
+        assertThat(queries.findActiveByCulinaryCountry("GB-TST", 1, 20)).hasValueSatisfying(page -> {
+            assertThat(page.country()).isEqualTo(new IngredientLookupQueries.CulinaryCountry("GB-TST", "Testland Erweiterung"));
+            assertThat(page.ingredients()).extracting(ingredient -> ingredient.conceptId()).containsExactly(concept);
+        });
     }
 
     private void assignCountry(long conceptId, String countryCode) {

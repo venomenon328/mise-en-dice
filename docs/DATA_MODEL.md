@@ -119,7 +119,7 @@ Eigenschaften werden wie Rollen zunächst nicht automatisch vererbt.
 
 ### 5.1 Kulinarische Länderzuordnungen
 
-`culinary_country` enthält den migrationsgeführten ISO-3166-1-Alpha-2-Referenzbestand aus stabilem Code und deutschem Anzeigenamen. `ingredient_culinary_country` ordnet einem konkreten `ingredient_concept` null bis beliebig viele Länder zu.
+`culinary_country` enthält den migrationsgeführten ISO-3166-1-Alpha-2-Referenzbestand aus stabilem Code und deutschem Anzeigenamen. Bei konkretem redaktionellem Bedarf ergänzt er kontrollierte erweiterte Codes wie `GB-ENG`; `GB` bleibt dabei das Vereinigte Königreich. `ingredient_culinary_country` ordnet einem konkreten `ingredient_concept` null bis beliebig viele Länder zu.
 
 Eine Zuordnung ist eine kuratierte positive Aussage über kulinarische Relevanz und Informationswert für eine nationale Küche. Sie ist keine Herkunfts-, Erfindungs- oder Exklusivitätsbehauptung. Auch global verbreitete Grundzutaten dürfen zugeordnet werden, wenn ihre besondere Bedeutung fachlich ausreichend Signal trägt; eine fehlende Relation bedeutet lediglich, dass keine positive Zuordnung gepflegt wurde.
 
