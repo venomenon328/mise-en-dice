@@ -113,3 +113,5 @@ databaseChangeLog:
       file: db/changelog/catalog/033-availability-novelty-final-review.sql
   - include:
       file: db/changelog/schema/020-remove-generator-replay-result.sql
+  - include:
+      file: db/changelog/catalog/034-austria-curation.sql

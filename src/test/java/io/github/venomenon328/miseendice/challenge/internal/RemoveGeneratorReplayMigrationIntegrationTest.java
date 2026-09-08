@@ -42,6 +42,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
         properties = "spring.liquibase.change-log=classpath:db/changelog/db.changelog-before-remove-generator-replay.yaml")
 @Testcontainers
 class RemoveGeneratorReplayMigrationIntegrationTest {
+    private static final String UPGRADE = "db/changelog/db.changelog-through-remove-generator-replay.yaml";
     private static final String MASTER = "db/changelog/db.changelog-master.yaml";
     private static final LocalDate DATE = LocalDate.of(2026, 9, 8);
 
@@ -118,7 +119,7 @@ class RemoveGeneratorReplayMigrationIntegrationTest {
         var frozenBefore = queries.findContext(resumable.attemptId()).orElseThrow();
         var archiveBefore = archive.findLatestChallenge().orElseThrow();
         try (Connection connection = dataSource.getConnection()) {
-            migrate(connection);
+            migrate(connection, UPGRADE);
         }
 
         assertResultSchema(jdbc);
@@ -144,7 +145,7 @@ class RemoveGeneratorReplayMigrationIntegrationTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
         var afterFirstUpgrade = persistedRows(jdbc);
         try (Connection connection = dataSource.getConnection()) {
-            migrate(connection);
+            migrate(connection, UPGRADE);
         }
         assertThat(persistedRows(jdbc)).isEqualTo(afterFirstUpgrade);
     }
@@ -194,7 +195,11 @@ class RemoveGeneratorReplayMigrationIntegrationTest {
     }
 
     private static void migrate(Connection connection) throws Exception {
+        migrate(connection, MASTER);
+    }
+
+    private static void migrate(Connection connection, String changelog) throws Exception {
         var database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
-        new Liquibase(MASTER, new ClassLoaderResourceAccessor(), database).update(new Contexts(), new LabelExpression());
+        new Liquibase(changelog, new ClassLoaderResourceAccessor(), database).update(new Contexts(), new LabelExpression());
     }
 }
