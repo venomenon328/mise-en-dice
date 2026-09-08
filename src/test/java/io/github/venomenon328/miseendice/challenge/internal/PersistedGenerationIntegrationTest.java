@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.venomenon328.miseendice.MiseEnDiceApplication;
+import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection.Availability;
 import io.github.venomenon328.miseendice.challenge.api.CandidateReservoirEngine;
 import io.github.venomenon328.miseendice.challenge.api.CandidateSetEngine;
 import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
@@ -20,6 +21,7 @@ import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.Restrictio
 import io.github.venomenon328.miseendice.challenge.api.ParticipantCommands;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantIdentityConflictException;
 import io.github.venomenon328.miseendice.challenge.api.ParticipantQueries;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -109,7 +111,20 @@ class PersistedGenerationIntegrationTest {
         assertThat(attempt.batchNumbers()).containsExactly(1);
         assertThat(attempt.nextAction()).isEqualTo(GenerationQueries.NextAction.AWAIT_CURATION);
         assertThat(context.configurationSnapshotJson()).isNotBlank();
-        assertThat(context.configurationSnapshotJson()).contains("SPECIALTY", "0.15");
+        var persistedConfiguration = repository.snapshotCodec()
+                .decodeAndVerify(repository.loadContext(generated.attemptId()))
+                .request().configuration();
+        assertThat(persistedConfiguration.configurationVersion()).isEqualTo("2026-09-08.1");
+        assertThat(persistedConfiguration.availabilityFactors().get(Availability.EASY))
+                .isEqualByComparingTo(new BigDecimal("1.00"));
+        assertThat(persistedConfiguration.availabilityFactors().get(Availability.PLANNED))
+                .isEqualByComparingTo(new BigDecimal("0.22"));
+        assertThat(persistedConfiguration.availabilityFactors().get(Availability.SPECIALTY))
+                .isEqualByComparingTo(new BigDecimal("0.06"));
+        assertThat(persistedConfiguration.availabilityFactors().get(Availability.DIFFICULT))
+                .isEqualByComparingTo(new BigDecimal("0.01"));
+        assertThat(persistedConfiguration.availabilityFactors().get(Availability.UNAVAILABLE))
+                .isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(context.catalogSnapshotJson()).isNotBlank();
         assertThat(context.requestSnapshotJson()).isNotBlank();
         assertThat(context.visibleHistorySnapshotJson()).isNotBlank();

@@ -345,6 +345,11 @@ durch den regulären Integrations- und Replaytestpfad abgesichert.
 
 Aktuelle Release-Verifikation für #190B/#203 am 8. September 2026:
 
+- hard opt-in Release-QA erfolgreich: `./mvnw clean verify
+  -Dtest=AvailabilityNoveltyCalibrationReportIntegrationTest -Dissue190.report=true` führte 1 Test mit
+  384/384 dokumentierten Generatorfällen (288 Availability-, 24 Novelty-A/B- und 72 fokussierte
+  Availability-Fälle), 0 Fehlern und 0 Überspringungen aus. Testzeit: 674,4 s; kanonischer
+  Report-Fingerprint: `7d050a361cc46885c72011e1aafaae07145e2c0b6514ef1ff5373600d1a3db8f`;
 - `./mvnw clean verify` erfolgreich: 496 Tests, 0 Fehler, 0 Errors, 1 erwartete Überspringung der
   hart opt-in geschützten Reportklasse;
 - der Produktionssnapshot einschließlich seiner Availability- und Novelty-Faktoren, Konfigurationsversion und

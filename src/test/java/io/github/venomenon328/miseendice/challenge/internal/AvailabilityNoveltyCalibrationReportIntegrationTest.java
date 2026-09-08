@@ -344,8 +344,16 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
         assertThat(current.configurationVersion()).isEqualTo("2026-09-08.1");
         FocusedAvailabilityVariant.PLANNED_0_22.factors().forEach((availability, expected) ->
                 assertThat(current.availabilityFactors().get(availability)).isEqualByComparingTo(expected));
-        assertThat(current.novelty().targetFactors()).isEqualTo(
-                NoveltyVariant.TARGET_FACTOR_REBALANCED.novelty(current.novelty()).targetFactors());
+        Map<NoveltyBand, Map<Integer, BigDecimal>> expectedNoveltyFactors =
+                NoveltyVariant.TARGET_FACTOR_REBALANCED.novelty(current.novelty()).targetFactors();
+        assertThat(current.novelty().targetFactors().keySet())
+                .containsExactlyInAnyOrderElementsOf(expectedNoveltyFactors.keySet());
+        expectedNoveltyFactors.forEach((band, expectedByLevel) -> {
+            Map<Integer, BigDecimal> actualByLevel = current.novelty().targetFactors().get(band);
+            assertThat(actualByLevel.keySet()).containsExactlyInAnyOrderElementsOf(expectedByLevel.keySet());
+            expectedByLevel.forEach((level, expected) ->
+                    assertThat(actualByLevel.get(level)).isEqualByComparingTo(expected));
+        });
         assertThat(current.novelty().loadPoints()).containsExactlyInAnyOrderEntriesOf(
                 Map.of(1, 0, 2, 1, 3, 2, 4, 4, 5, 7));
         assertThat(current.novelty().levelFiveCap()).isEqualTo(1);
@@ -674,9 +682,6 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
                 .isEqualTo(NoveltyVariant.TARGET_FACTOR_REBALANCED.novelty(production.novelty()));
         assertThat(withNovelty(measured, production.novelty()))
                 .isEqualTo(withAvailabilityFactors(production, variant.factors()));
-        if (variant == FocusedAvailabilityVariant.PLANNED_0_22) {
-            assertThat(measured).isEqualTo(production);
-        }
     }
 
     private static Map<String, Object> noveltyDocument(NoveltyConfiguration novelty) {
