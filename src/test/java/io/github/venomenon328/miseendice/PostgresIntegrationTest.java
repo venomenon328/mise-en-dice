@@ -117,10 +117,7 @@ class PostgresIntegrationTest {
     }
 
     @Test
-    void administrationChangesetInitializesVersionsAndAuditSchema() {
-        // Migrated aggregates advance once; synthetic concepts created by this class start at zero.
-        assertThat(countWhere("ingredient_concept", "version = 1 and left(code, 5) <> 'TEST_'"))
-                .isEqualTo(countWhere("ingredient_concept", "left(code, 5) <> 'TEST_'"));
+    void administrationDefaultsAndAuditSchemaRemainAvailable() {
         long newConcept = insertConcept("initial-version");
         try {
             assertThat(jdbcTemplate.queryForObject("select version from ingredient_concept where id = ?",
@@ -128,7 +125,15 @@ class PostgresIntegrationTest {
         } finally {
             jdbcTemplate.update("delete from ingredient_concept where id = ?", newConcept);
         }
-        assertThat(countWhere("exclusion_rule", "version = 0")).isEqualTo(count("exclusion_rule"));
+        long newRule = insertReturningId(
+                "insert into exclusion_rule (code, display_text, base_draw_weight) values (?, ?, 1.0000) returning id",
+                "TEST_DEFAULT_" + UUID.randomUUID().toString().replace("-", ""), "Test default version");
+        try {
+            assertThat(jdbcTemplate.queryForObject("select version from exclusion_rule where id = ?",
+                    Long.class, newRule)).isZero();
+        } finally {
+            jdbcTemplate.update("delete from exclusion_rule where id = ?", newRule);
+        }
         assertThat(jdbcTemplate.queryForList(
                 """
                 select column_name || ':' || data_type
@@ -211,9 +216,11 @@ class PostgresIntegrationTest {
         String upgradeUrl = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + upgradeDatabase);
         try (Connection connection = DriverManager.getConnection(upgradeUrl, POSTGRES.getUsername(), POSTGRES.getPassword())) {
             runLiquibase(connection, "db/changelog/db.changelog-before-administration.yaml");
-            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+            // Assert initialization at migration 003, before later editorial version advances and audits.
+            runLiquibase(connection, "db/changelog/db.changelog-through-administration.yaml");
 
-            assertThat(countWhere(connection, "ingredient_concept", "version = 1"))
+            assertThat(count(connection, "ingredient_concept")).isPositive();
+            assertThat(countWhere(connection, "ingredient_concept", "version = 0"))
                     .isEqualTo(count(connection, "ingredient_concept"));
             assertThat(countWhere(connection, "exclusion_rule", "version = 0"))
                     .isEqualTo(count(connection, "exclusion_rule"));
