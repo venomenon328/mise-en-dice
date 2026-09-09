@@ -1,8 +1,8 @@
-# Availability-Notizpräfixe – einmaliger Phase-1-Abgleich
+# Availability-Notizpräfixe – einmaliger Abgleich
 
 Stand: 9. September 2026
 
-Issue: #209, Phase 1
+Issue: #209, Phase 1 + freigegebene Phase 2
 Ausgangscommit: `8a5616abbd3fbafa11057efbff7bc7b19983e0c7` (`origin/main`)
 
 ## Geltungsbereich und Betriebsgrenze
@@ -10,15 +10,20 @@ Ausgangscommit: `8a5616abbd3fbafa11057efbff7bc7b19983e0c7` (`origin/main`)
 Dieser Abgleich betrifft alle vorhandenen nichtleeren individuellen
 `ingredient_availability.curator_note`-Texte, unabhängig von Aktiv- oder
 Ziehbarkeit des zugehörigen Konzepts. Die operative PostgreSQL-Datenbank war
-in dieser Arbeitsumgebung nicht lesbar. Die folgenden Zahlen sind daher
-ausdrücklich der **Repository-/Migrationsstand**: der aktuelle Katalog aus
-dem vollständigen `main`-Changelog einschließlich #189, Österreich (#210)
+in der ursprünglichen Arbeitsumgebung nicht lesbar. Die folgenden Zahlen sind
+daher ausdrücklich der **Repository-/Migrationsstand**: der aktuelle Katalog
+aus dem vollständigen `main`-Changelog einschließlich #189, Österreich (#210)
 und England (#211), nicht eine Produktionsabfrage.
 
-Die Datenbankmigration `036-availability-note-prefix-cleanup` wertet die
-tatsächlich zur Laufzeit gespeicherten Anzeigenamen und Notizen erneut aus;
-sie verwendet weder diese Zahlen noch Konzeptcodes oder Anzeigenamen als
-statisches Manifest.
+Für den Produktionsbestand wurde anschließend bestätigt, dass keine manuellen
+Datenänderungen außerhalb der versionierten Migrationen vorgenommen wurden.
+Damit ist kein abweichender operativer Restbestand zu erwarten.
+
+Die Datenbankmigration `036-availability-note-prefix-cleanup` wertet für Phase 1
+die tatsächlich zur Laufzeit gespeicherten Anzeigenamen und Notizen erneut aus;
+sie verwendet dafür weder diese Zahlen noch Konzeptcodes oder Anzeigenamen als
+statisches Manifest. Zusätzlich enthält sie ausschließlich die fünf nach der
+Phase-1-Sichtung ausdrücklich menschlich freigegebenen Tobias-Präfixvarianten.
 
 ## Vorher-/Nachher-Abgleich
 
@@ -28,45 +33,51 @@ beginnt und nach dem Präfix mindestens ein Nichtleerraumzeichen bleibt.
 Entfernt werden das Präfix und ausschließlich direkt folgende gewöhnliche
 Leerzeichen (`U+0020`). Der Rest bleibt unverändert.
 
-| Teilnehmer | Notizen vor dem Lauf | exakte Phase-1-Treffer | leere/Leerraum-Anomalien | Notizen nach dem Lauf |
-| --- | ---: | ---: | ---: | ---: |
-| Georgia | 882 | 608 | 0 | 882 |
-| Tobias | 882 | 778 | 0 | 882 |
-| **Gesamt** | **1.764** | **1.386** | **0** | **1.764** |
+Für die fünf freigegebenen Phase-2-Fälle gilt dieselbe Transformation. Der
+Unterschied besteht ausschließlich darin, dass das redundant vorangestellte
+Präfix wegen abweichender Groß-/Kleinschreibung beziehungsweise einer
+Pluralform nicht bytegenau dem Anzeigenamen entspricht. Konzept, Teilnehmer
+und erlaubtes Präfix sind daher einzeln und exakt festgelegt.
 
-Die 1.386 Änderungen betreffen 789 Konzepte. Availability-Stufen,
-Konzeptnamen, Gewichte, Novelty, Beziehungen, Rollen, Dimensionen, Flags,
-Saison und sonstige Metadaten bleiben unverändert. Die betroffenen
-Konzeptaggregate erhalten jeweils genau eine Versionsfortschreibung und einen
-Audit-Datensatz mit altem und neuem Availability-Notiztext.
+| Teilnehmer | Notizen vor dem Lauf | Phase-1-Treffer | Phase-2-Treffer | Änderungen gesamt | Leerraum-Anomalien | Notizen nach dem Lauf |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Georgia | 882 | 608 | 0 | 608 | 0 | 882 |
+| Tobias | 882 | 778 | 5 | 783 | 0 | 882 |
+| **Gesamt** | **1.764** | **1.386** | **5** | **1.391** | **0** | **1.764** |
 
-Die historischen Mengen im Issue sind kein Sollwert: Insbesondere vier
-Tobias-Texte beginnen nur mit einer abweichenden Großschreibung und gehören
-daher nicht zu den exakten Phase-1-Treffern.
+Die 1.391 Änderungen betreffen weiterhin 789 Konzepte: Alle fünf Phase-2-Fälle
+gehören zu Konzepten, deren Georgia-Notiz bereits in Phase 1 geändert wird.
+Availability-Stufen, Konzeptnamen, Gewichte, Novelty, Beziehungen, Rollen,
+Dimensionen, Flags, Saison und sonstige Metadaten bleiben unverändert. Die
+betroffenen Konzeptaggregate erhalten jeweils genau eine Versionsfortschreibung
+und einen Audit-Datensatz mit altem und neuem Availability-Notiztext.
 
-## Restbestand für Phase 2 – nur gelesen
+Die historischen Mengen im Issue sind kein Sollwert. Vier Tobias-Texte
+beginnen lediglich mit abweichender Großschreibung; ein weiterer verwendet eine
+naheliegende Pluralform. Diese fünf Fälle waren deshalb bewusst nicht Teil der
+automatischen Phase 1 und wurden erst nach expliziter menschlicher Freigabe
+ergänzt.
 
-Nach Anwendung der exakten Regel bleiben im Repository-/Migrationsstand fünf
-am Textanfang stehende Doppelpunkt-Präfixe als redaktionell zu entscheidende
-Verdachtsfälle. Keiner wurde in Phase 1 geändert.
+## Freigegebene Phase-2-Fälle
 
-| Kategorie | Anzahl | Konzepte / Teilnehmer |
-| --- | ---: | --- |
-| abweichende Groß-/Kleinschreibung | 4 | `BLACK_PEPPER`, `BLACK_TEA`, `GREEN_PEPPER`, `WHITE_PEPPER` / Tobias |
-| Schreib- beziehungsweise Formvariante | 1 | `TOMATO_PRODUCTS` ("Tomatenprodukte" statt Anzeigename "Tomatenprodukt") / Tobias |
-| Alias- oder sonstige semantische Präfixe | 0 | – |
-| leerer/Leerraum-Rest nach exaktem Präfix | 0 | – |
+| Konzept | Anzeigename | Teilnehmer | freigegebenes redundantes Präfix |
+| --- | --- | --- | --- |
+| `BLACK_PEPPER` | schwarzer Pfeffer | Tobias | `Schwarzer Pfeffer:` |
+| `BLACK_TEA` | schwarzer Tee | Tobias | `Schwarzer Tee:` |
+| `GREEN_PEPPER` | grüne Pfefferkörner | Tobias | `Grüne Pfefferkörner:` |
+| `WHITE_PEPPER` | weißer Pfeffer | Tobias | `Weißer Pfeffer:` |
+| `TOMATO_PRODUCTS` | Tomatenprodukt | Tobias | `Tomatenprodukte:` |
 
-Diese Kategorien sind ein einmaliger QA-Befund und kein automatisiertes
-Content-Test-Oracle. Ob sie redaktionell vereinheitlicht werden sollen, ist
-ausdrücklich Phase 2.
+Nach Anwendung der exakten Phase-1-Regel und dieser fünf ausdrücklich
+freigegebenen Ausnahmen verbleiben im Repository-/Migrationsstand **keine**
+der bei der Phase-2-Sichtung gefundenen redundanten Namenspräfixe.
 
 ## Reproduktionsabfragen
 
 Die Zählung des echten Laufzeitbestands kann vor der Migration mit folgender
-lesender Abfrage erzeugt werden. Für den Nachher- und Restbestand dieselbe
-Abfrage nach der Migration ausführen; die erste Bedingung zeigt dann nur noch
-defensive operative Deltas oder Anomalien.
+lesender Abfrage erzeugt werden. Für den Nachher-Bestand dieselbe Abfrage nach
+der Migration ausführen; `exact_phase_1_matches` muss dann 0 sein, sofern keine
+zusätzlichen operativen Deltas existieren.
 
 ```sql
 SELECT participant.code,
@@ -92,7 +103,7 @@ GROUP BY participant.code
 ORDER BY participant.code;
 ```
 
-Für die Phase-2-Sichtung werden verbleibende Notizen mit einem frühen
-Doppelpunkt nur lesend zusammen mit Konzeptcode, Anzeigename, Teilnehmer und
-vollständigem Text ausgegeben; die Migrationsregel ist absichtlich enger als
-diese Sichtung.
+Die fünf Phase-2-Fälle sind kein verallgemeinertes Matching-Oracle. Sie sind
+als explizite, menschlich freigegebene Ausnahmen in Migration 036 festgelegt;
+weitere Case-, Alias-, Flexions- oder semantische Varianten würden durch diese
+Migration nicht automatisch verändert.
