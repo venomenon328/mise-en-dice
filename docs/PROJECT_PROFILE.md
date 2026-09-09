@@ -13,7 +13,8 @@ Bei Produkt-, Architektur-, Persistenz- oder Schnittstellenänderungen [VISION.m
 | Katalogdaten, verfügbare operative Bestände und Migrationen | Relevante ADRs einschließlich ADR 0003 sowie aktuelle freigegebene Änderungen, nicht nur historische Baselines |
 | Generator/Kuratierung | [Generator](CANDIDATE_GENERATOR.md), [Datenbereitschaft](CANDIDATE_GENERATOR_DATA_READINESS.md), [Kuratierung](CURATION_AND_CHALLENGE_SELECTION.md), relevante ADRs |
 | Teilnehmer, Voting, Challenge-Ergebnisse, Karten oder Discord-Lookup | Die jeweils zuständigen vollständigen Fachverträge aus dem Dokumentindex |
-| Betriebs-/Deploymentänderung | [DEPLOYMENT.md](DEPLOYMENT.md), [PRODUCTION_VALIDATION.md](PRODUCTION_VALIDATION.md) und betroffene Deploymentwerkzeuge/CI |
+| CI-, PostgreSQL-Test- oder Migrations-Testinfrastruktur | [ADR 0004](adr/0004-postgresql-only-persistence-tests.md), [ADR 0011](adr/0011-risk-based-ci-verification.md), betroffene Workflows/Testhilfen und aktuelles Paket-Issue |
+| Betriebs-/Deploymentänderung | [DEPLOYMENT.md](DEPLOYMENT.md), [PRODUCTION_VALIDATION.md](PRODUCTION_VALIDATION.md), [ADR 0011](adr/0011-risk-based-ci-verification.md) und betroffene Deploymentwerkzeuge/CI |
 
 Die Einführung ändert keine fachlichen Werte, Gewichtungen, Regeln, Freigaben oder Produktformen. Individuelle Beschaffungsnotizen und gemeinsame Kochungewöhnlichkeit bleiben gemäß ihren eigenen Quellen getrennt. Spezielle Länder-/Katalogfreigaben sind keine abzulösende allgemeine Git-Zeremonie, sondern sichern konkrete fachliche Entscheidungen; sie bleiben wirksam.
 
@@ -33,11 +34,15 @@ Keine echten Discord-/OpenAI-Aufrufe in Entwicklung und automatisierten Tests. [
 
 Reine Fachlogik schnell ohne Spring-Kontext testen; Persistenz-, Migrations-, Trigger- und Transaktionsverhalten mit echten PostgreSQL-Testcontainern. Kein H2-Ersatz. Migrationsänderungen müssen weiterhin den vollständigen Aufbau einer leeren PostgreSQL-Datenbank bestehen lassen. Bei Compose-Änderungen zusätzlich die betroffene Konfiguration mit `docker compose config` beziehungsweise dem entsprechenden `-f`-Pfad prüfen. Kein echter Produktionszugriff oder Reset ohne passenden Auftrag und Betriebsvertrag.
 
+Gemäß [ADR 0011](adr/0011-risk-based-ci-verification.md) ist der dauerhafte automatisierte Migrationshorizont auf **leere PostgreSQL-Datenbank → aktueller Master** und **aktuell produktiver Datenbankstand → aktueller Master** begrenzt. Der produktive Ausgangsstand wird nach realem Deployment bewusst als versionierte Test-Changelog-Baseline im Repository gepflegt; `main` ist kein automatischer Ersatz für Produktion und CI greift dafür nicht auf echte Produktionsdaten zu. Historische Upgrade-Tests dürfen nur entfallen, wenn ihr Ausgangszustand außerhalb dieses Horizonts liegt und ihre weiterhin relevante Invariante anderweitig belastbar abgedeckt ist.
+
 ## Abschlussprüfpfad und begrenzte Ausnahmen
 
 Für normale Änderungen sind die aktuellen PR-Prüfungen **Verify / verify** und **Deployment Verify / classify, deployment, legacy-preview** maßgeblich. `legacy-preview` ist im bestehenden Workflow bei Nicht-Asset-PRs vorgesehen, nicht bei jedem Push nach `main`.
 
 Verify führt Challenge-Card-Werkzeugtests und den vollständigen Maven-Lauf `./mvnw -DforkCount=2 clean verify` aus. Eine geeignete lokale Prüfung kann `./mvnw clean verify` verwenden. Deployment Verify prüft Shell-/Betriebswerkzeuge und isolierte Docker-Instanzen einschließlich Wiederanlauf, Backup/Restore und Legacy-Preview. Die Workflows bleiben die konkreten Ausführungspfade: [Verify](../.github/workflows/verify.yml), [Deployment Verify](../.github/workflows/deployment-verify.yml).
+
+[ADR 0011](adr/0011-risk-based-ci-verification.md) ist als Zielentscheidung angenommen, aber noch nicht vollständig umgesetzt. Die künftigen `fast`-/`postgresql`-/`migration`-Lanes sowie `skip`/`smoke`/`full` in Deployment Verify werden durch #225–#227 eingeführt. **Bis zum Merge des jeweils zuständigen Umsetzungspakets gelten weiterhin die tatsächlich eingecheckten Workflows und deren heutige Ausführung.** Ein beschlossener Zielpfad darf nicht als bereits ausgeführte CI ausgegeben werden. `./mvnw clean verify` bleibt auch nach dem späteren CI-Sharding ein vollständiger Prüfpfad.
 
 Passende aktuelle CI-Belege können den Abschlussnachweis liefern; keinen identischen vollständigen lokalen Lauf nur zusätzlich erzwingen. Lokale Prüfungen benötigen die tatsächlich geeignete Umgebung und Ressourcen. Ein fehlender Docker-Daemon ist kein bestandener PostgreSQL-Test. Es wird kein pauschales lokales Testverbot aus CSC übernommen. Vollständigen Diff, Dateiverweise und `git diff --check <Basis-SHA> <Head-SHA>` prüfen.
 
@@ -46,7 +51,7 @@ Zwei bestehende enge Ausnahmen bleiben wegen ihrer unterschiedlichen fachlichen/
 - **Redaktionelle Länder-/Katalogbatches nach #172:** Teststrategie des [Länderworkflows](CULINARY_CATALOG_WORKFLOW.md) anwenden. Keine produktiven Content-Assertions und kein Vollsuite-Pflichtlauf pro Land; vollständiges `./mvnw clean verify` bei Merge-Vorbereitung oder technischem Anlass. Keine pauschale Ausnahme für Anwendungscode.
 - **Eindeutig klassifizierte Challenge-Card-Assets:** Nur `ASSET_INDEX.csv` allein oder mit hinzugefügten/geänderten Produktions-PNGs im erlaubten Bereich. Der vorhandene Klassifikator entscheidet; andere Dateien, Löschungen, Umbenennungen oder unklarer Diff bleiben im vollständigen Prüfpfad. Der [Assetvalidator](../design/challenge-cards/tools/validate_asset_catalog.py) ist verbindlich; der bestehende CI-Workflow führt außerdem die Werkzeugtests aus. Übersprungene volle Builds sind nur in diesem nachgewiesenen engen Fall nicht anwendbar.
 
-Diese Regelintegration verändert Dokumente außerhalb des Assetbereichs: **vollständiger Nicht-Asset-CI-Pfad**, keine Ausnahme. Die redaktionellen Fachtests/-verbote werden nicht umgeschrieben; einmalige Bestands-/Diff-QA ist kein dauerhaftes Content-Test-Oracle.
+Diese Regelintegration verändert Dokumente außerhalb des Assetbereichs: **vollständiger Nicht-Asset-CI-Pfad**, keine Ausnahme. Die redaktionellen Fachtests/-verbote werden nicht umgeschrieben; einmalige Bestands-/Diff-QA ist kein dauerhaftes Content-Test-Oracle. Diese Aussage beschreibt den aktuellen Ausführungsstand bis zur Umsetzung von #226/#227; danach gilt die dort implementierte und gemäß ADR 0011 getestete Risikoklassifikation.
 
 ## Abnahme, Branches und Betriebswirkung
 
