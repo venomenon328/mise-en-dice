@@ -11,13 +11,13 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands;
+import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer;
+import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer.TemporaryDatabase;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import javax.sql.DataSource;
 import liquibase.Contexts;
 import liquibase.LabelExpression;
@@ -25,6 +25,7 @@ import liquibase.Liquibase;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -33,26 +34,29 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /** Technical migration contracts only: no review file or ingredient-specific editorial oracle. */
 @SpringBootTest(classes = {MiseEnDiceApplication.class,
         CurationOrchestrationIntegrationTest.OrchestrationTestConfiguration.class},
         properties = "spring.liquibase.change-log=classpath:db/changelog/db.changelog-before-availability-novelty.yaml")
-@Testcontainers
 class AvailabilityNoveltyMigrationIntegrationTest {
     private static final String BEFORE = "db/changelog/db.changelog-before-availability-novelty.yaml";
     private static final String MASTER = "db/changelog/db.changelog-before-remove-generator-replay.yaml";
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6");
+    private static final TemporaryDatabase DATABASE =
+            PostgreSqlTestServer.createTemporaryDatabase("availability_novelty_migration");
 
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.url", DATABASE::jdbcUrl);
+        registry.add("spring.datasource.username", PostgreSqlTestServer::username);
+        registry.add("spring.datasource.password", PostgreSqlTestServer::password);
+        registry.add("spring.datasource.hikari.minimum-idle", () -> 0);
+        registry.add("spring.datasource.hikari.maximum-pool-size", () -> 4);
+    }
+
+    @AfterAll
+    static void dropsTemporaryDatabase() {
+        DATABASE.close();
     }
 
     @Autowired DataSource dataSource;
@@ -120,7 +124,7 @@ class AvailabilityNoveltyMigrationIntegrationTest {
 
     @Test
     void buildsAnEmptyPostgresDatabaseWithCompletePrivateMetadataAndNullableNotes() throws Exception {
-        try (Connection connection = newDatabase()) {
+        try (var database = newDatabase(); Connection connection = database.openConnection()) {
             migrate(connection, MASTER);
             connection.setAutoCommit(true);
             var fresh = new JdbcTemplate(new org.springframework.jdbc.datasource.SingleConnectionDataSource(connection, true));
@@ -152,7 +156,7 @@ class AvailabilityNoveltyMigrationIntegrationTest {
             "update ingredient_availability set curator_note = 'Unreviewed note.' where ingredient_concept_id = (select min(ingredient_concept_id) from ingredient_availability)"
     })
     void rejectsUnknownDeltasBeforeAnyEditorialWrite(String mutation) throws Exception {
-        try (Connection connection = newDatabase()) {
+        try (var temporaryDatabase = newDatabase(); Connection connection = temporaryDatabase.openConnection()) {
             migrate(connection, BEFORE);
             migrate(connection, "db/changelog/schema/019-availability-curator-note.sql");
             var database = new JdbcTemplate(new org.springframework.jdbc.datasource.SingleConnectionDataSource(connection, true));
@@ -223,11 +227,8 @@ class AvailabilityNoveltyMigrationIntegrationTest {
                 """);
     }
 
-    private Connection newDatabase() throws Exception {
-        String name = "issue189_" + UUID.randomUUID().toString().replace("-", "");
-        jdbc.execute("create database " + name);
-        String url = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + name);
-        return DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword());
+    private static TemporaryDatabase newDatabase() {
+        return PostgreSqlTestServer.createTemporaryDatabase("issue189");
     }
 
     private static void migrate(Connection connection, String changelog) throws Exception {

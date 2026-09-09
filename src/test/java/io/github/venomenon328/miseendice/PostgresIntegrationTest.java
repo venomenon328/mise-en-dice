@@ -1,10 +1,12 @@
 package io.github.venomenon328.miseendice;
 
+import io.github.venomenon328.miseendice.testsupport.CurrentSchemaPostgresIntegrationTest;
+import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.OffsetDateTime;
@@ -19,34 +21,16 @@ import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.UncategorizedSQLException;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest
-@Testcontainers
-class PostgresIntegrationTest {
-
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice")
-            .withUsername("mise_en_dice")
-            .withPassword("mise_en_dice");
-
-    @DynamicPropertySource
-    static void databaseProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-    }
+class PostgresIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -56,6 +40,11 @@ class PostgresIntegrationTest {
 
     @Autowired
     private JdbcCatalogAggregateVersionRepository aggregateVersionRepository;
+
+    @AfterEach
+    void removesOperationalFixtures() {
+        jdbcTemplate.execute("truncate table challenge_session restart identity cascade");
+    }
 
     @Test
     void applicationContextStartsWithTheCompleteLiquibaseBaseline() {
@@ -178,13 +167,8 @@ class PostgresIntegrationTest {
 
     @Test
     void upgradeFromThePreviousLiquibaseBaselineAppliesAdministrationFoundation() throws Exception {
-        String upgradeDatabase = "administration_upgrade_" + UUID.randomUUID().toString().replace("-", "");
-        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-            statement.execute("create database " + upgradeDatabase);
-        }
-
-        String upgradeUrl = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + upgradeDatabase);
-        try (Connection connection = DriverManager.getConnection(upgradeUrl, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("administration_upgrade");
+                Connection connection = database.openConnection()) {
             runLiquibase(connection, "db/changelog/db.changelog-before-administration.yaml");
             // Assert initialization at migration 003, before later editorial version advances and audits.
             runLiquibase(connection, "db/changelog/db.changelog-through-administration.yaml");
@@ -201,13 +185,8 @@ class PostgresIntegrationTest {
 
     @Test
     void upgradesTheImmediatelyPreviousMainAndRestartsAfterCatalogAuditCleanup() throws Exception {
-        String upgradeDatabase = "catalog_audit_cleanup_" + UUID.randomUUID().toString().replace("-", "");
-        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-            statement.execute("create database " + upgradeDatabase);
-        }
-
-        String upgradeUrl = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + upgradeDatabase);
-        try (Connection connection = DriverManager.getConnection(upgradeUrl, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("catalog_audit_cleanup");
+                Connection connection = database.openConnection()) {
             runLiquibase(connection, "db/changelog/db.changelog-before-catalog-audit-cleanup.yaml");
 
             assertThat(tableExists(connection, "catalog_audit_entry")).isTrue();

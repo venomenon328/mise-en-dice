@@ -11,8 +11,9 @@ import io.github.venomenon328.miseendice.challenge.api.GenerationCommands;
 import io.github.venomenon328.miseendice.challenge.api.GenerationQueries;
 import io.github.venomenon328.miseendice.challenge.api.GeneratorModel.RestrictionMode;
 import io.github.venomenon328.miseendice.challenge.api.OfferDecisionCommands;
+import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer;
+import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer.TemporaryDatabase;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,6 +26,7 @@ import liquibase.Liquibase;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,27 +35,30 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest(classes = {MiseEnDiceApplication.class,
         CurationOrchestrationIntegrationTest.OrchestrationTestConfiguration.class},
         properties = "spring.liquibase.change-log=classpath:db/changelog/db.changelog-before-remove-generator-replay.yaml")
-@Testcontainers
 class RemoveGeneratorReplayMigrationIntegrationTest {
     private static final String UPGRADE = "db/changelog/db.changelog-through-remove-generator-replay.yaml";
     private static final String MASTER = "db/changelog/db.changelog-master.yaml";
     private static final LocalDate DATE = LocalDate.of(2026, 9, 8);
 
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6");
+    private static final TemporaryDatabase DATABASE =
+            PostgreSqlTestServer.createTemporaryDatabase("remove_generator_replay");
 
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.url", DATABASE::jdbcUrl);
+        registry.add("spring.datasource.username", PostgreSqlTestServer::username);
+        registry.add("spring.datasource.password", PostgreSqlTestServer::password);
+        registry.add("spring.datasource.hikari.minimum-idle", () -> 0);
+        registry.add("spring.datasource.hikari.maximum-pool-size", () -> 4);
+    }
+
+    @AfterAll
+    static void dropsTemporaryDatabase() {
+        DATABASE.close();
     }
 
     @Autowired DataSource dataSource;
@@ -152,10 +157,8 @@ class RemoveGeneratorReplayMigrationIntegrationTest {
 
     @Test
     void buildsAnEmptyPostgresDatabaseAndDoesNotRepeatTheMigration() throws Exception {
-        String name = "issue206_" + UUID.randomUUID().toString().replace("-", "");
-        jdbc.execute("create database " + name);
-        String url = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + name);
-        try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("issue206");
+                Connection connection = database.openConnection()) {
             migrate(connection);
             var fresh = new JdbcTemplate(new SingleConnectionDataSource(connection, true));
             assertResultSchema(fresh);

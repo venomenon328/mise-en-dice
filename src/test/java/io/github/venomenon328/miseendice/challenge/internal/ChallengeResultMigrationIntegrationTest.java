@@ -2,12 +2,11 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.OffsetDateTime;
-import java.util.UUID;
 import liquibase.Contexts;
 import liquibase.LabelExpression;
 import liquibase.Liquibase;
@@ -15,28 +14,14 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /** Proves that the append-only result migration upgrades a real PostgreSQL 014 database without changing Challenge numbers. */
-@Testcontainers
 class ChallengeResultMigrationIntegrationTest {
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice_result_migration")
-            .withUsername("mise_en_dice")
-            .withPassword("mise_en_dice");
 
     @Test
     void upgradesCompletedChallengesWithEmptyNewResultTablesAndIsRestartSafe() throws Exception {
-        String databaseName = "challenge_results_upgrade_" + UUID.randomUUID().toString().replace("-", "");
-        try (Connection connection = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(),
-                POSTGRES.getPassword()); Statement statement = connection.createStatement()) {
-            statement.execute("create database " + databaseName);
-        }
-        String url = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + databaseName);
-        try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("challenge_results_upgrade");
+                Connection connection = database.openConnection()) {
             runLiquibase(connection, "db/changelog/db.changelog-before-challenge-results.yaml");
             assertThat(count(connection, "databasechangelog")).isEqualTo(34);
             OffsetDateTime shownAt = OffsetDateTime.parse("2026-08-20T13:45:00Z");

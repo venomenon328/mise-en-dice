@@ -1,5 +1,7 @@
 package io.github.venomenon328.miseendice.catalog.internal;
 
+import io.github.venomenon328.miseendice.testsupport.CurrentSchemaPostgresIntegrationTest;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogGeneratorProjection;
@@ -17,31 +19,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest
-@Testcontainers
-class CatalogGeneratorProjectionIntegrationTest {
+class CatalogGeneratorProjectionIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
     private static final String TEST_PREFIX = "TEST_GENERATOR_PROJECTION_";
     private static final String PRODUCTION_CONFIGURATION_FINGERPRINT =
             "c681b49f50f02299aa25cb50e209e524490cb79ecf05f0ba31f2c72e498ba288";
-
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice")
-            .withUsername("mise_en_dice")
-            .withPassword("mise_en_dice");
-
-    @DynamicPropertySource
-    static void databaseProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     @Autowired
     private CatalogGeneratorProjection projection;

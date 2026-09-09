@@ -2,11 +2,10 @@ package io.github.venomenon328.miseendice.challenge.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.UUID;
 import liquibase.Contexts;
 import liquibase.LabelExpression;
 import liquibase.Liquibase;
@@ -15,28 +14,13 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@Testcontainers
 class GeneratorCompatibilityCleanupMigrationIntegrationTest {
-
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice_generator_cleanup_migration")
-            .withUsername("mise_en_dice")
-            .withPassword("mise_en_dice");
 
     @Test
     void removesObsoleteColumnsForwardOnlyWithoutTouchingCatalogData() throws Exception {
-        String databaseName = "generator_cleanup_" + UUID.randomUUID().toString().replace("-", "");
-        try (Connection connection = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(),
-                POSTGRES.getPassword()); Statement statement = connection.createStatement()) {
-            statement.execute("create database " + databaseName);
-        }
-        String upgradeUrl = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + databaseName);
-        try (Connection connection = DriverManager.getConnection(upgradeUrl, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("generator_cleanup");
+                Connection connection = database.openConnection()) {
             runLiquibase(connection, "db/changelog/db.changelog-before-generator-compatibility-cleanup.yaml");
             assertThat(columnExists(connection, "generation_attempt", "exclusion_rule_id")).isTrue();
             assertThat(columnExists(connection, "challenge_candidate", "exclusion_rule_id")).isTrue();

@@ -1,5 +1,7 @@
 package io.github.venomenon328.miseendice.challenge.internal;
 
+import io.github.venomenon328.miseendice.testsupport.CurrentSchemaPostgresIntegrationTest;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.venomenon328.miseendice.MiseEnDiceApplication;
@@ -59,11 +61,6 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -72,8 +69,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @EnabledIfSystemProperty(named = "issue190.report", matches = "true")
 @SpringBootTest(classes = MiseEnDiceApplication.class)
-@Testcontainers
-class AvailabilityNoveltyCalibrationReportIntegrationTest {
+class AvailabilityNoveltyCalibrationReportIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
     private static final String BASE_COMMIT = "8b44d103e51505a941396f0d8035039cbb9aa565";
     private static final String REPORT_VERSION = "ISSUE_203_APPLIED_CALIBRATION_RELEASE_QA_V1";
     private static final String SCENARIO_VERSION = "ISSUE_202_CALIBRATION_MATRIX_V1";
@@ -95,18 +91,6 @@ class AvailabilityNoveltyCalibrationReportIntegrationTest {
             "challenge_session", "generation_attempt", "generation_batch", "challenge_candidate",
             "candidate_requirement", "curation_round", "curated_offer_set", "challenge",
             "reroll_offer_exposure");
-
-    @Container
-    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice_issue_202_calibration")
-            .withUsername("mise_en_dice").withPassword("mise_en_dice");
-
-    @DynamicPropertySource
-    static void databaseProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     @Autowired CatalogGeneratorProjection catalogProjection;
     @Autowired JdbcParticipantElectorateRepository participantElectorateRepository;

@@ -1,5 +1,10 @@
 package io.github.venomenon328.miseendice.administration.internal;
 
+import io.github.venomenon328.miseendice.testsupport.CurrentSchemaPostgresIntegrationTest;
+
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
@@ -28,20 +33,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /** Covers protected HTMX and write entry points for the Phase-8 administration areas. */
 @SpringBootTest
-@Testcontainers
-class CatalogExclusionsBulkMvcTest {
+class CatalogExclusionsBulkMvcTest extends CurrentSchemaPostgresIntegrationTest {
 
     private static final String ACTOR = "issue30-mvc-admin";
     private static final String PASSWORD = UUID.randomUUID().toString();
@@ -50,17 +49,8 @@ class CatalogExclusionsBulkMvcTest {
     private static final String TARGET_CODE = "TEST_ISSUE30_MVC_TARGET";
     private static final Pattern CONFIRMATION_ID = Pattern.compile("name=\"confirmationId\" value=\"([^\"]+)\"");
 
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice")
-            .withUsername("mise_en_dice")
-            .withPassword("mise_en_dice");
-
     @DynamicPropertySource
     static void applicationProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("mise-en-dice.administration.enabled", () -> true);
         registry.add("mise-en-dice.administration.accounts[0].actor-key", () -> ACTOR);
         registry.add("mise-en-dice.administration.accounts[0].display-name", () -> "Issue Thirty MVC Admin");

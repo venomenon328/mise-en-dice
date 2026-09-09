@@ -1,5 +1,7 @@
 package io.github.venomenon328.miseendice.catalog.internal;
 
+import io.github.venomenon328.miseendice.testsupport.CurrentSchemaPostgresIntegrationTest;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.venomenon328.miseendice.catalog.api.IngredientLookupQueries;
@@ -10,30 +12,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /** Verifies the Discord lookup projection against PostgreSQL, including its literal search semantics. */
 @SpringBootTest
-@Testcontainers
-class IngredientLookupQueriesIntegrationTest {
+class IngredientLookupQueriesIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
     private static final String PREFIX = "TEST_INGREDIENT_LOOKUP_";
-
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice")
-            .withUsername("mise_en_dice")
-            .withPassword("mise_en_dice");
-
-    @DynamicPropertySource
-    static void databaseProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     @Autowired
     private IngredientLookupQueries queries;

@@ -1,5 +1,7 @@
 package io.github.venomenon328.miseendice.challenge.internal;
 
+import io.github.venomenon328.miseendice.testsupport.CurrentSchemaPostgresIntegrationTest;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.venomenon328.miseendice.MiseEnDiceApplication;
@@ -15,6 +17,7 @@ import io.github.venomenon328.miseendice.challenge.api.SeedSource;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,32 +26,18 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest(classes = { MiseEnDiceApplication.class, GeneratorLaboratoryIntegrationTest.SeedConfiguration.class })
-@Testcontainers
-class GeneratorLaboratoryIntegrationTest {
+class GeneratorLaboratoryIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
     private static final LocalDate DATE = LocalDate.of(2026, 8, 13);
-
-    @Container static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice_generator_laboratory")
-            .withUsername("mise_en_dice").withPassword("mise_en_dice");
-
-    @DynamicPropertySource static void databaseProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-    }
 
     @Autowired GeneratorLaboratory laboratory;
     @Autowired JdbcTemplate jdbcTemplate;
     @Autowired FixedSeedSource fixedSeedSource;
 
-    @BeforeEach void reset() {
+    @BeforeEach
+    @AfterEach
+    void reset() {
         fixedSeedSource.reset();
         jdbcTemplate.update("delete from challenge");
         jdbcTemplate.update("delete from generation_batch");

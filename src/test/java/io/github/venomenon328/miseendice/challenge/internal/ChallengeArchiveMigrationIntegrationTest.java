@@ -3,8 +3,8 @@ package io.github.venomenon328.miseendice.challenge.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Savepoint;
@@ -12,7 +12,6 @@ import java.sql.Statement;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import liquibase.Contexts;
 import liquibase.LabelExpression;
 import liquibase.Liquibase;
@@ -21,29 +20,14 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /** Verifies the forward-only upgrade of confirmed pre-archive challenges with real PostgreSQL. */
-@Testcontainers
 class ChallengeArchiveMigrationIntegrationTest {
-
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice_challenge_archive_migration")
-            .withUsername("mise_en_dice")
-            .withPassword("mise_en_dice");
 
     @Test
     void backfillsExistingChallengesByShownAtThenIdAndInitializesTheTransactionalCounter() throws Exception {
-        String databaseName = "challenge_archive_upgrade_" + UUID.randomUUID().toString().replace("-", "");
-        try (Connection connection = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(),
-                POSTGRES.getPassword()); Statement statement = connection.createStatement()) {
-            statement.execute("create database " + databaseName);
-        }
-        String upgradeUrl = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + databaseName);
-        try (Connection connection = DriverManager.getConnection(upgradeUrl, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("challenge_archive_upgrade");
+                Connection connection = database.openConnection()) {
             runLiquibase(connection, "db/changelog/db.changelog-before-challenge-archive.yaml");
             long later = insertPreArchiveChallenge(connection, OffsetDateTime.parse("2026-08-21T11:30:00+02:00"));
             long sameTime = insertPreArchiveChallenge(connection, OffsetDateTime.parse("2026-08-21T11:30:00+02:00"));
