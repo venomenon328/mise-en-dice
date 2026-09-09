@@ -1,105 +1,27 @@
-# Arbeitsregeln für Coding Agents
+# Agenteneinstieg für Mise en Dice
 
-Diese Regeln gelten für das gesamte Repository.
+## Pflichtquellen
 
-## 1. Verbindliche Quellen
+Vor auftragsbezogener Entwicklungsarbeit vollständig lesen:
 
-Vor Änderungen sind mindestens zu lesen:
+1. [Gemeinsamen Workflow](docs/dev-rules/WORKFLOW.md).
+2. [Projektprofil](docs/PROJECT_PROFILE.md) und dessen situationsabhängige Pflichtquellen.
+3. Aktuellen vollständigen Issue-/Paket-Body, sofern vorhanden; bei Review/Nacharbeit zusätzlich PR, tatsächlichen Diff und konkret benannten Reviewstand.
 
-- das maßgebliche GitHub-Issue,
-- [`docs/VISION.md`](docs/VISION.md),
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
-- [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md),
-- die für das Paket relevanten ADRs unter [`docs/adr`](docs/adr),
-- gegebenenfalls der aktuelle PR-Review und dort referenzierte Dokumente.
+Den beauftragten Arbeitsbranch heranziehen, sonst den aktuellen `main`. Geltende Bereichs-/Override-Regeln prüfen. Bei neuen Ideen kein vorhandenes Issue voraussetzen. Pflichtquellen tatsächlich abrufen; Erinnerung ersetzt keinen aktuellen Quellstand.
 
-Das aktuelle Issue und konkrete Review-Anforderungen bestimmen den Lieferumfang. Architektur- oder Fachentscheidungen dürfen nicht stillschweigend umgedeutet werden. Bei einem echten Widerspruch ist dieser sichtbar zu machen, statt eine beliebige Variante zu implementieren.
+Nur vor noch auszuführender Implementierung beziehungsweise konkreten technischen Nacharbeiten zusätzlich [Modellauswahl](docs/dev-rules/MODEL_SELECTION.md) und [Modellkatalog](docs/dev-rules/MODEL_CATALOG.md) vollständig lesen. Keine rückblickenden Empfehlungen nach erledigter Arbeit.
 
-Bei kulinarischen Länderreviews nach #172 ist vor der Analyse zusätzlich
-[`docs/CULINARY_CATALOG_WORKFLOW.md`](docs/CULINARY_CATALOG_WORKFLOW.md) mit seinen Pflichtquellen zu lesen.
-Jede Konzeptneuaufnahme oder wesentliche Produktformänderung folgt außerdem
-[`docs/INGREDIENT_CONCEPT_CURATION.md`](docs/INGREDIENT_CONCEPT_CURATION.md) und
-[`docs/AVAILABILITY_AND_COOKING_NOVELTY.md`](docs/AVAILABILITY_AND_COOKING_NOVELTY.md).
-Historische Baseline-Beispiele ersetzen die aktuellen Bewertungs- und Notizregeln nicht.
+## Kulinarische Facharbeit
 
-## 2. Umfang und Branch
+Länderanalysen nach #172 beginnen weiterhin mit dem aktuellen vollständigen Issue und [CULINARY_CATALOG_WORKFLOW.md](docs/CULINARY_CATALOG_WORKFLOW.md) samt Pflichtquellen. Jede Konzeptneuaufnahme oder wesentliche Produktformänderung folgt [INGREDIENT_CONCEPT_CURATION.md](docs/INGREDIENT_CONCEPT_CURATION.md) und [AVAILABILITY_AND_COOKING_NOVELTY.md](docs/AVAILABILITY_AND_COOKING_NOVELTY.md). Fachliche Recherche-, Einzelwert-, Notiz- und Freigabeverträge bleiben erhalten. Eine allgemeine Implementierungsfreigabe ersetzt keine dort erforderliche menschliche Fachentscheidung.
 
-- Arbeite ausschließlich auf dem im Auftrag genannten Branch.
-- Ziehe keine Funktionen späterer Entwicklungspakete vor.
-- Vermische keine unabhängigen Aufräumarbeiten mit dem Paket.
-- Halte den PR bis zur vollständigen Abnahme im Draft.
-- Commits sollen inhaltlich nachvollziehbar und nicht bloß zeitlich portioniert sein.
+## Unmittelbar wichtige Schutzgrenzen
 
-## 3. Architekturgrenzen
+PostgreSQL, Liquibase und explizites JDBC/SQL bleiben die technische Grundlage. Veröffentlichte Changesets sind append-only; keine Ersatztests gegen H2 und kein ungefragter ORM-/Datenbankwechsel. Modulgrenzen sowie Versions-, Integritäts- und Auditverträge aus den Fach-/Architekturquellen beachten.
 
-- Mise en Dice bleibt zunächst ein modularer Monolith in einem Repository.
-- Web und Discord sind Adapter und enthalten keine eigene Fach- oder Persistenzlogik.
-- Module verwenden ausschließlich die öffentlichen APIs anderer Module.
-- Kein direkter Datenbankzugriff aus Webcontrollern, Templates, JDA-Listenern oder API-Clients.
-- Keine HTTP-, Discord- oder OpenAI-Transportobjekte im Domain- und Application-Code.
-- Externe Netzwerkaufrufe erfolgen nicht innerhalb offener Datenbanktransaktionen.
-- Gemeinsame Logik wird nicht zwischen Adaptern kopiert.
+Entwicklung und automatisierte Tests dürfen keine echten Discord- oder OpenAI-Verbindungen verwenden. Echter OpenAI-Zugriff bleibt ausschließlich im explizit aktivierten Produktivbetrieb zulässig; [ADR 0008](docs/adr/0008-production-only-openai-access.md) ist verbindlich. Vorhandene Schlüssel schaffen keine Ausnahme. Keine produktiven Datenzugriffe, Deployments oder Benachrichtigungen aus einer bloßen Entwicklungsfreigabe ableiten.
 
-## 4. Datenbank und Migrationen
+## Code Review Rules
 
-- PostgreSQL ist die einzige unterstützte Laufzeitdatenbank.
-- Liquibase ist die einzige Autorität für Schema, strukturelle Datenmigrationen, Referenzdaten und die einmalige Baseline.
-- Bereits veröffentlichte Changesets sind append-only.
-- Verwende explizite Includes; kein `includeAll`.
-- Verwende kein `runAlways` für den Zutatenkatalog.
-- Erhalte PostgreSQL-spezifische Funktionen, Trigger, Constraints, partielle Indizes und `jsonb`-Semantik.
-- Maskiere unbekannte technische Fehler nicht als fachliche Konflikte.
-- JPA beziehungsweise Hibernate und H2 dürfen nicht ohne neue, begründete Architekturentscheidung eingeführt werden.
-
-## 5. Persistenzcode
-
-- Verwende Spring JDBC und explizites SQL.
-- Repositories liefern anwendungsfallbezogene Domain-Objekte oder unveränderliche Projektionen.
-- Transaktionsgrenzen liegen in Application Services.
-- Verlasse dich bei Konkurrenz und Integrität nicht allein auf Vorabprüfungen; die Datenbank bleibt die letzte Sicherung.
-
-## 6. Tests
-
-- Reine Fachlogik erhält schnelle Unit-Tests ohne Spring-Kontext.
-- Persistenz-, Migrations-, Trigger- und Transaktionstests verwenden echte PostgreSQL-Container über Testcontainers.
-- Keine Ersatztests gegen H2.
-- Entwicklungsumgebungen und automatisierte Tests dürfen niemals echte Requests an die OpenAI API senden. Echter OpenAI-Zugriff ist ausschließlich im explizit aktivierten Produktivbetrieb zulässig; verbindlich ist [`ADR 0008`](docs/adr/0008-production-only-openai-access.md).
-- Kurator- und OpenAI-Adaptertests verwenden deterministische Fakes, Fixtures beziehungsweise lokale HTTP-Stubs. CI und normale Entwicklungsprofile benötigen keinen `OPENAI_API_KEY`; ein zufällig vorhandener Key darf keinen Live-Zugriff aktivieren.
-- Führe nach Vorhandensein des Maven Wrappers mindestens `./mvnw verify` aus.
-- Für rein redaktionelle Länder-/Katalogbatches nach #172 gilt dessen bereits festgelegte
-  [Batch-Verify- und technische Teststrategie](docs/CULINARY_CATALOG_WORKFLOW.md#verbindliche-teststrategie-keine-fachlichkeit-im-automatisierten-testbestand):
-  keine produktiven Content-Assertions und kein Vollsuite-Pflichtlauf pro Land;
-  vollständiges `./mvnw clean verify` bei Merge-Vorbereitung oder konkretem technischem Anlass.
-  Technische Anwendungsänderungen erhalten dadurch keine pauschale Ausnahme.
-- Eng begrenzte Ausnahme: Für eine von
-  `design/challenge-cards/tools/classify_challenge_card_changes.py` eindeutig
-  als `challenge-card-assets-only` klassifizierte Änderung sind der vollständige
-  Maven- und Deployment-Verify-Lauf nicht anwendbar; stattdessen ist der
-  Assetkatalogvalidator verbindlich. Das gilt ausschließlich für
-  `ASSET_INDEX.csv` allein oder zusammen mit hinzugefügten oder geänderten
-  Produktions-PNGs. Jede andere Datei, jede Löschung oder Umbenennung und jede
-  unklare Diff-Situation bleibt beim vollständigen Prüfpfad.
-- Prüfe bei Änderungen an Compose zusätzlich `docker compose config`.
-- Änderungen an Migrationen müssen den vollständigen Aufbau einer leeren Datenbank testen.
-- Fehlerhafte Tests werden behoben und nicht deaktiviert oder durch schwächere Behauptungen ersetzt.
-
-## 7. Dokumentation
-
-Dokumentation, Konfiguration und Implementierung müssen im selben Paket konsistent bleiben. Werden Pfade, Startbefehle, Tabellen oder Architekturgrenzen geändert, sind die betroffenen Dokumente anzupassen.
-
-Neue grundlegende Architekturentscheidungen erhalten ein ADR. Gewöhnliche Implementierungsdetails benötigen kein feierliches Dokument mit Staatsaktcharakter.
-
-## 8. Abschluss eines Pakets
-
-Vor dem Push:
-
-- vollständigen Diff auf unbeabsichtigte Änderungen prüfen,
-- alle verpflichtenden Tests ausführen,
-- bekannte Einschränkungen ehrlich dokumentieren,
-- sicherstellen, dass der Lieferumfang des Issues vollständig erfüllt ist.
-
-Die Abschlussmeldung soll kompakt nennen:
-
-- was umgesetzt wurde,
-- welche Tests ausgeführt wurden,
-- welche Risiken oder offenen Punkte verbleiben.
+Insbesondere Scope, Fachfreigaben, Migrationen, Konkurrenz-/Auditsemantik, Adaptergrenzen und echte PostgreSQL-Nachweise prüfen. Redaktionelle QA nicht durch produktive Content-Snapshots als dauerhaftes Test-Oracle ersetzen. Asset-/Katalogausnahmen nur im engen Geltungsbereich des [Projektprofils](docs/PROJECT_PROFILE.md). Allgemeine Prozessregeln nicht erneut definieren; [Herkunft und Regelabgleich](docs/DEV_RULES_ADOPTION.md) erläutern die Ablösung alter Vorgaben.
