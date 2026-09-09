@@ -330,6 +330,66 @@ class CatalogCommandServiceIntegrationTest {
     }
 
     @Test
+    void rollsBackAConceptAndEarlierMetadataWritesWhenALaterAvailabilityWriteFails() {
+        String code = PREFIX + "CREATE_LATE_FAILURE";
+        String sentinel = "TEST_ISSUE11_CREATE_LATE_FAILURE";
+        CatalogMetadata metadata = new CatalogMetadata(
+                Set.of("VEGETABLE"), Set.of(), Map.of(),
+                Map.of("GEORGIA", CatalogQueries.CatalogAvailability.EASY), Map.of(), Set.of(),
+                Map.of("GEORGIA", sentinel));
+        jdbcTemplate.execute("""
+                alter table ingredient_availability
+                add constraint ck_issue11_create_late_failure
+                check (curator_note is distinct from 'TEST_ISSUE11_CREATE_LATE_FAILURE')
+                """);
+        try {
+            assertThatThrownBy(() -> catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                    code, "Issue eleven late create failure", true, false, "SPECIFIC", BigDecimal.ONE,
+                    null, "Technische Testnotiz.", metadata, false)))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        } finally {
+            jdbcTemplate.execute("alter table ingredient_availability drop constraint ck_issue11_create_late_failure");
+        }
+
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from ingredient_concept where code = ?", Integer.class, code)).isZero();
+    }
+
+    @Test
+    void rollsBackMetadataAndBaseFieldsWhenTheFinalVersionedConceptUpdateFails() {
+        long concept = insertConcept("UPDATE_LATE_FAILURE", "Issue eleven update before", "SPECIFIC", true, false, 1);
+        CatalogMetadata originalMetadata = new CatalogMetadata(
+                Set.of("VEGETABLE"), Set.of("FERMENTED"), Map.of("HEAT", 2),
+                Map.of("GEORGIA", CatalogQueries.CatalogAvailability.EASY), Map.of(), Set.of(),
+                Map.of("GEORGIA", "Original technical note."));
+        CatalogQueries.CatalogConceptDetail initial = catalogQueries.findConcept(concept).orElseThrow();
+        catalogCommands.updateIngredientConcept(metadataCommand(initial, false, BigDecimal.ONE, originalMetadata, false));
+        CatalogQueries.CatalogConceptDetail before = catalogQueries.findConcept(concept).orElseThrow();
+        CatalogMetadata replacementMetadata = new CatalogMetadata(
+                Set.of("FRUIT"), Set.of("PICKLED"), Map.of("SWEETNESS", 4),
+                Map.of("TOBIAS", CatalogQueries.CatalogAvailability.SPECIALTY), Map.of(1, new BigDecimal("1.3")), Set.of(),
+                Map.of("TOBIAS", "Replacement technical note."));
+        jdbcTemplate.execute("""
+                alter table ingredient_concept
+                add constraint ck_issue11_update_late_failure
+                check (curator_note is distinct from 'TEST_ISSUE11_UPDATE_LATE_FAILURE')
+                """);
+        try {
+            assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
+                    concept, before.version(), "Issue eleven update after", false, false, "OPEN", new BigDecimal("0.7500"),
+                    4, "TEST_ISSUE11_UPDATE_LATE_FAILURE", false, List.of(), Map.of(), false, replacementMetadata)))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        } finally {
+            jdbcTemplate.execute("alter table ingredient_concept drop constraint ck_issue11_update_late_failure");
+        }
+
+        assertThat(catalogQueries.findConcept(concept).orElseThrow()).isEqualTo(before);
+        assertThat(roleCodes(concept)).containsExactly("VEGETABLE");
+        assertThat(flagCodes(concept)).containsExactly("FERMENTED");
+        assertThat(availability(concept, "GEORGIA")).isEqualTo("EASY");
+    }
+
+    @Test
     void availabilityNotesRoundTripAndPreserveOmittedNotes() {
         long concept = insertConcept("NOTES", "Technical note roundtrip", "SPECIFIC", true, false, 1);
         var levels = Map.of("GEORGIA", CatalogQueries.CatalogAvailability.SPECIALTY,

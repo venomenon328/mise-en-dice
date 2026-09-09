@@ -154,6 +154,33 @@ class CatalogBulkCommandServiceIntegrationTest {
     }
 
     @Test
+    void rollsBackEarlierBulkWritesWhenTheSecondConceptRejectsTheSharedChange() {
+        long first = insertConcept("LATE_FAILURE_FIRST", true, false);
+        long second = insertConcept("LATE_FAILURE_SECOND", true, false);
+        assertThat(first).isLessThan(second);
+        jdbcTemplate.execute("""
+                alter table ingredient_concept
+                add constraint ck_issue30_bulk_late_failure
+                check (id <> %d or active)
+                """.formatted(second));
+        try {
+            BulkOperation operation = new BulkOperation(
+                    List.of(new BulkSelection(first, 0), new BulkSelection(second, 0)),
+                    BulkAction.DEACTIVATE, null, null, true);
+
+            assertThatThrownBy(() -> bulkCommands.execute(operation))
+                    .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        } finally {
+            jdbcTemplate.execute("alter table ingredient_concept drop constraint ck_issue30_bulk_late_failure");
+        }
+
+        assertThat(active(first)).isTrue();
+        assertThat(active(second)).isTrue();
+        assertThat(version(first)).isZero();
+        assertThat(version(second)).isZero();
+    }
+
+    @Test
     void validatesActivationWithoutCouplingDifficultAvailabilityToWeight() {
         long invalidActivation = insertConcept("ACTIVATE_INVALID", false, true);
         assertThatThrownBy(() -> bulkCommands.execute(operation(invalidActivation, BulkAction.ACTIVATE, null, null)))

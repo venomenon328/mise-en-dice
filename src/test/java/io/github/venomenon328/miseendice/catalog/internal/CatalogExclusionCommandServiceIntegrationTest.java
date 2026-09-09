@@ -154,6 +154,40 @@ class CatalogExclusionCommandServiceIntegrationTest {
         }
     }
 
+    @Test
+    void rollsBackRuleFieldsVersionAndTargetReplacementWhenTheNewTargetInsertFails() {
+        long firstTarget = insertTarget("LATE_FAILURE_FIRST", true);
+        long secondTarget = insertTarget("LATE_FAILURE_SECOND", true);
+        var rule = exclusionCommands.createExclusionRule(new CreateExclusionRuleCommand(
+                PREFIX + "LATE_FAILURE", "Issue thirty before failure", true, BigDecimal.ONE, "before note",
+                List.of(new ExclusionTarget(firstTarget, false))));
+        jdbcTemplate.execute("""
+                alter table exclusion_rule_target
+                add constraint ck_issue30_exclusion_late_failure
+                check (ingredient_concept_id <> %d)
+                """.formatted(secondTarget));
+        try {
+            assertThatThrownBy(() -> exclusionCommands.updateExclusionRule(new UpdateExclusionRuleCommand(
+                    rule.exclusionRuleId(), 0, "Issue thirty after failure", false, new BigDecimal("0.7500"), "after note",
+                    List.of(new ExclusionTarget(secondTarget, true)))))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        } finally {
+            jdbcTemplate.execute("alter table exclusion_rule_target drop constraint ck_issue30_exclusion_late_failure");
+        }
+
+        var after = exclusionQueries.findExclusionRule(rule.exclusionRuleId()).orElseThrow();
+        assertThat(after).extracting(
+                CatalogExclusionQueries.CatalogExclusionRuleDetail::displayText,
+                CatalogExclusionQueries.CatalogExclusionRuleDetail::active,
+                CatalogExclusionQueries.CatalogExclusionRuleDetail::baseDrawWeight,
+                CatalogExclusionQueries.CatalogExclusionRuleDetail::curatorNote,
+                CatalogExclusionQueries.CatalogExclusionRuleDetail::version)
+                .containsExactly("Issue thirty before failure", true, new BigDecimal("1.0000"), "before note", 0L);
+        assertThat(after.targets()).extracting(CatalogExclusionQueries.CatalogExclusionTarget::ingredientConceptId,
+                CatalogExclusionQueries.CatalogExclusionTarget::includeRefinements)
+                .containsExactly(tuple(firstTarget, false));
+    }
+
     private long insertTarget(String suffix, boolean active) {
         return jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (code, display_name, active, random_draw_enabled,
