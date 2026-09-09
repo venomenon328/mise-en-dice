@@ -119,10 +119,12 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
                 SELECT id, 'DE' FROM ingredient_concept WHERE code = 'TEST_NOTE_SHARED';
                 INSERT INTO ingredient_seasonality (ingredient_concept_id, month, weight_multiplier)
                 SELECT id, 7, 1.2500 FROM ingredient_concept WHERE code = 'TEST_NOTE_SHARED';
+                INSERT INTO exclusion_rule (code, display_text, active, base_draw_weight, curator_note)
+                VALUES ('TEST_NOTE_RULE', 'Synthetic exclusion rule.', true, 1.0000, 'Technical test fixture.');
                 INSERT INTO exclusion_rule_target (exclusion_rule_id, ingredient_concept_id, include_refinements)
                 SELECT rule.id, concept.id, false
                 FROM exclusion_rule rule CROSS JOIN ingredient_concept concept
-                WHERE rule.code = 'NO_COCONUT_MILK' AND concept.code = 'TEST_NOTE_SHARED';
+                WHERE rule.code = 'TEST_NOTE_RULE' AND concept.code = 'TEST_NOTE_SHARED';
                 """);
         try (var input = getClass().getClassLoader().getResourceAsStream(MIGRATION)) {
             assertThat(input).isNotNull();
@@ -171,7 +173,7 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
                 .filter(value -> value.month() == 6)
                 .map(value -> value.weightMultiplier())
                 .findFirst()).contains(java.math.BigDecimal.ONE);
-        assertThat(representative.directExclusionRules()).contains("keine Kokosmilch");
+        assertThat(representative.directExclusionRules()).contains("Synthetic exclusion rule.");
         int auditsBefore = auditCount();
         jdbc.execute(migration);
         var snapshotsAfter = runtimeSnapshots("TEST_NOTE_SHARED", "TEST_NOTE_SPLIT");
