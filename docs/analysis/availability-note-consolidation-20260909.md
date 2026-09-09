@@ -79,6 +79,11 @@ Bereits vorhandene Zieltexte werden nicht erneut geschrieben. Bei teilweise
 übernommenen Paaren werden nur die noch alten Texte geändert. Jedes tatsächlich
 betroffene Konzept erhält genau einen Versionssprung und einen vollständigen
 Vorher-/Nachher-Auditeintrag nach `CatalogIngredientSnapshotFactory`.
+Die SQL-Snapshotprojektion folgt dafür unmittelbar der Runtime-Semantik aus
+`JdbcCatalogQueries.findConcept(...)`: dieselben Referenzwerte und Reihenfolgen,
+alle Dimensionen mit nullable Level, ausschließlich Georgia/Tobias mit nullable
+Availability-Werten, zwölf Saisonmonate mit Faktor `1` als Default sowie die
+Anzeigetexte direkter Ausschlussregeln.
 Alle Audit-Einträge teilen eine Änderungsgruppe und den Akteur
 `liquibase:037-availability-note-consolidation`.
 
@@ -109,14 +114,16 @@ Nach einem weiteren Liquibase-Start wurde ein dritter Export verglichen.
 | Getrennte freigegebene Paare bei unterschiedlichen Leveln | 11 |
 | Abweichungen zwischen Review, SQL und tatsächlich gespeicherten Zieltexten | 0 |
 | Abweichungen der Ausgangstexte und Level gegenüber der Freigabe | 0 |
+| Auditpayload-Abweichungen zum Runtime-Snapshotvertrag | 0 von 692 Before-/After-Paaren |
 | Änderungen anderer Fachmetadaten und sonstiger Tabellen | 0 |
 | Datenänderungen beim erneuten Liquibase-Start | 0 |
 
 Der Abgleich prüfte alle Tabellen, bestehende Audit-Einträge, sämtliche
 Availability-Level, alle unbetroffenen Zeilen und jeden Versionssprung. Die neuen
-Auditpayloads wurden zusätzlich gegen die tatsächlich exportierten alten/neuen
-Personennotizen geprüft. Die Zahlen sind ein einmaliger Implementierungsnachweis,
-kein dauerhaftes Content-Test-Oracle.
+Auditpayloads wurden zusätzlich für alle 692 Konzepte auf JSONB-Gleichheit mit
+`CatalogIngredientSnapshotFactory.snapshot(JdbcCatalogQueries.findConcept(...))`
+vor beziehungsweise nach 037 geprüft. Die Zahlen sind ein einmaliger
+Implementierungsnachweis, kein dauerhaftes Content-Test-Oracle.
 
 ## Technische Tests und Abnahme
 
@@ -126,11 +133,19 @@ verwenden synthetische Manifestzeilen und testen den tatsächlichen SQL-Ablauf:
 gemeinsame und getrennte Ziele, unveränderte Level und Fremddaten,
 inaktive/nicht ziehbare Konzepte, bereits vollständige oder teilweise Zielzustände,
 fehlende beziehungsweise abweichende Notizen/Level/Identitäten sowie Rollback bei
-Auditfehler. Ihr Setup baut eine leere PostgreSQL-Datenbank über den vollständigen
-Master-Changelog auf. Sie konservieren keine produktiven Zutatenwerte.
+Auditfehler. Ein repräsentatives Aggregat enthält zusätzlich einen Fremdteilnehmer,
+direkte Parents/Children sowie Rollen und Flags mit von der Codeordnung
+abweichender Anzeigenamensortierung, ein direktes Ausschlussziel, nicht gepflegte
+Dimensionen und nicht explizit gepflegte Saisonmonate. Der Test vergleicht die von
+037 gespeicherten Before-/After-Payloads direkt als JSONB mit den über
+`JdbcCatalogQueries` und `CatalogIngredientSnapshotFactory` erzeugten
+Runtime-Snapshots. Sein Setup baut eine leere PostgreSQL-Datenbank über den
+vollständigen Master-Changelog auf; produktive Zutatenwerte werden nicht als
+Test-Oracle konserviert.
 
 - Gezielter Maven-Lauf: acht Tests, keine Fehler oder übersprungenen Tests.
-- Vollständiger Maven-Lauf und PR-CI: Ergebnisse im PR dokumentiert.
+- Vollständiger Maven-Lauf: 515 Tests, keine Fehler, ein erwarteter Skip;
+  Build erfolgreich. Der neue PR-CI-Nachweis wird nach dem Push im PR dokumentiert.
 - Einmaliger Review-/SQL-/PostgreSQL-Abgleich: erfolgreich.
 - `git diff --check`: erfolgreich; vor Push erneut geprüft.
 

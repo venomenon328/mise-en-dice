@@ -26,6 +26,7 @@ import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import tools.jackson.databind.ObjectMapper;
 
 /** Executes the migration algorithm with synthetic review rows, never editorial content assertions. */
 @Testcontainers
@@ -44,6 +45,8 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
 
     private Connection connection;
     private JdbcTemplate jdbc;
+    private JdbcCatalogQueries catalogQueries;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private String migration;
 
     @BeforeAll
@@ -61,12 +64,17 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
         connection = connect();
         connection.setAutoCommit(false);
         jdbc = new JdbcTemplate(new SingleConnectionDataSource(connection, true));
+        catalogQueries = new JdbcCatalogQueries(jdbc);
         jdbc.execute("""
                 INSERT INTO ingredient_concept (code, display_name, challenge_specificity,
                     active, random_draw_enabled, curator_note)
                 VALUES ('TEST_NOTE_SHARED', 'Technical shared', 'SPECIFIC', false, false, 'Concept metadata.'),
                        ('TEST_NOTE_SPLIT', 'Technical split', 'SPECIFIC', true, false, 'Concept metadata.'),
-                       ('TEST_NOTE_ALREADY', 'Technical installed', 'SPECIFIC', true, false, 'Concept metadata.');
+                       ('TEST_NOTE_ALREADY', 'Technical installed', 'SPECIFIC', true, false, 'Concept metadata.'),
+                       ('TEST_NOTE_PARENT_Z', 'A technical parent', 'OPEN', true, false, 'Concept metadata.'),
+                       ('TEST_NOTE_PARENT_A', 'Z technical parent', 'OPEN', true, false, 'Concept metadata.'),
+                       ('TEST_NOTE_CHILD_Z', 'B technical child', 'SPECIFIC', true, false, 'Concept metadata.'),
+                       ('TEST_NOTE_CHILD_A', 'Y technical child', 'SPECIFIC', true, false, 'Concept metadata.');
                 INSERT INTO participant (code, display_name) VALUES ('TEST_NOTE_OTHER', 'Technical other');
                 INSERT INTO ingredient_availability (ingredient_concept_id, participant_id, availability_level, curator_note)
                 SELECT c.id, p.id,
@@ -79,6 +87,42 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
                 FROM ingredient_concept c CROSS JOIN participant p
                 WHERE c.code IN ('TEST_NOTE_SHARED', 'TEST_NOTE_SPLIT', 'TEST_NOTE_ALREADY')
                   AND p.code IN ('GEORGIA', 'TOBIAS', 'TEST_NOTE_OTHER');
+                INSERT INTO ingredient_refinement (parent_concept_id, child_concept_id)
+                SELECT parent.id, child.id
+                FROM ingredient_concept parent CROSS JOIN ingredient_concept child
+                WHERE parent.code IN ('TEST_NOTE_PARENT_Z', 'TEST_NOTE_PARENT_A')
+                  AND child.code = 'TEST_NOTE_SHARED';
+                INSERT INTO ingredient_refinement (parent_concept_id, child_concept_id)
+                SELECT parent.id, child.id
+                FROM ingredient_concept parent CROSS JOIN ingredient_concept child
+                WHERE parent.code = 'TEST_NOTE_SHARED'
+                  AND child.code IN ('TEST_NOTE_CHILD_Z', 'TEST_NOTE_CHILD_A');
+                INSERT INTO functional_role (code, display_name, description)
+                VALUES ('TEST_NOTE_ROLE_Z', 'A technical role', 'First by display name.'),
+                       ('TEST_NOTE_ROLE_A', 'Z technical role', 'Last by display name.');
+                INSERT INTO ingredient_functional_role (ingredient_concept_id, functional_role_id)
+                SELECT concept.id, role.id
+                FROM ingredient_concept concept CROSS JOIN functional_role role
+                WHERE concept.code = 'TEST_NOTE_SHARED' AND role.code LIKE 'TEST_NOTE_ROLE_%';
+                INSERT INTO culinary_flag (code, display_name, description)
+                VALUES ('TEST_NOTE_FLAG_Z', 'A technical flag', 'First by display name.'),
+                       ('TEST_NOTE_FLAG_A', 'Z technical flag', 'Last by display name.');
+                INSERT INTO ingredient_culinary_flag (ingredient_concept_id, culinary_flag_id)
+                SELECT concept.id, flag.id
+                FROM ingredient_concept concept CROSS JOIN culinary_flag flag
+                WHERE concept.code = 'TEST_NOTE_SHARED' AND flag.code LIKE 'TEST_NOTE_FLAG_%';
+                INSERT INTO ingredient_culinary_dimension (ingredient_concept_id, culinary_dimension_id, level)
+                SELECT concept.id, dimension.id, 4
+                FROM ingredient_concept concept CROSS JOIN culinary_dimension dimension
+                WHERE concept.code = 'TEST_NOTE_SHARED' AND dimension.code = 'DOMINANCE';
+                INSERT INTO ingredient_culinary_country (ingredient_concept_id, country_code)
+                SELECT id, 'DE' FROM ingredient_concept WHERE code = 'TEST_NOTE_SHARED';
+                INSERT INTO ingredient_seasonality (ingredient_concept_id, month, weight_multiplier)
+                SELECT id, 7, 1.2500 FROM ingredient_concept WHERE code = 'TEST_NOTE_SHARED';
+                INSERT INTO exclusion_rule_target (exclusion_rule_id, ingredient_concept_id, include_refinements)
+                SELECT rule.id, concept.id, false
+                FROM exclusion_rule rule CROSS JOIN ingredient_concept concept
+                WHERE rule.code = 'NO_COCONUT_MILK' AND concept.code = 'TEST_NOTE_SHARED';
                 """);
         try (var input = getClass().getClassLoader().getResourceAsStream(MIGRATION)) {
             assertThat(input).isNotNull();
@@ -100,10 +144,37 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
     }
 
     @Test
-    void changesOnlyNotesAndVersionsWithCompleteGroupedAudit() {
+    void changesOnlyNotesAndVersionsWithCanonicalCompleteGroupedAudit() throws Exception {
         var protectedBefore = protectedState();
+        var snapshotsBefore = runtimeSnapshots("TEST_NOTE_SHARED", "TEST_NOTE_SPLIT");
+        var representative = catalogQueries.findConcept(conceptId("TEST_NOTE_SHARED")).orElseThrow();
+        assertThat(representative.directParents())
+                .extracting(value -> value.code())
+                .containsExactly("TEST_NOTE_PARENT_Z", "TEST_NOTE_PARENT_A");
+        assertThat(representative.directChildren())
+                .extracting(value -> value.code())
+                .containsExactly("TEST_NOTE_CHILD_Z", "TEST_NOTE_CHILD_A");
+        assertThat(representative.functionalRoles())
+                .extracting(value -> value.code())
+                .containsExactly("TEST_NOTE_ROLE_Z", "TEST_NOTE_ROLE_A");
+        assertThat(representative.culinaryFlags())
+                .extracting(value -> value.code())
+                .containsExactly("TEST_NOTE_FLAG_Z", "TEST_NOTE_FLAG_A");
+        assertThat(representative.culinaryDimensions()).anyMatch(value -> value.level() == null);
+        assertThat(representative.availability()).hasSize(2);
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM ingredient_availability
+                WHERE ingredient_concept_id = ?
+                """, Integer.class, representative.id())).isEqualTo(3);
+        assertThat(representative.seasonality()).hasSize(12);
+        assertThat(representative.seasonality().stream()
+                .filter(value -> value.month() == 6)
+                .map(value -> value.weightMultiplier())
+                .findFirst()).contains(java.math.BigDecimal.ONE);
+        assertThat(representative.directExclusionRules()).contains("keine Kokosmilch");
         int auditsBefore = auditCount();
         jdbc.execute(migration);
+        var snapshotsAfter = runtimeSnapshots("TEST_NOTE_SHARED", "TEST_NOTE_SPLIT");
         assertThat(protectedState()).isEqualTo(protectedBefore);
         assertThat(jdbc.queryForList("""
                 SELECT a.curator_note FROM ingredient_availability a
@@ -118,7 +189,8 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
                 WHERE c.code = 'TEST_NOTE_SPLIT' AND p.code IN ('GEORGIA', 'TOBIAS') ORDER BY p.code
                 """, String.class)).containsExactly("Georgia target.", "Tobias target.");
         assertThat(jdbc.queryForList("""
-                SELECT version FROM ingredient_concept WHERE code LIKE 'TEST_NOTE_%' ORDER BY code
+                SELECT version FROM ingredient_concept
+                WHERE code IN ('TEST_NOTE_SHARED', 'TEST_NOTE_SPLIT', 'TEST_NOTE_ALREADY') ORDER BY code
                 """, Long.class)).containsExactly(0L, 1L, 1L);
         assertThat(auditCount() - auditsBefore).isEqualTo(2);
         assertThat(jdbc.queryForObject("""
@@ -129,12 +201,16 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
                 SELECT bool_and(
                     (before_state - 'version' - 'availability') = (after_state - 'version' - 'availability')
                     AND (after_state->>'version')::bigint = (before_state->>'version')::bigint + 1
-                    AND jsonb_array_length(before_state->'availability') = 3
-                    AND jsonb_array_length(after_state->'availability') = 3
+                    AND jsonb_array_length(before_state->'availability') = 2
+                    AND jsonb_array_length(after_state->'availability') = 2
                     AND (before_state->'availability') IS DISTINCT FROM (after_state->'availability')
                     AND payload_version = 1 AND entity_type = 'INGREDIENT_CONCEPT' AND action = 'UPDATE'
                 ) FROM catalog_audit_entry WHERE actor_key = ? AND after_state->>'code' LIKE 'TEST_NOTE_%'
                 """, Boolean.class, ACTOR)).isTrue();
+        snapshotsBefore.forEach((conceptId, before) -> assertThat(jdbc.queryForObject("""
+                SELECT before_state = cast(? as jsonb) AND after_state = cast(? as jsonb)
+                FROM catalog_audit_entry WHERE actor_key = ? AND entity_id = ?
+                """, Boolean.class, before, snapshotsAfter.get(conceptId), ACTOR, conceptId)).isTrue());
     }
 
     @Test
@@ -193,6 +269,22 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
 
     private int auditCount() {
         return jdbc.queryForObject("SELECT count(*) FROM catalog_audit_entry WHERE actor_key = ?", Integer.class, ACTOR);
+    }
+
+    private Map<Long, String> runtimeSnapshots(String... conceptCodes) throws Exception {
+        Map<Long, String> snapshots = new LinkedHashMap<>();
+        for (String conceptCode : conceptCodes) {
+            long conceptId = conceptId(conceptCode);
+            snapshots.put(conceptId, objectMapper.writeValueAsString(
+                    CatalogIngredientSnapshotFactory.snapshot(
+                            catalogQueries.findConcept(conceptId).orElseThrow()).values()));
+        }
+        return snapshots;
+    }
+
+    private long conceptId(String conceptCode) {
+        return jdbc.queryForObject(
+                "SELECT id FROM ingredient_concept WHERE code = ?", Long.class, conceptCode);
     }
 
     private Map<String, String> protectedState() {
