@@ -40,6 +40,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`ADR 0008`](adr/0008-production-only-openai-access.md): echte OpenAI-Aufrufe ausschließlich im explizit aktivierten Produktivbetrieb; Entwicklung und automatisierte Tests bleiben vollständig providerfrei
 - [`ADR 0009`](adr/0009-determinism-without-historical-generator-replay.md): Determinismus, Frozen-Context-Recovery und Batch 2 bleiben; historisches Generator-Replay entfällt
 - [`ADR 0010`](adr/0010-remove-runtime-catalog-audit.md): Runtime-Katalogaudit entfällt vollständig; Optimistic Locking, atomare Transaktionen, PostgreSQL-Integrität und Liquibase bleiben
+- [`ADR 0011`](adr/0011-risk-based-ci-verification.md): risikobasierte CI-Verifikation, wiederverwendete PostgreSQL-Testinfrastruktur, begrenzter Production-Upgradehorizont sowie `skip`/`smoke`/`full` für Deployment Verify; Zielentscheidung angenommen, Umsetzung in #225–#227 ausstehend
 
 ## Reihenfolge der Verbindlichkeit bei Entwicklungsarbeit
 
