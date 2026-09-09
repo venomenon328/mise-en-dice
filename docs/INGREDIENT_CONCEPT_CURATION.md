@@ -230,6 +230,10 @@ Auch offensichtliche `EASY`-Fälle erhalten eine individuelle Kurzbegründung. F
 
 Für neue oder überarbeitete Notizen gilt zusätzlich:
 
+- Bei gleicher Beschaffungsrealität sollen Georgia und Tobias denselben Text erhalten. Reine Ortszusätze, Personenbezug, unterschiedliche Satzlänge oder zusätzliche Angaben zum selben bundesweiten Bezugsweg rechtfertigen keine abweichenden Notizen. Tatsächliche Unterschiede in Level, Zugang, Produktform oder Logistik bleiben sichtbar.
+- Die Notiz beschreibt die allgemeine Beschaffbarkeit, keine aktuelle Inventur einzelner Händler. Punktuelle Angaben wie „ist ausverkauft“, „lagernd“ oder Warenkorbstatus gehören in die datierte Rechercheevidenz. Dauerhafte Engpässe, Saison und wiederkehrende Unzuverlässigkeit dürfen knapp benannt werden.
+- Konkrete Händler- und insbesondere Versandhändlernamen möglichst vermeiden; Marktart, passende Produktform und relevante Logistik nennen. Händlernamen und Quellen bleiben in der separaten Evidenz nachvollziehbar.
+- Den Konzeptnamen nicht ohne Informationsgewinn im Satz wiederholen. Die Formulierung „reservierter Marktartikel“ entfällt; einen tatsächlich nötigen Bestell- oder Vorbereitungsaufwand konkret beschreiben.
 - Textähnlichkeit und Eindeutigkeit sind kein Qualitätsziel. Identische Georgia-/Tobias-Notizen und wiederkehrende sachlich passende Formulierungen sind ausdrücklich zulässig, wenn die Beschaffungsrealität gleich ist.
 - Händlerbesuche, Telefonate, digitale Bestandsprüfungen, persönliche Routinen oder bestätigte Filialbestände werden nur genannt, wenn sie tatsächlich durchgeführt und als Evidenz dokumentiert wurden.
 - Geschmack, Verwendungsideen und vollständige Kuratornotizen gehören nicht in die Beschaffbarkeitsnotiz. Produktform wird nur so weit genannt, wie sie den realen Bezugsweg oder eine Ersatzproduktgefahr erklärt.
