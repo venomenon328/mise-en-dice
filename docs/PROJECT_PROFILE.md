@@ -23,6 +23,8 @@ Mise en Dice bleibt ein modularer Monolith. Web und Discord sind Adapter ohne ei
 
 PostgreSQL bleibt die einzige Laufzeitdatenbank. Liquibase bleibt Autorität für Schema, strukturelle Migrationen, Referenzdaten und einmalige Baseline. Veröffentlichte Changesets sind append-only; explizite Includes statt `includeAll`, kein `runAlways` für den Katalog. PostgreSQL-Trigger, Constraints, partielle Indizes und JSONB-Semantik erhalten. JDBC mit explizitem SQL; Transaktionen in Application Services; Integrität und Konkurrenz nicht allein durch Vorabprüfungen absichern. Repositories liefern passende Domainobjekte oder unveränderliche Projektionen. Unbekannte technische Fehler nicht als Fachkonflikt maskieren. ORM/JPA/Hibernate oder H2 erfordern eine neue begründete Architekturentscheidung.
 
+**Akzeptierte ausstehende Architekturänderung:** [ADR 0010](adr/0010-remove-runtime-catalog-audit.md) und Issue #221 entfernen den Runtime-Katalogaudit vollständig, behalten aber Optimistic Locking, atomare Transaktionen, PostgreSQL-Integritätsverträge und Liquibase bei. Bis #221 technisch gemergt ist, bleibt der vorhandene Audit im laufenden System operativ und andere Arbeiten beachten diesen Istzustand. Für die Umsetzung von #221 ersetzt ADR 0010 bereits jetzt entgegenstehende Audit-Zielvorgaben; der Implementierungs-PR muss anschließend alle aktuellen normativen Quellen auf den auditfreien Istzustand bringen. Historische Issues, PRs und veröffentlichte Changesets bleiben unverändert.
+
 Diese Grenzen werden bewusst wegen der implementierten Daten-/Integritätsverträge fortgeführt, nicht allein wegen ihres Alters. Ihre Abschaffung wäre eine eigenständige technische Migration und ist nicht Teil der Regelintegration.
 
 ## Dienste, Daten und sichere Verifikation

@@ -11,7 +11,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
 - [`CULINARY_CATALOG_WORKFLOW.md`](CULINARY_CATALOG_WORKFLOW.md): verbindlicher Länderworkflow nach #172 von Recherchebeginn und aktuellem Katalogabgleich über zwei menschliche Freigaben bis zu Einpflege, Protokoll und Batch-Verify; enthält den wiederverwendbaren Startprompt
 - [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md): redaktionelle Semantik und technische Pflege der expliziten kulinarischen Länderzuordnungen
-- [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md): verbindliche Bedien-, Interaktions-, Locking-, Audit- und Sicherheitsentscheidungen für die private Katalogverwaltung
+- [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md): verbindliche Bedien-, Interaktions-, Locking- und Sicherheitsentscheidungen für die private Katalogverwaltung; der derzeit noch implementierte Auditvertrag wird gemäß ADR 0010 / #221 vollständig entfernt und ist für dessen Umsetzung bereits abgelöst
 - [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md): verbindliche Regeln für Gewichtung, harte Kandidatengültigkeit, Scores, Diversität, Determinismus, Recovery und Simulation
 - [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md): verbindlicher Vertrag für 1–3 kuratierte Angebote, maximal zwei externe Kuratoraufrufe, Carry-over, Nutzerbestätigung und Historienwirkung
 - [`CHALLENGE_VOTING_AND_PARTICIPATION.md`](CHALLENGE_VOTING_AND_PARTICIPATION.md): verbindliche Mehrnutzer-Semantik des bestehenden Voting-Cores; die frühere eigenständige Challenge-Teilnahme und das fest codierte Default-Elektorat werden für neue Pakete durch die nachfolgende Spezifikation ersetzt
@@ -39,6 +39,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`ADR 0007`](adr/0007-seeded-two-stage-candidate-generator.md): seedbarer zweistufiger Kandidatengenerator und Trennung von Generation und Kuratierung
 - [`ADR 0008`](adr/0008-production-only-openai-access.md): echte OpenAI-Aufrufe ausschließlich im explizit aktivierten Produktivbetrieb; Entwicklung und automatisierte Tests bleiben vollständig providerfrei
 - [`ADR 0009`](adr/0009-determinism-without-historical-generator-replay.md): Determinismus, Frozen-Context-Recovery und Batch 2 bleiben; historisches Generator-Replay entfällt
+- [`ADR 0010`](adr/0010-remove-runtime-catalog-audit.md): Runtime-Katalogaudit entfällt vollständig; Optimistic Locking, atomare Transaktionen, PostgreSQL-Integrität und Liquibase bleiben. Umsetzung ist in #221 freigegeben und noch ausstehend
 
 ## Reihenfolge der Verbindlichkeit bei Entwicklungsarbeit
 
