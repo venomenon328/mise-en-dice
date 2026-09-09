@@ -5,27 +5,68 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      diagnostic_mode:
+        description: Deployment path to exercise without changing PR/push risk classification
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - smoke
+          - skip
 
 permissions:
   contents: read
 
 concurrency:
-  group: deployment-verify-${{ github.ref }}
-  cancel-in-progress: true
+  group: deployment-verify-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 jobs:
   classify:
     runs-on: ubuntu-latest
     outputs:
-      asset_only: ${{ steps.classify.outputs.asset_only }}
-      asset_validation_required: ${{ steps.classify.outputs.asset_validation_required }}
+      mode: ${{ steps.deployment_classify.outputs.mode }}
+      reason: ${{ steps.deployment_classify.outputs.reason }}
+      asset_only: ${{ steps.asset_classify.outputs.asset_only }}
+      asset_validation_required: ${{ steps.asset_classify.outputs.asset_validation_required }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
+      - name: Test Deployment Verify classification
+        run: python -m unittest discover .github/scripts -p 'test_*.py'
+
+      - name: Classify deployment risk
+        id: deployment_classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BEFORE: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+          PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DIAGNOSTIC_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.diagnostic_mode || '' }}
+        run: |
+          set -Eeuo pipefail
+          python .github/scripts/classify_deployment_changes.py \
+            --event-name "$EVENT_NAME" \
+            --ref "$REF" \
+            --before "$BEFORE" \
+            --current-sha "$CURRENT_SHA" \
+            --pull-request-base-sha "$PULL_REQUEST_BASE_SHA" \
+            --pull-request-head-sha "$PULL_REQUEST_HEAD_SHA" \
+            --diagnostic-mode "$DIAGNOSTIC_MODE" \
+            --github-output "$GITHUB_OUTPUT"
+
       - name: Classify Challenge-Card asset change
-        id: classify
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+        id: asset_classify
         env:
           EVENT_NAME: ${{ github.event_name }}
           REF: ${{ github.ref }}
@@ -53,29 +94,49 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Report deployment mode
+        env:
+          MODE: ${{ needs.classify.outputs.mode }}
+          REASON: ${{ needs.classify.outputs.reason }}
+        run: |
+          set -Eeuo pipefail
+          printf 'Deployment Verify mode: %s\nReason: %s\n' "$MODE" "$REASON"
+          {
+            echo '## Deployment Verify classification'
+            printf -- '- Mode: %s\n' "$MODE"
+            printf -- '- Reason: %s\n' "$REASON"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Validate Challenge-Card asset catalog
         if: ${{ needs.classify.outputs.asset_validation_required == 'true' }}
         run: python design/challenge-cards/tools/validate_asset_catalog.py
 
-      - name: Asset-only deployment verification
-        if: ${{ needs.classify.outputs.asset_only == 'true' }}
-        run: echo 'Challenge-Card production asset-only change verified; Deployment Verify is not applicable.'
+      - name: Deployment lifecycle not applicable
+        if: ${{ needs.classify.outputs.mode == 'skip' }}
+        run: echo 'Deployment Verify mode skip; no Docker or PostgreSQL lifecycle is applicable.'
 
       - name: Install deployment test tools
-        if: ${{ needs.classify.outputs.asset_only != 'true' }}
+        if: ${{ needs.classify.outputs.mode != 'skip' }}
+        env:
+          MODE: ${{ needs.classify.outputs.mode }}
         run: |
+          set -Eeuo pipefail
+          packages=(apache2-utils)
+          if [[ "$MODE" == full ]]; then
+            packages+=(shellcheck)
+          fi
           sudo apt-get update
-          sudo apt-get install --yes apache2-utils shellcheck
+          sudo apt-get install --yes "${packages[@]}"
 
       - name: Check shell scripts
-        if: ${{ needs.classify.outputs.asset_only != 'true' }}
+        if: ${{ needs.classify.outputs.mode == 'full' }}
         run: |
           shellcheck -x -S warning deploy/lib.sh deploy/mise-en-dice.sh deploy/tests/*.sh
           bash deploy/tests/lib-test.sh
           bash deploy/tests/runtime-test.sh
 
       - name: Configure isolated CI runtime
-        if: ${{ needs.classify.outputs.asset_only != 'true' }}
+        if: ${{ needs.classify.outputs.mode != 'skip' }}
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -98,11 +159,16 @@ jobs:
             echo '__BCRYPT__'
           } >> "$GITHUB_ENV"
 
-      - name: Initialize and validate deployment package
-        if: ${{ needs.classify.outputs.asset_only != 'true' }}
+      - name: Initialize isolated CI runtime
+        if: ${{ needs.classify.outputs.mode != 'skip' }}
         run: |
           set -Eeuo pipefail
           ./deploy/mise-en-dice.sh init --non-interactive
+
+      - name: Validate full deployment package
+        if: ${{ needs.classify.outputs.mode == 'full' }}
+        run: |
+          set -Eeuo pipefail
           ./deploy/mise-en-dice.sh doctor
           cat > "$MISE_EN_DICE_DEPLOY_ROOT/acceptance.properties" <<'EOF_ACCEPTANCE'
           mise-en-dice.discord.enabled=false
@@ -112,8 +178,35 @@ jobs:
           chmod 0600 "$MISE_EN_DICE_DEPLOY_ROOT/acceptance.properties"
           ./deploy/mise-en-dice.sh acceptance preflight
 
-      - name: Exercise current preview, production, backup and restore
-        if: ${{ needs.classify.outputs.asset_only != 'true' }}
+      - name: Exercise provider-free runtime smoke
+        if: ${{ needs.classify.outputs.mode == 'smoke' }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          cleanup() {
+            local status=$?
+            trap - EXIT
+            if [[ -f "$MISE_EN_DICE_DEPLOY_ROOT/instances/previews/ci-smoke/metadata" ]]; then
+              if ! ./deploy/mise-en-dice.sh preview remove ci-smoke --yes; then
+                status=1
+              fi
+            fi
+            exit "$status"
+          }
+          trap cleanup EXIT
+
+          ./deploy/mise-en-dice.sh preview deploy "$GITHUB_SHA" ci-smoke
+          smoke_status=$(./deploy/mise-en-dice.sh preview status ci-smoke)
+          printf '%s\n' "$smoke_status" | grep -qx 'DISCORD_ENABLED=false'
+          printf '%s\n' "$smoke_status" | grep -qx 'OPENAI_ENABLED=false'
+          changelog_table_exists=$(./deploy/mise-en-dice.sh preview sql ci-smoke \
+            "SELECT CASE WHEN to_regclass('public.databasechangelog') IS NULL THEN 0 ELSE 1 END;" \
+            | tr -d '[:space:]')
+          test "$changelog_table_exists" = "1"
+
+      - name: Exercise full preview, production, backup and restore lifecycle
+        if: ${{ needs.classify.outputs.mode == 'full' }}
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -238,7 +331,7 @@ jobs:
 
   legacy-preview:
     needs: classify
-    if: ${{ github.event_name == 'pull_request' && needs.classify.outputs.asset_only != 'true' }}
+    if: ${{ github.event_name == 'pull_request' && needs.classify.outputs.mode == 'full' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

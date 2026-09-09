@@ -1,6 +1,6 @@
 # Deployment und Branch-Previews
 
-Stand: 19. August 2026
+Stand: 9. September 2026
 
 Dieses Dokument beschreibt den Betrieb von Mise en Dice auf einem einzelnen Debian-/Docker-VPS. Der bestehende Gridwords-Stack bleibt ein vollständig getrenntes Compose-Projekt. Mise en Dice kennt weder dessen Dateien noch Container, Netzwerke oder Volumes.
 
@@ -515,7 +515,13 @@ Nur für Diagnose und CI steht ein direkter SQL-Befehl auf Preview-Datenbanken b
 
 Es gibt bewusst keinen entsprechenden Produktionsbefehl. Redaktionelle Produktionsänderungen gehören in die Anwendung, nicht in improvisierte Shell-SQL-Sitzungen um 02:17 Uhr.
 
-## 14. Fehlerdiagnose
+## 14. Automatisierte Deployment-Verifikation
+
+Der GitHub-Workflow `Deployment Verify` klassifiziert Pull-Request- und `main`-Push-Diffs risikobasiert. `skip` bestätigt reine Dokumentations-, Prozess- oder eindeutig nichtproduktive Teständerungen ohne Docker-/PostgreSQL-Start. `smoke` initialisiert eine isolierte Runtime und verwendet den normalen providerfreien Preview-Pfad: exaktes Commit-Image, frische PostgreSQL-17-Datenbank, vollständiger Liquibase-Master, Healthcheck, geschützter Admin-Einstieg und eine technische Prüfung der `DATABASECHANGELOG`-Tabelle. `full` behält die Shell-, Preview-, Restart-, Production-, Backup-/Restore- und Acceptance-Abdeckung bei. Unsichere oder unbekannte Änderungen fallen auf `full` zurück; `legacy-preview` läuft nur für `full`-Pull-Requests.
+
+Ein täglicher Lauf um 02:17 UTC erzwingt `full` auf `main`. Für reproduzierbare Diagnose und Laufzeitmessung kann `workflow_dispatch` ausdrücklich `skip`, `smoke` oder `full` wählen. Dieser Parameter wird ausschließlich beim manuellen Ereignis ausgewertet und kann die Diffklassifikation von Pull Requests und Pushes oder den geplanten Full-Lauf nicht umgehen. Alle automatisierten Modi bleiben providerfrei; dieser Workflow ist weder Live-Acceptance noch Produktionsdeployment.
+
+## 15. Fehlerdiagnose
 
 ### Preview startet nicht
 

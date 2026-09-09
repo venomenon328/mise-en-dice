@@ -1,6 +1,6 @@
 # ADR 0011: Risikobasierte CI-Verifikation und begrenzter Migrationshorizont
 
-- Status: angenommen, Umsetzung ausstehend
+- Status: angenommen, teilweise umgesetzt
 - Datum: 9. September 2026
 - Entscheidungsträger: Projektverantwortlicher, Issue #224
 - Ergänzt ADR 0002 und ADR 0004; PostgreSQL, Liquibase und JDBC bleiben unverändert technische Grundlage.
@@ -99,9 +99,11 @@ Die Entscheidung wird in drei Paketen umgesetzt:
 2. **#226:** parallele `fast`-/`postgresql`-/`migration`-Lanes und risikobasierte Verify-Klassifikation,
 3. **#227:** `skip`/`smoke`/`full` für Deployment Verify einschließlich täglichem Full-Lauf.
 
-#226 hängt von #225 ab. #227 kann technisch unabhängig parallel umgesetzt werden.
+#226 hängt von #225 ab. #227 wurde technisch unabhängig umgesetzt.
 
-Diese ADR ist bereits als Zielentscheidung angenommen, die genannten CI-Modi/Lanes sind jedoch **noch nicht implementiert**. Bis zum Merge des jeweils zuständigen Pakets bleiben die aktuell eingecheckten Workflows und Tests der tatsächlich ausgeführte Prüfpfad. Dokumentation und Reviews dürfen einen nur beschlossenen Zielpfad nicht als bereits laufende CI ausgeben.
+Der Deployment-Verify-Teil aus #227 ist umgesetzt: eine eigenständige getestete Klassifikation entscheidet fail-closed zwischen `skip`, providerfreiem Preview-/PostgreSQL-`smoke` und dem unverändert umfassenden `full`-Lifecycle. Der stabile `deployment`-Job weist den Modus aus, `legacy-preview` ist auf `full`-Pull-Requests begrenzt, und der tägliche Zeitplan erzwingt `full`. Ein abgesicherter `workflow_dispatch`-Diagnoseparameter kann alle drei Modi auf demselben Stand ausführen; PR-, Push- und Schedule-Ereignisse können damit ihre Klassifikation nicht überschreiben.
+
+Die gemeinsame PostgreSQL-Testinfrastruktur und die `fast`-/`postgresql`-/`migration`-Lanes aus #225/#226 sind weiterhin noch nicht implementiert. Bis zum Merge dieser jeweils zuständigen Pakete bleiben die aktuell eingecheckten Verify-Tests der tatsächlich ausgeführte Prüfpfad. Dokumentation und Reviews dürfen einen dort nur beschlossenen Zielpfad nicht als bereits laufende CI ausgeben.
 
 ## Nichtziele
 
