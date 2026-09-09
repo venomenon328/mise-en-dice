@@ -1,6 +1,6 @@
 # Spezifikation der privaten Webverwaltung
 
-Stand: 8. September 2026
+Stand: 9. September 2026
 
 Dieses Dokument beschreibt die verbindliche fachliche, gestalterische und technische Spezifikation der privaten Webverwaltung von Mise en Dice. Es konkretisiert die in [`ARCHITECTURE.md`](ARCHITECTURE.md) festgelegten Leitplanken und bildet die Grundlage für die anschließenden Implementierungspakete.
 
@@ -18,7 +18,6 @@ Die erste vollständige Katalogverwaltung soll ermöglichen:
 - Beziehungen, Rollen, Eigenschaften, Beschaffbarkeit und Saison konsistent zu pflegen,
 - Ausschlussregeln nachvollziehbar zu verwalten,
 - versehentliche oder konkurrierende Änderungen sichtbar und beherrschbar zu machen,
-- redaktionelle Änderungen einem Administrator und einem Zeitpunkt zuordnen zu können,
 - kritische Änderungen vor dem Speichern in ihrer Wirkung verständlich zu machen.
 
 ### 1.2 Nicht-Ziele
@@ -43,18 +42,18 @@ Die Oberfläche darf nützlich aussehen. Sie muss deswegen nicht versuchen, Jira
 2. **Suche, Filter, Navigation und Detailansicht gehören zusammen.** Ein Wechsel zwischen separaten Seiten für jede dieser Tätigkeiten wird vermieden.
 3. **Normale Eigenschaften werden nicht versteckt.** Die Detailansicht ist eine scrollbare Gesamtansicht mit sichtbaren Abschnitten, nicht eine Sammlung verschachtelter Einstellungsdialoge.
 4. **Bearbeitung ist bewusst, aber nicht umständlich.** Lesen und Navigieren erfolgen sofort; Schreiben beginnt explizit über `Bearbeiten` beziehungsweise `Neu` und endet über `Speichern` oder `Verwerfen`.
-5. **Keine Autosaves.** Fachlich relevante Änderungen werden atomar gespeichert. Dadurch bleiben Validierung, Audit und Konfliktbehandlung nachvollziehbar.
+5. **Keine Autosaves.** Fachlich relevante Änderungen werden atomar gespeichert. Dadurch bleiben Validierung und Konfliktbehandlung nachvollziehbar.
 6. **Kritische Aktionen erklären ihre Wirkung.** Deaktivierung und Bulk-Aktionen zeigen vor dem Speichern eine kompakte Zusammenfassung der Folgen.
 7. **Der Graph bleibt ein Graph.** Die Oberfläche darf ihn hierarchisch darstellen, reduziert ihn aber niemals auf genau einen Parent.
 8. **URL und Browser-Navigation bleiben sinnvoll.** Auswahl, Suchbegriff, Filter und Darstellungsmodus sollen soweit praktikabel über URL-Parameter beziehungsweise stabile Routen wiederherstellbar sein.
 
 ## 3. Globale Navigation
 
-Die erste vollständige Administrationsoberfläche besitzt drei Hauptbereiche:
+Die Administrationsoberfläche besitzt drei Hauptbereiche:
 
 - **Katalog** – Zutatenkonzepte, Konkretisierungen und sämtliche zugeordneten Eigenschaften,
 - **Ausschlüsse** – kuratierte Ausschlussregeln und ihre Ziele,
-- **Änderungen** – Audit-Trail und Änderungsverlauf.
+- **Generator-Labor** – read-only Vorschau und begrenzte Simulation für Diagnosezwecke.
 
 Rechts in der Kopfzeile stehen ausschließlich die aktuelle Administrationsidentität und `Abmelden`. Eine allgemeine Einstellungsseite ist nicht vorgesehen.
 
@@ -62,7 +61,7 @@ Rechts in der Kopfzeile stehen ausschließlich die aktuelle Administrationsident
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ Mise en Dice     Katalog     Ausschlüsse     Änderungen        Tobias ▾     │
+│ Mise en Dice     Katalog     Ausschlüsse     Generator-Labor   Tobias ▾     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │                         aktueller Hauptbereich                              │
@@ -456,7 +455,7 @@ Vorteile:
 
 - versehentliche Toggle-Klicks verändern keine Daten,
 - Auswahl und Navigation bleiben leichtgewichtig,
-- alle Änderungen können zusammen validiert, gelockt und auditiert werden.
+- alle Änderungen können zusammen validiert, gesperrt und gespeichert werden.
 
 ### 9.2 Keine Autosaves
 
@@ -608,7 +607,7 @@ von Begründungen gehört zum Bulk.
 
 Die Bulk-Operation ist atomar. Scheitert ein Element fachlich, wird die gesamte Operation verworfen und die problematischen Einträge werden benannt.
 
-Die Vorschau und die Ausführung enthalten für jede explizit ausgewählte Zeile die geladene Aggregatversion. Die Ausführung sperrt alle ausgewählten Konzepte in deterministischer ID-Reihenfolge und prüft sämtliche Versionen, bevor sie etwas ändert; ein Konflikt verwirft die gesamte Aktion. Bereits im Zielzustand befindliche Konzepte werden weder versioniert noch auditiert. Rollen-Bulkaktionen verwenden vor jeder Graphprüfung denselben PostgreSQL-Transaktionslock wie Rollen-, Spezifitäts- und Beziehungsänderungen im Einzelsave. Die Prüfung betrachtet den gemeinsamen resultierenden Graphen, nicht einzelne Zeilen nacheinander.
+Die Vorschau und die Ausführung enthalten für jede explizit ausgewählte Zeile die geladene Aggregatversion. Die Ausführung sperrt alle ausgewählten Konzepte in deterministischer ID-Reihenfolge und prüft sämtliche Versionen, bevor sie etwas ändert; ein Konflikt verwirft die gesamte Aktion. Bereits im Zielzustand befindliche Konzepte werden nicht versioniert. Rollen-Bulkaktionen verwenden vor jeder Graphprüfung denselben PostgreSQL-Transaktionslock wie Rollen-, Spezifitäts- und Beziehungsänderungen im Einzelsave. Die Prüfung betrachtet den gemeinsamen resultierenden Graphen, nicht einzelne Zeilen nacheinander.
 
 ## 13. Ausschlussregeln
 
@@ -727,86 +726,15 @@ Beschaffbarkeitsstufe und -notiz werden pro Person getrennt gegenübergestellt u
 Beide Notizen bleiben über Validierungsfehler, Konfliktformular und Rebase erhalten; Weiterbearbeiten
 allein schreibt noch nichts.
 
-## 16. Audit-Trail
+## 16. Administrationsidentität und Zugriffsschutz
 
-### 16.1 Ziel
-
-Git ist nach Einführung der Webverwaltung nicht mehr die Historie operativer Katalogänderungen. Jede erfolgreiche schreibende Administrationsaktion wird deshalb auditierbar gespeichert.
-
-### 16.2 Datenmodell
-
-Vorgesehen ist eine neue Tabelle `catalog_audit_entry` mit mindestens:
-
-```text
-id                bigint identity primary key
-change_group_id   uuid not null
-actor_key         text not null
-entity_type       text not null
-entity_id         bigint not null
-action            text not null
-before_state      jsonb
- after_state       jsonb
-payload_version   smallint not null default 1
-occurred_at       timestamptz not null default now()
-```
-
-`before_state` ist bei einer Anlage leer, `after_state` bei zukünftigen echten Löschoperationen gegebenenfalls leer. Für die aktuell vorgesehenen Deaktivierungen bleiben beide Entitäten erhalten.
-
-Notwendige Indizes:
-
-- `(entity_type, entity_id, occurred_at desc)`,
-- `(actor_key, occurred_at desc)`,
-- `(change_group_id)`.
-
-Auditdaten werden in diesem kleinen privaten System zunächst unbegrenzt aufbewahrt.
-
-### 16.3 Snapshot-Inhalt
-
-Snapshots sind **fachliche Aggregate-Snapshots**, keine Kopien von HTTP-Formularen. Ein Zutaten-Snapshot enthält die zu diesem Zeitpunkt relevanten editierbaren Werte einschließlich Zuordnungen, darunter Ländercode und Anzeigename jeder kulinarischen Länderzuordnung.
-
-Availability-Snapshots enthalten pro Person `level` und `curatorNote`. Der feldweise Diff zeigt reine
-Notizänderungen separat mit Personennamen. Alte Payload-v1-Snapshots ohne `curatorNote` bedeuten nicht gepflegt;
-sie werden weder umgeschrieben noch als beschädigt behandelt.
-
-Passwörter, Sessiondaten oder sonstige Sicherheitsgeheimnisse gelangen niemals in den Audit-Trail.
-
-### 16.4 Beziehungspflege
-
-Eine Konkretisierungsbeziehung betrifft zwei Zutatenkonzepte. Deshalb werden bei Hinzufügen oder Entfernen zwei Audit-Einträge mit derselben `change_group_id` geschrieben, jeweils mit Vorher-/Nachher-Snapshot des betroffenen Konzepts.
-
-Bulk-Aktionen erzeugen pro betroffenem Konzept einen Audit-Eintrag mit gemeinsamer `change_group_id`.
-
-### 16.5 Auditoberfläche
-
-`Änderungen` zeigt chronologisch:
-
-- Zeitpunkt,
-- Akteur,
-- Aktion,
-- Entität,
-- Kurzbeschreibung.
-
-Filter:
-
-- Akteur,
-- Zeitraum,
-- Entitätstyp,
-- konkretes Zutatenkonzept beziehungsweise Ausschlussregel,
-- Aktion.
-
-Die Detailansicht zeigt einen feldweisen Diff. Rohes JSON ist höchstens als technische Zusatzansicht vorgesehen, nicht als primäre Darstellung.
-
-Im Zutaten- und Ausschlussdetail werden die letzten Änderungen der jeweiligen Entität direkt eingeblendet; `Alle Änderungen anzeigen` führt gefiltert in den Auditbereich.
-
-## 17. Administrationsidentität und Zugriffsschutz
-
-### 17.1 Trennung vom Teilnehmermodell
+### 16.1 Trennung vom Teilnehmermodell
 
 `participant` bleibt ein fachliches Challenge-Konzept. Ein eingeloggter Administrator ist ein Sicherheitskonzept.
 
-Es gibt deshalb **keinen Fremdschlüssel von Auditdaten auf `participant`** und keine automatische Ableitung von Rechten aus einem Teilnehmerdatensatz.
+Administrationsrechte werden deshalb nicht aus einem `participant`-Datensatz abgeleitet. Die konfigurierte Login-Identität bleibt ein reines Sicherheitskonzept und ist kein Feld fachlicher Katalog-Commands.
 
-### 17.2 Erste Identitätsquelle
+### 16.2 Erste Identitätsquelle
 
 Für den privaten Zwei-Personen-Betrieb genügt zunächst eine konfigurationsbasierte Administrationsidentität hinter einer kleinen anwendungsinternen Schnittstelle.
 
@@ -821,7 +749,7 @@ Vorgesehen:
 
 Eine Datenbanktabelle `admin_user` ist für die erste Version **nicht notwendig**. Sollte später OIDC, externe Authentifizierung oder eine echte Benutzerverwaltung benötigt werden, kann die Identitätsquelle hinter derselben Anwendungsschnittstelle ersetzt werden.
 
-### 17.3 Spring Security
+### 16.3 Spring Security
 
 Für `/admin/**` gilt:
 
@@ -838,11 +766,11 @@ Ein inaktiver oder nicht konfigurierter Administrationsadapter darf keine unsich
 
 Der Health-Endpunkt kann weiterhin ohne Login erreichbar bleiben, solange er keine sensiblen Details preisgibt.
 
-## 18. Validierungsregeln
+## 17. Validierungsregeln
 
 Die Anwendung validiert verständlich vor dem Datenbankzugriff; die Datenbank bleibt letzte Sicherung.
 
-### 18.1 Zutatenkonzept
+### 17.1 Zutatenkonzept
 
 | Fall | Reaktion |
 |---|---|
@@ -862,7 +790,7 @@ Die Anwendung validiert verständlich vor dem Datenbankzugriff; die Datenbank bl
 Novelty-Stufe und Availability lösen seit #189 keine pauschale Gewichtswarnung oder zusätzliche Bestätigung
 mehr aus – auch nicht im Bulk. Der unabhängige direkte `COOKING_ALCOHOL`-Hinweis bleibt bestehen.
 
-### 18.2 Beziehungen
+### 17.2 Beziehungen
 
 | Fall | Reaktion |
 |---|---|
@@ -874,7 +802,7 @@ mehr aus – auch nicht im Bulk. Der unabhängige direkte `COOKING_ALCOHOL`-Hinw
 
 Rollen- und Spezifitätsänderungen dürfen mit vorgemerkten Beziehungen in einem Save kombiniert werden. Der Picker verhindert nur sichere Strukturfehler; die finale Prüfung erfolgt gegen den vollständigen resultierenden Graphen.
 
-### 18.3 Ausschlussregel
+### 17.3 Ausschlussregel
 
 | Fall | Reaktion |
 |---|---|
@@ -884,7 +812,7 @@ Rollen- und Spezifitätsänderungen dürfen mit vorgemerkten Beziehungen in eine
 | aktive Regel ohne Ziel | Fehler im Zielabschnitt |
 | doppeltes Ziel | Picker verhindert Auswahl beziehungsweise Feldfehler |
 
-### 18.4 Konkurrenz und technische Fehler
+### 17.4 Konkurrenz und technische Fehler
 
 | Fall | Reaktion |
 |---|---|
@@ -893,20 +821,20 @@ Rollen- und Spezifitätsänderungen dürfen mit vorgemerkten Beziehungen in eine
 | unbekannter SQL-/Technikfehler | globale Fehlermeldung mit Korrelations-ID; keine erfundene fachliche Ursache |
 | Datensatz während Bearbeitung nicht mehr lesbar | klare `nicht mehr verfügbar`-Meldung und Rückkehr zur Liste |
 
-### 18.5 Darstellung der Fehler
+### 17.5 Darstellung der Fehler
 
 - Feldfehler stehen unmittelbar am Feld.
 - Zusätzlich gibt es am Anfang des Detailformulars eine kompakte Fehlerzusammenfassung mit Sprunglinks.
 - Erfolg wird als kurze nicht blockierende Bestätigung angezeigt.
 - Eine technische Fehlermeldung enthält keine Stacktraces oder Datenbankdetails.
 
-## 19. Lade- und UI-Zustände
+## 18. Lade- und UI-Zustände
 
-### 19.1 Laden
+### 18.1 Laden
 
 HTMX-Teilaktualisierungen zeigen lokal dort einen Ladezustand, wo Inhalte wechseln. Der Rest der Seite bleibt bedienbar, sofern keine widersprüchliche Aktion möglich wäre.
 
-### 19.2 Speichern
+### 18.2 Speichern
 
 Während eines Speichervorgangs:
 
@@ -914,7 +842,7 @@ Während eines Speichervorgangs:
 - zeigt er eine Aktivitätsanzeige,
 - wird ein Doppelsubmit verhindert.
 
-### 19.3 Leere Treffer
+### 18.3 Leere Treffer
 
 Keine Suchtreffer:
 
@@ -925,7 +853,7 @@ Keine Zutaten gefunden.
 
 Bei leerem Katalog – praktisch nur in einer fehlerhaften oder neuen Installation – wird zusätzlich `Neue Zutat anlegen` angeboten.
 
-### 19.4 Erfolgreiches Speichern
+### 18.4 Erfolgreiches Speichern
 
 Nach Speichern:
 
@@ -935,7 +863,7 @@ Nach Speichern:
 - erscheint eine kurze Bestätigung `Gespeichert`,
 - betroffene Listen-/Baumdarstellungen werden aktualisiert.
 
-## 20. Kleinere Displays
+## 19. Kleinere Displays
 
 Desktop ist Priorität. Unter ungefähr 900 Pixel Breite wird der Split-View aufgelöst:
 
@@ -947,11 +875,11 @@ Die Hauptnavigation bleibt erreichbar. Erweiterte Filter dürfen auf kleinen Dis
 
 Alle Kernfunktionen bleiben nutzbar; eine perfekte Smartphone-Pflege von Saisonprofilen mit zwölf Monatsfeldern ist ausdrücklich kein Designziel.
 
-## 21. Application-Use-Cases und Datenprojektionen
+## 20. Application-Use-Cases und Datenprojektionen
 
 Die folgenden Anforderungen beschreiben **fachliche Use Cases**, keine vorweggenommenen Java-Methodensignaturen.
 
-### 21.1 Lesen
+### 20.1 Lesen
 
 **Katalog durchsuchen**
 
@@ -986,37 +914,33 @@ Benötigt die vollständige Detailprojektion einschließlich direkter Beziehunge
 
 Benötigt Listen- und Detailprojektionen einschließlich Zielinformationen.
 
-**Audit durchsuchen**
-
-Benötigt Listenprojektion, Filter, feldweisen Diff und Entity-bezogene Historie.
-
-### 21.2 Schreiben
+### 20.2 Schreiben
 
 **Zutatenkonzept anlegen**
 
-Eine Transaktion für Basisdaten und die in diesem Paket bereits implementierten Zuordnungen einschließlich der expliziten Ländermenge. Bei Anlage zunächst Version 0; Audit-Eintrag nach erfolgreicher Persistenz in derselben Transaktion.
+Eine Transaktion für Basisdaten und die in diesem Paket bereits implementierten Zuordnungen einschließlich der expliziten Ländermenge. Bei Anlage startet die Aggregatversion bei 0.
 
 **Zutatenkonzept ändern**
 
-Eine Transaktion mit erwartetem Versionswert. Basisfelder, Rollen, Eigenschaften, kulinarische Länderzuordnungen, Beschaffbarkeit, Saison und vorgemerkte direkte Beziehungen werden gegen denselben resultierenden Zustand validiert, atomar gespeichert, genau einmal versioniert und auditiert. Vor dem Graph-Read/Validate/Write-Ablauf serialisiert ein PostgreSQL-Transaktionslock Relations- und Spezifitätsänderungen; Rollen bleiben davon unabhängig.
+Eine Transaktion mit erwartetem Versionswert. Basisfelder, Rollen, Eigenschaften, kulinarische Länderzuordnungen, Beschaffbarkeit, Saison und vorgemerkte direkte Beziehungen werden gegen denselben resultierenden Zustand validiert, atomar gespeichert und genau einmal versioniert. Vor dem Graph-Read/Validate/Write-Ablauf serialisiert ein PostgreSQL-Transaktionslock Relations- und Spezifitätsänderungen; Rollen bleiben davon unabhängig.
 
 **Konkretisierungsbeziehung hinzufügen/entfernen**
 
-Eine Transaktion; beide betroffenen Konzepte werden versionsgeprüft beziehungsweise konsistent gesperrt und gemeinsam auditiert. Mehrere Kanten desselben Saves behandeln jeden Gegenknoten nur einmal. Vor der resultierenden Graphprüfung serialisiert ein PostgreSQL-Transaktionslock sämtliche Graphmutationen; kein Netzwerkzugriff in der Transaktion.
+Eine Transaktion; beide betroffenen Konzepte werden versionsgeprüft und konsistent gesperrt. Mehrere Kanten desselben Saves behandeln jeden Gegenknoten nur einmal. Vor der resultierenden Graphprüfung serialisiert ein PostgreSQL-Transaktionslock sämtliche Graphmutationen; kein Netzwerkzugriff in der Transaktion.
 
 **Ausschlussregel anlegen/ändern**
 
-Eine Transaktion mit Zielen, Version und Audit.
+Eine Transaktion mit Zielen und erwartetem Versionswert.
 
 **Bulk-Änderung**
 
 Eine Transaktion für alle explizit ausgewählten Konzepte. Versionen aller Elemente werden geprüft; Teilupdates sind nicht zulässig.
 
-### 21.3 Keine direkte Adapterpersistenz
+### 20.3 Keine direkte Adapterpersistenz
 
 Controller kennen weder `JdbcTemplate` noch SQL. Sie rufen öffentliche Application-Use-Cases des Katalogmoduls auf und transformieren Ergebnisse in Web-View-Models.
 
-## 22. Technische Webschnittstelle
+## 21. Technische Webschnittstelle
 
 Die konkrete Routenstruktur darf während der Umsetzung geringfügig geschärft werden. Die fachliche Form soll jedoch ungefähr so aussehen:
 
@@ -1035,12 +959,11 @@ GET  /admin/exclusions/new
 POST /admin/exclusions
 POST /admin/exclusions/{id}
 
-GET  /admin/audit
 ```
 
 HTMX-spezifische Fragmentantworten dürfen dieselben Use Cases verwenden. Es wird keine parallele JSON-API ausschließlich deshalb angelegt, weil moderne Anwendungen angeblich eine brauchen.
 
-## 23. Folgepakete
+## 22. Folgepakete
 
 Die Implementierung wird nach dieser Spezifikation in sechs fachlich getrennte Pakete zerlegt.
 
@@ -1051,15 +974,14 @@ Die Implementierung wird nach dieser Spezifikation in sechs fachlich getrennte P
 - Spring Security und konfigurationsbasierte Administrationsidentitäten,
 - Aktivierung/Deaktivierung des Administrationsadapters,
 - `version` auf `ingredient_concept` und `exclusion_rule`,
-- `catalog_audit_entry`,
-- technische Audit- und Locking-Grundlagen im Katalogmodul,
+- technische Locking-Grundlagen im Katalogmodul,
 - noch keine produktive Katalogbearbeitung.
 
 **Gate**
 
 - `/admin/**` ist ohne Login nicht erreichbar,
 - keine Default-Zugangsdaten,
-- Versionierungs- und Auditschema ist per PostgreSQL-Integrationstest geprüft,
+- Versionierungsschema ist per PostgreSQL-Integrationstest geprüft,
 - Modulgrenzen bleiben grün.
 
 ### Paket B – Lesende Katalogverwaltung
@@ -1092,7 +1014,7 @@ Die Implementierung wird nach dieser Spezifikation in sechs fachlich getrennte P
 - Gewicht,
 - Kochungewöhnlichkeit,
 - Kuratornotiz,
-- optimistisches Locking und Audit in produktiven Schreibflows.
+- optimistisches Locking in produktiven Schreibflows.
 
 **Gate**
 
@@ -1109,7 +1031,7 @@ Die Implementierung wird nach dieser Spezifikation in sechs fachlich getrennte P
 - Hinzufügen/Entfernen direkter Beziehungen,
 - transitive Kontextanzeige,
 - Vorab-Zyklusprüfung plus PostgreSQL-Trigger als letzte Sicherung,
-- beidseitiger Audit-Eintrag.
+- atomare Versionierung aller betroffenen Aggregate.
 
 **Gate**
 
@@ -1133,26 +1055,23 @@ Die Implementierung wird nach dieser Spezifikation in sechs fachlich getrennte P
 
 - aktive Ziehkandidaten können nicht ohne Rollen gespeichert werden; ungepflegte Beschaffbarkeit für Georgia oder Tobias bleibt ein redaktioneller Hinweis, `OPEN` benötigt keine direkte Konkretisierung,
 - fehlende Dimensions- und Saisonwerte behalten ihre dokumentierte Semantik,
-- alle Änderungen sind versionsgesichert und auditiert.
+- alle Änderungen sind versionsgesichert und atomar.
 
-### Paket F – Ausschlüsse, Bulk und Auditoberfläche
+### Paket F – Ausschlüsse und Bulk
 
 **Scope**
 
 - Ausschlussregeln und Ziele,
-- Bulk-Aktionen,
-- Auditliste und Diffansicht,
-- Entity-bezogene Änderungshistorie.
+- Bulk-Aktionen.
 
 **Gate**
 
 - aktive Ausschlüsse besitzen Ziele,
-- Bulk-Aktionen sind atomar und begrenzt,
-- Auditänderungen sind für die normalen Pflegeflows verständlich nachvollziehbar.
+- Bulk-Aktionen sind atomar und begrenzt.
 
 Erst nach diesen Paketen gilt die Webverwaltung als vollständige Katalogpflegebasis für die anschließende Generatorarbeit.
 
-## 24. Bewusst vertagte Punkte
+## 23. Bewusst vertagte Punkte
 
 Folgende Punkte blockieren die erste Webverwaltung nicht:
 
@@ -1168,7 +1087,7 @@ Folgende Punkte blockieren die erste Webverwaltung nicht:
 
 Wenn einer dieser Punkte später relevant wird, wird er als eigenes Paket spezifiziert statt stillschweigend in einen bestehenden CRUD-Flow eingeschmuggelt.
 
-## 25. Generator-Labor (Phase 9E1 / Issue #37)
+## 24. Generator-Labor (Phase 9E1 / Issue #37)
 
 `/admin/generator` ist eine geschützte serverseitig gerenderte Diagnoseansicht. Sie ergänzt die Katalogverwaltung,
 ersetzt aber keinen produktiven Challenge-Flow und enthält keine Katalogbearbeitung.
@@ -1230,7 +1149,7 @@ Simulation und Report aus #53, ihr Adminadapter aus #54 und die historische Kali
 Pakete. Die spätere Persistenz eines tatsächlich sichtbaren, vollständig rerollten Offer Sets mit 1–3 Optionen ist
 Phase 10/11 und wird im Generator-Labor nicht simuliert oder gespeichert.
 
-## 26. Abnahmekriterium dieser Spezifikation
+## 25. Abnahmekriterium dieser Spezifikation
 
 Nach diesem Dokument sind für den Start von Paket A keine fachlichen oder gestalterischen Entscheidungen mehr offen, die dessen Scope blockieren.
 
@@ -1246,7 +1165,6 @@ Insbesondere sind entschieden:
 - Ausschlussregeln,
 - Bulk-Grenzen,
 - Locking,
-- Audit,
 - Administrationsidentität,
 - Zugriffsschutz,
 - Validierungsdarstellung,

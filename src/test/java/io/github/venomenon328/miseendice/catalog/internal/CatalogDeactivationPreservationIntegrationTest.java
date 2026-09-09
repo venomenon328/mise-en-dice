@@ -23,7 +23,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class CatalogDeactivationPreservationIntegrationTest {
 
     private static final String PREFIX = "TEST_ISSUE11_DEACTIVATE_";
-    private static final String ACTOR = "issue11-deactivation-admin";
 
     @Container
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
@@ -49,7 +48,6 @@ class CatalogDeactivationPreservationIntegrationTest {
 
     @AfterEach
     void removeTestData() {
-        jdbcTemplate.update("delete from catalog_audit_entry where actor_key = ?", ACTOR);
         jdbcTemplate.update("""
                 delete from ingredient_refinement
                 where parent_concept_id in (select id from ingredient_concept where code like ?)
@@ -114,7 +112,6 @@ class CatalogDeactivationPreservationIntegrationTest {
                     before.baseDrawWeight(),
                     before.noveltyLevel(),
                     before.curatorNote(),
-                    ACTOR,
                     false
             ));
 
@@ -133,11 +130,6 @@ class CatalogDeactivationPreservationIntegrationTest {
                       and challenge_specificity_snapshot = 'SPECIFIC'
                       and display_text_snapshot = 'Deactivation target'
                     """, Integer.class, candidateId, concept)).isEqualTo(1);
-            assertThat(jdbcTemplate.queryForObject(
-                    "select count(*) from catalog_audit_entry where actor_key = ?",
-                    Integer.class,
-                    ACTOR
-            )).isEqualTo(1);
         } finally {
             jdbcTemplate.update("delete from generation_attempt where challenge_session_id = ?", sessionId);
             jdbcTemplate.update("delete from challenge_session where id = ?", sessionId);

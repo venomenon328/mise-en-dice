@@ -35,20 +35,18 @@ public interface CatalogExclusionCommands {
             boolean active,
             BigDecimal baseDrawWeight,
             String curatorNote,
-            List<ExclusionTarget> targets,
-            String actorKey
+            List<ExclusionTarget> targets
     ) {
-        public CreateExclusionRuleCommand(String code, String displayText, String actorKey) {
-            this(code, displayText, true, new BigDecimal("1.0000"), null, List.of(), actorKey);
+        public CreateExclusionRuleCommand(String code, String displayText) {
+            this(code, displayText, true, new BigDecimal("1.0000"), null, List.of());
         }
 
         public CreateExclusionRuleCommand {
             code = required(code);
             displayText = required(displayText);
             curatorNote = nullable(curatorNote);
-            actorKey = required(actorKey);
             targets = targets == null ? List.of() : List.copyOf(targets);
-            validate(code, displayText, active, baseDrawWeight, targets, actorKey);
+            validate(code, displayText, active, baseDrawWeight, targets);
         }
     }
 
@@ -59,13 +57,11 @@ public interface CatalogExclusionCommands {
             boolean active,
             BigDecimal baseDrawWeight,
             String curatorNote,
-            List<ExclusionTarget> targets,
-            String actorKey
+            List<ExclusionTarget> targets
     ) {
         public UpdateExclusionRuleCommand {
             displayText = required(displayText);
             curatorNote = nullable(curatorNote);
-            actorKey = required(actorKey);
             targets = targets == null ? List.of() : List.copyOf(targets);
             Map<String, String> errors = new LinkedHashMap<>();
             if (exclusionRuleId <= 0) {
@@ -74,7 +70,7 @@ public interface CatalogExclusionCommands {
             if (expectedVersion < 0) {
                 errors.put("version", "Die erwartete Version ist nicht gültig.");
             }
-            validateInto(errors, null, displayText, active, baseDrawWeight, targets, actorKey);
+            validateInto(errors, null, displayText, active, baseDrawWeight, targets);
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);
             }
@@ -86,11 +82,10 @@ public interface CatalogExclusionCommands {
             String displayText,
             boolean active,
             BigDecimal baseDrawWeight,
-            List<ExclusionTarget> targets,
-            String actorKey
+            List<ExclusionTarget> targets
     ) {
         Map<String, String> errors = new LinkedHashMap<>();
-        validateInto(errors, code, displayText, active, baseDrawWeight, targets, actorKey);
+        validateInto(errors, code, displayText, active, baseDrawWeight, targets);
         if (!errors.isEmpty()) {
             throw new CatalogCommandValidationException(errors);
         }
@@ -102,8 +97,7 @@ public interface CatalogExclusionCommands {
             String displayText,
             boolean active,
             BigDecimal baseDrawWeight,
-            List<ExclusionTarget> targets,
-            String actorKey
+            List<ExclusionTarget> targets
     ) {
         if (code != null && !Pattern.matches(CatalogCommands.INGREDIENT_CONCEPT_CODE_PATTERN, code)) {
             errors.put("code", "Der Code muss dem Muster A-Z, Ziffern und Unterstriche folgen.");
@@ -120,9 +114,6 @@ public interface CatalogExclusionCommands {
         long distinctTargets = targets.stream().map(ExclusionTarget::ingredientConceptId).distinct().count();
         if (distinctTargets != targets.size()) {
             errors.put("targets", "Dasselbe Zutatenkonzept darf nur einmal als Ausschlussziel vorkommen.");
-        }
-        if (actorKey.isEmpty()) {
-            errors.put("actorKey", "Für die Auditierung ist ein Administrationsschlüssel erforderlich.");
         }
     }
 

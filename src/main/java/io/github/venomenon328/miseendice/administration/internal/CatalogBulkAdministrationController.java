@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,13 +44,12 @@ class CatalogBulkAdministrationController {
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String functionalRole,
             @RequestParam(required = false) String availability,
-            Authentication authentication,
             HttpServletRequest request,
             HttpServletResponse response,
             Model model
     ) {
         try {
-            BulkOperation operation = operation(encodedSelections, action, functionalRole, availability, false, authentication);
+            BulkOperation operation = operation(encodedSelections, action, functionalRole, availability, false);
             var preview = bulkCommands.preview(operation);
             BulkConfirmation confirmation = new BulkConfirmation(UUID.randomUUID(), preview.operation());
             request.getSession().setAttribute(CONFIRMATION_ATTRIBUTE, confirmation);
@@ -76,7 +74,6 @@ class CatalogBulkAdministrationController {
             @RequestParam(required = false) String functionalRole,
             @RequestParam(required = false) String availability,
             @RequestParam(defaultValue = "false") boolean weightWarningsAcknowledged,
-            Authentication authentication,
             HttpSession session,
             HttpServletRequest request,
             HttpServletResponse response,
@@ -84,7 +81,7 @@ class CatalogBulkAdministrationController {
     ) {
         try {
             BulkOperation operation = operation(encodedSelections, action, functionalRole, availability,
-                    weightWarningsAcknowledged, authentication);
+                    weightWarningsAcknowledged);
             BulkConfirmation confirmation = session.getAttribute(CONFIRMATION_ATTRIBUTE) instanceof BulkConfirmation stored
                     ? stored : null;
             if (confirmation == null || !confirmation.id().toString().equals(confirmationId)
@@ -134,8 +131,7 @@ class CatalogBulkAdministrationController {
             String action,
             String functionalRole,
             String availability,
-            boolean acknowledged,
-            Authentication authentication
+            boolean acknowledged
     ) {
         List<BulkSelection> selections = new ArrayList<>();
         if (encodedSelections != null) {
@@ -151,14 +147,7 @@ class CatalogBulkAdministrationController {
         }
         BulkAction parsedAction = enumValue(BulkAction.class, action);
         CatalogAvailability parsedAvailability = enumValue(CatalogAvailability.class, availability);
-        return new BulkOperation(selections, parsedAction, functionalRole, parsedAvailability, acknowledged, actorKey(authentication));
-    }
-
-    private static String actorKey(Authentication authentication) {
-        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
-            throw new IllegalStateException("Catalog writing requires an authenticated administration identity");
-        }
-        return authentication.getName();
+        return new BulkOperation(selections, parsedAction, functionalRole, parsedAvailability, acknowledged);
     }
 
     private static <E extends Enum<E>> E enumValue(Class<E> type, String value) {

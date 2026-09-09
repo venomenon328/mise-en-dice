@@ -90,7 +90,7 @@ class IngredientLookupQueriesIntegrationTest {
     }
 
     @Test
-    void projectsOnlyTheAllowedCurrentDirectFieldsAndNeverWritesAuditData() {
+    void projectsOnlyTheAllowedCurrentDirectFields() {
         long activeParentB = insertConcept("PARENT_ACTIVE_B", "Lookup Oberbegriff Beta", true, false, 1, "Technische Testnotiz.");
         long activeParentA = insertConcept("PARENT_ACTIVE_A", "Lookup Oberbegriff Alpha", true, false, 1, "Technische Testnotiz.");
         long inactiveParent = insertConcept("PARENT_INACTIVE", "Lookup Oberbegriff inaktiv", false, false, 1, "Technische Testnotiz.");
@@ -112,11 +112,8 @@ class IngredientLookupQueriesIntegrationTest {
         assignCountry(activeChildA, "TH");
         assignAvailabilityNote(selected, "GEORGIA", "Synthetische Georgia-Notiz.");
         assignAvailabilityNote(selected, "TOBIAS", "Synthetische Tobias-Notiz.");
-        long auditBefore = jdbcTemplate.queryForObject("select count(*) from catalog_audit_entry", Long.class);
-
         var search = queries.searchActiveByDisplayName("profil", 25);
         var profile = queries.findActiveProfile(selected).orElseThrow();
-        long auditAfter = jdbcTemplate.queryForObject("select count(*) from catalog_audit_entry", Long.class);
 
         assertThat(search.matches()).singleElement().extracting(match -> match.activeDirectParents())
                 .isEqualTo(List.of("Lookup Oberbegriff Alpha", "Lookup Oberbegriff Beta"));
@@ -143,8 +140,6 @@ class IngredientLookupQueriesIntegrationTest {
                         org.assertj.core.groups.Tuple.tuple("TOBIAS", "Tobias", "Synthetische Tobias-Notiz."));
         assertThat(profile.curatorNote()).isEqualTo("  Kurator @here *Hinweis*  ");
         assertThat(queries.findActiveProfile(inactiveChild)).isEmpty();
-        assertThat(auditAfter).isEqualTo(auditBefore);
-
         assignCountry(selected, "TH");
 
         assertThat(queries.findActiveProfile(selected).orElseThrow().culinaryCountries())

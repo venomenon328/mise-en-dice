@@ -282,7 +282,7 @@ Sie dient insbesondere für:
 - individuelle Beschaffbarkeit verwalten,
 - Ziehungsgewichte, Kochungewöhnlichkeit und Saisonfaktoren pflegen,
 - Ausschlussregeln verwalten,
-- spätere redaktionelle Änderungen über einen Audit-Trail nachvollziehen.
+- spätere redaktionelle Änderungen kontrolliert über die private Verwaltung durchführen.
 
 Die konkrete Bedien- und Interaktionsspezifikation steht in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md).
 
@@ -305,7 +305,7 @@ Discord ist vorgesehen für:
 - Entscheidungen beider Personen gleichzeitig offenlegen,
 - später gegebenenfalls Ergebnisse und Bewertungen dokumentieren.
 
-Im normalen Auswahlweg wird nur die ausdrücklich bestätigte Option zur operativen Challenge und beeinflusst Cooldown und Neuigkeitskadenz. Nicht gewählte Angebote bleiben für Audit und historische Anzeige nachvollziehbar, sind für den Generator aber so zu behandeln, als wären sie nie angeboten worden. Nur wenn das **gesamte** sichtbare Offer Set stattdessen rerollt wird, erzeugen seine exakten Katalogkonzepte die in Abschnitt 6 definierte Cooldown-only-Exposition.
+Im normalen Auswahlweg wird nur die ausdrücklich bestätigte Option zur operativen Challenge und beeinflusst Cooldown und Neuigkeitskadenz. Nicht gewählte Angebote bleiben für Diagnose und historische Anzeige nachvollziehbar, sind für den Generator aber so zu behandeln, als wären sie nie angeboten worden. Nur wenn das **gesamte** sichtbare Offer Set stattdessen rerollt wird, erzeugen seine exakten Katalogkonzepte die in Abschnitt 6 definierte Cooldown-only-Exposition.
 
 Die öffentliche Challenge-Historie zeigt ausschließlich die bestätigten Fakten und niemals Abstimmungs-, Offer-, Reroll-, Kurator- oder Providerdetails. Die zuletzt bestätigte Challenge gilt im ersten Stand als aktuell. Eine optionale Challenge-Card ist lediglich ein Darstellungsartefakt; die persistierten Requirement- und Restriction-Snapshots bleiben Autorität. Die vollständige Spezifikation steht in [`CHALLENGE_ARCHIVE_AND_CARDS.md`](CHALLENGE_ARCHIVE_AND_CARDS.md).
 

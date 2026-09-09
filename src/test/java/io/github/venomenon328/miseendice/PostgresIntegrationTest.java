@@ -9,12 +9,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAggregateSnapshot;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditEntry;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditEntryDraft;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditLog;
 import io.github.venomenon328.miseendice.catalog.internal.JdbcCatalogAggregateVersionRepository;
 import javax.sql.DataSource;
 import liquibase.Contexts;
@@ -58,9 +53,6 @@ class PostgresIntegrationTest {
 
     @Autowired
     private DataSource dataSource;
-
-    @Autowired
-    private CatalogAuditLog catalogAuditLog;
 
     @Autowired
     private JdbcCatalogAggregateVersionRepository aggregateVersionRepository;
@@ -117,7 +109,7 @@ class PostgresIntegrationTest {
     }
 
     @Test
-    void administrationDefaultsAndAuditSchemaRemainAvailable() {
+    void administrationVersionsRemainAvailableWithoutTheCatalogAuditTable() {
         long newConcept = insertConcept("initial-version");
         try {
             assertThat(jdbcTemplate.queryForObject("select version from ingredient_concept where id = ?",
@@ -134,33 +126,11 @@ class PostgresIntegrationTest {
         } finally {
             jdbcTemplate.update("delete from exclusion_rule where id = ?", newRule);
         }
-        assertThat(jdbcTemplate.queryForList(
-                """
-                select column_name || ':' || data_type
-                from information_schema.columns
-                where table_schema = 'public' and table_name = 'catalog_audit_entry'
-                """,
-                String.class
-        )).contains("before_state:jsonb", "after_state:jsonb");
-        assertThat(jdbcTemplate.queryForList(
-                """
-                select indexname
-                from pg_indexes
-                where schemaname = 'public' and tablename = 'catalog_audit_entry'
-                """,
-                String.class
-        )).contains(
-                "ix_catalog_audit_entry_entity_occurred_at",
-                "ix_catalog_audit_entry_actor_occurred_at",
-                "ix_catalog_audit_entry_change_group"
-        );
         assertThat(jdbcTemplate.queryForObject(
                 """
-                select count(*)
-                from information_schema.table_constraints
+                select count(*) from information_schema.tables
                 where table_schema = 'public'
                   and table_name = 'catalog_audit_entry'
-                  and constraint_type = 'FOREIGN KEY'
                 """,
                 Integer.class
         )).isZero();
@@ -230,24 +200,42 @@ class PostgresIntegrationTest {
     }
 
     @Test
-    void catalogAuditEntriesPersistAndReadBackAggregateSnapshots() {
-        UUID changeGroupId = UUID.randomUUID();
-        CatalogAuditEntry persisted = catalogAuditLog.append(new CatalogAuditEntryDraft(
-                changeGroupId,
-                "editor-tobias",
-                "INGREDIENT_CONCEPT",
-                42,
-                "UPDATED",
-                new CatalogAggregateSnapshot(Map.of("displayName", "Test concept", "active", true)),
-                new CatalogAggregateSnapshot(Map.of("displayName", "Updated test concept", "active", true))
-        ));
+    void upgradesTheImmediatelyPreviousMainAndRestartsAfterCatalogAuditCleanup() throws Exception {
+        String upgradeDatabase = "catalog_audit_cleanup_" + UUID.randomUUID().toString().replace("-", "");
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            statement.execute("create database " + upgradeDatabase);
+        }
 
-        assertThat(persisted.id()).isPositive();
-        assertThat(persisted.changeGroupId()).isEqualTo(changeGroupId);
-        assertThat(persisted.payloadVersion()).isEqualTo((short) 1);
-        assertThat(persisted.occurredAt()).isNotNull();
-        assertThat(catalogAuditLog.findById(persisted.id()))
-                .contains(persisted);
+        String upgradeUrl = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + upgradeDatabase);
+        try (Connection connection = DriverManager.getConnection(upgradeUrl, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+            runLiquibase(connection, "db/changelog/db.changelog-before-catalog-audit-cleanup.yaml");
+
+            assertThat(tableExists(connection, "catalog_audit_entry")).isTrue();
+            assertThat(count(connection, "catalog_audit_entry")).isPositive();
+            int ingredientCount = count(connection, "ingredient_concept");
+            int exclusionCount = count(connection, "exclusion_rule");
+            int ingredientVersionSum = integerValue(connection,
+                    "select coalesce(sum(version), 0) from ingredient_concept");
+            int exclusionVersionSum = integerValue(connection,
+                    "select coalesce(sum(version), 0) from exclusion_rule");
+
+            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+
+            assertThat(tableExists(connection, "catalog_audit_entry")).isFalse();
+            assertThat(count(connection, "ingredient_concept")).isEqualTo(ingredientCount);
+            assertThat(count(connection, "exclusion_rule")).isEqualTo(exclusionCount);
+            assertThat(integerValue(connection, "select coalesce(sum(version), 0) from ingredient_concept"))
+                    .isEqualTo(ingredientVersionSum);
+            assertThat(integerValue(connection, "select coalesce(sum(version), 0) from exclusion_rule"))
+                    .isEqualTo(exclusionVersionSum);
+            assertThat(countWhere(connection, "databasechangelog", "id = '022-remove-runtime-catalog-audit'"))
+                    .isOne();
+
+            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+            assertThat(tableExists(connection, "catalog_audit_entry")).isFalse();
+            assertThat(countWhere(connection, "databasechangelog", "id = '022-remove-runtime-catalog-audit'"))
+                    .isOne();
+        }
     }
 
     @Test
@@ -620,6 +608,28 @@ class PostgresIntegrationTest {
              ResultSet result = statement.executeQuery(
                      "select count(*) from " + table + " where " + whereClause
              )) {
+            result.next();
+            return result.getInt(1);
+        }
+    }
+
+    private static boolean tableExists(Connection connection, String table) throws Exception {
+        try (var statement = connection.prepareStatement("""
+                select exists (
+                    select 1 from information_schema.tables
+                    where table_schema = 'public' and table_name = ?
+                )
+                """)) {
+            statement.setString(1, table);
+            try (ResultSet result = statement.executeQuery()) {
+                result.next();
+                return result.getBoolean(1);
+            }
+        }
+    }
+
+    private static int integerValue(Connection connection, String sql) throws Exception {
+        try (Statement statement = connection.createStatement(); ResultSet result = statement.executeQuery(sql)) {
             result.next();
             return result.getInt(1);
         }

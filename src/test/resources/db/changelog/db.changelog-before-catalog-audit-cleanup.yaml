@@ -125,5 +125,3 @@ databaseChangeLog:
       file: db/changelog/catalog/036-availability-note-prefix-cleanup.sql
   - include:
       file: db/changelog/catalog/037-availability-note-consolidation.sql
-  - include:
-      file: db/changelog/schema/022-remove-runtime-catalog-audit.sql

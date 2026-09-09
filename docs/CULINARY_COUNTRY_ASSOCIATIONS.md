@@ -72,7 +72,6 @@ Damit gelten dieselben Verträge:
 
 - ein Zutaten-Save ist atomar,
 - `ingredient_concept.version` schützt auch Länderänderungen vor stillem Concurrent Edit,
-- Länderänderungen erscheinen im bestehenden feldweisen Katalog-Audit,
 - unbekannte Ländercodes werden im Application Service abgewiesen und zusätzlich durch den Foreign Key abgesichert,
 - es gibt keinen separaten Länder-Speicherworkflow und keine eigene Länder-Version.
 
@@ -108,7 +107,7 @@ Issue #166 führt ausschließlich
 - den ISO-Referenzbestand,
 - die Katalog-Read-/Write-API,
 - Filtersemantik,
-- Optimistic-Locking-/Audit-Integration und
+- Optimistic-Locking-Integration und
 - die technische Generator-Invarianz
 
 ein.

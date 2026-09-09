@@ -1,7 +1,5 @@
 package io.github.venomenon328.miseendice.administration.internal;
 
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.CatalogAuditEntityType;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogExclusionCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogExclusionCommands.ExclusionTarget;
@@ -18,7 +16,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.MultiValueMap;
@@ -40,16 +37,13 @@ class CatalogExclusionAdministrationController {
 
     private final CatalogExclusionQueries exclusionQueries;
     private final CatalogExclusionCommands exclusionCommands;
-    private final CatalogAuditQueries auditQueries;
 
     CatalogExclusionAdministrationController(
             CatalogExclusionQueries exclusionQueries,
-            CatalogExclusionCommands exclusionCommands,
-            CatalogAuditQueries auditQueries
+            CatalogExclusionCommands exclusionCommands
     ) {
         this.exclusionQueries = exclusionQueries;
         this.exclusionCommands = exclusionCommands;
-        this.auditQueries = auditQueries;
     }
 
     @GetMapping
@@ -80,7 +74,6 @@ class CatalogExclusionAdministrationController {
         }
         model.addAttribute("state", state);
         model.addAttribute("exclusionDetail", detail.get());
-        model.addAttribute("entityHistory", auditQueries.findEntityHistory(CatalogAuditEntityType.EXCLUSION_RULE, exclusionRuleId, 5));
         if (isHtmx(htmxRequest)) {
             return "admin/fragments/exclusion :: panel";
         }
@@ -132,7 +125,6 @@ class CatalogExclusionAdministrationController {
             @RequestParam(required = false) String baseDrawWeight,
             @RequestParam(required = false) String curatorNote,
             @RequestParam(name = "target", required = false) List<String> targets,
-            Authentication authentication,
             Model model,
             HttpServletResponse response,
             RedirectAttributes redirectAttributes
@@ -140,7 +132,7 @@ class CatalogExclusionAdministrationController {
         ExclusionState state = ExclusionState.from(parameters, null);
         ExclusionRuleForm form = ExclusionRuleForm.forCreate(code, displayText, active, baseDrawWeight, curatorNote, targets);
         try {
-            var result = exclusionCommands.createExclusionRule(form.toCreateCommand(actorKey(authentication)));
+            var result = exclusionCommands.createExclusionRule(form.toCreateCommand());
             redirectAttributes.addFlashAttribute("saveNotice", "Ausschlussregel angelegt.");
             return "redirect:" + state.detailUrl(result.exclusionRuleId());
         } catch (CatalogCommandValidationException exception) {
@@ -159,7 +151,6 @@ class CatalogExclusionAdministrationController {
             @RequestParam(required = false) String version,
             @RequestParam(name = "target", required = false) List<String> targets,
             @RequestParam(defaultValue = "false") boolean continueEditing,
-            Authentication authentication,
             Model model,
             HttpServletResponse response,
             RedirectAttributes redirectAttributes
@@ -180,7 +171,7 @@ class CatalogExclusionAdministrationController {
             return fullWithForm(state, model);
         }
         try {
-            exclusionCommands.updateExclusionRule(form.toUpdateCommand(actorKey(authentication)));
+            exclusionCommands.updateExclusionRule(form.toUpdateCommand());
             redirectAttributes.addFlashAttribute("saveNotice", "Gespeichert.");
             return "redirect:" + state.detailUrl(exclusionRuleId);
         } catch (CatalogCommandValidationException exception) {
@@ -247,16 +238,8 @@ class CatalogExclusionAdministrationController {
         if (state.selectedExclusionRuleId() != null && !model.containsAttribute("exclusionDetail")) {
             exclusionQueries.findExclusionRule(state.selectedExclusionRuleId()).ifPresent(detail -> {
                 model.addAttribute("exclusionDetail", detail);
-                model.addAttribute("entityHistory", auditQueries.findEntityHistory(CatalogAuditEntityType.EXCLUSION_RULE, detail.id(), 5));
             });
         }
-    }
-
-    private static String actorKey(Authentication authentication) {
-        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
-            throw new IllegalStateException("Catalog writing requires an authenticated administration identity");
-        }
-        return authentication.getName();
     }
 
     private static boolean isHtmx(String value) {
@@ -309,17 +292,17 @@ class CatalogExclusionAdministrationController {
                     Long.toString(currentVersion), targets);
         }
 
-        CatalogExclusionCommands.CreateExclusionRuleCommand toCreateCommand(String actorKey) {
+        CatalogExclusionCommands.CreateExclusionRuleCommand toCreateCommand() {
             Map<String, String> errors = new LinkedHashMap<>();
             BigDecimal weight = parseWeight(baseDrawWeight, errors);
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);
             }
             return new CatalogExclusionCommands.CreateExclusionRuleCommand(code, displayText, active, weight, curatorNote,
-                    targets.stream().map(target -> new ExclusionTarget(target.ingredientConceptId(), target.includeRefinements())).toList(), actorKey);
+                    targets.stream().map(target -> new ExclusionTarget(target.ingredientConceptId(), target.includeRefinements())).toList());
         }
 
-        CatalogExclusionCommands.UpdateExclusionRuleCommand toUpdateCommand(String actorKey) {
+        CatalogExclusionCommands.UpdateExclusionRuleCommand toUpdateCommand() {
             Map<String, String> errors = new LinkedHashMap<>();
             long expectedVersion = parseVersion(version, errors);
             BigDecimal weight = parseWeight(baseDrawWeight, errors);
@@ -328,7 +311,7 @@ class CatalogExclusionAdministrationController {
             }
             return new CatalogExclusionCommands.UpdateExclusionRuleCommand(id, expectedVersion, displayText, active, weight,
                     curatorNote, targets.stream().map(target -> new ExclusionTarget(target.ingredientConceptId(),
-                    target.includeRefinements())).toList(), actorKey);
+                    target.includeRefinements())).toList());
         }
 
         private static List<FormTarget> parseTargets(List<String> encoded) {

@@ -70,7 +70,6 @@ class CatalogRefinementEditingReviewRegressionTest {
 
     @AfterEach
     void cleanUp() {
-        jdbcTemplate.update("delete from catalog_audit_entry where actor_key = ?", ACTOR_KEY);
         jdbcTemplate.update("""
                 delete from ingredient_refinement
                 where parent_concept_id in (select id from ingredient_concept where code like ?)

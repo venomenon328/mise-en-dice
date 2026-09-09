@@ -68,7 +68,6 @@ Verbindliche Ergebnisse stehen in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md)
 - Ausschlussregelpflege,
 - begrenzte und atomare Bulk-Aktionen,
 - optimistisches Locking auf Aggregatsebene,
-- Audit-Trail,
 - vom `participant` getrennte Administrationsidentität,
 - Spring-Security-basierter Zugriffsschutz,
 - Validierungs- und Konfliktdarstellung,
@@ -92,9 +91,8 @@ Dieses Paket schafft die technischen Voraussetzungen für alle späteren schreib
 - keine Default-Zugangsdaten,
 - aktivierbarer Administrationsadapter,
 - `version bigint not null default 0` auf `ingredient_concept` und `exclusion_rule`,
-- `catalog_audit_entry` einschließlich Gruppierung von zusammengehörenden Änderungen,
-- interne Locking- und Auditgrundlagen im Katalogmodul,
-- PostgreSQL-Integrationstests für Versionierung und Audit,
+- interne Locking-Grundlagen im Katalogmodul,
+- PostgreSQL-Integrationstests für Versionierung,
 - Sicherheits- und Modulgrenzentests.
 
 ### Nicht enthalten
@@ -108,8 +106,8 @@ Dieses Paket schafft die technischen Voraussetzungen für alle späteren schreib
 - `/admin/**` ist ohne Authentifizierung nicht nutzbar,
 - bei deaktiviertem Adapter sind keine Admin-Zugangsdaten erforderlich,
 - bei aktiviertem Adapter führt fehlende sichere Konfiguration zu einem klaren Startfehler,
-- Versionierungs- und Auditschema ist über echtes PostgreSQL geprüft,
-- Passwörter und Sessiondaten gelangen nicht in Auditdaten.
+- Versionierungsschema ist über echtes PostgreSQL geprüft,
+- Passwörter und Sessiondaten gelangen nicht in fachliche Katalogdaten.
 
 ## Phase 4: Lesende Katalogverwaltung (abgeschlossen mit Issue #9)
 
@@ -175,7 +173,6 @@ Dieses Paket führt die ersten produktiven Schreibzugriffe ein.
 - explizites Speichern/Verwerfen,
 - Umgang mit ungespeicherten Änderungen,
 - optimistisches Locking und Konfliktansicht,
-- Audit für Anlage und Änderungen,
 - verständliche Datenbank-Constraint-Fehler.
 
 ### Erfülltes Gate
@@ -184,7 +181,7 @@ Dieses Paket führt die ersten produktiven Schreibzugriffe ein.
 - Codeänderungen nach Anlage sind über die normale Weboberfläche ausgeschlossen,
 - Deaktivierung erhält Beziehungen und historische Referenzen,
 - unbekannte Datenbankfehler werden nicht als fachliche Konflikte maskiert,
-- jeder erfolgreiche Schreibzugriff erzeugt einen korrekten Audit-Eintrag.
+- Versionskonflikte überschreiben keine konkurrierenden Änderungen.
 
 ## Phase 6: Konkretisierungsbeziehungen (abgeschlossen mit Issue #21)
 
@@ -199,8 +196,7 @@ Dieses Paket macht den Graphen schreibend pflegbar.
 - Vorabprüfung auf Selbstbeziehungen, Duplikate und Zyklen,
 - PostgreSQL-Trigger bleibt letzte Integritätssicherung,
 - Versionierung aller vom Save betroffenen Aggregate,
-- PostgreSQL-seitige Serialisierung aller Graphmutationen,
-- ein Audit-Eintrag pro betroffenem Konzept mit gemeinsamer `change_group_id`.
+- PostgreSQL-seitige Serialisierung aller Graphmutationen.
 
 ### Gate
 
@@ -233,9 +229,9 @@ Die Stammdaten `functional_role`, `culinary_flag`, `culinary_dimension` und `par
 - aktive ziehbare offene Konzepte dürfen ohne bekannte direkte Konkretisierung gespeichert werden,
 - fehlende Dimensionswerte bleiben semantisch `nicht gepflegt`,
 - fehlende Saisonwerte bleiben semantisch Faktor 1.0,
-- Änderungen sind versionsgesichert und auditiert.
+- Änderungen sind versionsgesichert und atomar.
 
-## Phase 8: Ausschlüsse, Bulk und Auditoberfläche (abgeschlossen mit Issue #30)
+## Phase 8: Ausschlüsse und Bulk (abgeschlossen mit Issue #30; Katalogaudit entfernt mit Issue #221)
 
 Dieses Paket schließt die vollständige Katalogverwaltung ab.
 
@@ -244,15 +240,12 @@ Dieses Paket schließt die vollständige Katalogverwaltung ab.
 - Ausschlussregeln einschließlich mehrerer Ziele und `include_refinements`,
 - Neuanlage, Bearbeitung und Deaktivierung von Ausschlussregeln,
 - begrenzte Bulk-Aktionen für explizit ausgewählte Zutatenkonzepte,
-- atomare Bulk-Verarbeitung,
-- Auditliste, Filter und feldweiser Diff,
-- Entity-bezogene Änderungshistorie in den Detailansichten.
+- atomare Bulk-Verarbeitung.
 
 ### Gate
 
 - aktive Ausschlussregeln besitzen mindestens ein Ziel,
 - Bulk-Aktionen verändern höchstens 200 explizit ausgewählte Konzepte und sind vollständig atomar,
-- Auditdaten machen normale redaktionelle Änderungen ohne Roh-JSON verständlich nachvollziehbar,
 - die in [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md) beschriebene erste vollständige Webverwaltung ist funktional abgedeckt.
 
 ## Phase 9: Generierungsregeln und Kandidatengenerator (abgeschlossen mit Issue #40)

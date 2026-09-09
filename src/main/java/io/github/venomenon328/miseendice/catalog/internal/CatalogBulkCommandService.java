@@ -1,7 +1,5 @@
 package io.github.venomenon328.miseendice.catalog.internal;
 
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditEntryDraft;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditLog;
 import io.github.venomenon328.miseendice.catalog.api.CatalogBulkCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogBulkCommands.BulkAction;
 import io.github.venomenon328.miseendice.catalog.api.CatalogBulkCommands.BulkOperation;
@@ -25,7 +23,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Service;
@@ -35,20 +32,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 class CatalogBulkCommandService implements CatalogBulkCommands {
 
-    private static final String ENTITY_TYPE = "INGREDIENT_CONCEPT";
-
     private final JdbcTemplate jdbcTemplate;
     private final CatalogQueries catalogQueries;
-    private final CatalogAuditLog auditLog;
 
     CatalogBulkCommandService(
             JdbcTemplate jdbcTemplate,
-            CatalogQueries catalogQueries,
-            CatalogAuditLog auditLog
+            CatalogQueries catalogQueries
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.catalogQueries = catalogQueries;
-        this.auditLog = auditLog;
     }
 
     @Override
@@ -79,20 +71,13 @@ class CatalogBulkCommandService implements CatalogBulkCommands {
                 .sorted()
                 .toList();
         if (changedIds.isEmpty()) {
-            return new CatalogBulkResult(List.of(), UUID.randomUUID());
+            return new CatalogBulkResult(List.of());
         }
 
         for (long conceptId : changedIds) {
             persistChange(operation, conceptId, before.get(conceptId), resulting.get(conceptId));
         }
-        UUID changeGroupId = UUID.randomUUID();
-        for (long conceptId : changedIds) {
-            CatalogConceptDetail after = findRequired(conceptId);
-            auditLog.append(new CatalogAuditEntryDraft(changeGroupId, operation.actorKey(), ENTITY_TYPE, conceptId,
-                    "BULK_" + operation.action().name(), CatalogIngredientSnapshotFactory.snapshot(before.get(conceptId)),
-                    CatalogIngredientSnapshotFactory.snapshot(after)));
-        }
-        return new CatalogBulkResult(changedIds, changeGroupId);
+        return new CatalogBulkResult(changedIds);
     }
 
     private void validateActionReference(BulkOperation operation) {

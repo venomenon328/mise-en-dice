@@ -26,13 +26,11 @@ import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
-import tools.jackson.databind.ObjectMapper;
 
 /** Executes the migration algorithm with synthetic review rows, never editorial content assertions. */
 @Testcontainers
 class AvailabilityNoteConsolidationMigrationIntegrationTest {
     private static final String MIGRATION = "db/changelog/catalog/037-availability-note-consolidation.sql";
-    private static final String ACTOR = "liquibase:037-availability-note-consolidation";
     private static final String FIXTURE = """
             INSERT INTO availability_note_consolidation_review VALUES
                 ('TEST_NOTE_SHARED', 'EASY', 'EASY', 'Old Georgia.', 'Old Tobias.', 'Shared target.', 'Shared target.'),
@@ -46,7 +44,6 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
     private Connection connection;
     private JdbcTemplate jdbc;
     private JdbcCatalogQueries catalogQueries;
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private String migration;
 
     @BeforeAll
@@ -54,7 +51,7 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
         try (Connection connection = connect()) {
             var database = DatabaseFactory.getInstance()
                     .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-            new Liquibase("db/changelog/db.changelog-master.yaml",
+            new Liquibase("db/changelog/db.changelog-before-catalog-audit-cleanup.yaml",
                     new ClassLoaderResourceAccessor(), database).update(new Contexts(), new LabelExpression());
         }
     }
@@ -146,9 +143,8 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
     }
 
     @Test
-    void changesOnlyNotesAndVersionsWithCanonicalCompleteGroupedAudit() throws Exception {
+    void changesOnlyNotesAndVersions() throws Exception {
         var protectedBefore = protectedState();
-        var snapshotsBefore = runtimeSnapshots("TEST_NOTE_SHARED", "TEST_NOTE_SPLIT");
         var representative = catalogQueries.findConcept(conceptId("TEST_NOTE_SHARED")).orElseThrow();
         assertThat(representative.directParents())
                 .extracting(value -> value.code())
@@ -174,9 +170,7 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
                 .map(value -> value.weightMultiplier())
                 .findFirst()).contains(java.math.BigDecimal.ONE);
         assertThat(representative.directExclusionRules()).contains("Synthetic exclusion rule.");
-        int auditsBefore = auditCount();
         jdbc.execute(migration);
-        var snapshotsAfter = runtimeSnapshots("TEST_NOTE_SHARED", "TEST_NOTE_SPLIT");
         assertThat(protectedState()).isEqualTo(protectedBefore);
         assertThat(jdbc.queryForList("""
                 SELECT a.curator_note FROM ingredient_availability a
@@ -194,25 +188,6 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
                 SELECT version FROM ingredient_concept
                 WHERE code IN ('TEST_NOTE_SHARED', 'TEST_NOTE_SPLIT', 'TEST_NOTE_ALREADY') ORDER BY code
                 """, Long.class)).containsExactly(0L, 1L, 1L);
-        assertThat(auditCount() - auditsBefore).isEqualTo(2);
-        assertThat(jdbc.queryForObject("""
-                SELECT count(DISTINCT change_group_id) FROM catalog_audit_entry
-                WHERE actor_key = ? AND after_state->>'code' LIKE 'TEST_NOTE_%'
-                """, Integer.class, ACTOR)).isOne();
-        assertThat(jdbc.queryForObject("""
-                SELECT bool_and(
-                    (before_state - 'version' - 'availability') = (after_state - 'version' - 'availability')
-                    AND (after_state->>'version')::bigint = (before_state->>'version')::bigint + 1
-                    AND jsonb_array_length(before_state->'availability') = 2
-                    AND jsonb_array_length(after_state->'availability') = 2
-                    AND (before_state->'availability') IS DISTINCT FROM (after_state->'availability')
-                    AND payload_version = 1 AND entity_type = 'INGREDIENT_CONCEPT' AND action = 'UPDATE'
-                ) FROM catalog_audit_entry WHERE actor_key = ? AND after_state->>'code' LIKE 'TEST_NOTE_%'
-                """, Boolean.class, ACTOR)).isTrue();
-        snapshotsBefore.forEach((conceptId, before) -> assertThat(jdbc.queryForObject("""
-                SELECT before_state = cast(? as jsonb) AND after_state = cast(? as jsonb)
-                FROM catalog_audit_entry WHERE actor_key = ? AND entity_id = ?
-                """, Boolean.class, before, snapshotsAfter.get(conceptId), ACTOR, conceptId)).isTrue());
     }
 
     @Test
@@ -252,36 +227,6 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
                 .hasStackTraceContaining("TEST_NOTE_SHARED/");
         connection.rollback(checkpoint);
         assertThat(fullState()).isEqualTo(before);
-    }
-
-    @Test
-    void rollsBackNotesAndVersionsWhenAuditFails() throws Exception {
-        jdbc.execute("""
-                CREATE FUNCTION pg_temp.reject_note_audit() RETURNS trigger LANGUAGE plpgsql AS $$
-                BEGIN RAISE EXCEPTION 'Synthetic audit failure'; END $$;
-                CREATE TRIGGER test_note_audit_failure BEFORE INSERT ON catalog_audit_entry
-                FOR EACH ROW EXECUTE FUNCTION pg_temp.reject_note_audit();
-                """);
-        var before = fullState();
-        Savepoint checkpoint = connection.setSavepoint();
-        assertThatThrownBy(() -> jdbc.execute(migration)).hasStackTraceContaining("Synthetic audit failure");
-        connection.rollback(checkpoint);
-        assertThat(fullState()).isEqualTo(before);
-    }
-
-    private int auditCount() {
-        return jdbc.queryForObject("SELECT count(*) FROM catalog_audit_entry WHERE actor_key = ?", Integer.class, ACTOR);
-    }
-
-    private Map<Long, String> runtimeSnapshots(String... conceptCodes) throws Exception {
-        Map<Long, String> snapshots = new LinkedHashMap<>();
-        for (String conceptCode : conceptCodes) {
-            long conceptId = conceptId(conceptCode);
-            snapshots.put(conceptId, objectMapper.writeValueAsString(
-                    CatalogIngredientSnapshotFactory.snapshot(
-                            catalogQueries.findConcept(conceptId).orElseThrow()).values()));
-        }
-        return snapshots;
     }
 
     private long conceptId(String conceptCode) {

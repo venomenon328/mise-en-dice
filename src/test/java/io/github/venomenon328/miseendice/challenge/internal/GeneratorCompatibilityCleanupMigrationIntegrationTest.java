@@ -29,7 +29,7 @@ class GeneratorCompatibilityCleanupMigrationIntegrationTest {
             .withPassword("mise_en_dice");
 
     @Test
-    void removesObsoleteColumnsForwardOnlyWithoutTouchingCatalogOrAdministrationData() throws Exception {
+    void removesObsoleteColumnsForwardOnlyWithoutTouchingCatalogData() throws Exception {
         String databaseName = "generator_cleanup_" + UUID.randomUUID().toString().replace("-", "");
         try (Connection connection = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(),
                 POSTGRES.getPassword()); Statement statement = connection.createStatement()) {
@@ -51,16 +51,6 @@ class GeneratorCompatibilityCleanupMigrationIntegrationTest {
                     "select id from exclusion_rule order by id limit 1");
             String exclusionDisplayText = stringValue(connection,
                     "select display_text from exclusion_rule where id = " + exclusionRuleId);
-            int auditCount = count(connection, "catalog_audit_entry");
-            execute(connection, """
-                    insert into catalog_audit_entry (
-                        change_group_id, actor_key, entity_type, entity_id, action, before_state, after_state
-                    ) values (
-                        '00000000-0000-0000-0000-000000000097', 'generator-cleanup-test',
-                        'INGREDIENT_CONCEPT', 1, 'TEST', null, null
-                    )
-                    """);
-
             runLiquibase(connection, "db/changelog/schema/012-remove-legacy-generator-compatibility.sql");
 
             assertThat(columnExists(connection, "generation_attempt", "exclusion_rule_id")).isFalse();
@@ -75,8 +65,6 @@ class GeneratorCompatibilityCleanupMigrationIntegrationTest {
             assertThat(stringValue(connection,
                     "select display_text from exclusion_rule where id = " + exclusionRuleId))
                     .isEqualTo(exclusionDisplayText);
-            assertThat(count(connection, "catalog_audit_entry")).isEqualTo(auditCount + 1);
-
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
             int changesetCount = count(connection, "databasechangelog");
             runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
@@ -89,12 +77,6 @@ class GeneratorCompatibilityCleanupMigrationIntegrationTest {
                 .findCorrectDatabaseImplementation(new JdbcConnection(connection));
         Liquibase liquibase = new Liquibase(changelog, new ClassLoaderResourceAccessor(), database);
         liquibase.update(new Contexts(), new LabelExpression());
-    }
-
-    private static void execute(Connection connection, String sql) throws Exception {
-        try (Statement statement = connection.createStatement()) {
-            statement.execute(sql);
-        }
     }
 
     private static boolean columnExists(Connection connection, String table, String column) throws Exception {

@@ -38,7 +38,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class CatalogBulkCommandServiceIntegrationTest {
 
     private static final String PREFIX = "TEST_ISSUE30_BULK_";
-    private static final String ACTOR = "issue30-bulk-admin";
 
     @Container
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
@@ -67,14 +66,13 @@ class CatalogBulkCommandServiceIntegrationTest {
 
     @AfterEach
     void removeTestData() {
-        jdbcTemplate.update("delete from catalog_audit_entry where actor_key = ?", ACTOR);
         jdbcTemplate.update("delete from ingredient_refinement where parent_concept_id in (select id from ingredient_concept where code like ?) "
                 + "or child_concept_id in (select id from ingredient_concept where code like ?)", PREFIX + "%", PREFIX + "%");
         jdbcTemplate.update("delete from ingredient_concept where code like ?", PREFIX + "%");
     }
 
     @Test
-    void executesEveryAllowedActionAndAuditsOnlyChangedAggregatesWithOneGroup() {
+    void executesEveryAllowedActionAndVersionsOnlyChangedAggregates() {
         long inactive = insertConcept("INACTIVE", false, false);
         long enabled = insertConcept("ENABLED", true, true);
         assignRoles(enabled, "VEGETABLE");
@@ -95,9 +93,8 @@ class CatalogBulkCommandServiceIntegrationTest {
         assertThat(roleCodes(enabled)).containsExactly("VEGETABLE");
         assertThat(availability(enabled, "GEORGIA")).isEqualTo("SPECIALTY");
         assertThat(availability(enabled, "TOBIAS")).isEqualTo("PLANNED");
-        assertThat(auditCount()).isEqualTo(8);
-        assertThat(jdbcTemplate.queryForObject("select count(distinct change_group_id) from catalog_audit_entry where actor_key = ?", Integer.class, ACTOR))
-                .isEqualTo(8);
+        assertThat(version(inactive)).isEqualTo(2);
+        assertThat(version(enabled)).isEqualTo(6);
     }
 
     @Test
@@ -117,10 +114,6 @@ class CatalogBulkCommandServiceIntegrationTest {
                 select a.curator_note from ingredient_availability a join participant p on p.id = a.participant_id
                 where a.ingredient_concept_id = ? and p.code = 'TOBIAS'
                 """, String.class, concept)).isNull();
-        assertThat(jdbcTemplate.queryForList("""
-                select after_state::text from catalog_audit_entry where actor_key = ? and entity_id = ?
-                """, String.class, ACTOR, concept)).allSatisfy(snapshot ->
-                assertThat(snapshot).contains("Existing technical reason."));
     }
 
     @Test
@@ -133,7 +126,7 @@ class CatalogBulkCommandServiceIntegrationTest {
 
         BulkOperation operation = new BulkOperation(
                 List.of(new BulkSelection(concept, 0)), BulkAction.SET_GEORGIA_AVAILABILITY,
-                null, CatalogQueries.CatalogAvailability.SPECIALTY, true, ACTOR);
+                null, CatalogQueries.CatalogAvailability.SPECIALTY, true);
         var preview = bulkCommands.preview(operation);
 
         assertThat(preview.items()).singleElement().satisfies(item ->
@@ -150,16 +143,14 @@ class CatalogBulkCommandServiceIntegrationTest {
         var noOp = bulkCommands.execute(operation(first, BulkAction.DISABLE_RANDOM_DRAW, null, null));
         assertThat(noOp.changedConceptIds()).isEmpty();
         assertThat(version(first)).isZero();
-        assertThat(auditCount()).isZero();
 
         jdbcTemplate.update("update ingredient_concept set version = version + 1 where id = ?", first);
         BulkOperation staleBatch = new BulkOperation(List.of(new BulkSelection(first, 0), new BulkSelection(second, 0)),
-                BulkAction.DEACTIVATE, null, null, true, ACTOR);
+                BulkAction.DEACTIVATE, null, null, true);
 
         assertThatThrownBy(() -> bulkCommands.execute(staleBatch)).isInstanceOf(CatalogVersionConflictException.class);
         assertThat(active(second)).isTrue();
         assertThat(version(second)).isZero();
-        assertThat(auditCount()).isZero();
     }
 
     @Test
@@ -176,17 +167,16 @@ class CatalogBulkCommandServiceIntegrationTest {
         assignAvailability(difficult, "TOBIAS", "EASY");
         BulkOperation unacknowledged = new BulkOperation(
                 List.of(new BulkSelection(difficult, 0)), BulkAction.SET_GEORGIA_AVAILABILITY,
-                null, CatalogQueries.CatalogAvailability.DIFFICULT, false, ACTOR);
+                null, CatalogQueries.CatalogAvailability.DIFFICULT, false);
 
         assertThat(bulkCommands.preview(unacknowledged).warnings()).isEmpty();
         bulkCommands.execute(unacknowledged);
         assertThat(availability(difficult, "GEORGIA")).isEqualTo("DIFFICULT");
         assertThat(version(difficult)).isEqualTo(1);
-        assertThat(auditCount()).isEqualTo(1);
     }
 
     @Test
-    void allowsRoleBulkWithAnExistingRefinementEdgeAndGroupsMultiRowAudit() {
+    void allowsRoleBulkWithAnExistingRefinementEdge() {
         long parent = insertConcept("JOINT_PARENT", true, false);
         long child = insertConcept("JOINT_CHILD", true, false);
         assignRoles(parent, "VEGETABLE", "FRUIT");
@@ -195,7 +185,7 @@ class CatalogBulkCommandServiceIntegrationTest {
 
         BulkOperation removeVegetable = new BulkOperation(
                 List.of(new BulkSelection(parent, 0), new BulkSelection(child, 0)),
-                BulkAction.REMOVE_FUNCTIONAL_ROLE, "VEGETABLE", null, true, ACTOR);
+                BulkAction.REMOVE_FUNCTIONAL_ROLE, "VEGETABLE", null, true);
         var result = bulkCommands.execute(removeVegetable);
 
         assertThat(result.changedConceptIds()).containsExactly(parent, child);
@@ -203,13 +193,9 @@ class CatalogBulkCommandServiceIntegrationTest {
         assertThat(version(child)).isEqualTo(1);
         assertThat(roleCodes(parent)).containsExactly("FRUIT");
         assertThat(roleCodes(child)).containsExactly("FRUIT");
-        assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from catalog_audit_entry where actor_key = ? and change_group_id = ?",
-                Integer.class, ACTOR, result.changeGroupId())).isEqualTo(2);
-
         BulkOperation removeLastCommonRole = new BulkOperation(
                 List.of(new BulkSelection(parent, 1), new BulkSelection(child, 1)),
-                BulkAction.REMOVE_FUNCTIONAL_ROLE, "FRUIT", null, true, ACTOR);
+                BulkAction.REMOVE_FUNCTIONAL_ROLE, "FRUIT", null, true);
         var disjointResult = bulkCommands.execute(removeLastCommonRole);
 
         assertThat(disjointResult.changedConceptIds()).containsExactly(parent, child);
@@ -242,7 +228,7 @@ class CatalogBulkCommandServiceIntegrationTest {
                 catalogCommands.updateIngredientConcept(new CatalogCommands.UpdateIngredientConceptCommand(
                         parent, parentBefore.version(), parentBefore.displayName(), parentBefore.active(),
                         parentBefore.randomDrawEnabled(), parentBefore.challengeSpecificity(), parentBefore.baseDrawWeight(),
-                        parentBefore.noveltyLevel(), parentBefore.curatorNote(), ACTOR, true, List.of(), Map.of(), false,
+                        parentBefore.noveltyLevel(), parentBefore.curatorNote(), true, List.of(), Map.of(), false,
                         new CatalogMetadata(Set.of("VEGETABLE"), Set.of(), Map.of(), Map.of(), Map.of())));
             }));
             assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
@@ -265,7 +251,7 @@ class CatalogBulkCommandServiceIntegrationTest {
         CatalogQueries.CatalogConceptDetail before = catalogQueries.findConcept(conceptId).orElseThrow();
         BulkOperation bulkOperation = new BulkOperation(
                 List.of(new BulkSelection(conceptId, before.version())), BulkAction.DEACTIVATE,
-                null, null, true, ACTOR);
+                null, null, true);
 
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
@@ -277,7 +263,7 @@ class CatalogBulkCommandServiceIntegrationTest {
                     catalogCommands.updateIngredientConcept(new CatalogCommands.UpdateIngredientConceptCommand(
                             conceptId, before.version(), before.displayName() + " single", before.active(),
                             before.randomDrawEnabled(), before.challengeSpecificity(), before.baseDrawWeight(),
-                            before.noveltyLevel(), before.curatorNote(), ACTOR, true))));
+                            before.noveltyLevel(), before.curatorNote(), true))));
             assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
             start.countDown();
 
@@ -288,7 +274,6 @@ class CatalogBulkCommandServiceIntegrationTest {
         }
 
         assertThat(version(conceptId)).isEqualTo(1);
-        assertThat(auditCount()).isEqualTo(1);
     }
 
     private boolean runAfterStart(CountDownLatch ready, CountDownLatch start, ThrowingRunnable task) throws Exception {
@@ -323,7 +308,7 @@ class CatalogBulkCommandServiceIntegrationTest {
     }
 
     private BulkOperation operation(long conceptId, BulkAction action, String role, CatalogQueries.CatalogAvailability availability) {
-        return new BulkOperation(List.of(new BulkSelection(conceptId, version(conceptId))), action, role, availability, true, ACTOR);
+        return new BulkOperation(List.of(new BulkSelection(conceptId, version(conceptId))), action, role, availability, true);
     }
 
     private long insertConcept(String suffix, boolean active, boolean randomDrawEnabled) {
@@ -376,10 +361,6 @@ class CatalogBulkCommandServiceIntegrationTest {
                 join functional_role fr on fr.id = ifr.functional_role_id
                 where ifr.ingredient_concept_id = ?
                 """, String.class, conceptId));
-    }
-
-    private int auditCount() {
-        return jdbcTemplate.queryForObject("select count(*) from catalog_audit_entry where actor_key = ?", Integer.class, ACTOR);
     }
 
     @FunctionalInterface

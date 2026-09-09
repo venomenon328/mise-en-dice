@@ -1,8 +1,5 @@
 package io.github.venomenon328.miseendice.catalog.internal;
 
-import io.github.venomenon328.miseendice.catalog.api.CatalogAggregateSnapshot;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditEntryDraft;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditLog;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogExclusionCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogExclusionCommands.CatalogExclusionCommandResult;
@@ -13,34 +10,26 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogExclusionNotFoundExc
 import io.github.venomenon328.miseendice.catalog.api.CatalogExclusionQueries;
 import io.github.venomenon328.miseendice.catalog.api.CatalogExclusionQueries.CatalogExclusionRuleDetail;
 import io.github.venomenon328.miseendice.catalog.api.CatalogExclusionVersionConflictException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Transactional exclusion aggregate saves: base fields, complete target replacement and audit. */
+/** Transactional exclusion aggregate saves: base fields and complete target replacement. */
 @Service
 class CatalogExclusionCommandService implements CatalogExclusionCommands {
 
-    private static final String ENTITY_TYPE = "EXCLUSION_RULE";
-
     private final JdbcTemplate jdbcTemplate;
     private final CatalogExclusionQueries exclusionQueries;
-    private final CatalogAuditLog auditLog;
 
     CatalogExclusionCommandService(
             JdbcTemplate jdbcTemplate,
-            CatalogExclusionQueries exclusionQueries,
-            CatalogAuditLog auditLog
+            CatalogExclusionQueries exclusionQueries
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.exclusionQueries = exclusionQueries;
-        this.auditLog = auditLog;
     }
 
     @Override
@@ -59,8 +48,6 @@ class CatalogExclusionCommandService implements CatalogExclusionCommands {
         }
         replaceTargets(ruleId, command.targets());
         CatalogExclusionRuleDetail after = findRequired(ruleId);
-        auditLog.append(new CatalogAuditEntryDraft(UUID.randomUUID(), command.actorKey(), ENTITY_TYPE, ruleId,
-                "CREATE", null, snapshot(after)));
         return new CatalogExclusionCommandResult(ruleId, after.version());
     }
 
@@ -73,7 +60,6 @@ class CatalogExclusionCommandService implements CatalogExclusionCommands {
         if (lockedVersion != command.expectedVersion()) {
             throw new CatalogExclusionVersionConflictException(command.exclusionRuleId(), command.expectedVersion());
         }
-        CatalogExclusionRuleDetail before = findRequired(command.exclusionRuleId());
         validateTargetIds(command.targets());
         try {
             if (jdbcTemplate.update("""
@@ -89,8 +75,6 @@ class CatalogExclusionCommandService implements CatalogExclusionCommands {
         }
         replaceTargets(command.exclusionRuleId(), command.targets());
         CatalogExclusionRuleDetail after = findRequired(command.exclusionRuleId());
-        auditLog.append(new CatalogAuditEntryDraft(UUID.randomUUID(), command.actorKey(), ENTITY_TYPE,
-                command.exclusionRuleId(), "UPDATE", snapshot(before), snapshot(after)));
         return new CatalogExclusionCommandResult(command.exclusionRuleId(), after.version());
     }
 
@@ -132,24 +116,4 @@ class CatalogExclusionCommandService implements CatalogExclusionCommands {
         throw exception;
     }
 
-    private static CatalogAggregateSnapshot snapshot(CatalogExclusionRuleDetail detail) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        values.put("id", detail.id());
-        values.put("code", detail.code());
-        values.put("displayText", detail.displayText());
-        values.put("active", detail.active());
-        values.put("baseDrawWeight", detail.baseDrawWeight());
-        values.put("curatorNote", detail.curatorNote());
-        values.put("version", detail.version());
-        values.put("targets", detail.targets().stream().map(target -> {
-            Map<String, Object> targetValues = new LinkedHashMap<>();
-            targetValues.put("id", target.ingredientConceptId());
-            targetValues.put("code", target.code());
-            targetValues.put("displayName", target.displayName());
-            targetValues.put("active", target.active());
-            targetValues.put("includeRefinements", target.includeRefinements());
-            return targetValues;
-        }).toList());
-        return new CatalogAggregateSnapshot(values);
-    }
 }

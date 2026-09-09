@@ -63,7 +63,7 @@ class AdministrationEntryPointController {
         if (attempt != null && attempt > 0) {
             loadPersistedGeneration(attempt, batch, model);
         }
-        return "admin/audit";
+        return "admin/generator";
     }
 
     @PostMapping("/admin/generator/preview")
@@ -78,7 +78,7 @@ class AdministrationEntryPointController {
             model.addAttribute("previewForm", form);
             model.addAttribute("previewErrors", List.of(exception.getMessage()));
         }
-        return "admin/audit";
+        return "admin/generator";
     }
 
     @PostMapping("/admin/generator/simulation")
@@ -131,7 +131,7 @@ class AdministrationEntryPointController {
         model.addAttribute("conceptCandidates", search.isBlank()
                 ? List.of()
                 : catalogQueries.searchRelationCandidates(search.strip(), 0));
-        return "admin/audit :: generatorConceptOptions";
+        return "admin/generator :: generatorConceptOptions";
     }
 
     private void generatorBaseModel(Model model) {
@@ -148,7 +148,7 @@ class AdministrationEntryPointController {
     }
 
     private static String simulationView(boolean htmx) {
-        return htmx ? "admin/audit :: generatorSimulationResult" : "admin/audit";
+        return htmx ? "admin/generator :: generatorSimulationResult" : "admin/generator";
     }
 
     private void loadPersistedGeneration(long attemptId, Integer requestedBatch, Model model) {

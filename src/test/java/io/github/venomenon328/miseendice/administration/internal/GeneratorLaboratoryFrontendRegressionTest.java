@@ -11,7 +11,7 @@ class GeneratorLaboratoryFrontendRegressionTest {
 
     @Test
     void pickerRequestsReplaceOlderRequestsAndPendingStatesAreVisible() throws IOException {
-        String template = resource("templates/admin/audit.html");
+        String template = resource("templates/admin/generator.html");
 
         assertThat(occurrences(template, "hx-sync=\"this:replace\"")).isEqualTo(2);
         assertThat(template)
@@ -25,7 +25,7 @@ class GeneratorLaboratoryFrontendRegressionTest {
 
     @Test
     void emptyDiagnosisBelongsToTheReplaceableSimulationFragment() throws IOException {
-        String template = resource("templates/admin/audit.html");
+        String template = resource("templates/admin/generator.html");
         int fragment = template.indexOf("th:fragment=\"generatorSimulationResult\"");
         int emptyState = template.indexOf("Noch kein Ergebnis");
 

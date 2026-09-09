@@ -3,7 +3,6 @@ package io.github.venomenon328.miseendice.catalog.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditLog;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CreateIngredientConceptCommand;
@@ -30,13 +29,12 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-/** Exercises the public write API with PostgreSQL locking, constraints, snapshots, and transactions. */
+/** Exercises the public write API with PostgreSQL locking, constraints, and transactions. */
 @SpringBootTest
 @Testcontainers
 class CatalogCommandServiceIntegrationTest {
 
     private static final String PREFIX = "TEST_ISSUE11_";
-    private static final String ACTOR = "issue11-integration-admin";
     private static final String WEIGHT_WARNING_ROLE = "TEST_ISSUE172_WEIGHT_WARNING_ROLE";
 
     @Container
@@ -59,14 +57,10 @@ class CatalogCommandServiceIntegrationTest {
     private CatalogQueries catalogQueries;
 
     @Autowired
-    private CatalogAuditLog catalogAuditLog;
-
-    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @AfterEach
     void removeTestData() {
-        jdbcTemplate.update("delete from catalog_audit_entry where actor_key = ?", ACTOR);
         jdbcTemplate.update("""
                 delete from ingredient_refinement
                 where parent_concept_id in (select id from ingredient_concept where code like ?)
@@ -81,9 +75,9 @@ class CatalogCommandServiceIntegrationTest {
     }
 
     @Test
-    void createsAConservativeConceptAndAuditsTheCompleteInitialAggregate() {
+    void createsAConservativeConcept() {
         var result = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
-                PREFIX + "CREATE", "Issue eleven creation", "Technische Testnotiz.", ACTOR
+                PREFIX + "CREATE", "Issue eleven creation", "Technische Testnotiz."
         ));
 
         var detail = catalogQueries.findConcept(result.conceptId()).orElseThrow();
@@ -98,18 +92,10 @@ class CatalogCommandServiceIntegrationTest {
         ).containsExactly(true, false, "SPECIFIC", new BigDecimal("1.0000"), null,
                 "Technische Testnotiz.", 0L);
 
-        var audit = latestAudit();
-        assertThat(audit).extracting(entry -> entry.actorKey(), entry -> entry.entityType(), entry -> entry.action())
-                .containsExactly(ACTOR, "INGREDIENT_CONCEPT", "CREATE");
-        assertThat(audit.beforeState()).isNull();
-        assertThat(audit.afterState().values()).containsKeys(
-                "code", "displayName", "active", "randomDrawEnabled", "challengeSpecificity", "baseDrawWeight",
-                "functionalRoles", "availability", "directParents", "directChildren", "seasonality"
-        );
     }
 
     @Test
-    void updatesExactlyOnceAndKeepsReadOnlyRelationsInBothAuditSnapshots() {
+    void updatesExactlyOnceAndKeepsReadOnlyRelations() {
         long parent = insertConcept("PARENT", "Issue eleven parent", "OPEN", true, false, null);
         long concept = insertConcept("UPDATE", "Issue eleven update", "SPECIFIC", true, false, 2);
         jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", parent, concept);
@@ -124,15 +110,14 @@ class CatalogCommandServiceIntegrationTest {
         assertThat(after).extracting(CatalogQueries.CatalogConceptDetail::displayName,
                         CatalogQueries.CatalogConceptDetail::version, CatalogQueries.CatalogConceptDetail::curatorNote)
                 .containsExactly("Issue eleven updated", 1L, "Jetzt mit Notiz");
-        var audit = latestAudit();
-        assertThat(audit.beforeState().values().get("directParents")).asList().hasSize(1);
-        assertThat(audit.afterState().values().get("directParents")).asList().hasSize(1);
-        assertThat(audit.beforeState().values().get("functionalRoles")).asList().isNotEmpty();
-        assertThat(audit.afterState().values().get("availability")).asList().hasSize(2);
+        assertThat(after.directParents()).singleElement().satisfies(relation ->
+                assertThat(relation.id()).isEqualTo(parent));
+        assertThat(after.functionalRoles()).isNotEmpty();
+        assertThat(after.availability()).hasSize(2);
     }
 
     @Test
-    void staleVersionCannotChangeTheConceptOrCreateASecondAuditEntry() {
+    void staleVersionCannotChangeTheConcept() {
         long concept = insertConcept("STALE", "Issue eleven stale", "SPECIFIC", true, false, null);
         var original = catalogQueries.findConcept(concept).orElseThrow();
         catalogCommands.updateIngredientConcept(command(original, "First editor", true, false,
@@ -145,7 +130,6 @@ class CatalogCommandServiceIntegrationTest {
         assertThat(catalogQueries.findConcept(concept).orElseThrow())
                 .extracting(CatalogQueries.CatalogConceptDetail::displayName, CatalogQueries.CatalogConceptDetail::version)
                 .containsExactly("First editor", 1L);
-        assertThat(auditCount()).isEqualTo(1);
     }
 
     @Test
@@ -158,11 +142,10 @@ class CatalogCommandServiceIntegrationTest {
                 .isInstanceOf(CatalogCommandValidationException.class)
                 .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
                         .containsOnlyKeys("functionalRoles"));
-        assertThat(auditCount()).isZero();
     }
 
     @Test
-    void rejectsSpecificityInversionsOnExistingDirectGraphEdgesWithoutAudit() {
+    void rejectsSpecificityInversionsOnExistingDirectGraphEdges() {
         long parent = insertConcept("SPECIFIC_PARENT", "Issue eleven specific parent", "SPECIFIC", true, false, null);
         long child = insertConcept("OPEN_CHILD", "Issue eleven child", "SPECIFIC", true, false, null);
         jdbcTemplate.update("insert into ingredient_refinement (parent_concept_id, child_concept_id) values (?, ?)", parent, child);
@@ -174,7 +157,6 @@ class CatalogCommandServiceIntegrationTest {
                 .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
                         .containsKey("relations"));
         assertThat(catalogQueries.findConcept(child).orElseThrow().challengeSpecificity()).isEqualTo("SPECIFIC");
-        assertThat(auditCount()).isZero();
     }
 
     @Test
@@ -185,13 +167,12 @@ class CatalogCommandServiceIntegrationTest {
                         Map.of("GEORGIA", level, "TOBIAS", level), Map.of());
                 var created = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
                         PREFIX + "UNCOUPLED_" + novelty + "_" + level, "Uncoupled " + novelty + " " + level,
-                        true, true, "SPECIFIC", BigDecimal.ONE, novelty, "Technical fixture.", metadata, false, ACTOR));
+                        true, true, "SPECIFIC", BigDecimal.ONE, novelty, "Technical fixture.", metadata, false));
                 var detail = catalogQueries.findConcept(created.conceptId()).orElseThrow();
                 assertThat(catalogCommands.updateIngredientConcept(metadataCommand(
                         detail, true, new BigDecimal("1.2"), metadata, false)).version()).isEqualTo(1);
             }
         }
-        assertThat(auditCount()).isEqualTo(50);
     }
 
     @Test
@@ -212,7 +193,7 @@ class CatalogCommandServiceIntegrationTest {
 
         UpdateIngredientConceptCommand command = new UpdateIngredientConceptCommand(
                 child, 0, "Issue 172 pending graph", true, true, "SPECIFIC", new BigDecimal("0.50"),
-                null, "Technische Testnotiz.", ACTOR, false,
+                null, "Technische Testnotiz.", false,
                 List.of(new RefinementChange(parent, child, RefinementChangeType.ADD)),
                 Map.of(parent, parentVersion), true
         );
@@ -229,20 +210,19 @@ class CatalogCommandServiceIntegrationTest {
                 """, Boolean.class, parent, child)).isFalse();
         assertThat(version(child)).isZero();
         assertThat(version(parent)).isEqualTo(parentVersion);
-        assertThat(auditCount()).isZero();
     }
 
     @Test
     void classifiesKnownUniqueViolationsButDoesNotMaskAnUnknownDatabaseFailure() {
         catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
-                PREFIX + "UNIQUE", "Issue eleven unique", "Technische Testnotiz.", ACTOR));
+                PREFIX + "UNIQUE", "Issue eleven unique", "Technische Testnotiz."));
         assertThatThrownBy(() -> catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
-                PREFIX + "UNIQUE", "Another name", "Technische Testnotiz.", ACTOR
+                PREFIX + "UNIQUE", "Another name", "Technische Testnotiz."
         )))
                 .isInstanceOf(CatalogCommandValidationException.class)
                 .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors()).containsKey("code"));
         assertThatThrownBy(() -> catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
-                PREFIX + "OTHER", "ISSUE ELEVEN UNIQUE", "Technische Testnotiz.", ACTOR
+                PREFIX + "OTHER", "ISSUE ELEVEN UNIQUE", "Technische Testnotiz."
         )))
                 .isInstanceOf(CatalogCommandValidationException.class)
                 .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors()).containsKey("displayName"));
@@ -261,7 +241,7 @@ class CatalogCommandServiceIntegrationTest {
     }
 
     @Test
-    void replacesEveryEditableMetadataGroupInOneVersionedAuditSave() {
+    void replacesEveryEditableMetadataGroupInOneVersionedSave() {
         long concept = insertConcept("METADATA", "Issue twenty-four metadata", "SPECIFIC", true, false, null);
         CatalogMetadata first = new CatalogMetadata(
                 Set.of("VEGETABLE", "AROMATIC"), Set.of("FERMENTED", "SMOKED"),
@@ -282,9 +262,6 @@ class CatalogCommandServiceIntegrationTest {
         assertThat(availability(concept, "GEORGIA")).isEqualTo("SPECIALTY");
         assertThat(availability(concept, "TOBIAS")).isEqualTo("DIFFICULT");
         assertThat(jdbcTemplate.queryForObject("select count(*) from ingredient_seasonality where ingredient_concept_id = ?", Integer.class, concept)).isEqualTo(1);
-        assertThat(latestAudit().afterState().values()).containsKeys(
-                "functionalRoles", "culinaryFlags", "culinaryDimensions", "availability", "seasonality");
-
         CatalogQueries.CatalogConceptDetail current = catalogQueries.findConcept(concept).orElseThrow();
         CatalogMetadata replacement = new CatalogMetadata(
                 Set.of("FRUIT"), Set.of("PICKLED"), Map.of("SWEETNESS", 5),
@@ -342,7 +319,7 @@ class CatalogCommandServiceIntegrationTest {
 
         var result = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
                 PREFIX + "CREATE_METADATA", "Issue twenty-four creation", true, true, "OPEN", new BigDecimal("0.50"),
-                null, "Technische Testnotiz.", metadata, false, ACTOR));
+                null, "Technische Testnotiz.", metadata, false));
 
         CatalogQueries.CatalogConceptDetail detail = catalogQueries.findConcept(result.conceptId()).orElseThrow();
         assertThat(detail).extracting(CatalogQueries.CatalogConceptDetail::randomDrawEnabled,
@@ -353,7 +330,7 @@ class CatalogCommandServiceIntegrationTest {
     }
 
     @Test
-    void availabilityNotesRoundTripPreserveOmittedNotesAndAuditNoteOnlyUpdates() {
+    void availabilityNotesRoundTripAndPreserveOmittedNotes() {
         long concept = insertConcept("NOTES", "Technical note roundtrip", "SPECIFIC", true, false, 1);
         var levels = Map.of("GEORGIA", CatalogQueries.CatalogAvailability.SPECIALTY,
                 "TOBIAS", CatalogQueries.CatalogAvailability.PLANNED);
@@ -364,9 +341,6 @@ class CatalogCommandServiceIntegrationTest {
         var initial = catalogQueries.findConcept(concept).orElseThrow();
         assertThat(initial.availability()).extracting(CatalogQueries.CatalogAvailabilityValue::curatorNote)
                 .containsExactly("First technical note.", "Second technical note.");
-        assertThat(latestAudit().afterState().values().get("availability").toString())
-                .contains("curatorNote=First technical note.", "curatorNote=Second technical note.");
-
         var compatibility = new CatalogMetadata(Set.of(), Set.of(), Map.of(), levels, Map.of());
         catalogCommands.updateIngredientConcept(metadataCommand(initial, false, BigDecimal.ONE, compatibility, false));
         var preserved = catalogQueries.findConcept(concept).orElseThrow();
@@ -378,14 +352,6 @@ class CatalogCommandServiceIntegrationTest {
         var changed = catalogQueries.findConcept(concept).orElseThrow();
         assertThat(changed.availability()).extracting(CatalogQueries.CatalogAvailabilityValue::curatorNote)
                 .containsExactly("Changed technical note.", "Second technical note.");
-        var audit = latestAudit();
-        assertThat(CatalogAuditDiffFactory.diff(
-                io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.CatalogAuditEntityType.INGREDIENT_CONCEPT,
-                audit.beforeState(), audit.afterState())).singleElement().satisfies(diff -> {
-                    assertThat(diff.label()).isEqualTo("Beschaffbarkeitsnotiz · Georgia");
-                    assertThat(diff.beforeValue()).isEqualTo("First technical note.");
-                    assertThat(diff.afterValue()).isEqualTo("Changed technical note.");
-                });
         assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(
                 metadataCommand(preserved, false, BigDecimal.ONE, first, false)))
                 .isInstanceOf(CatalogVersionConflictException.class);
@@ -415,7 +381,7 @@ class CatalogCommandServiceIntegrationTest {
         String effectiveNote = note == null ? detail.curatorNote() : note;
         return new UpdateIngredientConceptCommand(
                 detail.id(), detail.version(), displayName, active, randomDrawEnabled, specificity,
-                weight, novelty, effectiveNote, ACTOR, acknowledgeWarnings
+                weight, novelty, effectiveNote, acknowledgeWarnings
         );
     }
 
@@ -428,7 +394,7 @@ class CatalogCommandServiceIntegrationTest {
     ) {
         return new UpdateIngredientConceptCommand(
                 detail.id(), detail.version(), detail.displayName(), detail.active(), randomDrawEnabled,
-                detail.challengeSpecificity(), weight, detail.noveltyLevel(), detail.curatorNote(), ACTOR,
+                detail.challengeSpecificity(), weight, detail.noveltyLevel(), detail.curatorNote(),
                 acknowledgeWarnings, List.of(), Map.of(), false, metadata);
     }
 
@@ -451,17 +417,6 @@ class CatalogCommandServiceIntegrationTest {
                 insert into ingredient_availability (ingredient_concept_id, participant_id, availability_level)
                 select ?, id, 'EASY' from participant where code in ('GEORGIA', 'TOBIAS')
                 """, conceptId);
-    }
-
-    private io.github.venomenon328.miseendice.catalog.api.CatalogAuditEntry latestAudit() {
-        long id = jdbcTemplate.queryForObject(
-                "select id from catalog_audit_entry where actor_key = ? order by id desc limit 1", Long.class, ACTOR
-        );
-        return catalogAuditLog.findById(id).orElseThrow();
-    }
-
-    private int auditCount() {
-        return jdbcTemplate.queryForObject("select count(*) from catalog_audit_entry where actor_key = ?", Integer.class, ACTOR);
     }
 
     private long version(long conceptId) {
