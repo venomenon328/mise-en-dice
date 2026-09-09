@@ -17,6 +17,9 @@ ASSET_INDEX = "design/challenge-cards/assets/ASSET_INDEX.csv"
 PRODUCTION_ASSET = re.compile(
     r"design/challenge-cards/assets/(?:ingredients|open-concepts)/[^/]+\.png\Z"
 )
+CHALLENGE_CARD_TOOL_TEST = re.compile(
+    r"design/challenge-cards/tools/test_[^/]+\.py\Z"
+)
 
 
 class Mode(IntEnum):
@@ -81,6 +84,7 @@ def path_mode(path: str) -> Mode:
         or ("/" not in path and path.endswith(".md"))
         or path.startswith("docs/")
         or path.startswith("src/test/")
+        or CHALLENGE_CARD_TOOL_TEST.fullmatch(path)
         or path == ASSET_INDEX
         or is_production_asset(path)
     ):

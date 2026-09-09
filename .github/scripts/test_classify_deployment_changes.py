@@ -38,6 +38,7 @@ class DeploymentChangeClassificationTest(unittest.TestCase):
             "CONTRIBUTING.md",
             "AGENTS.md",
             "src/test/java/example/Test.java",
+            "design/challenge-cards/tools/test_validate_asset_catalog.py",
             ".gitignore",
         ):
             with self.subTest(path=path):
@@ -62,6 +63,8 @@ class DeploymentChangeClassificationTest(unittest.TestCase):
             ".dockerignore",
             ".github/workflows/deployment-verify.yml",
             ".github/scripts/classify_deployment_changes.py",
+            ".github/scripts/test_classify_deployment_changes.py",
+            "design/challenge-cards/tools/validate_asset_catalog.py",
             "design/challenge-cards/templates/challenge-card-master-4.svg",
             ".github/workflows/unknown-future-workflow.yml",
         ):
