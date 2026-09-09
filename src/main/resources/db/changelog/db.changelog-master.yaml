@@ -121,3 +121,5 @@ databaseChangeLog:
       file: db/changelog/reference/003-england-culinary-country.sql
   - include:
       file: db/changelog/catalog/035-england-curation.sql
+  - include:
+      file: db/changelog/catalog/036-availability-note-prefix-cleanup.sql

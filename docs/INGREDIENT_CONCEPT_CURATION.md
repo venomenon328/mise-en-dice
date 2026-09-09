@@ -55,6 +55,8 @@ Für Georgia und Tobias jeweils:
 
 Eine Beschaffbarkeitsnotiz darf nicht bloß den Enum-Wert ausformulieren. Auch bei `EASY` muss sie knapp benennen, **warum gerade diese konkrete Produktform** im Alltagshandel zuverlässig erhältlich ist. Katalogweit wiederholte Standardtexte ohne konzeptspezifischen Informationsgewinn sind keine erfüllte Notizpflicht.
 
+Eine individuelle Availability-Notiz beginnt nicht redundant mit dem Anzeigenamen des Zutatenkonzepts samt Doppelpunkt; die Oberfläche stellt die Konzeptidentität bereits separat dar.
+
 ### Gewicht
 
 - eigenständig begründetes `base_draw_weight`,
