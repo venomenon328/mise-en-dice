@@ -1,7 +1,8 @@
 --liquibase formatted sql
 --changeset venomenon328:036-availability-note-prefix-cleanup splitStatements:false
--- Issue #209, phase 1. This is deliberately data-driven against the display
--- names present at migration time; it contains no historical hit list.
+-- Issue #209. Phase 1 is deliberately data-driven against the display names
+-- present at migration time; phase 2 adds only the five explicitly approved
+-- Tobias prefix variants found by the follow-up review.
 -- Liquibase executes this changeset transactionally.
 
 SELECT pg_advisory_xact_lock(20903620260909);
@@ -11,10 +12,10 @@ LOCK TABLE ingredient_concept, ingredient_refinement, ingredient_functional_role
     participant, functional_role, culinary_flag, culinary_dimension, culinary_country
     IN SHARE ROW EXCLUSIVE MODE;
 
--- A candidate must begin byte-for-byte with the currently stored display name
--- and a colon. Only ASCII spaces immediately after that colon are removed.
--- Whitespace-only remainders are retained as reportable anomalies, never
--- written as an empty availability note.
+-- Phase 1: a candidate must begin byte-for-byte with the currently stored
+-- display name and a colon. Only ASCII spaces immediately after that colon are
+-- removed. Whitespace-only remainders are retained as reportable anomalies,
+-- never written as an empty availability note.
 CREATE TEMP TABLE availability_note_prefix_cleanup (
     ingredient_concept_id bigint NOT NULL,
     participant_id bigint NOT NULL,
@@ -40,6 +41,41 @@ WHERE availability.curator_note IS NOT NULL
   AND left(availability.curator_note, char_length(concept.display_name) + 1)
       = concept.display_name || ':'
   AND substring(availability.curator_note FROM char_length(concept.display_name) + 2)
+      ~ '[^[:space:]]';
+
+-- Phase 2: the human review explicitly approved removal of these five Tobias
+-- variants as the same redundant concept-name prefix. Matching remains exact:
+-- only the listed concept, participant and literal prefix qualify, and only
+-- following ASCII spaces are removed. The remainder is otherwise untouched.
+WITH approved_exception (concept_code, participant_code, approved_prefix) AS (
+    VALUES
+        ('BLACK_PEPPER', 'TOBIAS', 'Schwarzer Pfeffer:'),
+        ('BLACK_TEA', 'TOBIAS', 'Schwarzer Tee:'),
+        ('GREEN_PEPPER', 'TOBIAS', 'Grüne Pfefferkörner:'),
+        ('WHITE_PEPPER', 'TOBIAS', 'Weißer Pfeffer:'),
+        ('TOMATO_PRODUCTS', 'TOBIAS', 'Tomatenprodukte:')
+)
+INSERT INTO availability_note_prefix_cleanup (
+    ingredient_concept_id, participant_id, old_note, new_note
+)
+SELECT availability.ingredient_concept_id,
+       availability.participant_id,
+       availability.curator_note,
+       regexp_replace(
+           substring(availability.curator_note FROM char_length(exception.approved_prefix) + 1),
+           '^ *',
+           ''
+       )
+FROM approved_exception exception
+JOIN ingredient_concept concept ON concept.code = exception.concept_code
+JOIN participant ON participant.code = exception.participant_code
+JOIN ingredient_availability availability
+  ON availability.ingredient_concept_id = concept.id
+ AND availability.participant_id = participant.id
+WHERE availability.curator_note IS NOT NULL
+  AND left(availability.curator_note, char_length(exception.approved_prefix))
+      = exception.approved_prefix
+  AND substring(availability.curator_note FROM char_length(exception.approved_prefix) + 1)
       ~ '[^[:space:]]';
 
 -- The aggregate snapshot matches CatalogIngredientSnapshotFactory's payload
@@ -83,7 +119,9 @@ WHERE availability.ingredient_concept_id = cleanup.ingredient_concept_id
   AND availability.curator_note = cleanup.old_note;
 
 -- A changed child aggregate invalidates any editor that still holds its old
--- version. No other metadata participates in this update.
+-- version. No other metadata participates in this update. Because phase 1 and
+-- the five approved phase-2 rows share one cleanup table, each affected
+-- concept advances exactly once even when both participant notes change.
 UPDATE ingredient_concept concept
 SET version = concept.version + 1
 WHERE EXISTS (
