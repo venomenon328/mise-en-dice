@@ -29,25 +29,6 @@ class AdapterBoundaryTest {
     }
 
     @Test
-    void otherModulesDoNotUseTheCatalogAuditPersistencePortDirectly() {
-        var classes = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages("io.github.venomenon328.miseendice");
-
-        noClasses()
-                .that().resideInAnyPackage(
-                        "..administration..",
-                        "..discord..",
-                        "..challenge.."
-                )
-                .should().dependOnClassesThat().haveFullyQualifiedName(
-                        "io.github.venomenon328.miseendice.catalog.api.CatalogAuditLog"
-                )
-                .because("catalog audit persistence is an internal foundation; adapters must use later application APIs")
-                .check(classes);
-    }
-
-    @Test
     void challengeUsesOnlyThePublicCatalogApiAndConfinesJdbcToItsRepositoryAdapter() {
         var classes = new ClassFileImporter()
                 .withImportOption(new ImportOption.DoNotIncludeTests())

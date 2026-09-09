@@ -15,7 +15,7 @@ class GeneratorSimulationAdministrationLimitsTest {
         deadline.setAccessible(true);
 
         assertThat(deadline.get(null)).isEqualTo(Duration.ofMinutes(5));
-        assertThat(Files.readString(Path.of("src/main/resources/templates/admin/audit.html")))
+        assertThat(Files.readString(Path.of("src/main/resources/templates/admin/generator.html")))
                 .contains("Deadline von 5 Minuten")
                 .doesNotContain("Deadline von 30 Sekunden");
     }

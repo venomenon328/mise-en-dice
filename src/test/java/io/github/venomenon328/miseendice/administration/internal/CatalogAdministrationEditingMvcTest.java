@@ -73,7 +73,6 @@ class CatalogAdministrationEditingMvcTest {
 
     @AfterEach
     void removeTestData() {
-        jdbcTemplate.update("delete from catalog_audit_entry where actor_key = ?", ACTOR_KEY);
         jdbcTemplate.update("""
                 delete from ingredient_refinement
                 where parent_concept_id in (select id from ingredient_concept where code like ?)
@@ -351,13 +350,11 @@ class CatalogAdministrationEditingMvcTest {
         mockMvc.perform(noteSave(concept, 2, "My pending note.", "My second pending note.")
                         .session(session).with(csrf()))
                 .andExpect(status().is3xxRedirection());
-        long auditId = jdbcTemplate.queryForObject("select max(id) from catalog_audit_entry where entity_id = ? and actor_key = ?",
-                Long.class, concept, ACTOR_KEY);
-        mockMvc.perform(get("/admin/audit").param("entry", Long.toString(auditId)).session(session))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Beschaffbarkeitsnotiz")))
-                .andExpect(content().string(containsString("Concurrent note.")))
-                .andExpect(content().string(containsString("My pending note.")));
+        assertTrue(jdbcTemplate.queryForObject("""
+                select a.curator_note = 'My pending note.' from ingredient_availability a
+                join participant p on p.id = a.participant_id
+                where ingredient_concept_id = ? and p.code = 'GEORGIA'
+                """, Boolean.class, concept));
     }
 
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder noteSave(

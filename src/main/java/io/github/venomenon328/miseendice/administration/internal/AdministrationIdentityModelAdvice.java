@@ -9,8 +9,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 @ControllerAdvice(assignableTypes = {
         AdministrationEntryPointController.class,
         CatalogAdministrationController.class,
-        CatalogExclusionAdministrationController.class,
-        CatalogAuditAdministrationController.class
+        CatalogExclusionAdministrationController.class
 })
 @ConditionalOnProperty(prefix = "mise-en-dice.administration", name = "enabled", havingValue = "true")
 class AdministrationIdentityModelAdvice {

@@ -11,11 +11,11 @@ import org.junit.jupiter.api.Test;
 class CatalogExclusionCommandsTest {
 
     @Test
-    void rejectsInvalidCodeDisplayWeightTargetsAndAuditActorAtTheCommandBoundary() {
+    void rejectsInvalidCodeDisplayWeightAndTargetsAtTheCommandBoundary() {
         assertThatThrownBy(() -> new CreateExclusionRuleCommand(
-                "lower-case", "", true, BigDecimal.ZERO, null, List.of(), ""))
+                "lower-case", "", true, BigDecimal.ZERO, null, List.of()))
                 .isInstanceOf(CatalogCommandValidationException.class)
                 .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
-                        .containsKeys("code", "displayText", "baseDrawWeight", "targets", "actorKey"));
+                        .containsKeys("code", "displayText", "baseDrawWeight", "targets"));
     }
 }

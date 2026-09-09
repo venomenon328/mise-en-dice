@@ -192,7 +192,7 @@ Vor dem Schreiben Branch-/Katalogstand erneut abgleichen. Neu hinzugekommene ode
 - Allgemeine Kuratornotiz nach `ingredient_concept.curator_note`; jede Personenstufe und deren exakter Notiztext gemeinsam nach `ingredient_availability.availability_level` beziehungsweise `ingredient_availability.curator_note` übernehmen.
 - Marktklasse, Evidenz, URLs, Prüfdatum und ausführliche Begründungen sind Reviewunterlagen, keine neu einzuführenden DB-Metadaten.
 - Freigegebene Kanten einschließlich betroffener bestehender Konzepte explizit pflegen. Keine abgeleiteten Länder-, Rollen-, Rating- oder sonstigen Fachänderungen ergänzen.
-- Transaktions-, Integritäts-, Versions- und Auditverträge des aktuellen Datenmodells wahren; unbekannte Abweichungen nicht überschreiben oder fachlich umdeuten.
+- Transaktions-, Integritäts- und Versionsverträge des aktuellen Datenmodells wahren; unbekannte Abweichungen nicht überschreiben oder fachlich umdeuten.
 - Vor Commit den gesamten Änderungsdiff einmalig gegen die Freigabe abgleichen, einschließlich Notizwortlaut und nicht beabsichtigter Deltas. Das ist Implementierungs-QA, kein dauerhaftes Test-Oracle.
 - Nachvollziehbar committen und auf den Sammelbranch pushen. Bestehenden passenden PR verwenden oder bei Bedarf als Draft gegen `main` eröffnen; #172 nicht mit `Closes` schließen. Kein Merge oder Deployment ohne ausdrücklichen Auftrag.
 
@@ -249,7 +249,7 @@ Automatisierte Tests dürfen und sollen technische Eigenschaften absichern, insb
 
 - Schema-, Constraint- und Referenzintegrität,
 - Ausführbarkeit und Upgrade-Verhalten von Liquibase-Migrationen sowie technische Idempotenz, soweit dies unabhängig vom konkreten redaktionellen Inhalt geprüft wird,
-- Transaktionen, Rollback, Optimistic Locking und Audit,
+- Transaktionen, Rollback und Optimistic Locking,
 - Such-, Filter-, Projektions- und Renderer-Verhalten mit **test-eigenen** Daten,
 - technische Graphregeln wie Zyklusverhinderung oder andere im Anwendungscode tatsächlich erzwungene Invarianten,
 - Generator-/Challenge-Invarianz gegenüber Metadaten, sofern der Test keine konkreten produktiven Zutatenwerte voraussetzt,

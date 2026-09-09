@@ -14,7 +14,7 @@
     <nav class="main-nav" aria-label="Administration">
         <a class="main-nav-link" th:href="@{/admin/catalog}">Katalog</a>
         <a class="main-nav-link is-active" aria-current="page" th:href="@{/admin/exclusions}">Ausschlüsse</a>
-        <a class="main-nav-link" th:href="@{/admin/audit}">Änderungen</a>
+        <a class="main-nav-link" th:href="@{/admin/generator}">Generator-Labor</a>
     </nav>
     <div class="account"><span class="account-name" th:text="${administratorDisplayName}">Administration</span><form th:action="@{/logout}" method="post"><button class="button button--ghost button--small" type="submit">Abmelden</button></form></div>
 </header>

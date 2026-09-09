@@ -1,12 +1,12 @@
 # Datenmodell
 
-Stand: 8. September 2026
+Stand: 9. September 2026
 
 Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt als explizit geordnete Liquibase-Changesets vor:
 
 - [`001-catalog-schema.sql`](../src/main/resources/db/changelog/schema/001-catalog-schema.sql) für Zutatenwissen und Generator-Metadaten
 - [`002-challenge-history-schema.sql`](../src/main/resources/db/changelog/schema/002-challenge-history-schema.sql) für Generierung, Kuratierung und sichtbare Challenge-Historie
-- [`003-administration-foundation.sql`](../src/main/resources/db/changelog/schema/003-administration-foundation.sql) für optimistisches Locking und Katalog-Audit
+- [`003-administration-foundation.sql`](../src/main/resources/db/changelog/schema/003-administration-foundation.sql) für optimistisches Locking und die historische Einführung des inzwischen entfernten Katalog-Audits
 - [`004-persisted-candidate-generation.sql`](../src/main/resources/db/changelog/schema/004-persisted-candidate-generation.sql) für Generation Context, Batches, Candidate-Snapshots und den Phase-9D-Lifecycle
 - [`005-curation-offer-lifecycle.sql`](../src/main/resources/db/changelog/schema/005-curation-offer-lifecycle.sql) für den Phase-10A-Kuratorvertrag, Bewertungsreferenzen und persistente Offer Sets
 - [`006-curation-state-machine-hardening.sql`](../src/main/resources/db/changelog/schema/006-curation-state-machine-hardening.sql) für terminale Kurationsübergänge, Request-Shapes und dauerhafte Offer-Integrität
@@ -21,6 +21,7 @@ Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-S
 - [`015-challenge-results-completion-core.sql`](../src/main/resources/db/changelog/schema/015-challenge-results-completion-core.sql) für Ergebnisdaten, optionale Fotos, Abschlusszeitpunkte und Statusprojektionen
 - [`016-result-open-requirement-concretizations.sql`](../src/main/resources/db/changelog/schema/016-result-open-requirement-concretizations.sql) für persönliche Konkretisierungen historisch offener Challenge-Vorgaben
 - [`017-culinary-country-associations.sql`](../src/main/resources/db/changelog/schema/017-culinary-country-associations.sql) für den Länder-Referenzbestand und explizite kulinarische Länderzuordnungen
+- [`022-remove-runtime-catalog-audit.sql`](../src/main/resources/db/changelog/schema/022-remove-runtime-catalog-audit.sql) für die vorwärtsgerichtete Entfernung des Runtime-Katalogaudits gemäß ADR 0010
 
 Der explizite Einstiegspunkt ist [`db.changelog-master.yaml`](../src/main/resources/db/changelog/db.changelog-master.yaml). Die erste kuratierte Befüllung liegt als einmalige Liquibase-Baseline unter [`src/main/resources/db/changelog`](../src/main/resources/db/changelog) und ist in [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md) beschrieben. Die redaktionelle Semantik der Länderrelation ist separat in [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md) festgehalten.
 
@@ -125,7 +126,7 @@ Eine Zuordnung ist eine kuratierte positive Aussage über kulinarische Relevanz 
 
 Die Relation gilt ausschließlich für das konkret gepflegte Konzept. Weder Parent→Child noch Child→Parent wird über `ingredient_refinement` abgeleitet. Eine Deaktivierung löscht vorhandene Länderzuordnungen nicht. Die Relation besitzt im ersten Stand keine Gewichtung, Stärke oder Typisierung.
 
-Die administrationsorientierte Katalogprojektion und das Audit führen Code und Anzeigename. Länderzuordnungen sind ausdrücklich nicht Teil von `CatalogGeneratorProjection`, Generation Context, Candidate-Signatur, Fingerprints, Kuration oder Challenge-Semantik. Die ausführlichen Redaktionsregeln stehen in [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md).
+Die administrationsorientierte Katalogprojektion führt Code und Anzeigename. Länderzuordnungen sind ausdrücklich nicht Teil von `CatalogGeneratorProjection`, Generation Context, Candidate-Signatur, Fingerprints, Kuration oder Challenge-Semantik. Die ausführlichen Redaktionsregeln stehen in [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md).
 
 ## 6. Beschaffbarkeit
 
@@ -164,10 +165,10 @@ IDs, Zeitstempel und Versionszähler sind keine fachlichen Fingerprintwerte; and
 Die 860 Aggregatversionen werden einmal erhöht, damit vor der Migration geöffnete Editoren einen Konflikt erhalten.
 Nach erfolgreicher Liquibase-Ausführung bleibt wieder die operative Datenbank autoritativ.
 
-Availability-Notizen gehören zur Katalogpflege und zum Aggregate-Audit. Die schmale öffentliche `/zutat`-Lookup-Projektion
+Availability-Notizen gehören zur Katalogpflege. Die schmale öffentliche `/zutat`-Lookup-Projektion
 transportiert ausschließlich die aktuell gepflegten individuellen Georgia-/Tobias-Notizen zur sicheren Darstellung; sie
 enthält keine Availability-Stufen und leitet keine Texte ab. Generatorprojektion, Generatorfingerprint, Gewichtung und historische Generatorsnapshots enthalten sie nicht. Historische
-Auditpayloads ohne Notizschlüssel bleiben als damals ungepflegte Notiz lesbar.
+Challenge- und Generatorsnapshots bleiben davon unberührt.
 
 Die Beschaffbarkeit eines allgemeineren Konzepts wird **nicht aus seinen bekannten Konkretisierungen abgeleitet**. Beispielsweise kann `Chili` problemlos beschaffbar sein, obwohl keine der konkret benannten Chilisorten lokal zuverlässig verfügbar ist.
 
@@ -425,20 +426,11 @@ Gemäß [ADR 0009](adr/0009-determinism-without-historical-generator-replay.md) 
 
 Migration [`020-remove-generator-replay-result.sql`](../src/main/resources/db/changelog/schema/020-remove-generator-replay-result.sql) entfernt ausschließlich `generation_batch.result_snapshot`, die ungenutzte zusätzliche vollständige Result-Payload. Alle übrigen Bestandteile der Batch-Result-Constraint bleiben unverändert. Eigenständige Batchdiagnosen, Candidate-/Requirement-Snapshots, Offers, Challenges und persönliche Ergebnisse bleiben vollständig erhalten. Die Context-Komponentenfingerprints besitzen weiterhin konkrete Integritäts- und Anzeigeconsumer und bleiben bestehen; der vollständige Persistenzaudit steht in ADR 0009.
 
-## 13. Administrationsversionen und Katalog-Audit
+## 13. Administrationsversionen
 
 `ingredient_concept.version` und `exclusion_rule.version` starten für bestehende und neue Datensätze bei `0`. Sie schützen jeweils das gesamte künftig bearbeitete Verwaltungsaggregat. Ein schreibender Application Service verwendet den erwarteten Versionswert und erhöht die Version nur im selben erfolgreichen Update; ein nicht aktualisierter Datensatz signalisiert einen fachlichen Konkurrenzkonflikt. Zugeordnete Rollen, Eigenschaften, Länderzuordnungen, Verfügbarkeiten, Saisonwerte und direkte Konkretisierungsbeziehungen erhalten keine eigenen UI-Versionen. Eine direkte Konkretisierungsänderung prüft die erwarteten Versionen aller betroffenen Zutaten, sperrt diese in deterministischer ID-Reihenfolge und erhöht jede betroffene Version pro erfolgreichem Save genau einmal.
 
-`catalog_audit_entry` hält jede erfolgreiche redaktionelle Änderung dauerhaft fest:
-
-```text
-id, change_group_id, actor_key, entity_type, entity_id, action,
-before_state jsonb, after_state jsonb, payload_version, occurred_at
-```
-
-Die Indizes auf `(entity_type, entity_id, occurred_at desc)`, `(actor_key, occurred_at desc)` und `change_group_id` unterstützen Entity-Historie, Akteursfilter und zusammengehörende Änderungen. Die Tabelle besitzt bewusst keinen Fremdschlüssel auf `participant` oder veränderliche Katalogobjekte: ein Audit-Eintrag soll auch nach Deaktivierung oder einer späteren, bewusst behandelten Datenbereinigung lesbar bleiben.
-
-Die Snapshots sind fachliche Aggregatdaten, keine HTTP-Formulare. Insbesondere enthalten sie keine Passwörter, Session-, Cookie- oder CSRF-Daten. Die zugehörige Administrationsidentität wird zunächst extern konfiguriert und bleibt technisch vom fachlichen Teilnehmermodell getrennt. Ein Relation-Save erzeugt pro betroffenem Zutatenaggregat genau einen vollständigen Vorher-/Nachher-Snapshot mit derselben `change_group_id`; scheitert auch nur ein Audit-Insert, rollt die gesamte Änderung zurück.
+Gemäß [ADR 0010](adr/0010-remove-runtime-catalog-audit.md) speichert die Katalogverwaltung keine anwendungsinterne Vorher-/Nachher-Historie. Migration `022-remove-runtime-catalog-audit.sql` entfernt die frühere Tabelle ohne Export; veröffentlichte historische Changesets bleiben append-only unverändert. Aggregatversionen, atomare Transaktionen, Graphlock, Trigger und Constraints bleiben der verbindliche Konkurrenz- und Integritätsschutz. Eine Wiederherstellung versehentlich geänderter operativer Werte stützt sich bei Bedarf auf die vorgesehenen Datenbank-Backups.
 
 ## 14. Bewusst nicht in der Datenbank erzwungene Regeln
 

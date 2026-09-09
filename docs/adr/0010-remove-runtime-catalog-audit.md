@@ -1,13 +1,13 @@
 # ADR 0010: Runtime-Katalogaudit entfernen, Optimistic Locking behalten
 
-- Status: angenommen, Umsetzung ausstehend
+- Status: angenommen und umgesetzt
 - Datum: 9. September 2026
 - Entscheidungsträger: Projektverantwortlicher, Issue #221
-- Ersetzt nach Umsetzung die auditbezogenen Zielentscheidungen der privaten Katalogverwaltung; Security, Optimistic Locking, Transaktions- und Integritätsverträge bleiben bestehen.
+- Ersetzt die auditbezogenen Zielentscheidungen der privaten Katalogverwaltung; Security, Optimistic Locking, Transaktions- und Integritätsverträge bleiben bestehen.
 
 ## Kontext
 
-Die private Katalogverwaltung wurde mit einem vollständigen Runtime-Audit aufgebaut. Erfolgreiche Änderungen an Zutatenkonzepten, Konkretisierungsbeziehungen, Ausschlussregeln und Bulk-Aktionen erzeugen derzeit fachliche Vorher-/Nachher-Snapshots in `catalog_audit_entry`. Die Administration bietet dafür einen eigenen Bereich `Änderungen`, Entity-Historien und feldweise Diffs. Auditfehler sind Teil der Schreibtransaktion und rollen deshalb heute auch die eigentliche Katalogänderung zurück.
+Die private Katalogverwaltung wurde mit einem vollständigen Runtime-Audit aufgebaut. Erfolgreiche Änderungen an Zutatenkonzepten, Konkretisierungsbeziehungen, Ausschlussregeln und Bulk-Aktionen erzeugten fachliche Vorher-/Nachher-Snapshots in `catalog_audit_entry`. Die Administration bot dafür einen eigenen Bereich `Änderungen`, Entity-Historien und feldweise Diffs. Auditfehler waren Teil der Schreibtransaktion und rollten deshalb auch die eigentliche Katalogänderung zurück.
 
 Dieser Vertrag wurde für eine nachvollziehbare Mehrnutzerpflege entworfen. Der reale Betrieb ist jedoch ein privates System mit sehr kleinem bekannten Nutzerkreis. Katalogänderungen erfolgen kontrolliert über die Anwendung, migrations-/automatisierungsgeführt oder bewusst durch den Betreiber. Für diesen Anwendungsfall rechtfertigen Nachher-Snapshots, Diff-/Query-Infrastruktur, UI, zusätzliche Datenbankobjekte und umfangreiche Audittests ihren dauerhaften Pflegeaufwand nicht mehr.
 
@@ -19,7 +19,7 @@ Es existiert eine produktive PostgreSQL-Datenbank. Bereits veröffentlichte Liqu
 
 Der Runtime-Katalogaudit wird vollständig und ersatzlos entfernt.
 
-Nach Umsetzung von Issue #221 gilt:
+Mit Issue #221 gilt:
 
 - `catalog_audit_entry` und ausschließlich dazugehörige Indizes beziehungsweise weitere reine Auditobjekte existieren nicht mehr im aktuellen Schema,
 - Katalog-, Relations-, Ausschluss- und Bulk-Commands schreiben keine Audit-Einträge und erzeugen keine Audit-Snapshots oder -Diffs,
@@ -46,7 +46,7 @@ Der Begriff `Audit` in anderen Modulen bleibt zulässig, wenn dort ein eigenstä
 
 Die bereits veröffentlichte Migration `schema/003-administration-foundation.sql` und alle späteren Changesets bleiben unverändert. Das gilt auch für spätere Katalogmigrationen, die aufgrund des damaligen Vertrags Auditzeilen erzeugen.
 
-Die Entfernung erfolgt ausschließlich vorwärtsgerichtet über ein neues append-only Liquibase-Cleanup-Changeset. Dieses entfernt den aktuell vorhandenen Auditbestand, ohne andere Produktionsdaten oder fachliche Historien anzutasten.
+Die Entfernung erfolgt ausschließlich vorwärtsgerichtet über das neue append-only Liquibase-Changeset `schema/022-remove-runtime-catalog-audit.sql`. Dieses entfernt den vorhandenen Auditbestand, ohne andere Produktionsdaten oder fachliche Historien anzutasten.
 
 Damit darf eine frisch aufgebaute Datenbank historisch zunächst die Auditstruktur anlegen und gegebenenfalls Auditdaten erzeugen, bevor das aktuelle Cleanup-Changeset sie wieder entfernt. Dieser zusätzliche Fresh-DB-Aufwand wird bewusst akzeptiert, weil ein Umschreiben veröffentlichter Changesets den sicheren Upgradepfad der Produktionsdatenbank verletzen würde.
 
@@ -68,19 +68,9 @@ Weiterhin belastbar zu prüfen sind insbesondere:
 
 Eine kürzere Testsuite ist ein erwünschter Nebeneffekt, aber kein quantitatives Abnahmekriterium. ADR 0004 bleibt maßgeblich: PostgreSQL-Tests bleiben dort bestehen, wo PostgreSQL tatsächlich Teil des zu prüfenden Verhaltens ist.
 
-## Dokumentationsübergang
+## Dokumentationsstand
 
-Diese ADR dokumentiert die freigegebene Zielentscheidung **vor** ihrer technischen Umsetzung. Bis Issue #221 gemergt ist, beschreibt der aktuelle Anwendungscode weiterhin einen aktiven Runtime-Katalogaudit.
-
-Die bisherige Dokumentation enthält deshalb vorübergehend noch Aussagen zum implementierten Istzustand, insbesondere in:
-
-- `ARCHITECTURE.md`, Abschnitte 8.3 und 8.4,
-- `DATA_MODEL.md`, insbesondere Abschnitt 13 und auditbezogene Projektionshinweise,
-- `ADMINISTRATION_UI.md`, insbesondere Navigation, Entity-Historie, Abschnitt 16 sowie Auditanteile der Use Cases und historischen Implementierungspakete,
-- `CULINARY_CATALOG_WORKFLOW.md` und anderen aktuellen Prozess-/Fachquellen, soweit sie den bestehenden Auditvertrag für Katalogmigrationen voraussetzen,
-- `AGENTS.md` / `PROJECT_PROFILE.md`, soweit Audit als aktueller Integritätsvertrag genannt wird.
-
-Für **die Umsetzung von #221** ersetzt diese ADR diese auditbezogenen Zielvorgaben bereits jetzt. Für andere Arbeiten gilt bis zum Merge weiterhin der tatsächlich implementierte Istzustand. Der Implementierungs-PR von #221 muss anschließend alle aktuellen normativen Dokumente konsistent auf den auditfreien Zustand bringen. Historische Issues, PRs, Analyseberichte und veröffentlichte Changesets werden nicht kosmetisch umgeschrieben.
+Die aktuellen normativen Dokumente beschreiben den auditfreien Zustand. Historische Issues, PRs, Analyseberichte und veröffentlichte Changesets bleiben als zeitgebundene Nachweise unverändert. Deshalb darf ein Fresh-DB-Aufbau die frühere Auditstruktur vor Ausführung des Cleanup-Changesets vorübergehend anlegen; sie gehört nicht zum aktuellen Runtime-Schema.
 
 ## Konsequenzen
 

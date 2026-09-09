@@ -39,7 +39,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class CatalogRefinementIntegrationTest {
 
     private static final String PREFIX = "TEST_ISSUE21_";
-    private static final String ACTOR = "issue21-integration-admin";
 
     @Container
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
@@ -65,7 +64,6 @@ class CatalogRefinementIntegrationTest {
 
     @AfterEach
     void removeTestData() {
-        jdbcTemplate.update("delete from catalog_audit_entry where actor_key = ?", ACTOR);
         jdbcTemplate.update("""
                 delete from ingredient_refinement
                 where parent_concept_id in (select id from ingredient_concept where code like ?)
@@ -75,7 +73,7 @@ class CatalogRefinementIntegrationTest {
     }
 
     @Test
-    void addsAnotherParentWithoutReplacingExistingParentsAndAuditsEveryAffectedAggregateOnce() {
+    void addsAnotherParentWithoutReplacingExistingParentsAndVersionsEveryAffectedAggregateOnce() {
         long firstParent = concept("FIRST_PARENT", "First parent", "OPEN", true, false, "ANIMAL_PROTEIN");
         long additionalParent = concept("SECOND_PARENT", "Second parent", "OPEN", true, false, "ANIMAL_PROTEIN");
         long child = concept("CHILD", "Child", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
@@ -87,17 +85,6 @@ class CatalogRefinementIntegrationTest {
         assertThat(version(child)).isEqualTo(1);
         assertThat(version(additionalParent)).isEqualTo(1);
         assertThat(version(firstParent)).isZero();
-        List<Map<String, Object>> audits = jdbcTemplate.queryForList("""
-                select entity_id, change_group_id, before_state, after_state
-                from catalog_audit_entry where actor_key = ? order by entity_id
-                """, ACTOR);
-        assertThat(audits).hasSize(2);
-        assertThat(audits).extracting(row -> row.get("entity_id")).containsExactlyInAnyOrder(child, additionalParent);
-        assertThat(audits).extracting(row -> row.get("change_group_id")).containsOnly(audits.getFirst().get("change_group_id"));
-        assertThat(audits).allSatisfy(row -> {
-            assertThat(row.get("before_state")).isNotNull();
-            assertThat(row.get("after_state")).isNotNull();
-        });
     }
 
     @Test
@@ -128,7 +115,6 @@ class CatalogRefinementIntegrationTest {
         assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(command(child, List.of(add(parent, child, 0)), Map.of(parent, 0L))))
                 .isInstanceOf(CatalogCommandValidationException.class);
         assertThat(version(child)).isZero();
-        assertThat(auditCount()).isZero();
     }
 
     @Test
@@ -156,7 +142,6 @@ class CatalogRefinementIntegrationTest {
                 .isInstanceOf(CatalogCommandValidationException.class);
         assertThat(edgeExists(redundantParent, redundantChild)).isFalse();
         assertThat(edgeExists(redundantParent, redundantMiddle)).isTrue();
-        assertThat(auditCount()).isZero();
     }
 
     @Test
@@ -187,7 +172,7 @@ class CatalogRefinementIntegrationTest {
     }
 
     @Test
-    void staleCounterpartVersionRollsBackBaseFieldsEdgesAndAudit() {
+    void staleCounterpartVersionRollsBackBaseFieldsAndEdges() {
         long parent = concept("STALE_PARENT", "Stale parent", "OPEN", true, false, "ANIMAL_PROTEIN");
         long child = concept("STALE_CHILD", "Stale child", "SPECIFIC", true, false, "ANIMAL_PROTEIN");
         jdbcTemplate.update("update ingredient_concept set version = version + 1 where id = ?", parent);
@@ -196,7 +181,6 @@ class CatalogRefinementIntegrationTest {
         assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(stale)).isInstanceOf(CatalogVersionConflictException.class);
         assertThat(edgeExists(parent, child)).isFalse();
         assertThat(version(child)).isZero();
-        assertThat(auditCount()).isZero();
     }
 
     @Test
@@ -207,7 +191,7 @@ class CatalogRefinementIntegrationTest {
         try {
             UpdateIngredientConceptCommand command = new UpdateIngredientConceptCommand(
                     child, 0, "Unknown child", true, false, "SPECIFIC", BigDecimal.ONE, null,
-                    "ISSUE21_UNKNOWN", ACTOR, false, List.of(add(parent, child, 0)), Map.of(parent, 0L), false);
+                    "ISSUE21_UNKNOWN", false, List.of(add(parent, child, 0)), Map.of(parent, 0L), false);
             assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(command))
                     .isInstanceOf(DataIntegrityViolationException.class)
                     .isNotInstanceOf(CatalogCommandValidationException.class);
@@ -248,7 +232,6 @@ class CatalogRefinementIntegrationTest {
         assertThat(outcomes).anyMatch(CatalogCommands.CatalogCommandResult.class::isInstance);
         assertThat(outcomes).anyMatch(CatalogVersionConflictException.class::isInstance);
         assertThat(version(child)).isEqualTo(1);
-        assertThat(auditCount()).isEqualTo(2);
     }
 
     @Test
@@ -263,7 +246,6 @@ class CatalogRefinementIntegrationTest {
         assertThat(roleCodes(parent)).containsExactly("VEGETABLE");
         assertThat(edgeExists(parent, child)).isTrue();
         assertThat(version(parent)).isEqualTo(1);
-        assertThat(auditCount()).isEqualTo(1);
     }
 
     @Test
@@ -337,7 +319,7 @@ class CatalogRefinementIntegrationTest {
         return new UpdateIngredientConceptCommand(
                 conceptId, detail.version(), detail.displayName(), detail.active(), detail.randomDrawEnabled(),
                 detail.challengeSpecificity(), detail.baseDrawWeight(), detail.noveltyLevel(), detail.curatorNote(),
-                ACTOR, false, changes, relatedVersions, false);
+                false, changes, relatedVersions, false);
     }
 
     private UpdateIngredientConceptCommand metadataCommand(long conceptId, CatalogMetadata metadata) {
@@ -345,14 +327,14 @@ class CatalogRefinementIntegrationTest {
         return new UpdateIngredientConceptCommand(
                 conceptId, detail.version(), detail.displayName(), detail.active(), detail.randomDrawEnabled(),
                 detail.challengeSpecificity(), detail.baseDrawWeight(), detail.noveltyLevel(), detail.curatorNote(),
-                ACTOR, false, List.of(), Map.of(), false, metadata);
+                false, List.of(), Map.of(), false, metadata);
     }
 
     private UpdateIngredientConceptCommand commandWithSpecificity(long conceptId, String specificity) {
         CatalogQueries.CatalogConceptDetail detail = catalogQueries.findConcept(conceptId).orElseThrow();
         return new UpdateIngredientConceptCommand(
                 conceptId, detail.version(), detail.displayName(), detail.active(), detail.randomDrawEnabled(),
-                specificity, detail.baseDrawWeight(), detail.noveltyLevel(), detail.curatorNote(), ACTOR, false);
+                specificity, detail.baseDrawWeight(), detail.noveltyLevel(), detail.curatorNote(), false);
     }
 
     private static CatalogMetadata metadata(String... roles) {
@@ -363,7 +345,7 @@ class CatalogRefinementIntegrationTest {
         return new UpdateIngredientConceptCommand(
                 command.conceptId(), command.expectedVersion(), command.displayName(), command.active(),
                 command.randomDrawEnabled(), command.challengeSpecificity(), command.baseDrawWeight(), command.noveltyLevel(),
-                command.curatorNote(), command.actorKey(), command.weightWarningsAcknowledged(), command.refinementChanges(),
+                command.curatorNote(), command.weightWarningsAcknowledged(), command.refinementChanges(),
                 command.expectedRelatedVersions(), true);
     }
 
@@ -430,10 +412,6 @@ class CatalogRefinementIntegrationTest {
                 join functional_role fr on fr.id = ifr.functional_role_id
                 where ifr.ingredient_concept_id = ?
                 """, String.class, conceptId));
-    }
-
-    private int auditCount() {
-        return jdbcTemplate.queryForObject("select count(*) from catalog_audit_entry where actor_key = ?", Integer.class, ACTOR);
     }
 
     @FunctionalInterface

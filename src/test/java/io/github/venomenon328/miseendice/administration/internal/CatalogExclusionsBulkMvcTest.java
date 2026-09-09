@@ -41,7 +41,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 /** Covers protected HTMX and write entry points for the Phase-8 administration areas. */
 @SpringBootTest
 @Testcontainers
-class CatalogExclusionsBulkAuditMvcTest {
+class CatalogExclusionsBulkMvcTest {
 
     private static final String ACTOR = "issue30-mvc-admin";
     private static final String PASSWORD = UUID.randomUUID().toString();
@@ -92,25 +92,26 @@ class CatalogExclusionsBulkAuditMvcTest {
 
     @AfterEach
     void removeTestData() {
-        jdbcTemplate.update("delete from catalog_audit_entry where actor_key = ?", ACTOR);
         jdbcTemplate.update("delete from exclusion_rule where code like 'TEST_ISSUE30_MVC_%'");
         jdbcTemplate.update("delete from ingredient_concept where code like 'TEST_ISSUE30_MVC_%'");
     }
 
     @Test
-    void rendersExclusionPickerExecutesConfirmedBulkAndShowsAuditDiffThroughPublicCatalogApis() throws Exception {
+    void rendersExclusionPickerAndExecutesConfirmedBulk() throws Exception {
         MockHttpSession session = authenticate();
         var target = catalogQueries.findConcept(conceptId(TARGET_CODE)).orElseThrow();
         long ruleId = exclusionCommands.createExclusionRule(new CreateExclusionRuleCommand(RULE_CODE, "Issue thirty MVC Ausschluss",
-                true, BigDecimal.ONE, null, List.of(new ExclusionTarget(target.id(), true)), ACTOR)).exclusionRuleId();
-        long exclusionAuditId = latestAuditId("EXCLUSION_RULE");
+                true, BigDecimal.ONE, null, List.of(new ExclusionTarget(target.id(), true)))).exclusionRuleId();
         long bulkConceptId = insertConcept("BULK", true);
         long bulkVersion = catalogQueries.findConcept(bulkConceptId).orElseThrow().version();
 
         mockMvc.perform(get("/admin/exclusions").session(session).param("active", "true"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-testid=\"exclusion-list\"")))
-                .andExpect(content().string(containsString("Issue thirty MVC Ausschluss")));
+                .andExpect(content().string(containsString("Issue thirty MVC Ausschluss")))
+                .andExpect(content().string(containsString("/admin/generator")))
+                .andExpect(content().string(not(containsString("/admin/audit"))))
+                .andExpect(content().string(not(containsString("Änderungen</a>"))));
         mockMvc.perform(get("/admin/exclusions/{id}/edit", ruleId).session(session).header("HX-Request", "true"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-testid=\"exclusion-edit-form\"")))
@@ -137,14 +138,8 @@ class CatalogExclusionsBulkAuditMvcTest {
         org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
                 "select random_draw_enabled from ingredient_concept where id = ?", Boolean.class, bulkConceptId)).isFalse();
 
-        mockMvc.perform(get("/admin/audit").session(session).param("entityType", "EXCLUSION_RULE")
-                        .param("entityId", Long.toString(ruleId)))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("data-testid=\"audit-list\"")))
-                .andExpect(content().string(containsString("Issue thirty MVC Ausschluss")));
-        mockMvc.perform(get("/admin/audit").session(session).param("entry", Long.toString(exclusionAuditId)))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Feldweiser Vergleich")));
+        mockMvc.perform(get("/admin/audit").session(session))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -183,10 +178,10 @@ class CatalogExclusionsBulkAuditMvcTest {
         long target = conceptId(TARGET_CODE);
         long first = exclusionCommands.createExclusionRule(new CreateExclusionRuleCommand(
                 "TEST_ISSUE30_MVC_FIRST", "Erste Regel", true, BigDecimal.ONE, null,
-                List.of(new ExclusionTarget(target, false)), ACTOR)).exclusionRuleId();
+                List.of(new ExclusionTarget(target, false)))).exclusionRuleId();
         long second = exclusionCommands.createExclusionRule(new CreateExclusionRuleCommand(
                 "TEST_ISSUE30_MVC_SECOND", "Zweite Regel", true, BigDecimal.ONE, null,
-                List.of(new ExclusionTarget(target, false)), ACTOR)).exclusionRuleId();
+                List.of(new ExclusionTarget(target, false)))).exclusionRuleId();
 
         jdbcTemplate.update("update exclusion_rule set display_text = 'Fremder Stand', version = 1 where id = ?", first);
         mockMvc.perform(post("/admin/exclusions/{id}", first).session(session).with(csrf())
@@ -233,9 +228,4 @@ class CatalogExclusionsBulkAuditMvcTest {
         return jdbcTemplate.queryForObject("select id from ingredient_concept where code = ?", Long.class, code);
     }
 
-    private long latestAuditId(String entityType) {
-        return jdbcTemplate.queryForObject("""
-                select id from catalog_audit_entry where actor_key = ? and entity_type = ? order by id desc limit 1
-                """, Long.class, ACTOR, entityType);
-    }
 }

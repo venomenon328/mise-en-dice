@@ -11,7 +11,7 @@ class GeneratorSimulationClientContractTest {
 
     @Test
     void simulationFormMatchesTheBrowserValidationSelectorContract() throws IOException {
-        String template = resource("templates/admin/audit.html");
+        String template = resource("templates/admin/generator.html");
         String javascript = resource("static/admin/assets/catalog.js");
 
         assertThat(template)

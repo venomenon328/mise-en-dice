@@ -36,13 +36,11 @@ public interface CatalogBulkCommands {
             BulkAction action,
             String functionalRoleCode,
             CatalogAvailability availability,
-            boolean weightWarningsAcknowledged,
-            String actorKey
+            boolean weightWarningsAcknowledged
     ) {
         public BulkOperation {
             selections = selections == null ? List.of() : List.copyOf(selections);
             functionalRoleCode = functionalRoleCode == null ? null : functionalRoleCode.strip().toUpperCase(java.util.Locale.ROOT);
-            actorKey = actorKey == null ? "" : actorKey.strip();
             Map<String, String> errors = new LinkedHashMap<>();
             if (selections.isEmpty() || selections.size() > 200) {
                 errors.put("selection", "Eine Bulk-Aktion ben\u00f6tigt 1 bis 200 explizit ausgew\u00e4hlte Konzepte.");
@@ -59,16 +57,13 @@ public interface CatalogBulkCommands {
                     && availability == null) {
                 errors.put("availability", "W\u00e4hle eine Beschaffbarkeitsstufe.");
             }
-            if (actorKey.isBlank()) {
-                errors.put("actorKey", "F\u00fcr die Auditierung ist ein Administrationsschl\u00fcssel erforderlich.");
-            }
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);
             }
         }
 
         public BulkOperation withoutAcknowledgement() {
-            return new BulkOperation(selections, action, functionalRoleCode, availability, false, actorKey);
+            return new BulkOperation(selections, action, functionalRoleCode, availability, false);
         }
     }
 
@@ -97,7 +92,7 @@ public interface CatalogBulkCommands {
         }
     }
 
-    record CatalogBulkResult(List<Long> changedConceptIds, java.util.UUID changeGroupId) {
+    record CatalogBulkResult(List<Long> changedConceptIds) {
         public CatalogBulkResult {
             changedConceptIds = List.copyOf(changedConceptIds);
         }

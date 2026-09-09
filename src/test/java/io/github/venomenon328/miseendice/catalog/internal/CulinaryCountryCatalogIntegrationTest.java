@@ -3,8 +3,6 @@ package io.github.venomenon328.miseendice.catalog.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.CatalogAuditEntityType;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogMetadata;
@@ -40,7 +38,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class CulinaryCountryCatalogIntegrationTest {
 
     private static final String PREFIX = "TEST_COUNTRY_";
-    private static final String ACTOR = "issue166-country-admin";
 
     @Container
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
@@ -62,9 +59,6 @@ class CulinaryCountryCatalogIntegrationTest {
     private CatalogQueries catalogQueries;
 
     @Autowired
-    private CatalogAuditQueries auditQueries;
-
-    @Autowired
     private CatalogGeneratorProjection generatorProjection;
 
     @Autowired
@@ -72,7 +66,6 @@ class CulinaryCountryCatalogIntegrationTest {
 
     @AfterEach
     void removeTestData() {
-        jdbcTemplate.update("delete from catalog_audit_entry where actor_key = ?", ACTOR);
         jdbcTemplate.update("delete from ingredient_culinary_country where ingredient_concept_id in "
                 + "(select id from ingredient_concept where code like ?)", PREFIX + "%");
         jdbcTemplate.update("""
@@ -127,25 +120,20 @@ class CulinaryCountryCatalogIntegrationTest {
     }
 
     @Test
-    void savesCountriesAtomicallyAuditsThemAndPreservesThemForLegacyMetadataCallers() {
+    void savesCountriesAtomicallyAndPreservesThemForLegacyMetadataCallers() {
         CatalogMetadata countries = metadata(Set.of("PH", "TH"));
         var created = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
                 PREFIX + "WRITE", "Country write concept", true, false, "SPECIFIC", BigDecimal.ONE,
-                null, "Technische Testnotiz.", countries, true, ACTOR
+                null, "Technische Testnotiz.", countries, true
         ));
 
         assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow().culinaryCountries())
                 .extracting(CatalogQueries.CatalogCountry::code)
                 .containsExactly("PH", "TH");
-        assertThat(latestAudit(created.conceptId()).diff())
-                .filteredOn(diff -> diff.label().equals("Kulinarische Zuordnung"))
-                .extracting(CatalogAuditQueries.CatalogAuditFieldDiff::afterValue)
-                .containsExactlyInAnyOrder("Philippinen", "Thailand");
-
         CatalogMetadata legacyMetadata = new CatalogMetadata(Set.of(), Set.of(), Map.of(), Map.of(), Map.of());
         var preserved = catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
                 created.conceptId(), created.version(), "Country write concept", false, false, "SPECIFIC",
-                BigDecimal.ONE, null, "Technische Testnotiz.", ACTOR, true, List.of(), Map.of(), false,
+                BigDecimal.ONE, null, "Technische Testnotiz.", true, List.of(), Map.of(), false,
                 legacyMetadata
         ));
         assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow().culinaryCountries())
@@ -154,19 +142,15 @@ class CulinaryCountryCatalogIntegrationTest {
 
         var replaced = catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
                 created.conceptId(), preserved.version(), "Country write concept", false, false, "SPECIFIC",
-                BigDecimal.ONE, null, "Technische Testnotiz.", ACTOR, true, List.of(), Map.of(), false,
+                BigDecimal.ONE, null, "Technische Testnotiz.", true, List.of(), Map.of(), false,
                 metadata(Set.of("KR"))
         ));
         assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow().culinaryCountries())
                 .extracting(CatalogQueries.CatalogCountry::code)
                 .containsExactly("KR");
-        assertThat(latestAudit(created.conceptId()).diff())
-                .filteredOn(diff -> diff.label().equals("Kulinarische Zuordnung"))
-                .hasSize(3);
-
         assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
                 created.conceptId(), created.version(), "Stale country editor", false, false, "SPECIFIC",
-                BigDecimal.ONE, null, "Technische Testnotiz.", ACTOR, true, List.of(), Map.of(), false,
+                BigDecimal.ONE, null, "Technische Testnotiz.", true, List.of(), Map.of(), false,
                 metadata(Set.of("PH"))
         ))).isInstanceOf(CatalogVersionConflictException.class);
         assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow().culinaryCountries())
@@ -175,7 +159,7 @@ class CulinaryCountryCatalogIntegrationTest {
 
         assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(new UpdateIngredientConceptCommand(
                 created.conceptId(), replaced.version(), "Should roll back", true, false, "SPECIFIC",
-                BigDecimal.ONE, null, "Technische Testnotiz.", ACTOR, true, List.of(), Map.of(), false,
+                BigDecimal.ONE, null, "Technische Testnotiz.", true, List.of(), Map.of(), false,
                 metadata(Set.of("ZZ"))
         ))).isInstanceOf(CatalogCommandValidationException.class);
         var afterRejectedUpdate = catalogQueries.findConcept(created.conceptId()).orElseThrow();
@@ -196,11 +180,6 @@ class CulinaryCountryCatalogIntegrationTest {
         assertThat(after).isEqualTo(before);
         assertThatThrownBy(() -> assignCountry(concept, "PH"))
                 .isInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    private CatalogAuditQueries.CatalogAuditDetail latestAudit(long conceptId) {
-        var history = auditQueries.findEntityHistory(CatalogAuditEntityType.INGREDIENT_CONCEPT, conceptId, 10);
-        return auditQueries.findAuditEntry(history.getFirst().id()).orElseThrow();
     }
 
     private CatalogMetadata metadata(Set<String> countries) {

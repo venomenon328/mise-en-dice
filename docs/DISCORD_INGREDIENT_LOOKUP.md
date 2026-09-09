@@ -264,7 +264,7 @@ Discord-Grenzen werden vor dem Senden deterministisch eingehalten. Eine überlan
 - JDA-Typen verbleiben vollständig im `discord`-Adapter.
 - Kein JDBC-Zugriff aus Listener, Workflow oder Renderer.
 - Keine Wiederverwendung der administrationsorientierten Vollprojektion.
-- Keine Schreibtransaktion und kein Katalogaudit durch Suche, Detailanzeige oder Navigation.
+- Keine Schreibtransaktion durch Suche, Detailanzeige oder Navigation.
 - Die Änderung der `/challenge`-Startautorisierung aus #115 betrifft ausschließlich den Discord-Adapter; Generator-, Offer-, Voting- und Participation-Lifecycle bleiben unverändert.
 
 `DiscordIngredientLookupRenderer` besitzt ein transportneutrales Render-Modell für Embed-Description, Inline-Felder, String-Select-Navigation und die kompakte Länderliste. Erst `DiscordJdaListener` mappt dieses Modell auf JDA-Embeds, native String Selects und die für Länderpaging/Rückkehr nötigen Buttons und bindet dabei sämtliche Navigationskomponenten an den Card-Owner. Die bestehende Eltern-/Kindnavigation bleibt bewusst selectbasiert.

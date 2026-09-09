@@ -1,8 +1,6 @@
 package io.github.venomenon328.miseendice.administration.internal;
 
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditQueries.CatalogAuditEntityType;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogMetadata;
@@ -51,16 +49,13 @@ class CatalogAdministrationController {
 
     private final CatalogQueries catalogQueries;
     private final CatalogCommands catalogCommands;
-    private final CatalogAuditQueries auditQueries;
 
     CatalogAdministrationController(
             CatalogQueries catalogQueries,
-            CatalogCommands catalogCommands,
-            CatalogAuditQueries auditQueries
+            CatalogCommands catalogCommands
     ) {
         this.catalogQueries = catalogQueries;
         this.catalogCommands = catalogCommands;
-        this.auditQueries = auditQueries;
     }
 
     @GetMapping
@@ -104,8 +99,6 @@ class CatalogAdministrationController {
             model.addAttribute("detail", detail.get());
             model.addAttribute("state", state);
             model.addAttribute("monthNames", monthNames());
-            model.addAttribute("entityHistory", auditQueries.findEntityHistory(
-                    CatalogAuditEntityType.INGREDIENT_CONCEPT, conceptId, 5));
             return "admin/fragments/detail :: panel";
         }
         populateCatalogPage(state, authentication, model, response);
@@ -171,7 +164,7 @@ class CatalogAdministrationController {
         CatalogState state = CatalogState.from(parameters, null);
         CatalogConceptForm form = CatalogConceptForm.forCreate(code, displayName, parameters);
         try {
-            var result = catalogCommands.createIngredientConcept(form.toCreateCommand(actorKey(authentication)));
+            var result = catalogCommands.createIngredientConcept(form.toCreateCommand());
             redirectAttributes.addFlashAttribute("saveNotice", "Zutatenkonzept angelegt.");
             return "redirect:" + state.detailUrl(result.conceptId());
         } catch (CatalogDrawWeightWarningException exception) {
@@ -240,7 +233,7 @@ class CatalogAdministrationController {
             return "admin/catalog";
         }
         try {
-            var result = catalogCommands.updateIngredientConcept(form.toUpdateCommand(actorKey(authentication)));
+            var result = catalogCommands.updateIngredientConcept(form.toUpdateCommand());
             redirectAttributes.addFlashAttribute("saveNotice", "Gespeichert.");
             return "redirect:" + state.detailUrl(result.conceptId());
         } catch (CatalogDrawWeightWarningException exception) {
@@ -427,8 +420,6 @@ class CatalogAdministrationController {
         populateEditorOptions(model);
         model.addAttribute("catalogSummary", catalogQueries.summarize());
         model.addAttribute("detail", detail.orElse(null));
-        detail.ifPresent(value -> model.addAttribute("entityHistory", auditQueries.findEntityHistory(
-                CatalogAuditEntityType.INGREDIENT_CONCEPT, value.id(), 5)));
         model.addAttribute("selectionOutsideResults", selectionOutsideResults);
         model.addAttribute("administratorName", authentication == null ? "Administration" : authentication.getName());
         model.addAttribute("monthNames", monthNames());
@@ -445,13 +436,6 @@ class CatalogAdministrationController {
 
     private static boolean isHtmx(String htmxRequest) {
         return "true".equalsIgnoreCase(htmxRequest);
-    }
-
-    private static String actorKey(Authentication authentication) {
-        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
-            throw new IllegalStateException("Catalog writing requires an authenticated administration identity");
-        }
-        return authentication.getName();
     }
 
     private static List<String> monthNames() {
@@ -622,7 +606,7 @@ class CatalogAdministrationController {
             );
         }
 
-        CatalogCommands.CreateIngredientConceptCommand toCreateCommand(String actorKey) {
+        CatalogCommands.CreateIngredientConceptCommand toCreateCommand() {
             Map<String, String> errors = new LinkedHashMap<>();
             BigDecimal weight = parseWeight(baseDrawWeight, errors);
             Integer novelty = parseNovelty(noveltyLevel, errors);
@@ -632,10 +616,10 @@ class CatalogAdministrationController {
             }
             return new CatalogCommands.CreateIngredientConceptCommand(
                     code, displayName, active, randomDrawEnabled, challengeSpecificity, weight, novelty, curatorNote,
-                    catalogMetadata, weightWarningsAcknowledged, actorKey);
+                    catalogMetadata, weightWarningsAcknowledged);
         }
 
-        CatalogCommands.UpdateIngredientConceptCommand toUpdateCommand(String actorKey) {
+        CatalogCommands.UpdateIngredientConceptCommand toUpdateCommand() {
             Map<String, String> errors = new LinkedHashMap<>();
             long expectedVersion = parseLong(version, "version", "Die Formularversion ist ungültig.", errors);
             BigDecimal weight = parseWeight(baseDrawWeight, errors);
@@ -666,7 +650,7 @@ class CatalogAdministrationController {
             }
             return new CatalogCommands.UpdateIngredientConceptCommand(
                     conceptId, expectedVersion, displayName, active, randomDrawEnabled, challengeSpecificity,
-                    weight, novelty, curatorNote, actorKey, weightWarningsAcknowledged,
+                    weight, novelty, curatorNote, weightWarningsAcknowledged,
                     changes, relatedVersions, inactiveRelationsAcknowledged, catalogMetadata
             );
         }

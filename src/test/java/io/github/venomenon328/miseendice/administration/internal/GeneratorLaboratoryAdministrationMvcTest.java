@@ -112,11 +112,9 @@ class GeneratorLaboratoryAdministrationMvcTest {
 
     @Test
     @WithMockUser(username = "generator-lab-admin")
-    void normalAuditRenderingRemainsAvailable() throws Exception {
+    void removedCatalogAuditEndpointReturnsNotFound() throws Exception {
         mockMvc.perform(get("/admin/audit"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("data-testid=\"audit-list\"")))
-                .andExpect(content().string(containsString("Redaktionelle Historie")));
+                .andExpect(status().isNotFound());
     }
 
     @Test

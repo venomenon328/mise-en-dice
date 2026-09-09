@@ -79,7 +79,6 @@ class CulinaryCountryAdministrationMvcTest {
 
     @AfterEach
     void removeTestData() {
-        jdbcTemplate.update("delete from catalog_audit_entry where actor_key = ?", ACTOR);
         jdbcTemplate.update("""
                 delete from ingredient_culinary_country
                 where ingredient_concept_id in (select id from ingredient_concept where code like ?)
@@ -129,7 +128,7 @@ class CulinaryCountryAdministrationMvcTest {
     }
 
     @Test
-    void savesCountriesWithOtherMetadataAtomicallyAndShowsTheirAuditDiff() throws Exception {
+    void savesCountriesWithOtherMetadataAtomically() throws Exception {
         long conceptId = insertConcept("SAVE", "Issue 167 atomar", true);
         assignCountries(conceptId, "DE");
         MockHttpSession session = authenticate();
@@ -145,15 +144,6 @@ class CulinaryCountryAdministrationMvcTest {
         assertThat(displayName(conceptId)).isEqualTo("Issue 167 atomar gespeichert");
         assertThat(countryCodes(conceptId)).containsExactly("FR", "IT");
         assertThat(hasCulinaryFlag(conceptId, "FERMENTED")).isTrue();
-
-        long auditEntryId = latestAuditId();
-        mockMvc.perform(get("/admin/audit").session(session).param("entry", Long.toString(auditEntryId)))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Feldweiser Vergleich")))
-                .andExpect(content().string(containsString("Kulinarische Zuordnung")))
-                .andExpect(content().string(containsString("Deutschland")))
-                .andExpect(content().string(containsString("Frankreich")))
-                .andExpect(content().string(containsString("Italien")));
 
         mockMvc.perform(update(conceptId, 1)
                         .session(session)
@@ -313,14 +303,6 @@ class CulinaryCountryAdministrationMvcTest {
                     where assignment.ingredient_concept_id = ? and flag.code = ?
                 )
                 """, Boolean.class, conceptId, flagCode));
-    }
-
-    private long latestAuditId() {
-        return jdbcTemplate.queryForObject("""
-                select id from catalog_audit_entry
-                where actor_key = ? and entity_type = 'INGREDIENT_CONCEPT'
-                order by id desc limit 1
-                """, Long.class, ACTOR);
     }
 
     private static String selectElement(String html, String id) {

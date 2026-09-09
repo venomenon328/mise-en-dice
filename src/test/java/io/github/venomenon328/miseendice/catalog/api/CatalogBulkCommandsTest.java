@@ -14,19 +14,19 @@ class CatalogBulkCommandsTest {
     @Test
     void requiresBetweenOneAndTwoHundredUniqueExplicitConcepts() {
         assertThatThrownBy(() -> new BulkOperation(
-                List.of(), BulkAction.ACTIVATE, null, null, false, "admin"))
+                List.of(), BulkAction.ACTIVATE, null, null, false))
                 .isInstanceOf(CatalogCommandValidationException.class);
 
         List<BulkSelection> tooMany = LongStream.rangeClosed(1, 201)
                 .mapToObj(id -> new BulkSelection(id, 0))
                 .toList();
         assertThatThrownBy(() -> new BulkOperation(
-                tooMany, BulkAction.ACTIVATE, null, null, false, "admin"))
+                tooMany, BulkAction.ACTIVATE, null, null, false))
                 .isInstanceOf(CatalogCommandValidationException.class);
 
         assertThatThrownBy(() -> new BulkOperation(
                 List.of(new BulkSelection(7, 0), new BulkSelection(7, 0)),
-                BulkAction.ACTIVATE, null, null, false, "admin"))
+                BulkAction.ACTIVATE, null, null, false))
                 .isInstanceOf(CatalogCommandValidationException.class);
     }
 }

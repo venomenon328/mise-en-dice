@@ -48,13 +48,12 @@ public interface CatalogCommands {
             Integer noveltyLevel,
             String curatorNote,
             CatalogMetadata metadata,
-            boolean weightWarningsAcknowledged,
-            String actorKey
+            boolean weightWarningsAcknowledged
     ) {
 
-        public CreateIngredientConceptCommand(String code, String displayName, String curatorNote, String actorKey) {
+        public CreateIngredientConceptCommand(String code, String displayName, String curatorNote) {
             this(code, displayName, true, false, "SPECIFIC", new BigDecimal("1.0000"), null,
-                    curatorNote, null, false, actorKey);
+                    curatorNote, null, false);
         }
 
         public CreateIngredientConceptCommand {
@@ -62,7 +61,6 @@ public interface CatalogCommands {
             displayName = normalized(displayName);
             challengeSpecificity = normalized(challengeSpecificity);
             curatorNote = normalized(curatorNote);
-            actorKey = normalized(actorKey);
             Map<String, String> errors = new LinkedHashMap<>();
             if (!Pattern.matches(INGREDIENT_CONCEPT_CODE_PATTERN, code)) {
                 errors.put("code", "Der Code muss dem Muster A-Z, Ziffern und Unterstriche folgen.");
@@ -82,9 +80,6 @@ public interface CatalogCommands {
             if (curatorNote.isEmpty()) {
                 errors.put("curatorNote", "Die Kuratornotiz darf nicht leer sein.");
             }
-            if (actorKey.isEmpty()) {
-                errors.put("actorKey", "Für die Auditierung ist ein Administrationsschlüssel erforderlich.");
-            }
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);
             }
@@ -101,7 +96,6 @@ public interface CatalogCommands {
             BigDecimal baseDrawWeight,
             Integer noveltyLevel,
             String curatorNote,
-            String actorKey,
             boolean weightWarningsAcknowledged,
             List<RefinementChange> refinementChanges,
             Map<Long, Long> expectedRelatedVersions,
@@ -119,11 +113,10 @@ public interface CatalogCommands {
                 BigDecimal baseDrawWeight,
                 Integer noveltyLevel,
                 String curatorNote,
-                String actorKey,
                 boolean weightWarningsAcknowledged
         ) {
             this(conceptId, expectedVersion, displayName, active, randomDrawEnabled, challengeSpecificity,
-                    baseDrawWeight, noveltyLevel, curatorNote, actorKey, weightWarningsAcknowledged,
+                    baseDrawWeight, noveltyLevel, curatorNote, weightWarningsAcknowledged,
                     List.of(), Map.of(), false, null);
         }
 
@@ -137,14 +130,13 @@ public interface CatalogCommands {
                 BigDecimal baseDrawWeight,
                 Integer noveltyLevel,
                 String curatorNote,
-                String actorKey,
                 boolean weightWarningsAcknowledged,
                 List<RefinementChange> refinementChanges,
                 Map<Long, Long> expectedRelatedVersions,
                 boolean inactiveRelationsAcknowledged
         ) {
             this(conceptId, expectedVersion, displayName, active, randomDrawEnabled, challengeSpecificity,
-                    baseDrawWeight, noveltyLevel, curatorNote, actorKey, weightWarningsAcknowledged,
+                    baseDrawWeight, noveltyLevel, curatorNote, weightWarningsAcknowledged,
                     refinementChanges, expectedRelatedVersions, inactiveRelationsAcknowledged, null);
         }
 
@@ -152,7 +144,6 @@ public interface CatalogCommands {
             displayName = normalized(displayName);
             challengeSpecificity = normalized(challengeSpecificity);
             curatorNote = normalized(curatorNote);
-            actorKey = normalized(actorKey);
             refinementChanges = refinementChanges == null ? List.of() : List.copyOf(refinementChanges);
             expectedRelatedVersions = expectedRelatedVersions == null ? Map.of() : Map.copyOf(expectedRelatedVersions);
             Map<String, String> errors = new LinkedHashMap<>();
@@ -176,9 +167,6 @@ public interface CatalogCommands {
             }
             if (curatorNote.isEmpty()) {
                 errors.put("curatorNote", "Die Kuratornotiz darf nicht leer sein.");
-            }
-            if (actorKey.isEmpty()) {
-                errors.put("actorKey", "Für die Auditierung ist ein Administrationsschlüssel erforderlich.");
             }
             if (expectedRelatedVersions.entrySet().stream().anyMatch(entry -> entry.getKey() == null
                     || entry.getKey() <= 0 || entry.getValue() == null || entry.getValue() < 0)) {

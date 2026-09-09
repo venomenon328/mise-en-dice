@@ -259,13 +259,12 @@ Die Oberfläche darf diesen Graphen als aufklappbare Hierarchie visualisieren, a
 
 Ein künstlicher `primary_parent_id` wird nicht allein für eine bequemere Darstellung eingeführt.
 
-### 8.3 Schreibschutz, Konflikte und Audit
+### 8.3 Schreibschutz und Konflikte
 
 Vor den ersten schreibenden Katalogmasken müssen folgende Punkte spezifiziert und umgesetzt sein:
 
 - optimistisches Locking für veränderliche Hauptobjekte,
 - klare Regeln für Deaktivierung und Löschung,
-- ein nachvollziehbarer Audit-Trail für redaktionelle Änderungen,
 - eine von fachlichen Teilnehmern getrennte Administrationsidentität,
 - Schutz der privaten Verwaltungsoberfläche.
 
@@ -273,9 +272,9 @@ Die genaue Tabellen- und UI-Ausgestaltung wird im Webentwicklungspaket festgeleg
 
 ### 8.4 Administrationssicherheits- und Schreibfundament
 
-Der optional aktivierbare Administrationsadapter schützt `/admin/**` mit Spring Security, Form-Login, einer serverseitigen Session und aktivem CSRF-Schutz. Seine ein oder zwei Identitäten stammen zunächst ausschließlich aus externer Konfiguration: stabiler `actor_key`, Anzeigename und BCrypt-Passworthash. Sie sind keine `participant`-Datensätze und es gibt weder eine Default-Anmeldung noch eine Datenbank-Benutzerverwaltung.
+Der optional aktivierbare Administrationsadapter schützt `/admin/**` mit Spring Security, Form-Login, einer serverseitigen Session und aktivem CSRF-Schutz. Seine ein oder zwei Identitäten stammen zunächst ausschließlich aus externer Konfiguration: stabiler Login-Schlüssel (`actor_key`), Anzeigename und BCrypt-Passworthash. Sie sind keine `participant`-Datensätze und es gibt weder eine Default-Anmeldung noch eine Datenbank-Benutzerverwaltung. Der Login-Schlüssel bleibt ein reines Sicherheitsmerkmal und wird nicht in Katalog-Commands transportiert.
 
-`ingredient_concept` und `exclusion_rule` besitzen eine Aggregatversion für optimistisches Locking. Spätere schreibende Application Services erhöhen sie innerhalb ihrer Transaktion ausschließlich beim erwarteten Versionswert. `catalog_audit_entry` speichert dafür fachliche JSONB-Vorher-/Nachher-Snapshots mit Akteur und `change_group_id`; sie enthält keine HTTP- oder Sicherheitsdaten und hat bewusst keine Fremdschlüssel auf Teilnehmer oder veränderliche Katalogobjekte.
+`ingredient_concept` und `exclusion_rule` besitzen eine Aggregatversion für optimistisches Locking. Schreibende Application Services erhöhen sie innerhalb ihrer Transaktion ausschließlich beim erwarteten Versionswert. Gemäß ADR 0010 führt die Katalogverwaltung keine anwendungsinterne Vorher-/Nachher-Historie; Konkurrenzschutz und Integrität hängen nicht von einem Audit-Write ab.
 
 Schreibende Änderungen an `ingredient_refinement` und an der Spezifität nehmen zusätzlich vor jeder Graphvalidierung einen stabilen PostgreSQL-Transaktions-Advisory-Lock. Dieser Lock serialisiert den vollständigen Graph-Read/Validate/Write-Ablauf auch zwischen mehreren Anwendungsprozessen; er ersetzt weder die deterministische Sperrung und Versionsprüfung aller betroffenen Zutatenaggregate noch den Zyklus-Trigger als letzte Datenbanksicherung. Funktionale Rollen sind davon unabhängige Generatormetadaten.
 
@@ -405,3 +404,4 @@ Die einzelnen Pakete sollen jeweils nur den für ihren Zweck notwendigen Umfang 
 - [`ADR 0006`](adr/0006-spring-jdbc-persistence.md): explizite Persistenz mit Spring JDBC
 - [`ADR 0007`](adr/0007-seeded-two-stage-candidate-generator.md): seedbarer zweistufiger Kandidatengenerator und Trennung von Generation und Kuratierung
 - [`ADR 0009`](adr/0009-determinism-without-historical-generator-replay.md): Determinismus und Frozen-Context-Recovery ohne historisches Generator-Replay
+- [`ADR 0010`](adr/0010-remove-runtime-catalog-audit.md): Runtime-Katalogaudit entfernen, Optimistic Locking und Integritätsverträge behalten

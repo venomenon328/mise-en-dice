@@ -18,10 +18,10 @@ Länderanalysen nach #172 beginnen weiterhin mit dem aktuellen vollständigen Is
 
 ## Unmittelbar wichtige Schutzgrenzen
 
-PostgreSQL, Liquibase und explizites JDBC/SQL bleiben die technische Grundlage. Veröffentlichte Changesets sind append-only; keine Ersatztests gegen H2 und kein ungefragter ORM-/Datenbankwechsel. Modulgrenzen sowie Versions-, Integritäts- und Auditverträge aus den Fach-/Architekturquellen beachten.
+PostgreSQL, Liquibase und explizites JDBC/SQL bleiben die technische Grundlage. Veröffentlichte Changesets sind append-only; keine Ersatztests gegen H2 und kein ungefragter ORM-/Datenbankwechsel. Modulgrenzen sowie Versions- und Integritätsverträge aus den Fach-/Architekturquellen beachten.
 
 Entwicklung und automatisierte Tests dürfen keine echten Discord- oder OpenAI-Verbindungen verwenden. Echter OpenAI-Zugriff bleibt ausschließlich im explizit aktivierten Produktivbetrieb zulässig; [ADR 0008](docs/adr/0008-production-only-openai-access.md) ist verbindlich. Vorhandene Schlüssel schaffen keine Ausnahme. Keine produktiven Datenzugriffe, Deployments oder Benachrichtigungen aus einer bloßen Entwicklungsfreigabe ableiten.
 
 ## Code Review Rules
 
-Insbesondere Scope, Fachfreigaben, Migrationen, Konkurrenz-/Auditsemantik, Adaptergrenzen und echte PostgreSQL-Nachweise prüfen. Redaktionelle QA nicht durch produktive Content-Snapshots als dauerhaftes Test-Oracle ersetzen. Asset-/Katalogausnahmen nur im engen Geltungsbereich des [Projektprofils](docs/PROJECT_PROFILE.md). Allgemeine Prozessregeln nicht erneut definieren; [Herkunft und Regelabgleich](docs/DEV_RULES_ADOPTION.md) erläutern die Ablösung alter Vorgaben.
+Insbesondere Scope, Fachfreigaben, Migrationen, Konkurrenz-/Persistenzsemantik, Adaptergrenzen und echte PostgreSQL-Nachweise prüfen. Redaktionelle QA nicht durch produktive Content-Snapshots als dauerhaftes Test-Oracle ersetzen. Asset-/Katalogausnahmen nur im engen Geltungsbereich des [Projektprofils](docs/PROJECT_PROFILE.md). Allgemeine Prozessregeln nicht erneut definieren; [Herkunft und Regelabgleich](docs/DEV_RULES_ADOPTION.md) erläutern die Ablösung alter Vorgaben.

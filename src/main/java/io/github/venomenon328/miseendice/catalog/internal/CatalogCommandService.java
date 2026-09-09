@@ -1,8 +1,5 @@
 package io.github.venomenon328.miseendice.catalog.internal;
 
-import io.github.venomenon328.miseendice.catalog.api.CatalogAggregateSnapshot;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditEntryDraft;
-import io.github.venomenon328.miseendice.catalog.api.CatalogAuditLog;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommandValidationException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogCommandResult;
@@ -24,7 +21,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -36,21 +32,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 class CatalogCommandService implements CatalogCommands {
 
-    private static final String ENTITY_TYPE = "INGREDIENT_CONCEPT";
     private final JdbcTemplate jdbcTemplate;
     private final CatalogQueries catalogQueries;
-    private final CatalogAuditLog auditLog;
     private final CatalogGraphLock graphLock;
 
     CatalogCommandService(
             JdbcTemplate jdbcTemplate,
             CatalogQueries catalogQueries,
-            CatalogAuditLog auditLog,
             CatalogGraphLock graphLock
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.catalogQueries = catalogQueries;
-        this.auditLog = auditLog;
         this.graphLock = graphLock;
     }
 
@@ -88,11 +80,7 @@ class CatalogCommandService implements CatalogCommands {
         if (command.metadata() != null) {
             replaceMetadata(conceptId, command.metadata());
         }
-        CatalogConceptDetail after = findRequired(conceptId);
-        auditLog.append(new CatalogAuditEntryDraft(
-                UUID.randomUUID(), command.actorKey(), ENTITY_TYPE, conceptId, "CREATE", null, snapshot(after)
-        ));
-        return new CatalogCommandResult(conceptId, after.version());
+        return new CatalogCommandResult(conceptId, findRequired(conceptId).version());
     }
 
     @Override
@@ -151,17 +139,7 @@ class CatalogCommandService implements CatalogCommands {
         }
         updateAffectedVersionsAndBaseFields(command, locked);
 
-        UUID changeGroupId = UUID.randomUUID();
-        Map<Long, CatalogConceptDetail> after = new LinkedHashMap<>();
-        affectedIds.stream().sorted().forEach(id -> after.put(id, findRequired(id)));
-        for (long conceptId : affectedIds.stream().sorted().toList()) {
-            auditLog.append(new CatalogAuditEntryDraft(
-                    changeGroupId, command.actorKey(), ENTITY_TYPE, conceptId,
-                    command.refinementChanges().isEmpty() ? "UPDATE" : "UPDATE_REFINEMENTS",
-                    snapshot(before.get(conceptId)), snapshot(after.get(conceptId))
-            ));
-        }
-        return new CatalogCommandResult(command.conceptId(), after.get(command.conceptId()).version());
+        return new CatalogCommandResult(command.conceptId(), findRequired(command.conceptId()).version());
     }
 
     private Set<Long> affectedConceptIds(UpdateIngredientConceptCommand command) {
@@ -497,10 +475,6 @@ class CatalogCommandService implements CatalogCommands {
             return new CatalogCommandValidationException(Map.of("displayName", "Dieser Anzeigename wird bereits verwendet."));
         }
         return exception;
-    }
-
-    private static CatalogAggregateSnapshot snapshot(CatalogConceptDetail detail) {
-        return CatalogIngredientSnapshotFactory.snapshot(detail);
     }
 
     private record LockedConcept(long id, long version) {
