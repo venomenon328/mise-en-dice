@@ -18,11 +18,16 @@ import org.junit.jupiter.api.Test;
 @Tag("migration")
 class CatalogAuditCleanupMigrationIntegrationTest {
 
+    private static final String BEFORE_AUDIT_CLEANUP =
+            "db/changelog/db.changelog-before-catalog-audit-cleanup.yaml";
+    private static final String AUDIT_CLEANUP =
+            "db/changelog/schema/022-remove-runtime-catalog-audit.sql";
+
     @Test
-    void upgradesTheImmediatelyPreviousMainAndRestartsAfterCatalogAuditCleanup() throws Exception {
+    void upgradesTheImmediatelyPreviousStateWithoutChangingCatalogDataAndRerunsAsNoOp() throws Exception {
         try (var database = PostgreSqlTestServer.createTemporaryDatabase("catalog_audit_cleanup");
                 Connection connection = database.openConnection()) {
-            runLiquibase(connection, "db/changelog/db.changelog-before-catalog-audit-cleanup.yaml");
+            runLiquibase(connection, BEFORE_AUDIT_CLEANUP);
 
             assertThat(tableExists(connection, "catalog_audit_entry")).isTrue();
             assertThat(count(connection, "catalog_audit_entry")).isPositive();
@@ -30,8 +35,9 @@ class CatalogAuditCleanupMigrationIntegrationTest {
             int exclusionCount = count(connection, "exclusion_rule");
             int exclusionVersionSum = integerValue(connection,
                     "select coalesce(sum(version), 0) from exclusion_rule");
+            int changesetCount = count(connection, "databasechangelog");
 
-            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+            runLiquibase(connection, AUDIT_CLEANUP);
 
             assertThat(tableExists(connection, "catalog_audit_entry")).isFalse();
             assertThat(count(connection, "ingredient_concept")).isEqualTo(ingredientCount);
@@ -40,17 +46,19 @@ class CatalogAuditCleanupMigrationIntegrationTest {
                     .isEqualTo(exclusionVersionSum);
             assertThat(countWhere(connection, "databasechangelog", "id = '022-remove-runtime-catalog-audit'"))
                     .isOne();
-            assertThat(countWhere(connection, "databasechangelog",
-                    "id = '038-availability-note-sentence-capitalization'"))
-                    .isOne();
+            int postCleanupChangesetCount = count(connection, "databasechangelog");
+            assertThat(postCleanupChangesetCount).isEqualTo(changesetCount + 1);
 
-            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
+            runLiquibase(connection, AUDIT_CLEANUP);
+
             assertThat(tableExists(connection, "catalog_audit_entry")).isFalse();
+            assertThat(count(connection, "ingredient_concept")).isEqualTo(ingredientCount);
+            assertThat(count(connection, "exclusion_rule")).isEqualTo(exclusionCount);
+            assertThat(integerValue(connection, "select coalesce(sum(version), 0) from exclusion_rule"))
+                    .isEqualTo(exclusionVersionSum);
             assertThat(countWhere(connection, "databasechangelog", "id = '022-remove-runtime-catalog-audit'"))
                     .isOne();
-            assertThat(countWhere(connection, "databasechangelog",
-                    "id = '038-availability-note-sentence-capitalization'"))
-                    .isOne();
+            assertThat(count(connection, "databasechangelog")).isEqualTo(postCleanupChangesetCount);
         }
     }
 
