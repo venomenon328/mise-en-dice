@@ -418,6 +418,9 @@ class OfferDecisionLifecycleIntegrationTest extends CurrentSchemaPostgresIntegra
                 .containsExactly(2L, 1L);
         assertThat(jdbcTemplate.queryForObject("select last_challenge_number from challenge_archive_counter", Long.class))
                 .isEqualTo(2L);
+        assertThatThrownBy(() -> jdbcTemplate.update("update challenge set challenge_number = 9"))
+                .isInstanceOf(DataAccessException.class)
+                .hasStackTraceContaining("challenge number is immutable");
     }
 
     @Test

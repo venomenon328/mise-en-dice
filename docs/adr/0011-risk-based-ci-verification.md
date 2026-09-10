@@ -103,7 +103,17 @@ Die Entscheidung wird in drei Paketen umgesetzt:
 
 Der Deployment-Verify-Teil aus #227 ist umgesetzt: eine eigenständige getestete Klassifikation entscheidet fail-closed zwischen `skip`, providerfreiem Preview-/PostgreSQL-`smoke` und dem unverändert umfassenden `full`-Lifecycle. Der stabile `deployment`-Job weist den Modus aus, `legacy-preview` ist auf `full`-Pull-Requests begrenzt, und der tägliche Zeitplan erzwingt `full`. Ein abgesicherter `workflow_dispatch`-Diagnoseparameter kann alle drei Modi auf demselben Stand ausführen; PR-, Push- und Schedule-Ereignisse können damit ihre Klassifikation nicht überschreiben.
 
-Die gemeinsame PostgreSQL-Testinfrastruktur und die `fast`-/`postgresql`-/`migration`-Lanes aus #225/#226 sind weiterhin noch nicht implementiert. Bis zum Merge dieser jeweils zuständigen Pakete bleiben die aktuell eingecheckten Verify-Tests der tatsächlich ausgeführte Prüfpfad. Dokumentation und Reviews dürfen einen dort nur beschlossenen Zielpfad nicht als bereits laufende CI ausgeben.
+Die #225-Implementierung verwendet einen langlebigen PostgreSQL-17-Testserver pro Surefire-Fork, stabile
+Current-Schema-Datasource-Properties und logisch isolierte temporäre Datenbanken. Die versionierte
+Repository-Produktionsbaseline bildet den am 10. September 2026 bestätigten Stand
+`main@b6543868e60f57bfa53caa3b42d4a96a9ff25a77` bis `catalog/030` ab; PostgreSQL 17 prüft diesen Stand gegen den
+aktuellen Master und dessen idempotenten zweiten Lauf. Pre-Production-Zwischenstände wurden nur mit dokumentierter
+Ersatzabdeckung bereinigt; die nach dem Cutoff liegenden speziellen Migrationsnachweise bleiben erhalten.
+Mit diesem Repository-Stand ist #225 umgesetzt.
+
+Die `fast`-/`postgresql`-/`migration`-Lanes aus #226 sind weiterhin nicht implementiert. Bis zu deren Umsetzung
+bleiben die aktuell eingecheckten Verify-Tests im vollständigen Maven-Lauf der tatsächlich ausgeführte Prüfpfad.
+Dokumentation und Reviews dürfen den in #226 nur beschlossenen Zielpfad nicht als bereits laufende CI ausgeben.
 
 ## Nichtziele
 
