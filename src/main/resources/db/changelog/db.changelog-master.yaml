@@ -1,3 +1,4 @@
+# CI benchmark marker for issue #226; no behavior change.
 databaseChangeLog:
   - include:
       file: db/changelog/schema/001-catalog-schema.sql
