@@ -1,5 +1,7 @@
 package io.github.venomenon328.miseendice.challenge.internal;
 
+import io.github.venomenon328.miseendice.testsupport.CurrentSchemaPostgresIntegrationTest;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -22,30 +24,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest(classes = {
         MiseEnDiceApplication.class,
         GeneratedCandidateUniquenessIntegrationTest.GeneratedBatchConfiguration.class
 })
-@Testcontainers
-class GeneratedCandidateUniquenessIntegrationTest {
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice_candidate_uniqueness")
-            .withUsername("mise_en_dice")
-            .withPassword("mise_en_dice");
-
-    @DynamicPropertySource
-    static void databaseProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-    }
+class GeneratedCandidateUniquenessIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
 
     @Autowired GenerationCommands commands;
     @Autowired GenerationQueries queries;

@@ -3,11 +3,10 @@ package io.github.venomenon328.miseendice.challenge.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.UUID;
 import liquibase.Contexts;
 import liquibase.LabelExpression;
 import liquibase.Liquibase;
@@ -16,28 +15,13 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@Testcontainers
 class SelectionVotingMigrationIntegrationTest {
-
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice_selection_migration")
-            .withUsername("mise_en_dice")
-            .withPassword("mise_en_dice");
 
     @Test
     void upgradesThePhase11AStateAndTheSecondLiquibaseRunIsANoOp() throws Exception {
-        String databaseName = "selection_upgrade_" + UUID.randomUUID().toString().replace("-", "");
-        try (Connection connection = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(),
-                POSTGRES.getPassword()); Statement statement = connection.createStatement()) {
-            statement.execute("create database " + databaseName);
-        }
-        String upgradeUrl = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + databaseName);
-        try (Connection connection = DriverManager.getConnection(upgradeUrl, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("selection_upgrade");
+                Connection connection = database.openConnection()) {
             runLiquibase(connection, "db/changelog/db.changelog-before-selection-voting.yaml");
             assertThat(count(connection, "databasechangelog")).isEqualTo(28);
             assertThat(regclass(connection, "selection_voting_round")).isNull();
@@ -54,13 +38,8 @@ class SelectionVotingMigrationIntegrationTest {
 
     @Test
     void upgradesExistingSelectionSnapshotsWithoutChangingTheirMembers() throws Exception {
-        String databaseName = "participant_electorate_upgrade_" + UUID.randomUUID().toString().replace("-", "");
-        try (Connection connection = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(),
-                POSTGRES.getPassword()); Statement statement = connection.createStatement()) {
-            statement.execute("create database " + databaseName);
-        }
-        String upgradeUrl = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + databaseName);
-        try (Connection connection = DriverManager.getConnection(upgradeUrl, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("participant_electorate_upgrade");
+                Connection connection = database.openConnection()) {
             runLiquibase(connection, "db/changelog/db.changelog-before-challenge-archive.yaml");
             long sessionId = scalarLong(connection, "insert into challenge_session default values returning id");
             long georgiaId = scalarLong(connection, "select id from participant where code = 'GEORGIA'");

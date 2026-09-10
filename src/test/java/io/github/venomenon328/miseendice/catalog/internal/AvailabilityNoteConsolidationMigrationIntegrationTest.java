@@ -3,9 +3,10 @@ package io.github.venomenon328.miseendice.catalog.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer;
+import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer.TemporaryDatabase;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.Savepoint;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -15,6 +16,7 @@ import liquibase.Liquibase;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,12 +25,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /** Executes the migration algorithm with synthetic review rows, never editorial content assertions. */
-@Testcontainers
 class AvailabilityNoteConsolidationMigrationIntegrationTest {
     private static final String MIGRATION = "db/changelog/catalog/037-availability-note-consolidation.sql";
     private static final String FIXTURE = """
@@ -38,8 +36,8 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
                 ('TEST_NOTE_ALREADY', 'EASY', 'EASY', 'Earlier Georgia.', 'Earlier Tobias.', 'Shared target.', 'Shared target.');
             """;
 
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6");
+    private static final TemporaryDatabase DATABASE =
+            PostgreSqlTestServer.createTemporaryDatabase("availability_note_consolidation");
 
     private Connection connection;
     private JdbcTemplate jdbc;
@@ -54,6 +52,11 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
             new Liquibase("db/changelog/db.changelog-before-catalog-audit-cleanup.yaml",
                     new ClassLoaderResourceAccessor(), database).update(new Contexts(), new LabelExpression());
         }
+    }
+
+    @AfterAll
+    static void dropsTemporaryDatabase() {
+        DATABASE.close();
     }
 
     @BeforeEach
@@ -268,6 +271,6 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
     }
 
     private static Connection connect() throws Exception {
-        return DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+        return DATABASE.openConnection();
     }
 }

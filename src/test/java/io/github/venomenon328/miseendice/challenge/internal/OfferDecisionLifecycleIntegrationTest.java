@@ -1,5 +1,7 @@
 package io.github.venomenon328.miseendice.challenge.internal;
 
+import io.github.venomenon328.miseendice.testsupport.CurrentSchemaPostgresIntegrationTest;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
@@ -60,38 +62,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest(classes = {
         MiseEnDiceApplication.class,
         CurationOrchestrationIntegrationTest.OrchestrationTestConfiguration.class
 })
-@Testcontainers
-class OfferDecisionLifecycleIntegrationTest {
+class OfferDecisionLifecycleIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
     private static final LocalDate DATE = LocalDate.of(2026, 8, 17);
     private static final String TEST_CONCEPT_PREFIX = "TEST_OFFER_RESULT_";
-
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice_offer_decision")
-            .withUsername("mise_en_dice")
-            .withPassword("mise_en_dice");
-
-    @DynamicPropertySource
-    static void databaseProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-        registry.add("mise-en-dice.curation.openai.request-timeout", () -> "PT1S");
-        registry.add("mise-en-dice.curation.openai.recovery-window", () -> "PT1S");
-    }
 
     @Autowired GenerationCommands generationCommands;
     @Autowired GenerationQueries generationQueries;

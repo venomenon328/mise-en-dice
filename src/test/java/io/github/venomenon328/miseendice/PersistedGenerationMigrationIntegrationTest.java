@@ -2,12 +2,10 @@ package io.github.venomenon328.miseendice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.UUID;
-import javax.sql.DataSource;
 import liquibase.Contexts;
 import liquibase.LabelExpression;
 import liquibase.Liquibase;
@@ -16,40 +14,13 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@SpringBootTest
-@Testcontainers
 class PersistedGenerationMigrationIntegrationTest {
-    @Container
-    private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.6")
-            .withDatabaseName("mise_en_dice_generation_upgrade")
-            .withUsername("mise_en_dice")
-            .withPassword("mise_en_dice");
-
-    @DynamicPropertySource
-    static void databaseProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-    }
-
-    @Autowired DataSource dataSource;
 
     @Test
     void upgradesAndPreservesHistoricalCurationCandidateRequirementAndChallengeRows() throws Exception {
-        String databaseName = "generation_upgrade_" + UUID.randomUUID().toString().replace("-", "");
-        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-            statement.execute("create database " + databaseName);
-        }
-        String url = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + databaseName);
-        try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("generation_upgrade");
+                Connection connection = database.openConnection()) {
             runLiquibase(connection, "db/changelog/db.changelog-before-persisted-generation.yaml");
             long session;
             long attempt;
@@ -146,12 +117,8 @@ class PersistedGenerationMigrationIntegrationTest {
 
     @Test
     void upgradesTheImmediatelyPreviousMainAndKeepsLegacyCurationExplicit() throws Exception {
-        String databaseName = "curation_upgrade_" + UUID.randomUUID().toString().replace("-", "");
-        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-            statement.execute("create database " + databaseName);
-        }
-        String url = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + databaseName);
-        try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("curation_upgrade");
+                Connection connection = database.openConnection()) {
             runLiquibase(connection, "db/changelog/db.changelog-before-curation.yaml");
             long session;
             long attempt;
@@ -186,12 +153,8 @@ class PersistedGenerationMigrationIntegrationTest {
 
     @Test
     void upgradesCurrentMainWithOfferDecisionLifecycleAndSecondStartIsNoOp() throws Exception {
-        String databaseName = "bounded_curation_upgrade_" + UUID.randomUUID().toString().replace("-", "");
-        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-            statement.execute("create database " + databaseName);
-        }
-        String url = POSTGRES.getJdbcUrl().replaceFirst("/[^/?]+(?:\\?.*)?$", "/" + databaseName);
-        try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("bounded_curation_upgrade");
+                Connection connection = database.openConnection()) {
             runLiquibase(connection, "db/changelog/db.changelog-before-offer-decision.yaml");
             assertThat(countWhere(connection, "information_schema.columns",
                     "table_schema = 'public' and table_name = 'curation_round' and column_name = 'dispatch_status'"))
