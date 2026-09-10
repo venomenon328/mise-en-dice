@@ -1,6 +1,6 @@
 # Kulinarischer Katalogausbau: Recherche, Freigabe und Einpflege
 
-Stand: 8. September 2026
+Stand: 10. September 2026
 Status: verbindlicher Ablauf für die laufende Kuration nach Issue #172
 
 ## Ziel
@@ -171,9 +171,15 @@ Die vollständige Vorlage und alle Notizregeln aus [INGREDIENT_CONCEPT_CURATION.
 
 Kochungewöhnlichkeit zuerst unabhängig von der Beschaffung bewerten, danach Georgia und Tobias getrennt. Küchentisch- und Parent-/Exaktprodukt-Kontrolle knapp belegen; kein bloßes Abhaken anstelle einer nachvollziehbaren Begründung. Keine Rückkehr zur alten Vierer-Availability oder zu automatischen Gewichtsobergrenzen.
 
+Für beide Availability-Bewertungen werden die aktuellen Trennlinien ausdrücklich angewandt: `EASY ↔ PLANNED` trennt spontanen allgemeinen Alltagshandel von gezieltem allgemeinem Handel, `PLANNED ↔ SPECIALTY` allgemeinen Handel vom notwendigen Spezialweg und `SPECIALTY ↔ DIFFICULT` die Breite und Robustheit innerhalb des Spezialmarkts. Notwendige spezialisierte Sortimente, Vorbestellung/Reservierung mit späterer Abholung und tragender Frisch-/Kühl-/TK-Versand liegen mindestens auf `SPECIALTY`; ein großer allgemeiner Versandweg kann allein nur bei lagerfähiger, nicht kühlpflichtiger Ware `PLANNED` tragen.
+
+Vor gleichwertigem Versand wird ein einfacher belastbarer allgemeiner Offline-Weg bewusst geprüft und im Nutztext bevorzugt. Ein spezialisierter Offline-Weg wird dadurch nicht automatisch besser eingestuft als ein tatsächlich allgemeinerer Versandweg für lagerfähige Ware; eine Omnichannel-Webseite gilt nicht als automatischer Regalbeleg.
+
+Research-Evidenz und späterer Nutztext bleiben strikt getrennt. Jede Zielnotiz wird vor der Freigabe darauf geprüft, dass sie reine Beschaffungsinformation enthält, den Konzeptnamen nicht ohne Informationswert wiederholt und keine Konzeptdefinition oder fachliche Gültigkeitsregel formuliert. Konkrete Onlinehändler, Listings, Warenkörbe, Momentbestände, Einzelpreise, Gebinde und Lieferzeiten verbleiben in der datierten Evidenz. Verwechslungsgefahr darf im Nutztext nur als reales Einkaufsproblem erscheinen.
+
 Für fachlich anwendbare neue Konzepte werden die Bewertungen und Notizen vor der Einpflege vollständig vorgelegt, auch wenn sie zunächst nicht zufällig ziehbar sein sollen. Nur ausdrücklich begründete Nichtanwendbarkeit, etwa bei reinen Strukturknoten, ersetzt Werte durch `nicht anwendbar`; in der Datenbank entstehen daraus keine erfundenen Enums oder Notizen. Die technische Sparse-Semantik ist keine Ausweichmöglichkeit für unvollständige #172-Freigaben.
 
-Die zweite Freigabe muss erkennbar **Ratings und die exakten Notiztexte** umfassen. Eine reine Zahlenfreigabe genehmigt keine später erfundenen Texte. Änderungen nach der Freigabe werden als betroffenes Delta erneut vorgelegt; unveränderte freigegebene Teile werden nicht unnötig neu geöffnet.
+Die zweite Freigabe muss erkennbar **beide Availability-Level und beide exakten Personennotizen** sowie die übrigen Ratings und Notiztexte umfassen. Eine reine Zahlenfreigabe genehmigt keine später erfundenen Texte. Änderungen nach der Freigabe werden als betroffenes Delta erneut vorgelegt; unveränderte freigegebene Teile werden nicht unnötig neu geöffnet.
 
 Auch Beziehungen, durch die ein bereits existierendes Konzept Parent oder Child eines neuen Konzepts wird, müssen explizit sichtbar sein. Für nicht anwendbare Metadaten genügt eine klare Kennzeichnung als nicht erforderlich.
 

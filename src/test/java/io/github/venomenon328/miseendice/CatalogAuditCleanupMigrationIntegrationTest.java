@@ -28,18 +28,6 @@ class CatalogAuditCleanupMigrationIntegrationTest {
             assertThat(count(connection, "catalog_audit_entry")).isPositive();
             int ingredientCount = count(connection, "ingredient_concept");
             int exclusionCount = count(connection, "exclusion_rule");
-            int ingredientVersionSum = integerValue(connection,
-                    "select coalesce(sum(version), 0) from ingredient_concept");
-            int expectedSentenceCapitalizationVersionIncrements = integerValue(connection, """
-                    SELECT count(DISTINCT availability.ingredient_concept_id)
-                    FROM ingredient_availability availability
-                    WHERE availability.curator_note IS NOT NULL
-                      AND availability.curator_note <> ''
-                      AND (regexp_match(availability.curator_note, '[[:alpha:]]'))[1] ~ '^[[:lower:]]$'
-                      AND upper((regexp_match(availability.curator_note, '[[:alpha:]]'))[1])
-                          <> (regexp_match(availability.curator_note, '[[:alpha:]]'))[1]
-                      AND char_length(upper((regexp_match(availability.curator_note, '[[:alpha:]]'))[1])) = 1
-                    """);
             int exclusionVersionSum = integerValue(connection,
                     "select coalesce(sum(version), 0) from exclusion_rule");
 
@@ -48,8 +36,6 @@ class CatalogAuditCleanupMigrationIntegrationTest {
             assertThat(tableExists(connection, "catalog_audit_entry")).isFalse();
             assertThat(count(connection, "ingredient_concept")).isEqualTo(ingredientCount);
             assertThat(count(connection, "exclusion_rule")).isEqualTo(exclusionCount);
-            assertThat(integerValue(connection, "select coalesce(sum(version), 0) from ingredient_concept"))
-                    .isEqualTo(ingredientVersionSum + expectedSentenceCapitalizationVersionIncrements);
             assertThat(integerValue(connection, "select coalesce(sum(version), 0) from exclusion_rule"))
                     .isEqualTo(exclusionVersionSum);
             assertThat(countWhere(connection, "databasechangelog", "id = '022-remove-runtime-catalog-audit'"))

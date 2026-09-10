@@ -129,3 +129,5 @@ databaseChangeLog:
       file: db/changelog/schema/022-remove-runtime-catalog-audit.sql
   - include:
       file: db/changelog/catalog/038-availability-note-sentence-capitalization.sql
+  - include:
+      file: db/changelog/catalog/039-availability-r3-corrections.sql
