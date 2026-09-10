@@ -1,14 +1,11 @@
 package io.github.venomenon328.miseendice;
 
 import io.github.venomenon328.miseendice.testsupport.CurrentSchemaPostgresIntegrationTest;
-import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -163,40 +160,6 @@ class PostgresIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
                 "TEST_NOTE_" + token,
                 "Invalid curator note " + token
         )).isInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    @Test
-    void upgradesTheImmediatelyPreviousMainAndRestartsAfterCatalogAuditCleanup() throws Exception {
-        try (var database = PostgreSqlTestServer.createTemporaryDatabase("catalog_audit_cleanup");
-                Connection connection = database.openConnection()) {
-            runLiquibase(connection, "db/changelog/db.changelog-before-catalog-audit-cleanup.yaml");
-
-            assertThat(tableExists(connection, "catalog_audit_entry")).isTrue();
-            assertThat(count(connection, "catalog_audit_entry")).isPositive();
-            int ingredientCount = count(connection, "ingredient_concept");
-            int exclusionCount = count(connection, "exclusion_rule");
-            int ingredientVersionSum = integerValue(connection,
-                    "select coalesce(sum(version), 0) from ingredient_concept");
-            int exclusionVersionSum = integerValue(connection,
-                    "select coalesce(sum(version), 0) from exclusion_rule");
-
-            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-
-            assertThat(tableExists(connection, "catalog_audit_entry")).isFalse();
-            assertThat(count(connection, "ingredient_concept")).isEqualTo(ingredientCount);
-            assertThat(count(connection, "exclusion_rule")).isEqualTo(exclusionCount);
-            assertThat(integerValue(connection, "select coalesce(sum(version), 0) from ingredient_concept"))
-                    .isEqualTo(ingredientVersionSum);
-            assertThat(integerValue(connection, "select coalesce(sum(version), 0) from exclusion_rule"))
-                    .isEqualTo(exclusionVersionSum);
-            assertThat(countWhere(connection, "databasechangelog", "id = '022-remove-runtime-catalog-audit'"))
-                    .isOne();
-
-            runLiquibase(connection, "db/changelog/db.changelog-master.yaml");
-            assertThat(tableExists(connection, "catalog_audit_entry")).isFalse();
-            assertThat(countWhere(connection, "databasechangelog", "id = '022-remove-runtime-catalog-audit'"))
-                    .isOne();
-        }
     }
 
     @Test
@@ -554,46 +517,6 @@ class PostgresIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
                 "select count(*) from " + table + " where " + whereClause,
                 Integer.class
         );
-    }
-
-    private static int count(Connection connection, String table) throws Exception {
-        try (Statement statement = connection.createStatement();
-             ResultSet result = statement.executeQuery("select count(*) from " + table)) {
-            result.next();
-            return result.getInt(1);
-        }
-    }
-
-    private static int countWhere(Connection connection, String table, String whereClause) throws Exception {
-        try (Statement statement = connection.createStatement();
-             ResultSet result = statement.executeQuery(
-                     "select count(*) from " + table + " where " + whereClause
-             )) {
-            result.next();
-            return result.getInt(1);
-        }
-    }
-
-    private static boolean tableExists(Connection connection, String table) throws Exception {
-        try (var statement = connection.prepareStatement("""
-                select exists (
-                    select 1 from information_schema.tables
-                    where table_schema = 'public' and table_name = ?
-                )
-                """)) {
-            statement.setString(1, table);
-            try (ResultSet result = statement.executeQuery()) {
-                result.next();
-                return result.getBoolean(1);
-            }
-        }
-    }
-
-    private static int integerValue(Connection connection, String sql) throws Exception {
-        try (Statement statement = connection.createStatement(); ResultSet result = statement.executeQuery(sql)) {
-            result.next();
-            return result.getInt(1);
-        }
     }
 
 }

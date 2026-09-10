@@ -13,8 +13,10 @@ import liquibase.Liquibase;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+@Tag("migration")
 class ProductionBaselineMigrationIntegrationTest {
 
     private static final String PRODUCTION_BASELINE =

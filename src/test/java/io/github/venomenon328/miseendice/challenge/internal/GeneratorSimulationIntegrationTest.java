@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -37,6 +38,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
+@Tag("postgresql-shard-a")
 @SpringBootTest(classes = { MiseEnDiceApplication.class, GeneratorSimulationIntegrationTest.TrackingConfiguration.class })
 class GeneratorSimulationIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
 

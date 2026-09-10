@@ -27,6 +27,7 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,6 +37,7 @@ import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
+@Tag("migration")
 @SpringBootTest(classes = {MiseEnDiceApplication.class,
         CurationOrchestrationIntegrationTest.OrchestrationTestConfiguration.class},
         properties = "spring.liquibase.change-log=classpath:db/changelog/db.changelog-before-remove-generator-replay.yaml")
