@@ -1,3 +1,4 @@
+// CI benchmark marker for issue #226; no behavior change.
 package io.github.venomenon328.miseendice.challenge.internal;
 
 import static io.github.venomenon328.miseendice.challenge.internal.CandidateSetTestData.bd;
