@@ -1,9 +1,11 @@
 package io.github.venomenon328.miseendice.testsupport;
 
+import org.junit.jupiter.api.Tag;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 /** Stable datasource contract shared by compatible current-schema Spring integration tests. */
+@Tag("postgresql")
 public abstract class CurrentSchemaPostgresIntegrationTest {
 
     @DynamicPropertySource

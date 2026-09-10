@@ -26,6 +26,7 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -36,6 +37,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 /** Technical migration contracts only: no review file or ingredient-specific editorial oracle. */
+@Tag("migration")
 @SpringBootTest(classes = {MiseEnDiceApplication.class,
         CurationOrchestrationIntegrationTest.OrchestrationTestConfiguration.class},
         properties = "spring.liquibase.change-log=classpath:db/changelog/db.changelog-before-availability-novelty.yaml")

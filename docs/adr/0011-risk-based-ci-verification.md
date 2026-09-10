@@ -1,6 +1,6 @@
 # ADR 0011: Risikobasierte CI-Verifikation und begrenzter Migrationshorizont
 
-- Status: angenommen, teilweise umgesetzt
+- Status: angenommen, umgesetzt
 - Datum: 9. September 2026
 - Entscheidungsträger: Projektverantwortlicher, Issue #224
 - Ergänzt ADR 0002 und ADR 0004; PostgreSQL, Liquibase und JDBC bleiben unverändert technische Grundlage.
@@ -111,9 +111,20 @@ aktuellen Master und dessen idempotenten zweiten Lauf. Pre-Production-Zwischenst
 Ersatzabdeckung bereinigt; die nach dem Cutoff liegenden speziellen Migrationsnachweise bleiben erhalten.
 Mit diesem Repository-Stand ist #225 umgesetzt.
 
-Die `fast`-/`postgresql`-/`migration`-Lanes aus #226 sind weiterhin nicht implementiert. Bis zu deren Umsetzung
-bleiben die aktuell eingecheckten Verify-Tests im vollständigen Maven-Lauf der tatsächlich ausgeführte Prüfpfad.
-Dokumentation und Reviews dürfen den in #226 nur beschlossenen Zielpfad nicht als bereits laufende CI ausgeben.
+Die #226-Implementierung ordnet Current-Schema-PostgreSQL-Tests über einen geerbten JUnit-Tag und
+migrationsspezifische Klassen über einen eigenen JUnit-Tag explizit zu. Alle übrigen regulären Maven-Tests bilden
+die `fast`-Lane; ein automatisierter Guard prüft die vollständige, disjunkte Partition und verhindert, dass eine
+Klasse mit bekannter PostgreSQL-/Liquibase-Testinfrastruktur unmarkiert in `fast` fällt. Der zuvor gemischte
+Katalogaudit-Upgradefall wurde ohne Inhaltsverlust aus `PostgresIntegrationTest` in eine ausschließlich
+migrationsspezifische Klasse verschoben. Die drei Maven-Profile wirken nur bei expliziter Aktivierung; der
+ungefilterte `./mvnw clean verify` umfasst weiterhin alle Tests.
+
+Der versionierte Verify-Klassifikator bildet den exakten PR-/`main`-Push-Diff als Vereinigung erforderlicher
+Lanes ab und fällt bei unbekannten Pfaden, Parser-/Git-Fehlern sowie Änderungen an Workflow, Klassifikator,
+Build- oder Gruppierungsinfrastruktur auf alle drei Lanes zurück. Die ausgewählten Lanes laufen unabhängig
+parallel. Ein immer sichtbarer finaler `verify`-Job unterscheidet erfolgreiche Ausführung von Nichtanwendbarkeit
+und schlägt bei fehlerhafter Klassifikation sowie jeder fehlgeschlagenen oder abgebrochenen erforderlichen Lane
+fehl. Die enge Challenge-Card-Produktionsasset-Ausnahme bleibt unverändert. Damit ist #226 umgesetzt.
 
 ## Nichtziele
 

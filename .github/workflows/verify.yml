@@ -14,15 +14,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  classify:
     runs-on: ubuntu-latest
+    outputs:
+      fast: ${{ steps.verify_classify.outputs.fast }}
+      postgresql: ${{ steps.verify_classify.outputs.postgresql }}
+      migration: ${{ steps.verify_classify.outputs.migration }}
+      reason: ${{ steps.verify_classify.outputs.reason }}
+      asset_validation_required: ${{ steps.asset_classify.outputs.asset_validation_required }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
+      - name: Test Verify classification
+        run: python -m unittest discover .github/scripts -p 'test_*.py'
+
+      - name: Test Challenge-Card tools
+        run: python -m unittest discover design/challenge-cards/tools
+
+      - name: Classify Verify risk
+        id: verify_classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BEFORE: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+          PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -Eeuo pipefail
+          python .github/scripts/classify_verify_changes.py \
+            --event-name "$EVENT_NAME" \
+            --ref "$REF" \
+            --before "$BEFORE" \
+            --current-sha "$CURRENT_SHA" \
+            --pull-request-base-sha "$PULL_REQUEST_BASE_SHA" \
+            --pull-request-head-sha "$PULL_REQUEST_HEAD_SHA" \
+            --github-output "$GITHUB_OUTPUT"
+
       - name: Classify Challenge-Card asset change
-        id: classify
+        id: asset_classify
         env:
           EVENT_NAME: ${{ github.event_name }}
           REF: ${{ github.ref }}
@@ -42,22 +74,125 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
 
       - name: Validate Challenge-Card asset catalog
-        if: ${{ steps.classify.outputs.asset_validation_required == 'true' }}
+        if: ${{ steps.asset_classify.outputs.asset_validation_required == 'true' }}
         run: python design/challenge-cards/tools/validate_asset_catalog.py
 
-      - name: Test Challenge-Card tools
-        run: python -m unittest discover design/challenge-cards/tools
+      - name: Report classification
+        env:
+          FAST: ${{ steps.verify_classify.outputs.fast }}
+          POSTGRESQL: ${{ steps.verify_classify.outputs.postgresql }}
+          MIGRATION: ${{ steps.verify_classify.outputs.migration }}
+          REASON: ${{ steps.verify_classify.outputs.reason }}
+        run: |
+          {
+            echo '## Verify classification'
+            printf -- '- fast: %s\n' "$FAST"
+            printf -- '- postgresql: %s\n' "$POSTGRESQL"
+            printf -- '- migration: %s\n' "$MIGRATION"
+            printf -- '- Reason: %s\n' "$REASON"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Asset-only verification
-        if: ${{ steps.classify.outputs.asset_only == 'true' }}
-        run: echo 'Challenge-Card production asset-only change verified; the full Maven Verify is not applicable.'
-
+  fast:
+    needs: classify
+    if: ${{ needs.classify.outputs.fast == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
-        if: ${{ steps.classify.outputs.asset_only != 'true' }}
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Verify
-        if: ${{ steps.classify.outputs.asset_only != 'true' }}
-        run: ./mvnw -DforkCount=2 clean verify
+      - name: Run fast tests
+        run: ./mvnw -Pverify-fast -DforkCount=2 clean verify
+
+  postgresql:
+    needs: classify
+    if: ${{ needs.classify.outputs.postgresql == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Run PostgreSQL integration tests
+        run: ./mvnw -Pverify-postgresql -DforkCount=2 clean verify
+
+  migration:
+    needs: classify
+    if: ${{ needs.classify.outputs.migration == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Run migration tests
+        run: ./mvnw -Pverify-migration -DforkCount=2 clean verify
+
+  verify:
+    needs: [classify, fast, postgresql, migration]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate required Verify lanes
+        env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          FAST_REQUIRED: ${{ needs.classify.outputs.fast }}
+          FAST_RESULT: ${{ needs.fast.result }}
+          POSTGRESQL_REQUIRED: ${{ needs.classify.outputs.postgresql }}
+          POSTGRESQL_RESULT: ${{ needs.postgresql.result }}
+          MIGRATION_REQUIRED: ${{ needs.classify.outputs.migration }}
+          MIGRATION_RESULT: ${{ needs.migration.result }}
+          REASON: ${{ needs.classify.outputs.reason }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          failure=false
+
+          report_lane() {
+            local name=$1
+            local required=$2
+            local result=$3
+            if [[ "$required" == true ]]; then
+              printf -- '- %s: required, result=%s\n' "$name" "$result" >> "$GITHUB_STEP_SUMMARY"
+              if [[ "$result" != success ]]; then
+                failure=true
+              fi
+            elif [[ "$required" == false ]]; then
+              printf -- '- %s: not applicable, result=%s\n' "$name" "$result" >> "$GITHUB_STEP_SUMMARY"
+              if [[ "$result" != skipped ]]; then
+                failure=true
+              fi
+            else
+              printf -- '- %s: invalid classification value=%s, result=%s\n' \
+                "$name" "$required" "$result" >> "$GITHUB_STEP_SUMMARY"
+              failure=true
+            fi
+          }
+
+          {
+            echo '## Final Verify gate'
+            printf -- '- Classification: %s\n' "$CLASSIFY_RESULT"
+            printf -- '- Reason: %s\n' "$REASON"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$CLASSIFY_RESULT" != success ]]; then
+            failure=true
+          fi
+          report_lane fast "$FAST_REQUIRED" "$FAST_RESULT"
+          report_lane postgresql "$POSTGRESQL_REQUIRED" "$POSTGRESQL_RESULT"
+          report_lane migration "$MIGRATION_REQUIRED" "$MIGRATION_RESULT"
+
+          if [[ "$failure" == true ]]; then
+            echo 'The final Verify gate rejected the classification or a required lane.' >&2
+            exit 1
+          fi
+          echo 'All required Verify lanes succeeded; unselected lanes were not applicable.'

@@ -20,6 +20,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -27,6 +28,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
 /** Executes the migration algorithm with synthetic review rows, never editorial content assertions. */
+@Tag("migration")
 class AvailabilityNoteConsolidationMigrationIntegrationTest {
     private static final String MIGRATION = "db/changelog/catalog/037-availability-note-consolidation.sql";
     private static final String FIXTURE = """
