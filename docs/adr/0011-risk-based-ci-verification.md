@@ -109,8 +109,7 @@ Repository-Produktionsbaseline bildet den am 10. September 2026 bestätigten Sta
 `main@b6543868e60f57bfa53caa3b42d4a96a9ff25a77` bis `catalog/030` ab; PostgreSQL 17 prüft diesen Stand gegen den
 aktuellen Master und dessen idempotenten zweiten Lauf. Pre-Production-Zwischenstände wurden nur mit dokumentierter
 Ersatzabdeckung bereinigt; die nach dem Cutoff liegenden speziellen Migrationsnachweise bleiben erhalten.
-Dieser Stand liegt bis zur Integration von #230 und der anschließenden finalen #225B-Prüfung gestapelt vor; #225
-bleibt bis dahin offen.
+Mit diesem Repository-Stand ist #225 umgesetzt.
 
 Die `fast`-/`postgresql`-/`migration`-Lanes aus #226 sind weiterhin nicht implementiert. Bis zu deren Umsetzung
 bleiben die aktuell eingecheckten Verify-Tests im vollständigen Maven-Lauf der tatsächlich ausgeführte Prüfpfad.
