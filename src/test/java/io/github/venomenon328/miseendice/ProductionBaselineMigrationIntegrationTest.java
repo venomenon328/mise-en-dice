@@ -35,7 +35,8 @@ class ProductionBaselineMigrationIntegrationTest {
             "035-england-curation",
             "036-availability-note-prefix-cleanup",
             "037-availability-note-consolidation",
-            "022-remove-runtime-catalog-audit"
+            "022-remove-runtime-catalog-audit",
+            "038-availability-note-sentence-capitalization"
     );
 
     @Test
@@ -51,13 +52,13 @@ class ProductionBaselineMigrationIntegrationTest {
             runLiquibase(connection, MASTER);
 
             assertThat(changesetIdsAfter(connection, 51)).containsExactlyElementsOf(POST_PRODUCTION_CHANGESETS);
-            assertThat(changesetIds(connection)).hasSize(64);
+            assertThat(changesetIds(connection)).hasSize(65);
             assertThat(tableExists(connection, "catalog_audit_entry")).isFalse();
             assertThat(columnExists(connection, "generation_batch", "result_snapshot")).isFalse();
             assertThat(columnExists(connection, "ingredient_availability", "curator_note")).isTrue();
 
             runLiquibase(connection, MASTER);
-            assertThat(changesetIds(connection)).hasSize(64);
+            assertThat(changesetIds(connection)).hasSize(65);
             assertThat(changesetIdsAfter(connection, 51)).containsExactlyElementsOf(POST_PRODUCTION_CHANGESETS);
         }
     }
