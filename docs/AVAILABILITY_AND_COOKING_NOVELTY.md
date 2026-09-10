@@ -1,6 +1,6 @@
 # Beschaffbarkeit und Kochungewöhnlichkeit
 
-Stand: 8. September 2026
+Stand: 10. September 2026
 Status: verbindliche Ziel-, Redaktions- und Pflegespezifikation; technische und katalogweite Umsetzung in #187–#190
 
 Dieses Dokument trennt zwei Metadaten, die technisch eigenständig und redaktionell strikt unabhängig gepflegt werden:
@@ -152,7 +152,7 @@ Die technische Reihenfolge lautet:
 EASY < PLANNED < SPECIALTY < DIFFICULT < UNAVAILABLE
 ```
 
-Die Stufen unterscheiden nicht nur den Aufwand, sondern vor allem die **Breite und Robustheit des tatsächlich erreichbaren Bezugsmarkts**.
+Die Stufen unterscheiden nicht nur Breite und Robustheit, sondern auch die **Art des notwendigen Bezugswegs**.
 
 ### 4.1 Handelsmarkt-Klassen
 
@@ -161,8 +161,8 @@ Vor der eigentlichen Stufe wird der belastbare Bezugsmarkt eingeordnet:
 | Marktklasse | Bedeutung |
 |---|---|
 | **Allgemeiner lokaler Handel** | Gewöhnliche nahe Supermärkte oder Discounter mit hoher Trefferwahrscheinlichkeit und alltäglicher Ausweichmöglichkeit. |
-| **Breiter allgemeiner deutscher/EU-Handel** | Gut sortierte allgemeine Supermärkte, etablierter Feinkost-/Gewürz-/Fischhandel oder reguläre nicht nischengebundene Onlinehändler. |
-| **Breiter einschlägiger Spezialmarkt** | Die Ware gehört zum üblichen Sortiment vieler breit aufgestellter Asia-, arabischer, türkischer, osteuropäischer oder vergleichbarer Spezialhändler; ein gut sortierter Laden dieser Kategorie hat eine realistische Trefferchance. |
+| **Breiter allgemeiner deutscher/EU-Handel** | Gut sortierte Vollsortimenter, gewöhnliche Fachtheken sowie allgemeiner Fisch-, Käse- oder Feinkosthandel mit regulär zu erwartender Ware ohne Sonderbestellung. Für lagerfähige, nicht kühlpflichtige Ware kann auch ein großer nicht nischengebundener Versand- oder Marktplatzweg dazugehören. |
+| **Breiter einschlägiger Spezialmarkt** | Die konkrete Ware erfordert ein spezialisiertes Gewürz-, Länder-, Import-, Muschel-, Seafood- oder vergleichbares Sortiment; der Spezialmarkt ist jedoch breit und zuverlässig genug für planbare Beschaffung. |
 | **Enger Nischen-/Importmarkt** | Nur wenige national, regional oder produktspezifisch ausgerichtete Händler führen die Ware; Bezugswege, Bestände oder Produktformen sind fragil. |
 | **Kein realistischer Markt** | Kein wiederholbarer Endkundenweg innerhalb Deutschlands oder sinnvoll erreichbaren EU-Handels. |
 
@@ -172,22 +172,29 @@ Mehrere Produktseiten desselben Händlers, Marktplatzangebote desselben Verkäuf
 
 | Stufe | Code | Name | Verbindliche Bedeutung |
 |---:|---|---|---|
-| **1** | `EASY` | **Spontan beschaffbar** | Die konkrete zulässige Produktform ist im allgemeinen lokalen Handel mit sehr hoher Wahrscheinlichkeit erhältlich. Normalerweise sind weder Vorabrecherche, besondere Fahrt, Spezialgeschäft noch Onlinebestellung nötig; eine alltägliche Ausweichquelle ist plausibel. |
-| **2** | `PLANNED` | **Gezielt beschaffbar** | Das Produkt ist in den breiten deutschen/EU-Handel integriert, aber nicht zwingend lokaler Standard. Ein gut sortierter allgemeiner Markt, etablierter Fachhandel oder unkomplizierter nicht nischengebundener Onlineweg ist konkret und zuverlässig planbar. |
-| **3** | `SPECIALTY` | **Breite Spezialbeschaffung** | Der allgemeine Handel scheidet aus, die Zutat ist aber im einschlägigen Spezialmarkt breit etabliert. Viele unabhängige Spezialhändler führen sie regulär, oder ein typischer gut sortierter Laden der passenden Kategorie hat eine gute Trefferchance. |
-| **4** | `DIFFICULT` | **Nischen-/Importbeschaffung** | Die Zutat hängt von einem engen Nischen- oder Herkunftslandmarkt ab: nur wenige sehr spezielle Händler, schwankende Bestände, Importhürden, exakte Formprobleme, besondere Frische-/Kühl-/TK-Logistik oder realistische Mehrfachsuche. Eine Bestellung kann gelingen, ist aber nicht robust planbar. |
-| **5** | `UNAVAILABLE` | **Praktisch nicht beschaffbar** | Es existiert kein realistischer wiederholbarer Endkundenweg. Allenfalls Glücksfund, privater Import oder Herkunftslandreise; für eine zufällige Challenge faktisch ausgeschlossen. |
+| **1** | `EASY` | **Spontan beschaffbar** | Die konkrete zulässige Produktform ist im gewöhnlichen lokalen Alltagshandel mit sehr hoher Trefferwahrscheinlichkeit und einer plausiblen alltäglichen Ausweichquelle erhältlich. Weder notwendige Vorbestellung noch Spezialquelle, Sonderfahrt oder Versand tragen den Bezug. |
+| **2** | `PLANNED` | **Gezielt im allgemeinen Handel beschaffbar** | Die Ware ist kein sicherer Spontanstandard, bleibt aber im allgemeinen Handel gezielt beschaffbar: etwa im gut sortierten Vollsortimenter, an einer gewöhnlichen Fachtheke oder im allgemeinen Fisch-, Käse- oder Feinkosthandel, jeweils ohne notwendige Sonderbestellung. Ein großer nicht nischengebundener Versand- oder Marktplatzweg darf diese Stufe allein nur bei lagerfähiger, nicht kühlpflichtiger Ware tragen. |
+| **3** | `SPECIALTY` | **Planbare Spezialbeschaffung** | Ein Spezialweg ist notwendig, der Spezialmarkt selbst aber breit und zuverlässig genug. Mindestens hier liegen spezialisiertes Gewürz-, Länder-, Import-, Muschel-, Seafood- oder vergleichbares Sortiment, notwendige Vorbestellung oder Reservierung mit späterer Abholung sowie Frisch-, Kühl- oder TK-Versand als tragender Weg. |
+| **4** | `DIFFICULT` | **Enge/fragile Spezial- oder Importbeschaffung** | Auch im passenden Spezial- oder Importmarkt bleiben die realistischen Wege eng, fragil oder logistisch unzuverlässig, etwa durch wenige Anbieter, wechselnden Bestand, problematische Produktform, heikle Lieferkette, wiederholte Suche oder erhebliche Logistikhürden. |
+| **5** | `UNAVAILABLE` | **Praktisch nicht beschaffbar** | Es existiert im normalen Challenge-Vorlauf kein realistischer wiederholbarer Endkundenweg. Allenfalls Glücksfund, privater Import oder Herkunftslandreise; für eine zufällige Challenge faktisch ausgeschlossen. |
 
 Ein fehlender Datensatz bleibt ein eigener Zustand **nicht bewertet beziehungsweise nicht gepflegt**. Er ist keine sechste Stufe und darf weder als `EASY` noch als `UNAVAILABLE` interpretiert werden.
 
+Die verbindlichen Trennlinien lauten:
+
+- `EASY ↔ PLANNED`: spontan im allgemeinen Alltagshandel gegenüber gezielt im allgemeinen Handel,
+- `PLANNED ↔ SPECIALTY`: allgemeiner Handel gegenüber notwendigem Spezialweg,
+- `SPECIALTY ↔ DIFFICULT`: Breite und Robustheit innerhalb des Spezialmarkts.
+
 ### 4.3 Harte Gates
 
-- Spezialläden, Wochenmärkte, Fischhändler, besondere Stadtfahrten und Onlinebestellungen können **niemals allein `EASY`** begründen.
+- Spezialläden, Wochenmärkte, dedizierte Fischhändler, besondere Stadtfahrten und Onlinebestellungen können **niemals allein `EASY`** begründen.
 - Regionale Demografie oder die bloße Existenz einer Community begründet keine Stufe. Sie kann nur einen konkret nachgewiesenen Bezugsweg plausibler machen.
-- Ein Produkt, das nur bei vielen einschlägigen Spezialhändlern regelmäßig vorkommt, ist typischerweise `SPECIALTY`, nicht `PLANNED`.
-- Ein oder zwei sehr spezielle Händler, nationale Nischenimporteure oder fragile Produktseiten reichen **nicht** für `SPECIALTY`; das ist grundsätzlich ein `DIFFICULT`-Signal.
-- Ein einzelner Anbieter kann `SPECIALTY` nur in einem Ausnahmefall tragen, wenn Sortiment, Bestand, Endkundenversand und Wiederholbarkeit außergewöhnlich stabil dokumentiert sind und der Händler einen breiten Spezialmarkt repräsentiert.
-- Schwankender Bestand, wiederkehrendes Ausverkauftsein, problematische Kühl-/TK-Kette, hohe Mindestmengen oder erhebliche Ersatzproduktgefahr verschieben einen Spezialweg in Richtung `DIFFICULT`.
+- Gewöhnliche Fachtheken sowie allgemeiner Fisch-, Käse- oder Feinkosthandel können `PLANNED` tragen, wenn die Ware dort regulär ohne Sonderbestellung zu erwarten ist.
+- Die Notwendigkeit eines spezialisierten Sortiments begründet mindestens `SPECIALTY`, auch wenn dessen Markt breit ist. Ein dedizierter Spezialhändler wird nicht durch zuverlässigen Bestand zu allgemeinem Handel.
+- Notwendige Vorbestellung oder Reservierung mit späterer Abholung sowie Frisch-, Kühl- oder TK-Versand als tragender Weg begründen mindestens `SPECIALTY`. Eine freiwillige Reservierung regulär vorrätiger allgemeiner Ware erhöht die Stufe nicht.
+- Ein großer allgemeiner Versand- oder Marktplatzweg kann nur für lagerfähige, nicht kühlpflichtige Ware `PLANNED` tragen. Ein einzelner Nischenverkäufer auf einer großen Plattform bleibt ein Spezialweg.
+- Wenige sehr spezielle Händler, fragile Bestände, problematische Produktformen oder eine heikle Lieferkette verschieben den Spezialweg zu `DIFFICULT`.
 - Preis allein verändert die Stufe nicht. Importaufschlag oder Versandkosten sind nur relevant, soweit sie einen praktisch fragilen oder unrealistischen Bezugsweg anzeigen.
 - Die spätere geringe Generatorwahrscheinlichkeit von `SPECIALTY` darf niemals dazu dienen, fachlich eigentlich `DIFFICULT` einzustufende Produkte künstlich in Stufe 3 zu belassen.
 
@@ -197,11 +204,12 @@ Für jede Person und jedes Konzept wird in dieser Reihenfolge geprüft:
 
 1. **Produktform:** Welche Formen erfüllen das Konzept tatsächlich?
 2. **Alltagshandel:** Gibt es einen sehr wahrscheinlichen gewöhnlichen lokalen Weg mit alltäglicher Ausweichquelle?
-3. **Allgemeiner Handel:** Ist die Ware im breiten deutschen/EU-Handel robust planbar?
-4. **Spezialmarktbreite:** Ist sie ein reguläres Produkt vieler einschlägiger Spezialhändler oder nur eines engen Nischenmarkts?
-5. **Zuverlässigkeit:** Sind Bestand, Menge, Versand und Produktform über den normalen Vorlauf wiederholbar?
-6. **Logistik:** Verschlechtern Frische, Kühlung, Tiefkühlung, Mindestmenge oder Transport den realen Weg?
-7. **Personenprofil:** Verändert ein konkret erreichbarer Markt die Stufe für Georgia oder Tobias?
+3. **Allgemeiner Handel:** Ist die Ware ohne Sonderbestellung im gut sortierten Vollsortimenter, an einer gewöhnlichen Fachtheke oder im allgemeinen Fachhandel robust planbar? Trägt Versand den Weg allein, ist die Ware lagerfähig und nicht kühlpflichtig und der Anbieter nicht nischengebunden?
+4. **Spezialweg:** Erfordert die Ware spezialisiertes Sortiment, notwendige Vorbestellung/Reservierung oder tragenden Frisch-/Kühl-/TK-Versand?
+5. **Spezialmarktbreite:** Ist dieser Spezialweg breit und robust (`SPECIALTY`) oder eng, fragil beziehungsweise logistisch unzuverlässig (`DIFFICULT`)?
+6. **Zuverlässigkeit:** Sind Bestand, Menge, Versand und Produktform über den normalen Vorlauf wiederholbar?
+7. **Logistik:** Verschlechtern Frische, Kühlung, Tiefkühlung, Mindestmenge oder Transport den realen Weg?
+8. **Personenprofil:** Verändert ein konkret erreichbarer Markt die Stufe für Georgia oder Tobias?
 
 Die Stufe folgt dem realen Engpass. Eine hübsche Produktseite hebt fehlende Marktbreite nicht auf.
 
@@ -220,6 +228,10 @@ Die folgenden Beispiele illustrieren die Zielgrenzen und werden im Ankersatz aus
 
 ## 5. Beschaffungshorizont und Bezugswege
 
+### 5.0 Offline-first
+
+Ein einfacher, belastbarer allgemeiner Offline-Weg wird vor einem gleichwertigen Versandweg recherchiert und in der Nutznotiz bevorzugt. Das bedeutet nicht, dass ein spezialisierter Offline-Weg automatisch besser eingestuft wird als ein tatsächlich allgemeinerer Versandweg für lagerfähige, nicht kühlpflichtige Ware. Eine Omnichannel-Webseite oder Filialsuche ist außerdem kein automatischer Beleg dafür, dass die Ware physisch im Regal steht.
+
 ### 5.1 Normaler Zeithorizont
 
 Bewertet wird ein realistischer Challenge-Vorlauf von ungefähr einer Woche.
@@ -230,8 +242,9 @@ Regelmäßige Vorratskäufe dürfen bei haltbaren Produkten berücksichtigt werd
 
 - `EASY` verlangt gewöhnliche nahe Supermärkte oder Discounter mit sehr hoher Trefferwahrscheinlichkeit.
 - Ein gut sortierter allgemeiner Markt oder etablierter allgemeiner Fachhandel kann `PLANNED` begründen.
-- Ein Spezialladen ist keine Alltagsquelle. Selbst eine wiederholt genutzte Spezialquelle begründet höchstens `PLANNED`, wenn das Produkt dort konkret und zuverlässig geführt wird.
-- Müssen mehrere Läden auf Verdacht abgeklappert werden, spricht dies mindestens für `SPECIALTY`, bei engem oder instabilem Markt für `DIFFICULT`.
+- Ein Spezialladen ist weder Alltagsquelle noch allgemeiner Handel. Ist sein Sortiment notwendig, liegt die Ware mindestens auf `SPECIALTY`.
+- Eine notwendige Vorbestellung oder Reservierung mit späterer Abholung liegt ebenfalls mindestens auf `SPECIALTY`; die bloß freiwillige Reservierung regulär vorrätiger allgemeiner Ware nicht.
+- Müssen mehrere Läden auf Verdacht abgeklappert werden, spricht dies für einen fragilen Spezialweg und damit regelmäßig für `DIFFICULT`.
 
 ### 5.3 Onlinehandel und Marktbreite
 
@@ -246,7 +259,8 @@ Online-Beschaffung zählt nur, wenn:
 
 Für die Stufenzuordnung gilt:
 
-- allgemeiner, nicht nischengebundener deutscher/EU-Onlinehandel kann `PLANNED` tragen,
+- allgemeiner, nicht nischengebundener deutscher/EU-Onlinehandel kann allein nur für lagerfähige, nicht kühlpflichtige Ware `PLANNED` tragen,
+- Frisch-, Kühl- oder TK-Versand als tragender Weg liegt mindestens auf `SPECIALTY`,
 - viele unabhängige breit aufgestellte Spezialhändler können `SPECIALTY` tragen,
 - wenige national oder produktspezifisch ausgerichtete Händler sprechen für `DIFFICULT`,
 - Marktplatzangebote, ausverkaufte Listings oder bloße Suchtreffer sind keine eigenständigen robusten Wege.
@@ -352,16 +366,18 @@ kein Nachweis, dass das Child selbst aus gemeinsamer Perspektive Stufe 1 oder 2 
 
 ### 8.1 Personenspezifische Notiz
 
-Jeder fachlich anwendbare Beschaffbarkeitswert für Georgia und Tobias erhält eine kurze Begründung.
+Jeder fachlich anwendbare Beschaffbarkeitswert für Georgia und Tobias erhält eine kurze, reine Beschaffungsbegründung.
 
 Die Notiz nennt knapp:
 
 - Marktart beziehungsweise realen Bezugsweg,
 - Marktbreite und Zuverlässigkeit,
-- relevante Produktform,
+- Produktform nur, soweit sie den Bezugsweg, seine Zuverlässigkeit oder den Planungsaufwand beeinflusst,
 - gegebenenfalls Frische-, Kühl-, TK-, Import- oder Transportgrenzen.
 
-Nicht hinein gehören Rezeptideen, Kochungewöhnlichkeit, persönlicher Vorrat oder eine vollständige Händlerliste.
+Nicht hinein gehören Rezeptideen, Kochungewöhnlichkeit, persönlicher Vorrat, Konzeptdefinitionen oder fachliche Gültigkeitsregeln. Formulierungen wie `X zählt nicht`, `Y ersetzt es nicht`, `Z erfüllt die Form nicht` oder `A ist nicht erforderlich` werden nicht in der Availability-Notiz erklärt. Eine Verwechslungsgefahr darf nur als reales Einkaufsproblem erscheinen, beispielsweise als notwendige Kennzeichnungsprüfung.
+
+Der Konzeptname wird nicht redundant als bloßes Satzsubjekt wiederholt. Eine Wiederholung ist nur zulässig, wenn sie echte Beschaffungsinformation transportiert, etwa `TK-Forelle` oder `getrocknete Morcheln`. Konkrete Onlinehändler, Listings, Warenkörbe, Momentbestände, Einzelpreise, Gebinde oder Lieferzeiten bleiben in der datierten Rechercheevidenz und nicht im Nutztext. Stabile echte Beschaffungsrestriktionen dürfen benannt werden. Physische Händlernamen sind nur für einen tatsächlich beschriebenen Offline-Weg sinnvoll und nur dann, wenn sie informativer sind als eine stabile Marktklasse.
 
 Notizen müssen nicht künstlich eindeutig sein. Wo Georgia und Tobias dieselbe reale Markt- und Logistiksituation haben, darf derselbe sachlich passende Text verwendet werden. Ungeprüfte Telefonate, Ladenbesuche, digitale Bestandsabfragen oder bestätigte Filialbestände dürfen nicht als Routine erfunden werden; Geschmack, Verwendung und vollständige Konzeptdefinitionen werden nicht als Fülltext übernommen.
 
@@ -370,8 +386,8 @@ Der verbindliche Stil- und Längenmaßstab für neue Texte steht in [INGREDIENT_
 ### 8.2 Mindeststandard nach Stufe
 
 - `EASY`: positive Aussage über gewöhnlichen lokalen Handel; Spezialweg oder Onlinequelle dürfen nicht als Begründung erscheinen.
-- `PLANNED`: konkreter robuster allgemeiner Bezugsweg; bei nicht offensichtlichen Fällen mindestens ein aktueller Beleg oder belastbare persönliche Erfahrung.
-- `SPECIALTY`: Marktbreite des einschlägigen Spezialhandels muss sichtbar begründet sein. Normalerweise mehrere unabhängige breit aufgestellte Spezialhändler oder eine gleichwertige Kombination aus verlässlichem großem Offline-Markt und Onlinewegen.
+- `PLANNED`: konkreter robuster allgemeiner Bezugsweg ohne notwendige Sonderbestellung; ein allein tragender Versandweg nur für lagerfähige, nicht kühlpflichtige Ware.
+- `SPECIALTY`: der notwendige Spezialweg muss sichtbar begründet sein, einschließlich spezialisiertem Sortiment, notwendiger Vorbestellung/Abholung oder tragendem Frisch-/Kühl-/TK-Versand; zugleich muss der Spezialmarkt ausreichend breit und robust bleiben.
 - `DIFFICULT`: enger Nischenmarkt, Bestands-/Logistikproblem oder Produktformrisiko muss konkret benannt sein; mindestens ein positiver Nischenweg und/oder dokumentierte negative Suche.
 - `UNAVAILABLE`: gezielte negative Suche und Ausschluss naheliegender Ersatzformen beziehungsweise theoretischer Herkunftslandwege.
 
@@ -526,9 +542,10 @@ Für Georgia und Tobias jeweils:
 
 ### 11.4 Harte Neuaufnahme-Gates
 
-- `EASY` darf niemals aus Spezialladen, Markt, Fischhändler oder Onlinebestellung abgeleitet werden.
-- `SPECIALTY` verlangt breite Etablierung im einschlägigen Spezialmarkt; eine einzelne Produktseite oder ein bis zwei Nischenimporteure reichen nicht.
-- `DIFFICULT` ist die normale Stufe für enge nationale Importmärkte, fragile Frische-/Kühlwege und stark schwankende Spezialware.
+- `EASY` darf niemals aus Spezialladen, Wochenmarkt, dediziertem Fischhändler, Sonderfahrt, Vorbestellung oder Onlinebestellung abgeleitet werden.
+- `PLANNED` bleibt allgemeiner Handel ohne notwendige Sonderbestellung; ein allein tragender Versandweg ist nur bei lagerfähiger, nicht kühlpflichtiger Ware zulässig.
+- `SPECIALTY` ist der Mindestwert für notwendiges spezialisiertes Sortiment, Vorbestellung/Reservierung mit späterer Abholung oder tragenden Frisch-/Kühl-/TK-Versand.
+- `DIFFICULT` ist die normale Stufe, wenn der Spezial-/Importmarkt selbst eng, fragil oder logistisch unzuverlässig bleibt.
 - Ersatzprodukte, ähnliche Sorten und ungültige Produktformen zählen nicht.
 - Herkunft, Länderrelation, Novelty, Preis oder aktueller Vorrat erzeugen keine Beschaffbarkeitsstufe.
 - Parent-/Child-Werte werden nicht vererbt.

@@ -1,6 +1,6 @@
 # Operative Kurationsregeln für neue Zutatenkonzepte
 
-Stand: 8. September 2026
+Stand: 10. September 2026
 Status: verbindliche Arbeitscheckliste für Neuaufnahmen und wesentliche Konzeptänderungen
 
 Dieses Dokument operationalisiert die fachliche Semantik aus [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md). Es ist bei jeder neuen Konzeptanlage, neuen Konkretisierung und jeder Änderung zu verwenden, die Name, Produktform, Ziehbarkeit oder Beschaffungsrealität eines bestehenden Konzepts wesentlich verändert.
@@ -56,6 +56,8 @@ Für Georgia und Tobias jeweils:
 Eine Beschaffbarkeitsnotiz darf nicht bloß den Enum-Wert ausformulieren. Auch bei `EASY` muss sie knapp benennen, **warum gerade diese konkrete Produktform** im Alltagshandel zuverlässig erhältlich ist. Katalogweit wiederholte Standardtexte ohne konzeptspezifischen Informationsgewinn sind keine erfüllte Notizpflicht.
 
 Eine individuelle Availability-Notiz beginnt nicht redundant mit dem Anzeigenamen des Zutatenkonzepts samt Doppelpunkt; die Oberfläche stellt die Konzeptidentität bereits separat dar.
+
+Die Availability-Notiz ist ausschließlich eine Beschaffungsnotiz. Sie beschreibt Bezugsart beziehungsweise Marktklasse, Marktbreite und Zuverlässigkeit sowie den nötigen Planungsaufwand. Produktform und Logistik gehören nur hinein, soweit sie die Beschaffung beeinflussen. Konzeptdefinitionen und fachliche Gültigkeitsregeln gehören in die allgemeine Kuratorsemantik oder die Research-Evidenz, nicht in diesen Nutztext.
 
 ### Gewicht
 
@@ -147,8 +149,8 @@ Für jeden realen Bezugsweg wird eine Marktklasse vergeben:
 | Code | Marktklasse | Beispiele |
 |---|---|---|
 | `GENERAL_LOCAL` | allgemeiner lokaler Handel | gewöhnlicher Supermarkt oder Discounter |
-| `GENERAL_BROAD` | breiter allgemeiner Handel | gut sortierter allgemeiner Markt, etablierter Feinkost-/Gewürz-/Fischhandel, nicht nischengebundener deutscher/EU-Onlineshop |
-| `SPECIALTY_BROAD` | breiter einschlägiger Spezialmarkt | Ware ist in vielen breit aufgestellten Asia-, türkischen, arabischen, osteuropäischen oder vergleichbaren Spezialsortimenten üblich |
+| `GENERAL_BROAD` | breiter allgemeiner Handel | gut sortierter Vollsortimenter, gewöhnliche Fachtheke oder allgemeiner Fisch-/Käse-/Feinkosthandel mit regulär zu erwartender Ware ohne Sonderbestellung; großer nicht nischengebundener Versandweg nur für lagerfähige, nicht kühlpflichtige Ware |
+| `SPECIALTY_BROAD` | breiter einschlägiger Spezialmarkt | notwendiges spezialisiertes Gewürz-, Länder-, Import-, Muschel-, Seafood- oder vergleichbares Sortiment; dazu zählen auch notwendige Vorbestellung/Abholung und tragender Frisch-/Kühl-/TK-Versand, sofern der Spezialmarkt robust bleibt |
 | `NICHE_IMPORT` | enger Nischen-/Importmarkt | wenige nationale, regionale oder produktspezifische Importeure beziehungsweise fragile Spezialwege |
 | `NO_REAL_ROUTE` | kein realistischer Markt | nur Glücksfund, privater Import oder Herkunftslandreise |
 
@@ -186,11 +188,13 @@ Die Stufe richtet sich nach dem besten **realistisch nutzbaren**, nicht bloß th
 
 | Stufe | Harte Mindestbedeutung |
 |---:|---|
-| `EASY` | gewöhnlicher lokaler Handel mit sehr hoher Trefferwahrscheinlichkeit und alltäglicher Ausweichquelle |
-| `PLANNED` | robuster breiter allgemeiner Handelsweg; gezielter Einkauf nötig, aber keine enge Kultur-/Nischenimportabhängigkeit |
-| `SPECIALTY` | breit etablierter einschlägiger Spezialmarkt mit mehreren realistischen Wegen |
-| `DIFFICULT` | enger Nischen-/Importmarkt, wenige Händler, fragiler Bestand, heikle Produktform oder besondere Logistik |
-| `UNAVAILABLE` | kein realistischer wiederholbarer Weg |
+| `EASY` | gewöhnlicher lokaler Alltagshandel mit sehr hoher Trefferwahrscheinlichkeit und alltäglicher Ausweichquelle; keine notwendige Vorbestellung, Spezialquelle, Sonderfahrt oder Versand |
+| `PLANNED` | gezielter Bezug weiterhin im allgemeinen Handel ohne notwendige Sonderbestellung; großer nicht nischengebundener Versand allein nur für lagerfähige, nicht kühlpflichtige Ware |
+| `SPECIALTY` | notwendiger Spezialweg: spezialisiertes Sortiment, notwendige Vorbestellung/Abholung oder tragender Frisch-/Kühl-/TK-Versand; der Spezialmarkt bleibt breit und robust planbar |
+| `DIFFICULT` | Spezial-/Importmarkt selbst eng, fragil oder logistisch unzuverlässig |
+| `UNAVAILABLE` | kein realistischer wiederholbarer Endkundenweg im normalen Vorlauf |
+
+Trennlinien: `EASY ↔ PLANNED` bedeutet spontan allgemein gegenüber gezielt allgemein; `PLANNED ↔ SPECIALTY` allgemeiner Handel gegenüber notwendigem Spezialweg; `SPECIALTY ↔ DIFFICULT` Breite und Robustheit des Spezialmarkts.
 
 ### Schritt 6: Individuelle Notiz schreiben
 
@@ -213,6 +217,15 @@ Die Notiz beantwortet knapp:
 - Welcher Engpass verhindert gegebenenfalls eine leichtere Stufe?
 - Worin besteht ein personenspezifischer Unterschied?
 
+Sie bleibt dabei reine Beschaffungsinformation:
+
+- Konzeptnamen nicht redundant als bloßes Satzsubjekt wiederholen; Wiederholung nur mit echtem Beschaffungswert wie `TK-Forelle` oder `getrocknete Morcheln`.
+- Keine Konzeptdefinition oder fachliche Gültigkeitsregel wie `X zählt nicht`, `Y ersetzt es nicht`, `Z erfüllt die Form nicht` oder `A ist nicht erforderlich`.
+- Verwechslungsgefahr nur als reales Einkaufsproblem formulieren, etwa durch notwendige Prüfung der Kennzeichnung.
+- Keine konkreten Onlinehändler, Listings, Warenkörbe, Momentbestände, Einzelpreise, Gebinde oder Lieferzeiten im Nutztext; diese Details bleiben datierte Research-Evidenz.
+- Stabile echte Beschaffungsrestriktionen dürfen bleiben. Physische Händlernamen nur bei einem tatsächlich beschriebenen Offline-Weg und nur, wenn sie informativer sind als die stabile Marktklasse.
+- Gleiche reale Beschaffung erzeugt gleiche Personentexte; belegte Unterschiede dürfen getrennt freigegeben werden.
+
 Bevorzugt wird eine kurze, konkrete Kerninformation wie:
 
 - „Gewöhnliches Gewürzregal größerer wie auch vieler kleinerer Supermärkte.“
@@ -233,7 +246,7 @@ Für neue oder überarbeitete Notizen gilt zusätzlich:
 - Bei gleicher Beschaffungsrealität sollen Georgia und Tobias denselben Text erhalten. Reine Ortszusätze, Personenbezug, unterschiedliche Satzlänge oder zusätzliche Angaben zum selben bundesweiten Bezugsweg rechtfertigen keine abweichenden Notizen. Tatsächliche Unterschiede in Level, Zugang, Produktform oder Logistik bleiben sichtbar.
 - Die Notiz beschreibt die allgemeine Beschaffbarkeit, keine aktuelle Inventur einzelner Händler. Punktuelle Angaben wie „ist ausverkauft“, „lagernd“ oder Warenkorbstatus gehören in die datierte Rechercheevidenz. Dauerhafte Engpässe, Saison und wiederkehrende Unzuverlässigkeit dürfen knapp benannt werden.
 - Konkrete Händler- und insbesondere Versandhändlernamen möglichst vermeiden; Marktart, passende Produktform und relevante Logistik nennen. Händlernamen und Quellen bleiben in der separaten Evidenz nachvollziehbar.
-- Den Konzeptnamen nicht ohne Informationsgewinn im Satz wiederholen. Die Formulierung „reservierter Marktartikel“ entfällt; einen tatsächlich nötigen Bestell- oder Vorbereitungsaufwand konkret beschreiben.
+- Den Konzeptnamen nicht ohne Informationsgewinn im Satz wiederholen. Einen tatsächlich nötigen Bestell- oder Vorbereitungsaufwand konkret beschreiben.
 - Textähnlichkeit und Eindeutigkeit sind kein Qualitätsziel. Identische Georgia-/Tobias-Notizen und wiederkehrende sachlich passende Formulierungen sind ausdrücklich zulässig, wenn die Beschaffungsrealität gleich ist.
 - Händlerbesuche, Telefonate, digitale Bestandsprüfungen, persönliche Routinen oder bestätigte Filialbestände werden nur genannt, wenn sie tatsächlich durchgeführt und als Evidenz dokumentiert wurden.
 - Geschmack, Verwendungsideen und vollständige Kuratornotizen gehören nicht in die Beschaffbarkeitsnotiz. Produktform wird nur so weit genannt, wie sie den realen Bezugsweg oder eine Ersatzproduktgefahr erklärt.
@@ -252,17 +265,17 @@ Für neue oder überarbeitete Notizen gilt zusätzlich:
 - Importhändler,
 - einen gelegentlichen persönlichen Fund.
 
-Eine Spezialquelle bleibt auch bei wiederholter Nutzung mindestens `PLANNED`.
+Eine notwendige Spezialquelle bleibt auch bei wiederholter Nutzung mindestens `SPECIALTY`.
 
 Die Beschaffbarkeitsnotiz muss den konkreten Alltagsgrund nennen, beispielsweise normales Gemüse-, Gewürz-, Molkerei-, Fleisch- oder Konservensortiment. Der Satz „im normalen Supermarkt erhältlich“ ohne konzeptspezifische Aussage genügt katalogweit nicht als massenhaft wiederholte Standardnotiz.
 
 ### `PLANNED`
 
-`PLANNED` verlangt einen breiten, robusten allgemeinen Handelsweg. Ein einzelner Kultur- oder Nischenimporteur reicht nicht. Ein lokaler Fachladen kann `PLANNED` begründen, wenn die Ware dort konkret, regelmäßig und ohne besondere Import-/Logistikunsicherheit geführt wird.
+`PLANNED` verlangt einen robusten allgemeinen Handelsweg ohne notwendige Sonderbestellung. Gut sortierte Vollsortimenter, gewöhnliche Fachtheken und allgemeiner Fisch-/Käse-/Feinkosthandel können die Stufe tragen, wenn die Ware regulär zu erwarten ist. Ein großer nicht nischengebundener Versandweg darf allein nur bei lagerfähiger, nicht kühlpflichtiger Ware tragen. Ein spezialisierter Offline-Weg wird dadurch nicht automatisch allgemeiner Handel.
 
 ### `SPECIALTY`
 
-`SPECIALTY` verlangt Marktbreite im einschlägigen Spezialhandel.
+`SPECIALTY` verlangt einen notwendigen Spezialweg und zugleich ausreichende Breite und Robustheit dieses Spezialmarkts. Das umfasst spezialisiertes Gewürz-, Länder-, Import-, Muschel-, Seafood- oder vergleichbares Sortiment, eine notwendige Vorbestellung beziehungsweise Reservierung mit späterer Abholung sowie Frisch-, Kühl- oder TK-Versand als tragenden Weg. Eine freiwillige Reservierung regulär vorrätiger allgemeiner Ware erhöht die Stufe nicht.
 
 Typischer positiver Nachweis:
 
@@ -284,6 +297,10 @@ Ein oder zwei nationale Nischenhändler, bloße Marktplatzangebote oder ein einz
 - hoher Ersatzproduktgefahr,
 - notwendigen Mehrfachversuchen,
 - praktisch relevanten Import-, Mindestmengen- oder Versandhürden.
+
+### Offline-first
+
+Einen einfachen belastbaren allgemeinen Offline-Weg vor einem gleichwertigen Versandweg prüfen und in der späteren Notiz bevorzugen. Ein spezialisierter Offline-Weg schlägt jedoch nicht automatisch einen tatsächlich allgemeineren Versandweg für lagerfähige, nicht kühlpflichtige Ware. Eine Omnichannel-Seite belegt keinen physischen Regalbestand.
 
 ### `UNAVAILABLE`
 
