@@ -110,6 +110,17 @@ jobs:
   postgresql:
     needs: classify
     if: ${{ needs.classify.outputs.postgresql == 'true' }}
+    name: postgresql (${{ matrix.shard }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: simulation
+            groups: postgresql & postgresql-shard-a
+          - shard: laboratory
+            groups: postgresql & postgresql-shard-b
+          - shard: remainder
+            groups: postgresql & !postgresql-shard-a & !postgresql-shard-b
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -120,7 +131,9 @@ jobs:
           java-version: '21'
           cache: maven
       - name: Run PostgreSQL integration tests
-        run: ./mvnw -Pverify-postgresql -DforkCount=2 clean verify
+        env:
+          TEST_GROUPS: ${{ matrix.groups }}
+        run: ./mvnw -Pverify-postgresql -DforkCount=2 "-Dverify.postgresql.groups=$TEST_GROUPS" clean verify
 
   migration:
     needs: classify

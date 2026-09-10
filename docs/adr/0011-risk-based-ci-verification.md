@@ -56,7 +56,7 @@ Aktuelle PostgreSQL-Constraints, Trigger, partielle Indizes, Transaktionen, Lock
 Der CI-Zielzustand unterscheidet mindestens:
 
 - **fast:** reine Java-, Architektur-, Adapter-, Validator- und Unit-Tests ohne PostgreSQL,
-- **postgresql:** Spring-/Repository-/Service-Integrationstests mit echter PostgreSQL-Semantik,
+- **postgresql:** Spring-/Repository-/Service-Integrationstests mit echter PostgreSQL-Semantik; drei disjunkte Matrix-Shards verteilen die gemessenen Laufzeitschwerpunkte und den vollständigen Rest parallel,
 - **migration:** Fresh-DB-, Production-Baseline-Upgrade- und sonstige tatsächlich migrationsspezifische Tests.
 
 Für einen Diff erforderliche Lanes werden parallel ausgeführt. Zusätzliche sichere Shards sind zulässig, weil Runner-Verbrauch nicht das Optimierungsziel ist.

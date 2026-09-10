@@ -244,8 +244,15 @@ class VerifyWorkflowContractTest(unittest.TestCase):
         self.assertIn("needs: [classify, fast, postgresql, migration]", self.workflow)
 
     def test_each_lane_uses_its_explicit_maven_profile(self) -> None:
-        for profile in ("verify-fast", "verify-postgresql", "verify-migration"):
-            self.assertIn(f"./mvnw -P{profile} -DforkCount=2 clean verify", self.workflow)
+        self.assertIn("./mvnw -Pverify-fast -DforkCount=2 clean verify", self.workflow)
+        self.assertIn("./mvnw -Pverify-migration -DforkCount=2 clean verify", self.workflow)
+        self.assertIn(
+            './mvnw -Pverify-postgresql -DforkCount=2 "-Dverify.postgresql.groups=$TEST_GROUPS" clean verify',
+            self.workflow,
+        )
+        self.assertIn("postgresql & postgresql-shard-a", self.workflow)
+        self.assertIn("postgresql & postgresql-shard-b", self.workflow)
+        self.assertIn("postgresql & !postgresql-shard-a & !postgresql-shard-b", self.workflow)
 
     def test_challenge_card_tooling_remains_in_preflight(self) -> None:
         self.assertIn("python -m unittest discover design/challenge-cards/tools", self.workflow)

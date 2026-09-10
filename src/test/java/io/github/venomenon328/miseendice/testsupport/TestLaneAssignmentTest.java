@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +27,17 @@ class TestLaneAssignmentTest {
             "(?m)^\\s*@Tag\\(\\\"postgresql\\\"\\)");
     private static final Pattern MIGRATION_TAG = Pattern.compile(
             "(?m)^\\s*@Tag\\(\\\"migration\\\"\\)");
+    private static final Pattern POSTGRESQL_SHARD_A_TAG = Pattern.compile(
+            "(?m)^\\s*@Tag\\(\\\"postgresql-shard-a\\\"\\)");
+    private static final Pattern POSTGRESQL_SHARD_B_TAG = Pattern.compile(
+            "(?m)^\\s*@Tag\\(\\\"postgresql-shard-b\\\"\\)");
+    private static final Set<String> POSTGRESQL_SHARD_A_TESTS = Set.of(
+            "GeneratorSimulationIntegrationTest.java"
+    );
+    private static final Set<String> POSTGRESQL_SHARD_B_TESTS = Set.of(
+            "GeneratorLaboratoryIntegrationTest.java",
+            "GeneratorSimulationExhaustionRegressionTest.java"
+    );
     private static final List<Pattern> DATABASE_MARKERS = List.of(
             Pattern.compile("(?m)^import io\\.github\\.venomenon328\\.miseendice\\.testsupport\\.PostgreSqlTestServer"),
             Pattern.compile("(?m)^import liquibase\\."),
@@ -75,6 +87,8 @@ class TestLaneAssignmentTest {
         boolean directPostgresql = POSTGRESQL_TAG.matcher(source).find();
         boolean migration = MIGRATION_TAG.matcher(source).find();
         boolean postgresql = inheritedPostgresql || directPostgresql;
+        boolean postgresqlShardA = POSTGRESQL_SHARD_A_TAG.matcher(source).find();
+        boolean postgresqlShardB = POSTGRESQL_SHARD_B_TAG.matcher(source).find();
 
         if (postgresql && migration) {
             violations.add(path + ": is assigned to both postgresql and migration");
@@ -82,6 +96,22 @@ class TestLaneAssignmentTest {
         }
         if ((directPostgresql || migration) && !tagPrecedesClass(source, directPostgresql)) {
             violations.add(path + ": lane tags must be class-level so every test case has one assignment");
+            return;
+        }
+        if (postgresqlShardA && postgresqlShardB) {
+            violations.add(path + ": is assigned to both explicit PostgreSQL shards");
+            return;
+        }
+        if ((postgresqlShardA || postgresqlShardB) && !postgresql) {
+            violations.add(path + ": has a PostgreSQL shard tag without belonging to the PostgreSQL lane");
+            return;
+        }
+
+        String fileName = path.getFileName().toString();
+        boolean expectedShardA = POSTGRESQL_SHARD_A_TESTS.contains(fileName);
+        boolean expectedShardB = POSTGRESQL_SHARD_B_TESTS.contains(fileName);
+        if (postgresqlShardA != expectedShardA || postgresqlShardB != expectedShardB) {
+            violations.add(path + ": does not match the explicit PostgreSQL shard assignment");
             return;
         }
 

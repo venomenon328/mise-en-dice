@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,6 +28,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+@Tag("postgresql-shard-b")
 @SpringBootTest(classes = { MiseEnDiceApplication.class, GeneratorLaboratoryIntegrationTest.SeedConfiguration.class })
 class GeneratorLaboratoryIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
     private static final LocalDate DATE = LocalDate.of(2026, 8, 13);
