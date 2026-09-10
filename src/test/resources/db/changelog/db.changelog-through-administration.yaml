@@ -1,6 +1,0 @@
-# Fixed upgrade boundary: later migrations are verified through the master separately.
-databaseChangeLog:
-  - include:
-      file: db/changelog/db.changelog-before-administration.yaml
-  - include:
-      file: db/changelog/schema/003-administration-foundation.sql

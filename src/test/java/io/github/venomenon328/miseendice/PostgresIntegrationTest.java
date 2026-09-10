@@ -166,24 +166,6 @@ class PostgresIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
     }
 
     @Test
-    void upgradeFromThePreviousLiquibaseBaselineAppliesAdministrationFoundation() throws Exception {
-        try (var database = PostgreSqlTestServer.createTemporaryDatabase("administration_upgrade");
-                Connection connection = database.openConnection()) {
-            runLiquibase(connection, "db/changelog/db.changelog-before-administration.yaml");
-            // Assert initialization at migration 003, before later editorial version advances and audits.
-            runLiquibase(connection, "db/changelog/db.changelog-through-administration.yaml");
-
-            assertThat(count(connection, "ingredient_concept")).isPositive();
-            assertThat(countWhere(connection, "ingredient_concept", "version = 0"))
-                    .isEqualTo(count(connection, "ingredient_concept"));
-            assertThat(countWhere(connection, "exclusion_rule", "version = 0"))
-                    .isEqualTo(count(connection, "exclusion_rule"));
-            assertThat(count(connection, "catalog_audit_entry")).isZero();
-            assertThat(count(connection, "ingredient_refinement")).isPositive();
-        }
-    }
-
-    @Test
     void upgradesTheImmediatelyPreviousMainAndRestartsAfterCatalogAuditCleanup() throws Exception {
         try (var database = PostgreSqlTestServer.createTemporaryDatabase("catalog_audit_cleanup");
                 Connection connection = database.openConnection()) {

@@ -1,3 +1,6 @@
+# Confirmed production cutoff:
+# main@b6543868e60f57bfa53caa3b42d4a96a9ff25a77, through catalog/030.
+# This test changelog references the published migrations; it is not a second migration authority.
 databaseChangeLog:
   - include:
       file: db/changelog/schema/001-catalog-schema.sql
@@ -67,3 +70,37 @@ databaseChangeLog:
       file: db/changelog/schema/013-challenge-archive-core.sql
   - include:
       file: db/changelog/schema/014-participant-electorate-core.sql
+  - include:
+      file: db/changelog/schema/015-challenge-results-completion-core.sql
+  - include:
+      file: db/changelog/schema/016-result-open-requirement-concretizations.sql
+  - include:
+      file: db/changelog/schema/017-culinary-country-associations.sql
+  - include:
+      file: db/changelog/reference/002-culinary-countries.sql
+  - include:
+      file: db/changelog/catalog/018-sweden-curation.sql
+  - include:
+      file: db/changelog/catalog/019-poland-curation.sql
+  - include:
+      file: db/changelog/catalog/020-denmark-curation.sql
+  - include:
+      file: db/changelog/catalog/021-netherlands-curation.sql
+  - include:
+      file: db/changelog/catalog/022-belgium-curation.sql
+  - include:
+      file: db/changelog/catalog/023-czechia-curation.sql
+  - include:
+      file: db/changelog/catalog/024-philippines-curation.sql
+  - include:
+      file: db/changelog/catalog/025-germany-curation.sql
+  - include:
+      file: db/changelog/catalog/026-norway-curation.sql
+  - include:
+      file: db/changelog/catalog/027-france-curation.sql
+  - include:
+      file: db/changelog/catalog/028-curator-note-completeness.sql
+  - include:
+      file: db/changelog/catalog/029-spain-curation.sql
+  - include:
+      file: db/changelog/catalog/030-veal-concept-expansion.sql

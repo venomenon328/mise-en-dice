@@ -313,6 +313,13 @@ Persistenztests verwenden eine echte PostgreSQL-Instanz über Testcontainers. H2
 
 Eine leere Testdatenbank muss durch Liquibase vollständig aufgebaut und mit der Baseline befüllt werden können. Die vorhandenen strukturellen Seed-Prüfungen werden in einen automatisierten PostgreSQL-Integrationstest überführt.
 
+Daneben wird der bestätigte produktive Ausgangsstand als versionierter Test-Changelog unter
+`src/test/resources/db/changelog/db.changelog-production-baseline.yaml` gepflegt. Der aktuelle Cutoff ist
+`main@b6543868e60f57bfa53caa3b42d4a96a9ff25a77` bis einschließlich `catalog/030`; die Datei referenziert
+ausschließlich die echten veröffentlichten Includes dieses Stands. Ein PostgreSQL-17-Test führt von dieser
+Baseline zum aktuellen Master und lässt den Master danach nochmals idempotent laufen. Die Fresh-DB-Prüfung bleibt
+davon getrennt bestehen. Eine Fortschreibung erfolgt erst nach einem erneut bestätigten realen Deployment.
+
 Mindestens folgende Risiken sind ausdrücklich zu testen:
 
 - vollständiger Aufbau einer leeren Datenbank,
