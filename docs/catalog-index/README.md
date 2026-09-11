@@ -105,8 +105,11 @@ export CATALOG_INDEX_OUTPUT_DIRECTORY="docs/catalog-index"
 Der Commit muss alle aktuellen Changelog-Inhalte exakt enthalten; sonst bricht der Lauf vor dem Datenbankstart ab.
 Während einer parallelen Sammelarbeit werden `CATALOG_INDEX_EXCLUDED_REF`, `CATALOG_INDEX_EXCLUDED_COMMIT` und
 `CATALOG_INDEX_EXCLUDED_REASON` zusätzlich gesetzt. Vor der Länderrecherche ist stets auf dem dann ausdrücklich
-gewählten, konsistent vorbereiteten Sammelstand neu zu erzeugen oder dessen Gültigkeit nachzuweisen. Zwei Exporte
-werden niemals vereinigt.
+gewählten, konsistent vorbereiteten Gesamtstand neu zu erzeugen oder dessen Gültigkeit nachzuweisen. Bereits
+eingepflegte Sammelarbeit gehört in diesen Stand; freigegebene, aber noch nicht eingepflegte Neuaufnahmen bleiben
+im zugehörigen Runden-Issue separat dokumentierte offene Arbeit. Zwei Exporte werden niemals vereinigt. Der
+phasenbezogene Einsatz und die im Runden-Issue festzuhaltenden Kennungen stehen im
+[`CULINARY_CATALOG_WORKFLOW.md`](../CULINARY_CATALOG_WORKFLOW.md).
 
 Ohne lokalen Docker-Daemon darf der Workflow **Catalog Index Generation** verwendet werden. Bei seiner erstmaligen
 Einführung läuft er eng auf dem Draft-PR und verwendet dessen exakten `main`-Basis-SHA; nach Aufnahme in den
@@ -130,5 +133,7 @@ Katalogdaten und deckt relationslose/inaktive Datensätze, Mehrfach-Parents/-Chi
 Originaltexte ab. Der tatsächlich eingecheckte Index wird einmalig aus dem ausgewiesenen vollständigen Master
 erzeugt; seine produktiven Einzelwerte und Gesamtzahlen sind kein dauerhaftes Test-Oracle.
 
-Vor Merge bleiben gemäß Issue #250 getrennt offen: ein Zugriffstest aus einem frischen Recherche-/Reviewkontext und
-die Auftraggeberabnahme. Beides ist keine Freigabe realer Länderrelationen und kein Produktionsabgleich.
+Der Zugriffstest aus einem frischen Recherche-/Reviewkontext und die Auftraggeberabnahme des Erststands wurden im
+Abschluss von #250/PR #255 dokumentiert. Sie waren weder eine Freigabe realer Länderrelationen noch ein
+Produktionsabgleich. Jeder spätere Rechercheumfang muss seine eigene Quellen-/Aktualitätsgültigkeit nach dem
+Länderworkflow nachweisen.

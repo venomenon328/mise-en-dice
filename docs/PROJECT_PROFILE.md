@@ -8,7 +8,7 @@ Bei Produkt-, Architektur-, Persistenz- oder Schnittstellenänderungen [VISION.m
 
 | Gegenstand | Zusätzliche Pflichtquellen |
 | --- | --- |
-| Länderreview nach #172 | Aktueller vollständiger Issue #172 und [Länderworkflow](CULINARY_CATALOG_WORKFLOW.md) samt Pflichtquellen; Ländersemantik nach dem dort maßgeblichen #165-Vertrag |
+| Länder-/Ergänzungsrunde nach #172 | Nach dem dort dokumentierten Einführungspunkt: aktueller vollständiger Body des zugehörigen Runden-Issues, aktueller #172-Tracker und [Länderworkflow](CULINARY_CATALOG_WORKFLOW.md); dessen Phasenmatrix bindet die weiteren Pflichtquellen ein. Bis dahin gilt der im Tracker bezeichnete bisherige Ablauf. |
 | Konzeptanlage oder wesentliche Produktformänderung | [Konzeptkuratierung](INGREDIENT_CONCEPT_CURATION.md), [Availability und Kochungewöhnlichkeit](AVAILABILITY_AND_COOKING_NOVELTY.md) |
 | Katalogdaten, verfügbare operative Bestände und Migrationen | Relevante ADRs einschließlich ADR 0003 sowie aktuelle freigegebene Änderungen, nicht nur historische Baselines |
 | Generator/Kuratierung | [Generator](CANDIDATE_GENERATOR.md), [Datenbereitschaft](CANDIDATE_GENERATOR_DATA_READINESS.md), [Kuratierung](CURATION_AND_CHALLENGE_SELECTION.md), relevante ADRs |
@@ -52,7 +52,7 @@ Passende aktuelle CI-Belege können den Abschlussnachweis liefern; keinen identi
 
 Zwei bestehende enge Ausnahmen bleiben wegen ihrer unterschiedlichen fachlichen/technischen Prüfgegenstände bestehen:
 
-- **Redaktionelle Länder-/Katalogbatches nach #172:** Teststrategie des [Länderworkflows](CULINARY_CATALOG_WORKFLOW.md) anwenden. Keine produktiven Content-Assertions und kein Vollsuite-Pflichtlauf pro Land; vollständiges `./mvnw clean verify` bei Merge-Vorbereitung oder technischem Anlass. Keine pauschale Ausnahme für Anwendungscode.
+- **Redaktionelle Länder-/Katalogbatches nach dem in #172 dokumentierten Einführungspunkt:** Teststrategie des [Länderworkflows](CULINARY_CATALOG_WORKFLOW.md) anwenden. Keine produktiven Content-Assertions und kein Vollsuite-Pflichtlauf pro Land; vollständiges `./mvnw clean verify` bei Merge-Vorbereitung oder technischem Anlass. Keine pauschale Ausnahme für Anwendungscode.
 - **Eindeutig klassifizierte Challenge-Card-Assets:** Nur `ASSET_INDEX.csv` allein oder mit hinzugefügten/geänderten Produktions-PNGs im erlaubten Bereich. Der vorhandene Klassifikator entscheidet; andere Dateien, Löschungen, Umbenennungen oder unklarer Diff bleiben im vollständigen Prüfpfad. Der [Assetvalidator](../design/challenge-cards/tools/validate_asset_catalog.py) ist verbindlich; der bestehende CI-Workflow führt außerdem die Werkzeugtests aus. Übersprungene volle Builds sind nur in diesem nachgewiesenen engen Fall nicht anwendbar.
 
 **Verify** folgt der beschriebenen `fast`-/`postgresql`-/`migration`-Klassifikation; **Deployment Verify** folgt unabhängig davon der `skip`-/`smoke`-/`full`-Klassifikation. Die redaktionellen Fachtests/-verbote werden nicht umgeschrieben; einmalige Bestands-/Diff-QA ist kein dauerhaftes Content-Test-Oracle.

@@ -4,7 +4,7 @@ Stand: 11. September 2026
 
 Dieses Dokument ist die aktuelle normative Fassung der redaktionellen Ländersemantik und beschreibt ihre technische Pflege im Zutatenkatalog. Die Ursprungsentscheidung liegt in [#165](https://github.com/venomenon328/mise-en-dice/issues/165); die Präzisierung aus [#249](https://github.com/venomenon328/mise-en-dice/issues/249), Arbeitsfassung `COUNTRY_RULES_A2_20260911` einschließlich Regionalentscheidung Q1, ist hier konsolidiert. Die technischen Verträge bleiben unverändert. Historische Länderfreigaben werden dadurch weder umgeschrieben noch automatisch revidiert.
 
-Der verbindliche operative Ablauf von Recherchebeginn über die erste Aufnahme-/Relationsfreigabe und die zweite vollständige Metadatenfreigabe bis zur Einpflege steht in [CULINARY_CATALOG_WORKFLOW.md](CULINARY_CATALOG_WORKFLOW.md). Für neue Konzepte sind außerdem [INGREDIENT_CONCEPT_CURATION.md](INGREDIENT_CONCEPT_CURATION.md) und [AVAILABILITY_AND_COOKING_NOVELTY.md](AVAILABILITY_AND_COOKING_NOVELTY.md) Pflichtquellen. Issue #172 bleibt der aktuelle Sammelauftrag und das landweise Entscheidungsprotokoll.
+Der verbindliche operative Ablauf von Recherchebeginn über die erste Aufnahme-/Relationsfreigabe und die zweite vollständige Metadatenfreigabe bis zur Einpflege steht in [CULINARY_CATALOG_WORKFLOW.md](CULINARY_CATALOG_WORKFLOW.md). Für neue Konzepte sind außerdem [INGREDIENT_CONCEPT_CURATION.md](INGREDIENT_CONCEPT_CURATION.md) und [AVAILABILITY_AND_COOKING_NOVELTY.md](AVAILABILITY_AND_COOKING_NOVELTY.md) Pflichtquellen. Nach dem in #172 dokumentierten Einführungspunkt ist das jeweilige Länder-/Ergänzungs-Issue die aktuelle Entscheidungsquelle; #172 bleibt die kompakte Übersicht und bewahrt seine früheren Kommentare als historische Belege.
 
 ## 1. Bedeutung einer Zuordnung
 
@@ -130,7 +130,7 @@ Gegenrecherche prüft fachlich relevante Einwände wie Fehlattribution, unpassen
 
 Technisch fehlender Quellen- oder Katalogzugriff ist kein negativer Existenz- oder Relevanznachweis. Unsichere Fälle werden nicht stillschweigend positiv interpretiert. Persistiert wird weiterhin nur die ausdrücklich freigegebene positive Relation; die Arbeitsurteile sind keine Datenbankstatus.
 
-Eine bestehende menschliche Freigabe wird weder durch ein neues KI-Urteil noch durch einen erfolglosen Suchlauf automatisch aufgehoben. Änderungen bleiben explizite, nachvollziehbare Deltas nach dem Länderworkflow. Die Kalibrierungsfälle mit realen Quellen, synthetischen Beispielen und historischen Entscheidungen bleiben als Evidenz in [#249](https://github.com/venomenon328/mise-en-dice/issues/249); sie sind keine neu freigegebene Relationsliste oder automatisierte Content-Assertions. Die gezielte Altfallprüfung gehört zu #251/#252 und wird durch diese Normintegration nicht vorgezogen.
+Eine bestehende menschliche Freigabe wird weder durch ein neues KI-Urteil noch durch einen erfolglosen Suchlauf automatisch aufgehoben. Änderungen bleiben explizite, nachvollziehbare Deltas nach dem Länderworkflow. Die Kalibrierungsfälle mit realen Quellen, synthetischen Beispielen und historischen Entscheidungen bleiben als Evidenz in [#249](https://github.com/venomenon328/mise-en-dice/issues/249); sie sind keine neu freigegebene Relationsliste oder automatisierte Content-Assertions. #251 grenzt den organisatorischen Übergabebestand ab; die gezielte fachliche Altfallprüfung folgt erst nach Bestätigung im Verfahren von #252.
 
 ## 5. Technische Pflege
 

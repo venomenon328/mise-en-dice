@@ -1,297 +1,312 @@
 # Kulinarischer Katalogausbau: Recherche, Freigabe und Einpflege
 
 Stand: 11. September 2026
-Status: verbindlicher Ablauf für die laufende Kuration nach Issue #172
+Status: Zielablauf für neue Länder- und Ergänzungsrunden nach dem in Issue #172 dokumentierten Einführungspunkt
+
+## Ziel und Geltung
+
+Die Redaktionssemantik aus
+[CULINARY_COUNTRY_ASSOCIATIONS.md](CULINARY_COUNTRY_ASSOCIATIONS.md) wird kontrolliert auf den realen
+Zutatenkatalog angewandt. Länderarbeit bleibt pro Land oder ausdrücklich beauftragter Ergänzungsrunde fachlich
+nachvollziehbar; die technische Auslieferung darf mehrere vollständig freigegebene Runden in einem Batch bündeln.
+
+Die Umstellung gilt für neue Runden erst ab dem ausdrücklich in
+[#172](https://github.com/venomenon328/mise-en-dice/issues/172) dokumentierten Einführungspunkt. Bis dahin bleibt
+der dort noch als gültig bezeichnete bisherige Ablauf maßgeblich. Der bestehende Branch
+`feat/172-country-catalog-curation` und Draft-PR #247 werden durch diese Dokumentänderung weder ersetzt noch
+zurückgesetzt, synchronisiert, gemergt oder anderweitig verändert. Ihr tatsächlicher Abschluss- und
+Übergangspunkt wird in #172 festgehalten.
+
+Nach der Einführung ist #172 die kompakte Übersicht über Runden, wichtige offene Themen und technische Batches.
+Die aktuelle Entscheidungsquelle einer neuen Runde ist dagegen ihr zugehöriges Länder-/Ergänzungs-Issue nach
+der Vorlage [`.github/ISSUE_TEMPLATE/culinary-country.md`](../.github/ISSUE_TEMPLATE/culinary-country.md).
+Historische Kommentare unter #172 bleiben unveränderte Belege; es werden keine alten Länder-Issues auf Vorrat
+erzeugt und keine früheren Freigaben wiederholt.
+
+## Rollen der Arbeitsstände
+
+- **Runden-Issue:** aktuelle fachliche Arbeits- und Entscheidungsquelle für genau ein Land oder eine ausdrücklich
+  beauftragte Ergänzungsrunde. Beschlüsse werden aus Kommentaren zeitnah in den Body übernommen.
+- **Freigabeschnappschuss:** fest verlinkter Kommentar mit Revision und vollständigem freigegebenem Delta,
+  insbesondere exakten Notiztexten. Ein solcher Kommentar wird anschließend nicht editiert; Änderungen erhalten
+  eine neue Revision und einen neuen Schnappschuss. Er ist Nachweis, kein zweiter aktueller Katalog.
+- **#172:** kompakter Tracker für Rundenstatus, Altbelege, offene Themen und den aktuellen technischen Batch.
+- **Technischer Batch:** beauftragter Branch/PR, der eine oder mehrere vollständig freigegebene Runden bündelt.
+  Der Branch wird im jeweiligen Auftrag und in #172 genannt, nicht in wiederverwendbaren Prompts fest verdrahtet.
+- **Repository-Katalogindex:** maschinenlesbare Rechercheprojektion eines ausgewiesenen Liquibase-Stands. Er ist
+  weder zweite Katalogquelle noch Produktionsnachweis; sein Vertrag steht in
+  [`catalog-index/README.md`](catalog-index/README.md).
+
+Vor einer neuen Runde nach einem bereits passenden aktiven Issue suchen. Kein Issue erfinden, duplizieren oder
+ohne ausdrücklichen Auftrag anlegen. Ein beauftragter Recherchelauf darf sein zugehöriges Runden-Issue bis Gate 1
+pflegen; er darf daraus keine Katalog-, Migrations- oder Metadatenfreigabe ableiten.
+
+## Phasen und Haltepunkte
+
+| Phase | Eingabe | Ergebnis und Haltepunkt | Zulässige Änderung |
+|---|---|---|---|
+| 0. Technische Vorbereitung | Auftrag, aktueller Tracker, Runden-Issue, Branch-/PR-Stand, Index | Konsistenter Gesamtstand mit Quellenkennungen, gültigem Index und separat benannter offener Sammelarbeit | Runden-Issue und lokale Rechercheartefakte; nötige technische Synchronisierung nur im beauftragten Scope |
+| 1. Fachliche Recherche | Vorbereiteter Bestand, Ländersemantik, Küchen- und Produktquellen | Küchenkontext, Kandidaten in beide Suchrichtungen, vollständige Existenzauflösung, getrennte Relations-/Aufnahmeempfehlungen; **Stopp vor Gate 1** | Runden-Issue einschließlich Evidenz und offener Fragen; keine Katalogdaten oder vollständigen Metadaten ungeklärter Neuaufnahmen |
+| Gate 1. Menschliche Auswahl | Revisionsgebundene Recherchefassung | Explizit freigegebene Relationen und Neuaufnahmen; offene Kandidaten bleiben offen | Fest verlinkter Gate-1-Schnappschuss |
+| 2. Metadatenentwurf, falls nötig | Gate-1-freigegebene Neuaufnahmen oder ausdrücklich geöffnete bestehende Metadaten | Vollständige Vorlage und exakte Texte; **Stopp vor Gate 2** | Runden-Issue/zugehöriger Anhang, noch keine Katalogpersistierung |
+| Gate 2. Menschliche Metadatenfreigabe | Revisionsgebundener vollständiger Metadatenentwurf | Alle erforderlichen Werte, Kanten und exakten Texte freigegeben | Fest verlinkter Gate-2-Schnappschuss; bei reinen bestehenden Relationen ohne Metadatendelta entfällt Gate 2 |
+| 3. Beauftragte Einpflege | Beide erforderlichen Gates, aktueller technischer Stand | Nur freigegebene append-only Deltas, einmalige Diff-QA, Commit und PR-Nachweis | Repositoryänderungen auf dem beauftragten Batchbranch |
+| 4. Review und Batch-Abschluss | Konkreter Commit/PR und akkumuliertes Batch | Review am Head; vollständige technische Batchprüfung bei beauftragter Mergevorbereitung | Review-/PR-Dokumentation; Merge und Deployment nur mit eigener Befugnis |
+
+Ein kombinierter oder bedingter Auftrag darf mehrere bereits ausreichend bestimmte Phasen abdecken. Er erzeugt
+keine künstliche Wiederfreigabe, überspringt aber kein fachlich noch offenes Gate.
+
+## Quellenmatrix und Revalidierung
+
+Die Matrix verteilt die bisherige Pflichtlektüre auf den Zeitpunkt, an dem sie benötigt wird. `vollständig`
+bedeutet vollständige aktuelle Fassung; ein genannter Abschnitt genügt nur, wenn die Matrix ihn ausdrücklich
+begrenzt. Ein alter Prompt, Suchauszug oder Chattext ersetzt keine Pflichtquelle.
+
+| Zeitpunkt | Pflichtquelle oder Pflichtabschnitt | Zweck | Erneut prüfen, wenn |
+|---|---|---|---|
+| Beginn jedes Auftrags und jeder Wiederaufnahme | [`AGENTS.md`](../AGENTS.md), lokale [`WORKFLOW.md`](dev-rules/WORKFLOW.md), [`PROJECT_PROFILE.md`](PROJECT_PROFILE.md), vollständiger aktueller Body des Runden-Issues sowie konkret benannter PR-/Reviewstand | Befugnis, Scope, Schutzgrenzen und aktueller Entscheidungsstand | Auftrag, Body, Branch, PR, Review oder eine dieser Regeln geändert wurde |
+| Technische Vorbereitung | aktueller Body von [#172](https://github.com/venomenon328/mise-en-dice/issues/172), dieses Dokument, [`catalog-index/README.md`](catalog-index/README.md) und `catalog-index.manifest.json` vollständig | Runde, aktiven Batch, offene Sammelarbeit, Indexvertrag und Quellenumfang bestimmen | Tracker/Batch/Manifest geändert wurde oder der Indexvalidator keinen aktuellen passenden Stand bestätigt |
+| Erste fachliche Phase | [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md) vollständig; #165 als Ursprungsentscheidung bei erstmaliger Einführung, geänderter Normherkunft oder echtem Auslegungswiderspruch; [`VISION.md`, Abschnitt 7](VISION.md#7-zutaten--und-kategorienbasis); [`INITIAL_CATALOG.md`, Abschnitt 13](INITIAL_CATALOG.md#13-pflegeprinzip-für-neue-zutaten); [`DATA_MODEL.md`, Abschnitte 2–7](DATA_MODEL.md#2-zutatenkonzepte-statt-zutatkategorie-dichotomie) | Ländersemantik, Identität, Granularität, Graph, Aufnahmegrundsätze und vorhandene Metadaten verstehen | Norm-/Produktform-/Graphvertrag geändert wurde oder Identität/Umfang unklar ist |
+| Kandidatenrecherche | belastbare aktuelle externe Quellen gemäß Ländersemantik; bei Zweifeln zusätzliche unabhängige Gegenrecherche | Rolle, Küchenkontext, Reichweite und Gegenbefunde belegen | Quelle die Entscheidung nicht mehr trägt, veraltet/unerreichbar ist oder ein materieller Gegenbefund erscheint |
+| Vor jedem Metadatenentwurf | [`INGREDIENT_CONCEPT_CURATION.md`](INGREDIENT_CONCEPT_CURATION.md) und [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md) vollständig; [finaler #188-Review](analysis/availability-novelty-final-review-v1-20260907.md) vollständig; passende tatsächlich freigegebene Zeilen des [finalen TSV](analysis/availability-novelty-final-review-v1-20260907.tsv) | Vollständige Konzeptvorlage, Exaktproduktbewertung, aktuelle Skalen, Personenprofile sowie Notiz-/Vergleichsanker | Produktform, Markt, Personenprofil, Fachregel oder betroffener Entwurf geändert wurde; historische Anker gelten nie als aktueller Händlernachweis |
+| Vor technischer Einpflege | [`MODEL_SELECTION.md`](dev-rules/MODEL_SELECTION.md) und [`MODEL_CATALOG.md`](dev-rules/MODEL_CATALOG.md), [`ARCHITECTURE.md`, Abschnitte 6–7](ARCHITECTURE.md#6-persistenzstrategie), [`DATA_MODEL.md`, Abschnitte 13 und 16](DATA_MODEL.md#13-administrationsversionen), [ADR 0002](adr/0002-liquibase-as-single-migration-authority.md), [ADR 0003](adr/0003-runtime-catalog-owned-by-postgresql.md), [ADR 0010](adr/0010-remove-runtime-catalog-audit.md) sowie aktueller [Master-Changelog](../src/main/resources/db/changelog/db.changelog-master.yaml) und betroffener technischer Review vollständig beziehungsweise wie dort eingebunden | Modellauswahl für noch auszuführende Implementierung sowie Append-only-, Datenhoheits-, Transaktions-, Versions- und Integritätsvertrag | Basis, Changesets, operative Deltaauskunft, Zielbranch, Review oder Modellkatalog geändert wurde |
+| Technische Prüfung und Mergevorbereitung | Projektprofil, [ADR 0004](adr/0004-postgresql-only-persistence-tests.md) und [ADR 0011](adr/0011-risk-based-ci-verification.md) sowie betroffene Workflows/Testhilfen | aktuelle risikobasierte Verify-/Deployment-Verify- und PostgreSQL-Regeln | Diffklasse, Workflow, Testinfrastruktur, Basis oder PR-Head geändert wurde |
+
+Unveränderte freigegebene Teile werden bei Wiederaufnahme nicht pauschal neu geöffnet. Aktuelle
+Beschaffungsrecherche wird trotzdem erneuert, soweit sie eine aktuelle Entscheidung trägt. Eine allgemeine
+Implementierungsfreigabe ersetzt keine fachliche Einzelentscheidung.
+
+## Phase 0: Technische Vorbereitung
+
+### 0.1 Auftrag, Runde und Batch sichern
+
+1. Runden-Issue, Land/Küchenumfang, bewusste Abgrenzungen, Phase und Revision feststellen.
+2. Aktuelle Remote-Stände von `main`, beauftragtem Batchbranch und betroffenem PR prüfen; Commit-SHAs im Issue
+   festhalten. Bestehende Arbeit erhalten, keine fremden Branches resetten oder force-pushen.
+3. Bereits eingepflegte Sammelarbeit gehört in den materialisierten Recherchebestand. Nur freigegebene, aber noch
+   nicht eingepflegte Neuaufnahmen werden aus ihren Runden-Issues als **offene Arbeit** ergänzt und nie als bereits
+   vorhandene DB-Konzepte ausgegeben. Überschneidungen werden koordiniert, nicht doppelt angelegt.
+4. Später bekannt gewordene operative Abweichungen sichtbar klären. Nach #248/D2 ist kein regelmäßiger
+   Produktions-Export-/Importpfad Bestandteil des Standardablaufs; keine ungefragte Produktionsabfrage oder
+   automatische Synchronisierung.
+
+Der Recherchelauf muss die Vorbereitung nicht selbst ausführen, wenn er ihr gültiges, überprüfbares Ergebnis
+lesen kann. Ein fehlender oder unpassender Index bleibt ein Hindernis für vollständige Bestandsbehauptungen.
+
+### 0.2 Repository-Index prüfen
+
+Einstieg ist [`catalog-index/catalog-index.manifest.json`](catalog-index/catalog-index.manifest.json). Der dort
+benannte inhaltsadressierte JSONL-Payload und die Index-README bilden zusammen den Vertrag. Mit Java 21:
+
+```bash
+./mvnw -Pcatalog-index -DskipTests compile exec:java \
+  -Dexec.args="validate --repository-root . --manifest docs/catalog-index/catalog-index.manifest.json"
+```
 
-## Ziel
+Erfolg muss mit `sourceCheck=CURRENT` enden. Zusätzlich im Runden-Issue getrennt festhalten:
 
-Die aktuelle Redaktionssemantik aus [CULINARY_COUNTRY_ASSOCIATIONS.md](CULINARY_COUNTRY_ASSOCIATIONS.md) kontrolliert **Land für Land** auf den realen Zutatenkatalog anwenden und dabei zugleich sinnvolle Kataloglücken identifizieren. Sie konsolidiert die Ursprungsentscheidung #165 und deren Präzisierung durch #249.
+- tatsächlichen Katalog-Quellcommit und Quellref,
+- Artefaktcommit, der Manifest/Payload enthält,
+- relevanten Input-/Payload-Fingerprint,
+- gewählten Rechercheumfang und ausdrücklich ausgeschlossene Parallelstände,
+- bekannte freigegebene, noch nicht eingepflegte Vorschläge.
 
-Dieses Dokument beschreibt den wiederholbaren Recherche- und Entscheidungsprozess; Issue #172 bleibt Einstiegspunkt, Sammelauftrag und landweises Entscheidungsprotokoll. Die fachliche Bedeutung einer Länderzuordnung wird hier **nicht neu definiert**: Maßgeblich ist die oben verlinkte normative Fassung, nicht eine davon getrennte Auslegung historischer Heuristiken aus #165. Die Dokumentintegration aus #249 ändert weder bestehende Länderfreigaben noch die hier geregelten Haltepunkte, Sammelbranch- und Testregeln; die weitergehende Prozessumstellung aus #251 bleibt separat.
+`sourceCheck=CURRENT` macht einen im Manifest ausgeschlossenen Sammelstand nicht enthalten. Der eingecheckte
+Erstindex basiert auf `main@baf77832dc4064602759eea37d7e164e043883fa` und schließt PR #247 ausdrücklich aus.
+Vor einer tatsächlichen Recherche auf einem anderen konsistenten Gesamtstand wird der Index gemäß seiner README
+neu erzeugt oder seine Gültigkeit für genau diesen Stand nachgewiesen. Zwei Exporte werden nicht vereinigt.
 
-## Verbindlicher Einstieg und Quellen
+### 0.3 Suchlauf und Existenzauflösung
 
-Vor jeder Länderanalyse den **aktuellen vollständigen Body von [#172](https://github.com/venomenon328/mise-en-dice/issues/172)** lesen, anschließend dieses Dokument und die folgenden Pflichtquellen vollständig heranziehen. Ein alter Chatprompt, ein Suchauszug oder ein historischer Review ersetzt diese Lektüre nicht.
+Kandidaten als JSONL eingeben und den dokumentierten vollständigen Suchlauf verwenden, zum Beispiel:
 
-| Quelle | Verbindlicher Zweck |
-|---|---|
-| [CULINARY_COUNTRY_ASSOCIATIONS.md](CULINARY_COUNTRY_ASSOCIATIONS.md) und [#165](https://github.com/venomenon328/mise-en-dice/issues/165) | Aktuelle normative Ländersemantik einschließlich der Präzisierung aus #249; #165 als Ursprungsentscheidung und Gesamtfeature lesen, nicht als konkurrierende aktuelle Kriterienfassung |
-| [INGREDIENT_CONCEPT_CURATION.md](INGREDIENT_CONCEPT_CURATION.md) | Vollständige Metadatenvorlage, Kuratornotiz, individuelle Availability-Anmerkungen, Evidenz und Freigabegates |
-| [AVAILABILITY_AND_COOKING_NOVELTY.md](AVAILABILITY_AND_COOKING_NOVELTY.md) | Aktuelle Fünfer-Skalen, Exaktproduktbewertung, unabhängige Bewertung der beiden Achsen, Personenprofile und Beschaffungshorizont |
-| [INITIAL_CATALOG.md](INITIAL_CATALOG.md) | Pflegeprinzipien; Abschnitte 1–12 sind historische Baseline, keine heutigen Bewertungswerte oder Gewichtscaps |
-| [DATA_MODEL.md](DATA_MODEL.md) | Konzept-/Graphsemantik, verfügbare Metadaten und technische Speicherverträge |
-| [AGENTS.md](../AGENTS.md), [VISION.md](VISION.md), [ARCHITECTURE.md](ARCHITECTURE.md) | Projekt- und Arbeitsrahmen; für die Umsetzung zusätzlich relevante ADRs und gegebenenfalls aktueller PR-Review |
-| [Finaler #188-Review](analysis/availability-novelty-final-review-v1-20260907.md) | Freigabeherkunft und Einordnung des konsolidierten Referenzbestands |
+```bash
+./mvnw -Pcatalog-index -DskipTests compile exec:java \
+  -Dexec.args="search --repository-root . --manifest docs/catalog-index/catalog-index.manifest.json --candidates <eingabe.jsonl> --output <ausgabe.jsonl> --page-size 100"
+```
 
-Für neue Metadaten ist zusätzlich eine passende Auswahl der **tatsächlich freigegebenen Notizen und Vergleichskonzepte** im dort verlinkten [finalen TSV](analysis/availability-novelty-final-review-v1-20260907.tsv) zu lesen. Das TSV muss für eine einzelne Neuaufnahme nicht katalogweit erneut bewertet werden. Die Auswahl deckt vergleichbare Produktformen, Beschaffungswege, Stufen und gegebenenfalls Personenunterschiede ab. Abschnitt 3, Schritt 6 der operativen Checkliste benennt Stilanker und Längenmaßstab.
+Die Ausgabe ist nur vollständig, wenn ihr `searchSummary` `complete: true`, Kandidaten-/Seitenzahl,
+Quellcommit und Payload-SHA ausweist. `--integrity-only true`, ein Top-N-Ausschnitt, ein einzelner SQL-Treffer oder
+ein fehlender Zugriff sind kein abschließender Existenznachweis.
 
-Die aktuellen Fachspezifikationen und ausdrücklich freigegebenen Einzelentscheidungen haben Vorrang vor historischen Baseline-Beispielen und überholten Zwischenständen aus #188. Das finale TSV dokumentiert die Konsolidierung; spätere freigegebene Katalogänderungen bleiben gültig. Die Anker sind weder heutige Händlerbestandsnachweise noch automatisch übertragbare Werte für neue Konzepte. Ein echter ungelöster Widerspruch wird offengelegt, nicht stillschweigend aufgelöst.
+Jeder Kandidat erhält nach manueller Identitätsprüfung genau einen Zustand aus dem Indexvertrag:
 
-Die gesamte Recherche-/Freigabefolge steht hier, die Ratingkriterien ausschließlich in der Fachspezifikation und ihre operative Anwendung in der Konzeptcheckliste. Startprompts wiederholen diese Regeln nicht vollständig.
+- `PRESENT_MATCH`,
+- `PRESENT_OTHER_CODE_OR_NAME`,
+- `RELATED_NOT_IDENTICAL`,
+- `ABSENT_AFTER_FULL_REVIEW`,
+- `UNRESOLVED`.
 
-## Grundprinzip
+Ein automatischer Exakttreffer bleibt ohne begründete Auflösung ungeklärt. Nulltreffer, Mehrdeutigkeit oder
+fehlender Zugriff erzeugen keine bestätigte Kataloglücke. Nur `ABSENT_AFTER_FULL_REVIEW` mit vollständiger
+fachlicher Prüfung trägt einen Neuaufnahmevorschlag wegen Abwesenheit.
 
-Für jeden Durchgang wird genau ein Land betrachtet. Ausgangspunkt ist immer der zu diesem Zeitpunkt maßgebliche redaktionelle Zutatenkatalog einschließlich vorhandener Konkretisierungen und bereits freigegebener Länderzuordnungen. Außerhalb einer Sammelphase ist das `main`; während der laufenden Sammelphase ist der aktuelle Stand von `feat/172-country-catalog-curation` maßgeblich, damit bereits freigegebene, aber noch nicht gemergte Länderpakete beim nächsten Land berücksichtigt werden.
+## Phase 1: Fachliche Recherche bis Gate 1
 
-Es gibt zwei voneinander unabhängige Fragen:
+### 1.1 Küchenkontext und Kandidatensuche in beide Richtungen
 
-1. **Länderrelation:** Erfüllt die belegte Rolle des konkreten Zutatenkonzepts im beauftragten Küchenumfang die [normative Entscheidungsschwelle](CULINARY_COUNTRY_ASSOCIATIONS.md#4-redaktionelle-entscheidung)?
-2. **Katalogaufnahme:** Falls eine charakteristische Zutat noch fehlt: Ist sie unabhängig von der Länderrelation ein sinnvolles Mise-en-Dice-Zutatenkonzept?
+Eine kurze fachliche Einordnung der nationalen beziehungsweise ausdrücklich abgegrenzten Küche erarbeiten:
+prägende Grundprodukte, Würzlogik, Produktformen und entscheidungsrelevante regionale Unterschiede.
 
-Eine typische Zutat erhält damit weder automatisch eine Länderrelation noch automatisch ein Freifahrtticket in den Katalog.
+Danach beide Suchrichtungen durchführen und zusammenführen:
 
-## Ablauf pro Land
+1. **Katalog → Küche:** Bestand breit über relevante Zutatenfamilien, Produktformen und Verwendungsbereiche auf
+   plausible Kandidaten prüfen.
+2. **Küche → Katalog:** prägende Produkte und Traditionen unabhängig recherchieren und anschließend gegen
+   denselben vollständigen Bestand auflösen.
 
-### 0. Arbeitsstand und Änderungsgrenze sichern
+Die Abdeckungsübersicht ist eine Suchhilfe, keine Trefferquote. Parent und Child, Saat und Öl, Mischung und
+Einzelgewürz sowie Zutat und Fertiggericht nicht gleichsetzen. Spezifischere vorhandene Konzepte zuerst auf
+Produktpassung prüfen; dies ist keine Verdrängungsregel. Globale Verbreitung, stärkere Assoziation einer anderen
+Küche, bereits zugeordnete Geschwister oder nur ein repräsentatives Gericht sind keine pauschalen Ausschlüsse.
 
-- Aktuelle Remote-Stände von `main` und `feat/172-country-catalog-curation` lesen beziehungsweise fetchen; verwendete Commit-SHAs intern festhalten.
-- Vor dem Katalogabgleich feststellen, ob der Sammelbranch den aktuellen `main` enthält. Ist er nur zurück, per Fast-forward synchronisieren; bei beidseitigen Änderungen `main` unter Erhalt der freigegebenen Sammelarbeit integrieren. Kein Reset und kein Force-Push zum Verwerfen fremder Arbeit. Fachliche Konflikte nicht selbst neu entscheiden.
-- Pflichtdokumente und Katalog müssen anschließend auf einem konsistenten aktuellen Stand gelesen werden. Fehlt eine neue Pflichtquelle auf dem alten Branch, zuerst den Standabgleich lösen, nicht die Quelle auslassen. Ist Synchronisierung oder aktueller Katalogzugriff unmöglich, die Einschränkung sichtbar machen und keine vermeintlich vollständige Bewertung auf altem Stand behaupten.
-- Maßgeblich ist der resultierende Katalog nach **allen** eingebundenen Migrationen, nicht das erste passende SQL-Insert oder ein historischer TSV-Export. Existenzabgleich umfasst stabile Codes, Anzeigenamen, Schreibvarianten, Produktformen sowie inaktive und nicht ziehbare Konzepte.
-- Ein isolierter lokaler Aufbau oder rein lesender Export für den Bestandsabgleich ist zulässig und verändert keine produktiven Daten. Nach ADR 0003 ist die operative Datenbank für dortige redaktionelle Änderungen autoritativ. Bekannte operative Deltas vor Übernahme abgleichen; ein Repository-Befund ist keine behauptete Produktionsabfrage.
+### 1.2 Ergebnisdarstellung
 
-**Bis zur ersten Freigabe:** ausschließlich fachliche Analyse; keine neuen Katalogdaten, Migrationsskripte oder ungefragte externe Entscheidungsprotokolle persistieren und keine vollständigen Metadaten für noch nicht zur Aufnahme freigegebene Konzepte ausarbeiten. Lokale Rechercheunterlagen und die notwendige Branch-Synchronisierung sind keine fachliche Einpflege.
+Pro ernsthaft geprüftem Kandidaten mindestens festhalten:
 
-### 1. Küchenkontext
+- stabile Arbeitsreferenz,
+- Konzeptcode beziehungsweise noch ungeklärte Identität,
+- Existenzstatus samt Index-/Quellkennung und kurzer Auflösung,
+- Relationsvorschlag `setzen`, `Grenzfall / bewusst prüfen` oder `nicht setzen`,
+- bei bestätigter Lücke getrennten Aufnahmevorschlag `aufnehmen`, `Grenzfall` oder `nicht aufnehmen`,
+- Quellenbefund, redaktionelle Schlussfolgerung und verbleibende Unsicherheit,
+- offene Produktform-, Granularitäts- oder Graphfragen,
+- Freigabestatus.
 
-Zu Beginn eine kurze fachliche Einordnung der betreffenden nationalen Küche erarbeiten, insbesondere prägende Grundprodukte, Würzlogik, typische Produktformen und relevante regionale Unterschiede, soweit diese für Zutatenentscheidungen wichtig sind.
+Auch ernsthaft geprüfte Grenzfälle und Ablehnungen zeigen; nicht jeden offensichtlich unplausiblen Katalogeintrag
+mit einer künstlichen Ablehnung versehen. Der vollständige Existenzabgleich bleibt im Issue oder einem eindeutig
+versionierten Hauptanhang nachvollziehbar, während die menschliche Übersicht lesbar bleibt.
 
-Kein Vollständigkeitsanspruch und keine touristische Küchenbeschreibung; der Kontext dient der anschließenden Bewertung.
+### 1.3 Gate 1
 
-### 2. Kandidaten aus dem bestehenden Katalog
+Die Recherche liefert Empfehlungen, keine Datenpflege. Der aktuelle Body wird auf eine benannte Revision gebracht.
+Die menschliche Entscheidung nennt explizit freigegebene positive Relationen, Neuaufnahmen und weiterhin offene
+oder abgelehnte Fälle. Anschließend hält ein eigener, fest verlinkter Gate-1-Kommentar das vollständige freigegebene
+Delta und die Revision fest. Spätere Änderungen erfolgen in einer neuen Revision; der alte Schnappschuss bleibt
+unverändert rekonstruierbar.
 
-Den aktuellen Katalog breit auf plausible Kandidaten prüfen.
+Bis Gate 1 sind keine neuen Katalogdaten/Migrationen und keine vollständigen Metadaten für ungeklärte
+Neuaufnahmen zulässig. Lokale Rechercheunterlagen, Issuepflege und notwendige technische Vorbereitung sind noch
+keine fachliche Einpflege.
 
-Dabei insbesondere beachten:
+## Phase 2: Metadatenentwurf und Gate 2
 
-- ikonische oder landestypische Produkte,
-- Grundzutaten mit einer nach der Ländersemantik belegbaren charakteristischen Rolle,
-- Würzmittel, Fermente, Fette, Säuren, Kräuter, Gewürze und charakteristische Produktformen,
-- vorhandene spezifischere Konzepte zuerst auf genauere Produktpassung prüfen; dies ist keine Verdrängungsregel für eigenständig begründete Parent- oder Geschwisterrelationen,
-- Parent und Child niemals automatisch gemeinsam zuordnen,
-- globale Verbreitung weder als automatischen Ausschluss noch als ausreichende Begründung behandeln.
+Nur für Gate-1-freigegebene Neuaufnahmen oder ausdrücklich geöffnete bestehende Metadaten die vollständige Vorlage
+aus `INGREDIENT_CONCEPT_CURATION.md` verwenden. Mindestens sichtbar sind:
 
-Nicht nur erwartete positive Treffer dokumentieren, sondern auch fachlich naheliegende Kandidaten, bei denen die Zuordnung nach Recherche bewusst verworfen wird.
+- Code, Anzeigename, Aktivstatus, Spezifität, Ziehbarkeit, zulässige und ausgeschlossene Produktformen,
+- echte allgemeine Kuratornotiz,
+- explizite Parent-/Child-Kanten, Rollen, Dimensionen, Flags und gegebenenfalls Saison,
+- eigenständig begründete Kochungewöhnlichkeit und `base_draw_weight`,
+- Georgia-/Tobias-Beschaffbarkeit jeweils mit Stufe, Markt-/Logistikbegründung, aktueller Evidenz und exakt
+  vorgeschlagenem individuellem Notiztext,
+- Länderrelationen, Exclusions und andere besondere Metadaten oder begründete Nichtanwendbarkeit.
 
-### 3. Webrecherche
+Kochungewöhnlichkeit und Beschaffung unabhängig bewerten. Historische Referenzanker dienen der Skalen- und
+Textkalibrierung, nicht als aktueller Händlernachweis. Research-Evidenz bleibt von Nutztexten getrennt. Beide
+Availability-Stufen und beide exakten Personennotizen sowie die allgemeine Kuratornotiz gehören ausdrücklich zur
+Freigabe; eine Zahlenfreigabe genehmigt keine später erfundenen Texte.
 
-Für jeden ernsthaft plausiblen Kandidaten belastbare Webquellen recherchieren und die [normativen Evidenz- und Gegenrechercheregeln](CULINARY_COUNTRY_ASSOCIATIONS.md#46-evidenz-und-gegenrecherche) anwenden. Quellenbefund, Schlussfolgerung und verbleibende Unsicherheit dem konkreten Kandidaten zuordnen. Bei regionaler Evidenz die tatsächliche Region und Rolle festhalten; die [Regionalregel](CULINARY_COUNTRY_ASSOCIATIONS.md#45-küchenumfang-und-regionale-traditionen) verlangt keine zusätzliche landesweite Bedeutung.
+Gate 2 wird wie Gate 1 revisionsgebunden in einem nicht nachträglich editierten, fest verlinkten Kommentar
+festgehalten. Ändert sich nachher nur ein Teil des Entwurfs, wird ausschließlich dieses Delta mit neuer Revision
+erneut vorgelegt; unveränderte freigegebene Teile bleiben gültig.
 
-### 4. Bewertung bestehender Kandidaten
+Sind ausschließlich bestehende Länderrelationen ohne Neuaufnahme oder Metadatendelta freigegeben, entfällt das
+inhaltlich leere Gate 2. Sobald neue Konzepte Teil eines gemeinsamen Länderpakets sind, wartet dessen technische
+Einpflege auf Gate 2, sofern kein ausdrücklich beauftragter Teilschnitt beschlossen wurde.
 
-Jeden untersuchten vorhandenen Kandidaten nach den [normativen Arbeitsurteilen](CULINARY_COUNTRY_ASSOCIATIONS.md#47-urteil-und-freigabe) einordnen als:
+## Phase 3: Beauftragte technische Einpflege
 
-- **setzen**,
-- **Grenzfall / bewusst prüfen**,
-- **nicht setzen**.
+Vor dem Schreiben Basis, Batchbranch, betroffene Konzepte, offene Parallelvorschläge und Freigabedeltas erneut
+abgleichen. Nur den ausdrücklich freigegebenen Umfang übernehmen:
 
-Die Ergebnisdarstellung enthält mindestens:
+- neue append-only Liquibase-Changesets nach den bestehenden Includes; veröffentlichte Changesets, #188-Review
+  und historische Manifeste nicht umschreiben,
+- stabile Codes statt geratener IDs; Kollisionen oder unbekannte Deltas sichtbar stoppen,
+- Kurator- und Availability-Notizen exakt wie freigegeben übernehmen,
+- Kanten und Änderungen an bestehenden Aggregaten explizit pflegen; keine abgeleiteten Länder-, Rating-, Rollen-
+  oder sonstigen Fachänderungen ergänzen,
+- aktuelle Transaktions-, Integritäts-, Graphlock- und Versionsverträge wahren,
+- vor Commit den vollständigen Diff einmalig gegen beide Freigabeschnappschüsse prüfen.
 
-- Zutatenkonzept,
-- Empfehlung,
-- kurze fachliche Begründung mit tragender Rolle und tatsächlichem Küchenkontext,
-- relevante Quellen,
-- bei Bedarf Hinweis auf genauer passende Parent-/Child-Konzepte oder offene Granularitätsfragen; jede Relation weiterhin eigenständig beurteilen.
+Marktklassen, URLs, Prüfdaten und ausführliche Evidenz sind Reviewunterlagen, keine neu einzuführenden
+DB-Metadaten. Ein Commit/PR schließt #172 nicht. Das Runden-Issue verlinkt später Implementierungscommit, Batch-PR
+und tatsächliche Prüfungen; #172 verweist kompakt auf die Runde und den Batch.
 
-Grenzfälle werden nicht stillschweigend positiv interpretiert.
+## Phase 4: Technische Prüfung und Batch-Abschluss
 
-### 5. Fehlende charakteristische Zutaten
+Automatisierte Tests bilden keine redaktionelle Fachlichkeit des produktiven Katalogs ab. Unzulässig bleiben
+insbesondere Assertions auf konkrete produktive Konzept-/Relationslisten, Sollmengen, Länderablehnungen, Ratings,
+Notizen, Rollen, Dimensionen, Flags, Availability, Saison, Kanten oder Content-Snapshots. Testeigene synthetische
+Daten dürfen technische Verträge prüfen.
 
-Anschließend gezielt nach für die Küche relevanten Zutaten suchen, die im aktuellen Katalog fehlen.
+Ein reiner weiterer Länder-/Katalogcommit verlangt keinen Vollsuite-Lauf. Gezielt dürfen technische
+PostgreSQL-/Migrationstests laufen, wenn sie zusätzlichen Schutz bieten. Der vollständige
+`./mvnw clean verify` und die relevanten CI-Gates sind Batch-Abschlussprüfung bei ausdrücklich beauftragter
+Mergevorbereitung oder früher bei einem konkreten technischen Umbau/Fehler. Technische Anwendungscodeänderungen
+erhalten keine pauschale Länderbatch-Ausnahme.
 
-Für jeden solchen Kandidaten getrennt bewerten:
+Vor jedem Push mindestens:
 
-- **Katalogaufnahme:** aufnehmen / Grenzfall / nicht aufnehmen,
-- **Länderrelation:** setzen / Grenzfall / nicht setzen,
-- Begründung und Quellen,
-- sinnvolle Konzeptgranularität und bestehende Parent-Konzepte, soweit bereits erkennbar.
+- vollständiger Scope-/Freigabe-Diffabgleich,
+- `git diff --check <Basis-SHA> <Head-SHA>`,
+- Prüfung der tatsächlich betroffenen Links, Vorlagen und Startprompts,
+- ehrliche Zuordnung ausgeführter, nicht anwendbarer, laufender und fehlgeschlagener Checks.
 
-Eine Zutat darf dabei als interessante Kataloglücke erscheinen, obwohl ihre Länderrelation nicht stark genug ist. Umgekehrt kann eine starke Länderassoziation bestehen, obwohl das Produkt wegen zu enger, zusammengesetzter, markenartiger oder anderweitig ungeeigneter Granularität nicht als eigenes Katalogkonzept aufgenommen werden sollte.
+Merge, Deployment, Produktionszugriff und Branchlöschung bleiben getrennte Befugnisse.
 
-### 6. Interner Existenzabgleich
+## Nachvollziehbarkeit und lange Anhänge
 
-Nach dem Zusammenstellen der als vorhanden behandelten und der potentiell neu aufzunehmenden Zutaten einen separaten Abgleich gegen den zu diesem Zeitpunkt maßgeblichen Katalog-/DB-Datenbestand durchführen.
+Der aktuelle Runden-Body enthält mindestens Küchenumfang/Code, Abgrenzungen, Phase/Revision, Katalog-/Regelstand,
+offene Sammeldeltas, Kandidatenentscheidungen/Evidenz, Gate-Status, Änderungsliste und später Commit/PR/Prüfungen.
+Diskussionen bleiben Kommentare; relevante Beschlüsse werden in den Body konsolidiert.
 
-Für **jedes** betrachtete Zutatenkonzept – auch für vermeintliche Kataloglücken – verifizieren, ob es bereits in `ingredient_concept` vorhanden ist. Falsch angenommene Existenz wird vor der menschlichen Freigabe korrigiert; vermeintlich neue Konzepte, die bereits existieren, werden stattdessen als bestehende Kandidaten behandelt.
+Keine obligatorische Vollkopie derselben Tabellen in Chat, Repository und PR. Bei langen Anhängen eine eindeutig
+versionierte Hauptquelle verlustfrei verlinken. Body und Anhang dürfen keine konkurrierenden aktuellen Fassungen
+bilden. Freigabeschnappschüsse referenzieren exakt die freigegebene Revision und enthalten das freigegebene Delta,
+damit ein später bearbeiteter Body die damalige Entscheidung nicht unkenntlich macht.
 
-Dieser Abgleich ist interne Qualitätssicherung und muss in der Ergebnisnachricht nicht separat ausgewiesen werden.
+## Übergang, D3 und #252
 
-#### Ergebnis der ersten Runde
+Die vorbereitete Einführung, der synthetische Verfahrensdurchgang und die begrenzte D3-Fallliste stehen in
+[`analysis/country-workflow-transition-20260911.md`](analysis/country-workflow-transition-20260911.md).
 
-Übersichtlich vorlegen:
-
-- kurze Kücheneinordnung,
-- bestehende Kandidaten mit Entscheidung, knapper Begründung und Quellen,
-- ernsthaft geprüfte Grenzfälle und bewusst verworfene Kandidaten,
-- mögliche neue Konzepte mit getrennten Empfehlungen für Katalogaufnahme und Länderrelation,
-- erforderliche Granularitäts- und Parent-/Child-Fragen.
-
-Die Recherche einer Beschaffungsgrenze darf schon die grundsätzliche Aufnahmefähigkeit klären; daraus entsteht noch kein erfundener kompletter Metadatensatz.
-
-### 7. Menschliche Entscheidung über Relationen und neue Konzepte
-
-Die Recherche liefert Empfehlungen, keine automatische Datenpflege.
-
-Nach der Analyse werden die vorgeschlagenen Länderrelationen und potentiell neu aufzunehmenden Zutaten gemeinsam geprüft. Nur ausdrücklich freigegebene positive Länderrelationen und ausdrücklich zur Katalogaufnahme freigegebene neue Konzepte gehen in den nächsten Schritt.
-
-Offene Grenzfälle bleiben unpersistiert, bis eine bewusste Entscheidung gefallen ist.
-
-### 8. Metadatenentwurf für neue Konzepte und zweite Freigabe
-
-**Nach der Entscheidung, welche neuen Zutatenkonzepte grundsätzlich angelegt werden sollen, aber vor jeder technischen Persistierung**, für jedes neue Konzept einen vollständigen, menschenlesbaren Metadatenentwurf ausgeben und separat freigeben lassen.
-
-Beabsichtigte Änderungen bestehender Konzeptmetadaten, etwa wegen einer geschärften Produktform, werden ebenfalls ausdrücklich als Delta vorgelegt und vor ihrer Persistierung freigegeben. Eine neue Länderrelation allein öffnet bestehende Ratings oder Notizen nicht erneut.
-
-Dabei mindestens prüfen und anzeigen:
-
-- Code und Anzeigename,
-- Aktivstatus, Challenge-Spezifität, Ziehbarkeit, eigenständig begründetes Basisgewicht und Kochungewöhnlichkeit mit Stufe, Bezeichnung und Exaktproduktbegründung,
-- **Parents und Children / Konkretisierungsbeziehungen**; keine automatische Vererbung oder stillschweigende Graph-Ergänzung,
-- **funktionale/kulinarische Rollen**,
-- **kulinarische Dimensionen bzw. Geschmacksskalen** einschließlich der vorgesehenen Werte,
-- relevante kulinarische Flags,
-- **Beschaffbarkeit für Georgia und Tobias getrennt**, jeweils Stufe, Bezeichnung, exakt vorgeschlagener individueller Notiztext sowie erforderliche Markt-/Form-/Logistikbegründung und Evidenz,
-- Saisonalität, sofern fachlich relevant,
-- **Kuratornotiz (immer erforderlich)** sowie nötige Exclusions oder andere besondere Metadaten, sofern relevant.
-
-#### Verbindliche Vollständigkeit und Textfreigabe
-
-Die vollständige Vorlage und alle Notizregeln aus [INGREDIENT_CONCEPT_CURATION.md](INGREDIENT_CONCEPT_CURATION.md) verwenden. Beide Availability-Notizen sind eigene Metadaten neben der allgemeinen kulinarischen Kuratornotiz; sie dürfen weder entfallen noch durch eine gemeinsame Kuratornotiz ersetzt werden. Wortlaut, Detailgrad und Länge werden vor Vorlage mit passenden konsolidierten Notizen verglichen. Quellen und ausführliche Recherchebegründungen stehen getrennt vom späteren Notiztext.
-
-Kochungewöhnlichkeit zuerst unabhängig von der Beschaffung bewerten, danach Georgia und Tobias getrennt. Küchentisch- und Parent-/Exaktprodukt-Kontrolle knapp belegen; kein bloßes Abhaken anstelle einer nachvollziehbaren Begründung. Keine Rückkehr zur alten Vierer-Availability oder zu automatischen Gewichtsobergrenzen.
-
-Für beide Availability-Bewertungen werden die aktuellen Trennlinien ausdrücklich angewandt: `EASY ↔ PLANNED` trennt spontanen allgemeinen Alltagshandel von gezieltem allgemeinem Handel, `PLANNED ↔ SPECIALTY` allgemeinen Handel vom notwendigen Spezialweg und `SPECIALTY ↔ DIFFICULT` die Breite und Robustheit innerhalb des Spezialmarkts. Notwendige spezialisierte Sortimente, Vorbestellung/Reservierung mit späterer Abholung und tragender Frisch-/Kühl-/TK-Versand liegen mindestens auf `SPECIALTY`; ein großer allgemeiner Versandweg kann allein nur bei lagerfähiger, nicht kühlpflichtiger Ware `PLANNED` tragen.
-
-Vor gleichwertigem Versand wird ein einfacher belastbarer allgemeiner Offline-Weg bewusst geprüft und im Nutztext bevorzugt. Ein spezialisierter Offline-Weg wird dadurch nicht automatisch besser eingestuft als ein tatsächlich allgemeinerer Versandweg für lagerfähige Ware; eine Omnichannel-Webseite gilt nicht als automatischer Regalbeleg.
-
-Research-Evidenz und späterer Nutztext bleiben strikt getrennt. Jede Zielnotiz wird vor der Freigabe darauf geprüft, dass sie reine Beschaffungsinformation enthält, den Konzeptnamen nicht ohne Informationswert wiederholt und keine Konzeptdefinition oder fachliche Gültigkeitsregel formuliert. Konkrete Onlinehändler, Listings, Warenkörbe, Momentbestände, Einzelpreise, Gebinde und Lieferzeiten verbleiben in der datierten Evidenz. Verwechslungsgefahr darf im Nutztext nur als reales Einkaufsproblem erscheinen.
-
-Für fachlich anwendbare neue Konzepte werden die Bewertungen und Notizen vor der Einpflege vollständig vorgelegt, auch wenn sie zunächst nicht zufällig ziehbar sein sollen. Nur ausdrücklich begründete Nichtanwendbarkeit, etwa bei reinen Strukturknoten, ersetzt Werte durch `nicht anwendbar`; in der Datenbank entstehen daraus keine erfundenen Enums oder Notizen. Die technische Sparse-Semantik ist keine Ausweichmöglichkeit für unvollständige #172-Freigaben.
-
-Die zweite Freigabe muss erkennbar **beide Availability-Level und beide exakten Personennotizen** sowie die übrigen Ratings und Notiztexte umfassen. Eine reine Zahlenfreigabe genehmigt keine später erfundenen Texte. Änderungen nach der Freigabe werden als betroffenes Delta erneut vorgelegt; unveränderte freigegebene Teile werden nicht unnötig neu geöffnet.
-
-Auch Beziehungen, durch die ein bereits existierendes Konzept Parent oder Child eines neuen Konzepts wird, müssen explizit sichtbar sein. Für nicht anwendbare Metadaten genügt eine klare Kennzeichnung als nicht erforderlich.
-
-Erst nach dieser zweiten menschlichen Freigabe dürfen neue Konzepte samt **ausdrücklich freigegebener Kuratornotiz, beiden Availability-Notizen und übrigen Metadaten** technisch angelegt werden.
-
-Sind ausschließlich bestehende Länderrelationen freigegeben und weder neue Konzepte noch Metadatenänderungen vorgesehen, entfällt die inhaltlich leere zweite Runde. Sobald neue Konzepte vorgesehen sind, wartet das gesamte Länderpaket auf die zweite Freigabe; eine vorgezogene Teilpersistierung bedarf eines ausdrücklichen Auftrags.
-
-### 9. Technische Persistierung und Verifikation
-
-Nur die in den vorangegangenen Schritten ausdrücklich freigegebenen Länderrelationen, neuen Konzepte und Metadaten persistieren.
-
-Vor dem Schreiben Branch-/Katalogstand erneut abgleichen. Neu hinzugekommene oder geänderte betroffene Konzepte gegen die Freigabe prüfen und nur fachlich veränderte Deltas erneut vorlegen. Stabile Codes verwenden, keine geratenen Datenbank-IDs.
-
-- Neue append-only Liquibase-Changesets nach den bestehenden Includes ergänzen; veröffentlichte Changesets, den finalen #188-Review und historische Konsolidierungsmanifeste nicht umschreiben.
-- Insbesondere neue Länderpakete **nach** der #189-Konsolidierung anhängen. Deren defensiv geprüfter Vorzustand darf nicht durch davor eingeschobene Katalogänderungen verändert werden.
-- Allgemeine Kuratornotiz nach `ingredient_concept.curator_note`; jede Personenstufe und deren exakter Notiztext gemeinsam nach `ingredient_availability.availability_level` beziehungsweise `ingredient_availability.curator_note` übernehmen.
-- Marktklasse, Evidenz, URLs, Prüfdatum und ausführliche Begründungen sind Reviewunterlagen, keine neu einzuführenden DB-Metadaten.
-- Freigegebene Kanten einschließlich betroffener bestehender Konzepte explizit pflegen. Keine abgeleiteten Länder-, Rollen-, Rating- oder sonstigen Fachänderungen ergänzen.
-- Transaktions-, Integritäts- und Versionsverträge des aktuellen Datenmodells wahren; unbekannte Abweichungen nicht überschreiben oder fachlich umdeuten.
-- Vor Commit den gesamten Änderungsdiff einmalig gegen die Freigabe abgleichen, einschließlich Notizwortlaut und nicht beabsichtigter Deltas. Das ist Implementierungs-QA, kein dauerhaftes Test-Oracle.
-- Nachvollziehbar committen und auf den Sammelbranch pushen. Bestehenden passenden PR verwenden oder bei Bedarf als Draft gegen `main` eröffnen; #172 nicht mit `Closes` schließen. Kein Merge oder Deployment ohne ausdrücklichen Auftrag.
-
-Während der laufenden länderweisen Katalogpflege werden sämtliche freigegebenen Erweiterungen **bis zu einem ausdrücklichen Merge-Auftrag in demselben langlebigen Feature-Branch gesammelt**. Gemeinsamer Arbeitsbranch ist `feat/172-country-catalog-curation`. Nach einem Zwischenmerge wird derselbe Branch vom aktualisierten `main` aus weitergeführt beziehungsweise auf dessen Stand gebracht; #172 bleibt offen.
-
-**Automatisierte Tests bilden in diesem Workflow keinerlei redaktionelle Fachlichkeit des produktiven Katalogs ab.** Sie dürfen weder eine menschlich freigegebene Länderentscheidung noch die fachlichen Metadaten eines im Länderreview aufgenommenen Konzepts als Sollwert duplizieren. Insbesondere werden keine Assertions auf konkrete produktive Zutaten→Land-Relationen, bewusst nicht gesetzte Relationen, landesspezifische Sollmengen, konkrete produktive Rollen/Dimensionen/Flags/Beschaffbarkeiten/Saisonalitäten/Refinement-Kanten oder sonstige redaktionelle Inhaltswerte angelegt. Auch ein als „Migrationstest“, „Regressionstest“, „Snapshot“ oder „Sanity Check“ bezeichneter Test ist dafür kein Hintertürchen.
-
-Die fachliche Wahrheit liegt in **Recherche, menschlicher Freigabe, dem landweisen Entscheidungsprotokoll unter #172 und den daraus freigegebenen produktiven Datenänderungen** – nicht in einem zweiten Satz Content-Assertions im Testbestand.
-
-Ein einzelner Commit für ein weiteres Länder-/Katalogscript ist **kein Anlass für einen vollständigen Verify-Lauf**. Direkt nach solchen Commits werden höchstens schnelle technische PostgreSQL-/Migrationstests ausgeführt, sofern sie für die konkrete Änderung einen sinnvollen zusätzlichen Schutz bieten und dabei keine produktive Fachlichkeit festschreiben. Es ist ausdrücklich zulässig, bei rein additiven, bereits fachlich geprüften Datenänderungen zunächst keinen separaten lokalen/CI-Volltest abzuwarten.
-
-Die vollständige Maven-/Testcontainers-Suite ist eine **Batch-Abschlussprüfung** und wird erst ausgeführt bzw. als notwendiger Synchronisationspunkt abgewartet, wenn ausdrücklich die Merge-Vorbereitung verlangt wird oder wenn ein konkreter technischer Fehler/Umbau dies vorher erforderlich macht. Automatisch durch einen bereits offenen PR gestartete Vollsuite-Läufe müssen während der Sammelphase nicht vor dem nächsten Land abgewartet werden.
-
-Spätestens vor dem Merge müssen der komplette akkumulierte Branch und die relevanten **technischen** Upgrade-/Restart-/Integritätsverträge gemeinsam grün sein. Ein Länderpaket darf fachfremde historische Upgrade- oder Kompatibilitätstests nicht nur deshalb brechen, weil der redaktionelle Katalog gewachsen oder inhaltlich korrigiert worden ist.
-
-### 10. Nachvollziehbarkeit
-
-Für jedes bearbeitete Land soll der finale Recherche- und Entscheidungsstand nachvollziehbar festgehalten werden, bevorzugt als eigener Kommentar unter [#172](https://github.com/venomenon328/mise-en-dice/issues/172) mit:
-
-- Land und ISO-Code,
-- kurzer Kücheneinordnung,
-- Entscheidungen zu bestehenden Katalogkandidaten,
-- Entscheidungen zu fehlenden Zutaten,
-- Quellen,
-- Liste der freigegebenen Änderungen und bewusst verworfenen beziehungsweise offenen Grenzfälle,
-- erste und gegebenenfalls zweite Freigabe mit eindeutigem Bezug auf die freigegebenen Werte und Texte,
-- Katalog-Ausgangscommit, Implementierungscommit und PR, soweit vorhanden,
-- tatsächlich ausgeführte technische Prüfungen und gegebenenfalls noch ausstehendes Batch-Verify.
-
-Das Protokoll hält die Evidenz und Entscheidungen nachvollziehbar zusammen, ohne einen zweiten unabhängig gepflegten produktiven Vollkatalog anzulegen. Nach der Einpflege kompakt mitteilen, was übernommen wurde und was offen blieb. #172 bleibt auch nach einem Zwischenmerge offen.
-
-Die technische Umsetzung darf anschließend pro Land oder in kleinen freigegebenen Datenbatches erfolgen; die redaktionellen Entscheidungen müssen dabei weiterhin landweise nachvollziehbar bleiben.
-
-## Verbindliche Teststrategie: keine Fachlichkeit im automatisierten Testbestand
-
-Für rein redaktionelle #172-Datenbatches konkretisiert diese bereits im Issue festgelegte Batch-Regel die allgemeine Verify-Pflicht aus `AGENTS.md`; technische Anwendungsänderungen erhalten keine pauschale Ausnahme. `git diff --check` bleibt vor jedem Push Pflicht. Bei angeforderter Merge-Vorbereitung sind `./mvnw clean verify` und die relevanten CI-Gates am vollständigen akkumulierten Branch verpflichtend. Fehlende Laufzeit-/Container-Voraussetzungen ehrlich melden; keine erfolgreichen Tests behaupten und keine Tests deshalb deaktivieren.
-
-Der produktive Zutatenkatalog ist **redaktioneller Datenbestand und kein automatisiertes Test-Oracle**. Eine fachliche Korrektur über Administration, Migration oder sonstige redaktionelle Pflege darf nicht allein deshalb Tests brechen, weil sich ein konkreter produktiver Katalogwert geändert hat.
-
-### Ausdrücklich unzulässig
-
-- automatisierte Tests auf exakte aktuelle Konzeptzahlen, Relationenzahlen oder die exakte Liste produktiver Zutatenkonzepte,
-- Tests, die konkrete produktive Anzeigenamen, Aktiv-/Ziehbarkeitswerte, Spezifität, Gewichte, Novelty-Level, Beschaffbarkeit, Rollen, Dimensionen, Flags, Saisonalität, Exclusion-Zuordnungen, Refinement-Kanten oder kulinarische Länderrelationen als fachliche Wahrheit festschreiben,
-- länderspezifische Content-/Migrationstests, die die menschlich freigegebenen Entscheidungen des jeweiligen Länderreviews nochmals als Assertions duplizieren,
-- negative Content-Assertions wie „Konzept X darf Land Y nicht zugeordnet sein“, wenn dies lediglich eine redaktionelle Entscheidung ist,
-- aktuelle oder datierte Snapshot-/Fingerprint-Tests, deren Zweck darin besteht, den fachlichen Inhalt des Zutatenkatalogs unverändert zu konservieren,
-- Tests, deren Sollwerte bei einer rein redaktionellen Katalogkorrektur angepasst werden müssten.
-
-Für neue Länderpakete wird daher **nicht** automatisch ein eigener länderspezifischer Integrationstest angelegt. Bestehende Content-Assertion-Tests werden, wenn sie bei dieser Arbeit berührt oder als Ursache unnötiger Testpflege sichtbar werden, entfernt oder auf ihren tatsächlichen technischen Vertrag zurückgeführt.
-
-### Weiterhin sinnvoll und erforderlich: technische Verträge
-
-Automatisierte Tests dürfen und sollen technische Eigenschaften absichern, insbesondere:
-
-- Schema-, Constraint- und Referenzintegrität,
-- Ausführbarkeit und Upgrade-Verhalten von Liquibase-Migrationen sowie technische Idempotenz, soweit dies unabhängig vom konkreten redaktionellen Inhalt geprüft wird,
-- Transaktionen, Rollback und Optimistic Locking,
-- Such-, Filter-, Projektions- und Renderer-Verhalten mit **test-eigenen** Daten,
-- technische Graphregeln wie Zyklusverhinderung oder andere im Anwendungscode tatsächlich erzwungene Invarianten,
-- Generator-/Challenge-Invarianz gegenüber Metadaten, sofern der Test keine konkreten produktiven Zutatenwerte voraussetzt,
-- Restart- und Kompatibilitätsverhalten, ohne globale aktuelle Content-Zahlen oder konkrete Katalogfakten zum Vertrag zu machen.
-
-Testdaten dürfen selbstverständlich Zutaten-, Länder- und Metadatenwerte enthalten, wenn sie eigens für den Test angelegt werden und ausschließlich das technische Verhalten prüfen. Sie dürfen nicht als Kopie des aktuellen produktiven Länderreviews dienen.
-
-Für ein konkretes länderspezifisches Migrationsskript genügt eine technische Migrationsverifikation, **wenn** sie zusätzlichen Schutz bietet. Ein Test, der lediglich nochmals aufzählt, welche Zutaten und Metadaten gerade freigegeben wurden, bietet in diesem Workflow keinen technischen Schutz und soll nicht angelegt werden.
-
-Historische Upgrade-, Restart-, Generator-, Challenge- oder Kompatibilitätstests dürfen weder an eine globale aktuelle Konzept-/Relationszahl noch an eine gewachsene Changeset-Zahl gekoppelt sein, sofern diese Zahl nicht selbst der ausdrücklich technische Vertragsgegenstand ist. Scheitert ein solcher Test nur wegen legitimer redaktioneller Katalogpflege, ist seine Invariante zu eng und der Test auf den eigentlichen technischen Vertrag zu härten.
-
-## Qualitätsregeln
-
-Die [normative Ländersemantik](CULINARY_COUNTRY_ASSOCIATIONS.md#4-redaktionelle-entscheidung) ist der einzige Kriterienkatalog für Begründungswege, Informationswert, Granularität, Regionalität und zulässige Gegenbefunde. Dieser Ablauf ergänzt keine strengeren Ausschlussschwellen.
-
-Für die Ergebnisprüfung kontrollieren: Sind Identität, tatsächliche Rolle und Küchenkontext belegt, Quellenbefund und Schlussfolgerung getrennt sowie offene Fragen und menschliche Freigaben erkennbar? Eine gewünschte Listenlänge darf weder positive Empfehlungen erzwingen noch fachlich berechtigte Relationen verdrängen. Eine fehlende Zuordnung bleibt fehlendes positives Katalogwissen, keine Aussage über Unbekanntheit oder Unüblichkeit.
+- Die D3-Liste ist vor ihrer Übergabe an #252 vom Auftraggeber zu bestätigen. Ihre Aufnahme in das Repository ist
+  keine fachliche Umkehr einer Altentscheidung.
+- #252 führt erst danach die fachliche Nachprüfung im eingeführten Verfahren durch. Jede Datenänderung benötigt
+  neue fachliche Einzel-/Rundenfreigaben und einen passenden Einpflegeauftrag.
+- Pilotland und Probedurchlauf sind keine Vorbedingung für diese Dokumentimplementierung, bleiben aber offene
+  Einführungsschritte.
+- PR #247 und sein Branch bleiben bis zu ihrem gesondert beauftragten Abschluss unverändert erhalten.
 
 ## Nicht-Ziele
 
-- keine automatische Länderklassifikation,
+- keine automatische Länderklassifikation oder Regionenontologie,
 - keine Vollständigkeitsdatenbank sämtlicher Weltküchen,
 - keine Herkunfts- oder Exklusivitätsbehauptungen,
 - keine automatische Vererbung zwischen Zutatenkonzepten,
-- keine Pflicht, jedes Land oder jede häufig verwendete Zutat abzudecken,
-- keine ungeprüfte Katalogerweiterung nur zur Erhöhung der Länderabdeckung.
+- keine ungeprüfte Katalogerweiterung oder automatische Umkehr früherer Entscheidungen,
+- kein Produktions-Exportdienst, keine neue Workflow-Automatisierungsplattform und keine neuen Pflichtlabels,
+- keine neue fachliche Ratingregel und keine zusätzliche Freigaberunde.
 
-## Weitere Referenzen
-
-- #165 – Ursprungsentscheidung und Gesamtfeature; aktuelle normative Fassung: [CULINARY_COUNTRY_ASSOCIATIONS.md](CULINARY_COUNTRY_ASSOCIATIONS.md)
-- #249 – Präzisierung der Entscheidungsschwelle und Kalibrierung einschließlich Regionalentscheidung Q1; keine automatische Revision alter Länderfreigaben
-- #166 – technischer Katalogkern der Länderrelationen
-- #178 – verbindliche redaktionelle Vollständigkeit und Stilregeln für Kuratornotizen
-
-## Wiederverwendbarer Startprompt
+## Wiederverwendbarer Startprompt nach Einführung
 
 ```text
-Wir gehen das nächste Land im Repository `venomenon328/mise-en-dice` an.
+Wir bearbeiten die ausdrücklich beauftragte Länder-/Ergänzungsrunde im Repository
+`venomenon328/mise-en-dice`.
 
-**Land: <Land>**
+Runden-Issue: <URL>
+Land/Küchenumfang: <Name und Code>
+Technischer Batchbranch, falls bereits beauftragt: <Branch oder „noch keiner“>
 
-Lies den aktuellen vollständigen Body von Issue #172 und anschließend `docs/CULINARY_CATALOG_WORKFLOW.md` sowie sämtliche dort für die Analyse und Metadatenbewertung verpflichtenden Quellen vollständig. Verwende die aktuellen Fassungen, keine historischen Zwischenstände. Für die Ländersemantik ist `docs/CULINARY_COUNTRY_ASSOCIATIONS.md` maßgeblich; es konsolidiert die Ursprungsentscheidung #165 und die Präzisierung aus #249 einschließlich Q1.
+Lies `AGENTS.md`, den aktuellen Body des Runden-Issues, den aktuellen #172-Tracker und
+`docs/CULINARY_CATALOG_WORKFLOW.md`. Ziehe danach die Quellen aus dessen Matrix für die jetzt beauftragte Phase
+vollständig beziehungsweise in den dort ausdrücklich genannten Abschnitten heran. Prüfe den vorbereiteten
+Gesamtstand und den Repository-Katalogindex samt Manifest; separat dokumentierte freigegebene, noch nicht
+eingepflegte Vorschläge sind offene Arbeit und keine existenten DB-Konzepte.
 
-Arbeite auf `feat/172-country-catalog-curation`. Prüfe und synchronisiere den Branch gemäß Workflow mit dem aktuellen `main`, bevor du den resultierenden Katalog als Grundlage verwendest.
-
-Führe jetzt ausschließlich die fachliche Länderanalyse bis zur ersten menschlichen Freigabe durch und liefere die im Workflow festgelegte Ergebnisübersicht. Prüfe intern die Existenz aller betrachteten Konzepte, auch vermeintlicher Kataloglücken. Noch keine neuen Katalogdaten oder Migrationsskripte persistieren und keine vollständigen Metadaten für ungeklärte Neuaufnahmen ausarbeiten.
-
-Nach meiner ersten Freigabe erarbeitest du die vollständigen Metadaten der aufzunehmenden Konzepte einschließlich unabhängig bewerteter Kochungewöhnlichkeit, Georgia-/Tobias-Beschaffbarkeit und der exakt vorgeschlagenen individuellen Availability-Anmerkungen im Stil der Konsolidierung. Lege sie zur zweiten Freigabe vor. Erst danach folgt die Einpflege; Sammelbranch-, Protokoll- und Batch-Verify-Regeln einschließlich des Verbots redaktioneller Content-Tests gelten durchgehend.
-
-Beginne jetzt mit der fachlichen Analyse.
+Führe jetzt ausschließlich Phase <Phase> bis zum nächsten Haltepunkt durch und pflege die aktuelle Revision im
+zugehörigen Runden-Issue. Überspringe kein offenes fachliches Gate, verlange aber keine Wiederfreigabe bereits
+eindeutig freigegebener unveränderter Teile. Keine Katalog-/Migrationsänderung vor dem beauftragten Einpflegeschritt,
+kein Merge oder Deployment.
 ```
