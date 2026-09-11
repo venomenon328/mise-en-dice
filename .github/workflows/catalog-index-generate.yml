@@ -1,0 +1,72 @@
+name: Catalog Index Generation
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: Exact commit whose Liquibase catalog inputs are being exported
+        required: true
+        type: string
+      source_ref:
+        description: Human-readable source branch or ref
+        required: true
+        type: string
+      scope:
+        description: Exact included repository catalog scope
+        required: true
+        type: string
+      excluded_ref:
+        description: Optional explicitly excluded parallel source ref
+        required: false
+        type: string
+      excluded_commit:
+        description: Exact commit of the excluded source ref
+        required: false
+        type: string
+      excluded_reason:
+        description: Why the parallel source is excluded
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out selected tooling ref with source history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Generate from clean PostgreSQL 17 and complete Liquibase master
+        env:
+          CATALOG_INDEX_REPOSITORY_ROOT: .
+          CATALOG_INDEX_OUTPUT_DIRECTORY: target/catalog-index
+          CATALOG_INDEX_SOURCE_COMMIT: ${{ inputs.source_commit }}
+          CATALOG_INDEX_SOURCE_REF: ${{ inputs.source_ref }}
+          CATALOG_INDEX_SCOPE: ${{ inputs.scope }}
+          CATALOG_INDEX_EXCLUDED_REF: ${{ inputs.excluded_ref }}
+          CATALOG_INDEX_EXCLUDED_COMMIT: ${{ inputs.excluded_commit }}
+          CATALOG_INDEX_EXCLUDED_REASON: ${{ inputs.excluded_reason }}
+        run: >-
+          ./mvnw --batch-mode --no-transfer-progress -Pcatalog-index -DskipTests
+          -Dcatalog.index.main.class=io.github.venomenon328.miseendice.catalog.internal.catalogindex.CatalogIndexBuildMain
+          -Dcatalog.index.classpath.scope=test test-compile exec:java
+
+      - name: Upload generated pair without repository write permission
+        uses: actions/upload-artifact@v6
+        with:
+          name: catalog-index-${{ inputs.source_commit }}
+          path: target/catalog-index/
+          if-no-files-found: error
+          retention-days: 7

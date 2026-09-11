@@ -189,6 +189,26 @@
                 </plugins>
             </build>
         </profile>
+        <profile>
+            <id>catalog-index</id>
+            <properties>
+                <catalog.index.main.class>io.github.venomenon328.miseendice.catalog.internal.catalogindex.CatalogIndexCli</catalog.index.main.class>
+                <catalog.index.classpath.scope>runtime</catalog.index.classpath.scope>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.6.3</version>
+                        <configuration>
+                            <mainClass>${catalog.index.main.class}</mainClass>
+                            <classpathScope>${catalog.index.classpath.scope}</classpathScope>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
 </project>
