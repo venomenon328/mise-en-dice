@@ -107,12 +107,14 @@ Während einer parallelen Sammelarbeit werden `CATALOG_INDEX_EXCLUDED_REF`, `CAT
 gewählten, konsistent vorbereiteten Sammelstand neu zu erzeugen oder dessen Gültigkeit nachzuweisen. Zwei Exporte
 werden niemals vereinigt.
 
-Ohne lokalen Docker-Daemon darf der manuelle Workflow **Catalog Index Generation** auf dem Tooling-Ref gestartet
-werden. Er besitzt nur `contents: read`, erzeugt denselben isolierten PostgreSQL-/Liquibase-Stand und lädt das Paar
-als siebentägiges Artefakt hoch. `source_commit`, `source_ref` und `scope` sind Pflicht; die drei Exclusion-Eingaben
-sind gemeinsam oder gar nicht zu setzen. Nach Download beide erzeugten Dateien unverändert nach `docs/catalog-index`
-übernehmen, den neuen Stand mit dem obigen Validator prüfen und erst danach die vom neuen Manifest nicht mehr
-referenzierte alte Payload entfernen. Der Workflow schreibt nicht selbst ins Repository.
+Ohne lokalen Docker-Daemon darf der Workflow **Catalog Index Generation** verwendet werden. Bei seiner erstmaligen
+Einführung läuft er eng auf dem Draft-PR und verwendet dessen exakten `main`-Basis-SHA; nach Aufnahme in den
+Default-Branch kann er manuell auf einem Tooling-Ref gestartet werden. Er besitzt nur `contents: read`, erzeugt
+denselben isolierten PostgreSQL-/Liquibase-Stand und lädt das Paar als siebentägiges Artefakt hoch. Beim manuellen
+Start sind `source_commit`, `source_ref` und `scope` Pflicht; die drei Exclusion-Eingaben sind gemeinsam oder gar nicht
+zu setzen. Nach Download beide erzeugten Dateien unverändert nach `docs/catalog-index` übernehmen, den neuen Stand
+mit dem obigen Validator prüfen und erst danach die vom neuen Manifest nicht mehr referenzierte alte Payload
+entfernen. Der Workflow schreibt nicht selbst ins Repository.
 
 Für den aktuell eingecheckten Erststand gilt ausschließlich der im Manifest ausgewiesene `main`-Quellcommit. Der
 separate Draft-PR #247 beziehungsweise `feat/172-country-catalog-curation` ist ausdrücklich nicht enthalten. Deshalb
