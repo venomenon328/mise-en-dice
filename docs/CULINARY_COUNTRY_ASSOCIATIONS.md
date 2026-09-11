@@ -1,8 +1,8 @@
 # Kulinarische Länderzuordnungen
 
-Stand: 8. September 2026
+Stand: 11. September 2026
 
-Dieses Dokument beschreibt die redaktionelle Bedeutung und technische Pflege der kulinarischen Länderzuordnungen im Zutatenkatalog. Maßgeblich für die ursprüngliche fachliche Entscheidung ist Issue #165.
+Dieses Dokument ist die aktuelle normative Fassung der redaktionellen Ländersemantik und beschreibt ihre technische Pflege im Zutatenkatalog. Die Ursprungsentscheidung liegt in [#165](https://github.com/venomenon328/mise-en-dice/issues/165); die Präzisierung aus [#249](https://github.com/venomenon328/mise-en-dice/issues/249), Arbeitsfassung `COUNTRY_RULES_A2_20260911` einschließlich Regionalentscheidung Q1, ist hier konsolidiert. Die technischen Verträge bleiben unverändert. Historische Länderfreigaben werden dadurch weder umgeschrieben noch automatisch revidiert.
 
 Der verbindliche operative Ablauf von Recherchebeginn über die erste Aufnahme-/Relationsfreigabe und die zweite vollständige Metadatenfreigabe bis zur Einpflege steht in [CULINARY_CATALOG_WORKFLOW.md](CULINARY_CATALOG_WORKFLOW.md). Für neue Konzepte sind außerdem [INGREDIENT_CONCEPT_CURATION.md](INGREDIENT_CONCEPT_CURATION.md) und [AVAILABILITY_AND_COOKING_NOVELTY.md](AVAILABILITY_AND_COOKING_NOVELTY.md) Pflichtquellen. Issue #172 bleibt der aktuelle Sammelauftrag und das landweise Entscheidungsprotokoll.
 
@@ -22,7 +22,7 @@ Sie ist ausdrücklich **keine** Behauptung darüber,
 
 Die Daten sind bewusst **positiv und unvollständig**. Ein Zutatenkonzept darf keinem, einem oder mehreren Ländern zugeordnet sein.
 
-Globale Verbreitung schließt eine Zuordnung nicht aus. Auch eine verbreitete Grundzutat kann für eine Küche so zentral sein, dass ihre Relation allein oder zusammen mit anderen Relationen informationshaltig bleibt. Wo ein spezifischeres vorhandenes Konzept die Aussage besser trägt, soll dieses bevorzugt geprüft werden. Das breitere Konzept darf zusätzlich zugeordnet werden, wenn auch seine eigene Relation fachlich sinnvoll bleibt.
+„Informationswert“ beziehungsweise „Signalkraft“ bezeichnet belegte **beschreibende Kücheninformation**, nicht Exklusivität oder einen statistischen Klassifikationsgewinn. Die Zutat muss weder das Land eindeutig erkennen lassen noch gegenüber bereits gepflegten ähnlichen Konzepten zusätzliche Unterscheidbarkeit beweisen. Jedes Konzept–Küche-Paar wird unabhängig beurteilt; eine Relation ist keine Ranglistenplatzierung. Die einheitliche Entscheidungsschwelle einschließlich global verbreiteter Grundzutaten und regionaler Traditionen steht in Abschnitt 4.
 
 ## 2. Keine Hierarchievererbung
 
@@ -51,18 +51,86 @@ Flaggen sind kein persistierter Fachwert. Für reine ISO-3166-1-Alpha-2-Codes d�
 
 ## 4. Redaktionelle Entscheidung
 
-Eine Zuordnung ist insbesondere plausibel, wenn mindestens einer der folgenden Aspekte deutlich erfüllt ist:
+### 4.1 Maßstab und Begründungswege
 
-1. eigenständige kulturelle Identität des Produkts oder der Tradition,
-2. hohe kulinarische Signalkraft der Zutat für das Land,
-3. besonders prägende Verwendung innerhalb der Küche,
-4. sinnvoller kombinatorischer Klassifikationswert zusammen mit weiteren Zutaten.
+> Eine Länderrelation wird empfohlen, wenn für das konkrete Zutatenkonzept eine etablierte, kulinarisch prägende oder kulturell charakteristische Rolle in der betrachteten Küche belastbar belegt ist. Dafür genügt auch eine charakteristische Rolle in einer etablierten regionalen Küche des Landes. Die Begründung nennt die konkrete Rolle und ihren tatsächlichen Küchenkontext; bloßes Vorkommen, Herkunft oder allgemeine Verfügbarkeit genügen nicht.
 
-Die Zahl der Länder pro Konzept ist kein Zielwert. Eine Relation soll nicht allein aus Vollständigkeitsdrang gesetzt werden, wenn sie praktisch keinen zusätzlichen Informationswert trägt.
+Ein hinreichend tragfähiger Begründungsweg genügt. Mehrere schwache Behauptungen ergeben nicht automatisch einen starken Beleg.
 
-Für nicht offensichtliche oder strittige Fälle werden bevorzugt belastbare Kultur-, Tourismus-, Landwirtschafts-, Produkt- oder kulinarische Fachquellen verwendet; bei Grenzfällen möglichst mehrere voneinander unabhängige Quellen. Die Recherche fragt nicht bloß, ob eine Zutat in einem Land vorkommt, sondern ob ihre Bedeutung groß genug ist, um die positive Relation redaktionell zu rechtfertigen.
+| Begründungsweg | Tragfähige Aussage | Für sich allein nicht ausreichend |
+|---|---|---|
+| Produkt-/Kulturidentität | Das konkrete Produkt oder eine etablierte Tradition ist charakteristischer Bestandteil der betrachteten Küche. | Produktionsort, Produktname, Erfindungsort oder Herkunftsschutz ohne passende kulinarische Aussage. |
+| Prägende Verwendung | Typische wichtige Rolle in der Küche, ihrer Würzlogik oder ihren Produkt-/Gerichtsfamilien. | „Wird dort ebenfalls gegessen, verwendet oder verkauft.“ |
+| Repräsentatives Einzelgericht | Belegte repräsentative Bedeutung des Gerichts beziehungsweise einer etablierten Ausprägung **und** prägende Rolle des konkreten Konzepts darin. | Ein gefundenes Rezept mit beiläufiger Zutat oder eine individuelle Neuschöpfung. |
+| Kombinatorischer Informationswert | Eine belegte charakteristische Rolle erklärt mit weiteren Zutaten ein tatsächlich etabliertes kulinarisches Muster. | Eine nur erdachte Kombination oder die bloße Behauptung „passt zusammen“. |
 
-Praktisch kann die Recherche zunächst mit den Arbeitsurteilen `setzen`, `Grenzfall / bewusst prüfen` und `nicht setzen` arbeiten. Persistiert wird nur die am Ende freigegebene positive Zuordnung; die Zwischenbewertung ist kein Datenbankstatus.
+Die Wege gelten gleichermaßen für nationale und etablierte regionale Küchen. Es gibt keine Pflichtmengen von Gerichten oder Quellen, kein Punktesystem und keine neuen Relationstypen oder -gewichte. Auch breite, weltweit verbreitete Grundzutaten werden nach diesen Wegen beurteilt, nicht nach einem zusätzlichen Alltags-, Exklusivitäts- oder Mindestgerichtetest. Häufigkeit allein genügt weiterhin nicht.
+
+### 4.2 Prägende Rolle und Varianten
+
+Prägung kann Produktidentität, Hauptkomponente, charakteristisches Aroma oder Geschmacksbild, **Farbe, Textur oder Struktur** sowie eine belegte kulturelle Funktion betreffen. Eine kleine verwendete Menge ist kein Gegenargument. Allgemeine Küchenfunktionen wie „salzt“, „macht süß“ oder „liefert Fett“ begründen ohne charakteristischen konkreten Kontext noch keine Relation.
+
+„Prägend“ bedeutet nicht, dass eine Zutat technisch unersetzbar ist oder in jeder anerkannten Rezeptvariante vorkommt. Eine optionale Zutat kann eine belegte charakteristische Rolle besitzen; beliebiges Beiwerk genügt nicht. Weder ein amtlicher Nationalgerichtstitel noch landesweit identische Rezepturen sind erforderlich. Beim Einzelgerichtweg müssen Repräsentativität im herangezogenen Küchenkontext und prägende Zutatenrolle tatsächlich belegt sein.
+
+### 4.3 Keine Verdrängung oder Sonderhürden
+
+Folgende Umstände dürfen weder allein eine Ablehnung noch einen pauschalen Beweisaufschlag begründen:
+
+- Verwendung in vielen anderen Ländern;
+- größere Bekanntheit oder stärkere Assoziation einer anderen Küche;
+- bereits vorhandene ähnliche positive Zuordnungen oder ein noch charakteristischeres Geschwisterkonzept;
+- nur ein repräsentatives Gericht bei belegter prägender Zutatenrolle;
+- geringe Dosierung, rein farbliche Prägung oder etablierte Varianten ohne die Zutat;
+- fehlende landesweite Verbreitung, überregionale Bekanntheit oder nationale Repräsentativität bei belegter charakteristischer Rolle in einer etablierten regionalen Küche.
+
+Es gibt keine Länder-, Zutaten- oder Geschwisterquote. Erfüllen drei Geschwister die Kriterien jeweils eigenständig, wird das dritte nicht durch die ersten beiden verdrängt. Eine lange Ergebnisliste ist weder Qualitätsbeweis noch Anlass, berechtigte Relationen wegzukürzen. Umgekehrt werden keine Relationen nur zur Erhöhung der Abdeckung gesetzt.
+
+### 4.4 Identität und Konzeptgranularität
+
+Vor der Bewertung die konkrete Identität und vorhandene Produktdefinition klären. Saat, daraus hergestelltes Öl, Gewürzmischung und fertiges Gericht nicht ungeprüft gleichsetzen. Vorhandene Konzepte werden nicht für eine gewünschte Länderrelation umdefiniert; ein neues Unterkonzept wird nicht allein für ein exklusiveres Ländersignal angelegt.
+
+Spezifischere vorhandene Konzepte zuerst auf genauere Produktpassung prüfen. Das ist eine **Prüfpriorität, keine Verdrängungsregel**. Parent, Child und Geschwister benötigen jeweils eine tragfähige Aussage über das betrachtete Konzept. Die gleiche Quelle darf mehrere solche Aussagen tragen; für den Parent wird nicht allein wegen seiner Stellung ein zusätzliches anderes Gericht oder eine zusätzliche Quelle verlangt. „Das Child ist typisch, also der Parent auch“ genügt dagegen nicht.
+
+Nicht jede zulässige Ausprägung eines breiten Konzepts muss für das Land charakteristisch sein. Seine Relation muss aber auf der Ebene dieses Konzepts sinnvoll begründet sein, nicht nur aus einer Graphkante folgen. Auch die Zutatenliste eines typischen Fertigprodukts erzeugt keine automatischen Relationen für sämtliche Bestandteile. Die fehlende Hierarchievererbung aus Abschnitt 2 bleibt uneingeschränkt erhalten.
+
+Identität und Existenz im geprüften Bestand, Berechtigung der Länderrelation und Aufnahmefähigkeit eines tatsächlich fehlenden Konzepts sind **getrennte Entscheidungen**. Beschaffbarkeit, Aktivstatus und Ziehbarkeit belegen keine kulturelle Relevanz. Umgekehrt genehmigt eine Länderrelation weder eine Neuaufnahme oder Aktivierung noch Änderungen von Produktformen, Ratings, Notizen, Gewichten oder Graphkanten. Dafür gelten die eigenen Fachquellen und Freigaben aus dem Länderworkflow.
+
+### 4.5 Küchenumfang und regionale Traditionen
+
+Da das Projekt Länder und keine separate regionale Küchenebene abbildet, genügt eine belastbar belegte charakteristische Rolle in einer **etablierten regionalen Küche des betrachteten Landes** für dessen Länderrelation. Zusätzliche landesweite Verbreitung, überregionale Bekanntheit oder nationale Repräsentativität sind nicht erforderlich. Region und tatsächliche Reichweite werden in der Begründung benannt; die Relation behauptet keine gleichmäßige Verwendung im ganzen Land.
+
+Bloßer geografischer Ort, ein einzelnes Restaurant, eine lokale Neuschöpfung oder unklarer Traditionsbezug genügen weiterhin nicht. Die Rolle muss innerhalb der etablierten regionalen Küche einen der Begründungswege tragen; die regionale Einordnung wertet bloßes Vorkommen nicht auf.
+
+Der ausdrücklich beauftragte Küchenumfang bleibt maßgeblich. Bereits getrennt behandelte Küchen wie Schottland und England werden nicht zum gesamten Vereinigten Königreich zusammengelegt. Kontrollierte erweiterte Codes gemäß Abschnitt 3 bleiben erhalten; eine Relation zu einer solchen Untereinheit erzeugt keine automatische zusätzliche Zuordnung zum übergeordneten Staat oder zu Nachbarküchen. Die regionale Evidenz begründet unmittelbar die konkret geprüfte Landesrelation, keine technische Hierarchievererbung. Q1 führt weder eine Regionenontologie noch zusätzliche Referenzcodes ein.
+
+### 4.6 Evidenz und Gegenrecherche
+
+Die Quelle muss die tatsächlich verwendete Aussage tragen: Produktidentität, Rolle und Küchen-/Gerichtskontext werden erkennbar zugeordnet. Quellenbefund und redaktionelle Schlussfolgerung getrennt formulieren; Suchausschnitte oder vom Modell ergänzte Quelleninhalte sind kein belastbarer Nachweis. Keine automatische Länderzuordnung aus Namen, Rezeptlisten, Konkretisierungsgraph oder Modellwissen.
+
+Die Quellenpräferenz bleibt:
+
+1. offizielle Kultur-, Tourismus-, Landwirtschafts-, Regierungs- oder Produktquellen,
+2. geschützte Herkunfts-/Produktspezifikationen und vergleichbar belastbare Primärquellen,
+3. seriöse kulinarische Fach- und Referenzquellen,
+4. bei historischen oder strittigen Fällen geeignete wissenschaftliche oder historische Quellen.
+
+Entscheidend ist die Eignung für die konkrete Aussage: Herkunftsschutz belegt nicht automatisch jede kulinarische Schlussfolgerung. Ein Hersteller kann die eigene Produktform belegen; Werbung allein beweist keine charakteristische Rolle in der Landes- oder einer ihrer etablierten regionalen Küchen.
+
+Eine geeignete Quelle darf sowohl Repräsentativität als auch prägende Rolle belegen. Es gibt keine feste Mindestzahl; bei Grenzfällen und belastbaren Gegenbefunden unabhängige Quellen ergänzen. Wiederveröffentlichungen derselben Ursprungsaussage sind keine unabhängigen Bestätigungen.
+
+Gegenrecherche prüft fachlich relevante Einwände wie Fehlattribution, unpassende Produktidentität, bloß randständige Verwendung oder unbelegte Repräsentativität **im tatsächlich herangezogenen Küchenkontext**. „Anderswo auch üblich“ oder „nur regional charakteristisch“ sind keine Gegenbelege. Abwesenheit in einer einzelnen Übersicht widerlegt keine positive Evidenz; fehlende Evidenz ist nicht mit einem Gegenbeweis gleichzusetzen. Herkunft allein ist weder erforderlich noch ausreichend.
+
+### 4.7 Urteil und Freigabe
+
+| Arbeitsurteil | Bedeutung |
+|---|---|
+| `setzen` | Identität und Umfang sind geklärt, mindestens ein Begründungsweg ist tragfähig und keine entscheidungserhebliche Unsicherheit bleibt offen. Empfehlung bis zur menschlichen Freigabe. |
+| `Grenzfall / bewusst prüfen` (ungeklärt) | Identität, Beleglage, Repräsentativität im tatsächlichen Küchenkontext oder Reichweite bleibt materiell offen. Die fehlende Klärung benennen; hinreichend belegte regionale Reichweite ist kein Mangel. |
+| `nicht setzen` | Die geprüfte Begründung trägt die Relation nicht, etwa weil sie nur beiläufiges Vorkommen oder eine falsche Produktform belegt. Kein dauerhaftes Verbot und keine Behauptung, die Küche kenne die Zutat nicht. |
+
+Technisch fehlender Quellen- oder Katalogzugriff ist kein negativer Existenz- oder Relevanznachweis. Unsichere Fälle werden nicht stillschweigend positiv interpretiert. Persistiert wird weiterhin nur die ausdrücklich freigegebene positive Relation; die Arbeitsurteile sind keine Datenbankstatus.
+
+Eine bestehende menschliche Freigabe wird weder durch ein neues KI-Urteil noch durch einen erfolglosen Suchlauf automatisch aufgehoben. Änderungen bleiben explizite, nachvollziehbare Deltas nach dem Länderworkflow. Die Kalibrierungsfälle mit realen Quellen, synthetischen Beispielen und historischen Entscheidungen bleiben als Evidenz in [#249](https://github.com/venomenon328/mise-en-dice/issues/249); sie sind keine neu freigegebene Relationsliste oder automatisierte Content-Assertions. Die gezielte Altfallprüfung gehört zu #251/#252 und wird durch diese Normintegration nicht vorgezogen.
 
 ## 5. Technische Pflege
 

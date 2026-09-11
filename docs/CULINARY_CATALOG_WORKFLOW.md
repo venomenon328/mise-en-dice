@@ -1,13 +1,13 @@
 # Kulinarischer Katalogausbau: Recherche, Freigabe und Einpflege
 
-Stand: 10. September 2026
+Stand: 11. September 2026
 Status: verbindlicher Ablauf für die laufende Kuration nach Issue #172
 
 ## Ziel
 
-Die in #165 definierte Redaktionssemantik für kulinarische Länderzuordnungen kontrolliert **Land für Land** auf den realen Zutatenkatalog anwenden und dabei zugleich sinnvolle Kataloglücken identifizieren.
+Die aktuelle Redaktionssemantik aus [CULINARY_COUNTRY_ASSOCIATIONS.md](CULINARY_COUNTRY_ASSOCIATIONS.md) kontrolliert **Land für Land** auf den realen Zutatenkatalog anwenden und dabei zugleich sinnvolle Kataloglücken identifizieren. Sie konsolidiert die Ursprungsentscheidung #165 und deren Präzisierung durch #249.
 
-Dieses Dokument beschreibt den wiederholbaren Recherche- und Entscheidungsprozess; Issue #172 bleibt Einstiegspunkt, Sammelauftrag und landweises Entscheidungsprotokoll. Die fachliche Bedeutung einer Länderzuordnung wird hier **nicht neu definiert**; #165 bleibt dafür verbindlich.
+Dieses Dokument beschreibt den wiederholbaren Recherche- und Entscheidungsprozess; Issue #172 bleibt Einstiegspunkt, Sammelauftrag und landweises Entscheidungsprotokoll. Die fachliche Bedeutung einer Länderzuordnung wird hier **nicht neu definiert**: Maßgeblich ist die oben verlinkte normative Fassung, nicht eine davon getrennte Auslegung historischer Heuristiken aus #165. Die Dokumentintegration aus #249 ändert weder bestehende Länderfreigaben noch die hier geregelten Haltepunkte, Sammelbranch- und Testregeln; die weitergehende Prozessumstellung aus #251 bleibt separat.
 
 ## Verbindlicher Einstieg und Quellen
 
@@ -15,7 +15,7 @@ Vor jeder Länderanalyse den **aktuellen vollständigen Body von [#172](https://
 
 | Quelle | Verbindlicher Zweck |
 |---|---|
-| [#165](https://github.com/venomenon328/mise-en-dice/issues/165) und [CULINARY_COUNTRY_ASSOCIATIONS.md](CULINARY_COUNTRY_ASSOCIATIONS.md) | Fachliche Bedeutung, Informationswert und Grenzen einer Länderrelation |
+| [CULINARY_COUNTRY_ASSOCIATIONS.md](CULINARY_COUNTRY_ASSOCIATIONS.md) und [#165](https://github.com/venomenon328/mise-en-dice/issues/165) | Aktuelle normative Ländersemantik einschließlich der Präzisierung aus #249; #165 als Ursprungsentscheidung und Gesamtfeature lesen, nicht als konkurrierende aktuelle Kriterienfassung |
 | [INGREDIENT_CONCEPT_CURATION.md](INGREDIENT_CONCEPT_CURATION.md) | Vollständige Metadatenvorlage, Kuratornotiz, individuelle Availability-Anmerkungen, Evidenz und Freigabegates |
 | [AVAILABILITY_AND_COOKING_NOVELTY.md](AVAILABILITY_AND_COOKING_NOVELTY.md) | Aktuelle Fünfer-Skalen, Exaktproduktbewertung, unabhängige Bewertung der beiden Achsen, Personenprofile und Beschaffungshorizont |
 | [INITIAL_CATALOG.md](INITIAL_CATALOG.md) | Pflegeprinzipien; Abschnitte 1–12 sind historische Baseline, keine heutigen Bewertungswerte oder Gewichtscaps |
@@ -35,7 +35,7 @@ Für jeden Durchgang wird genau ein Land betrachtet. Ausgangspunkt ist immer der
 
 Es gibt zwei voneinander unabhängige Fragen:
 
-1. **Länderrelation:** Ist die Assoziation des Zutatenkonzepts mit der nationalen Küche informationshaltig genug, um sie gemäß #165 zu setzen?
+1. **Länderrelation:** Erfüllt die belegte Rolle des konkreten Zutatenkonzepts im beauftragten Küchenumfang die [normative Entscheidungsschwelle](CULINARY_COUNTRY_ASSOCIATIONS.md#4-redaktionelle-entscheidung)?
 2. **Katalogaufnahme:** Falls eine charakteristische Zutat noch fehlt: Ist sie unabhängig von der Länderrelation ein sinnvolles Mise-en-Dice-Zutatenkonzept?
 
 Eine typische Zutat erhält damit weder automatisch eine Länderrelation noch automatisch ein Freifahrtticket in den Katalog.
@@ -65,9 +65,9 @@ Den aktuellen Katalog breit auf plausible Kandidaten prüfen.
 Dabei insbesondere beachten:
 
 - ikonische oder landestypische Produkte,
-- besonders prägende Grundzutaten,
+- Grundzutaten mit einer nach der Ländersemantik belegbaren charakteristischen Rolle,
 - Würzmittel, Fermente, Fette, Säuren, Kräuter, Gewürze und charakteristische Produktformen,
-- vorhandene spezifischere Konzepte vor breiten Parent-Konzepten bevorzugt prüfen,
+- vorhandene spezifischere Konzepte zuerst auf genauere Produktpassung prüfen; dies ist keine Verdrängungsregel für eigenständig begründete Parent- oder Geschwisterrelationen,
 - Parent und Child niemals automatisch gemeinsam zuordnen,
 - globale Verbreitung weder als automatischen Ausschluss noch als ausreichende Begründung behandeln.
 
@@ -75,22 +75,11 @@ Nicht nur erwartete positive Treffer dokumentieren, sondern auch fachlich naheli
 
 ### 3. Webrecherche
 
-Für jeden ernsthaft plausiblen Kandidaten belastbare Webquellen recherchieren.
-
-Quellenpräferenz:
-
-1. offizielle Kultur-, Tourismus-, Landwirtschafts-, Regierungs- oder Produktquellen,
-2. geschützte Herkunfts-/Produktspezifikationen und vergleichbar belastbare Primärquellen,
-3. seriöse kulinarische Fach- und Referenzquellen,
-4. bei historischen oder strittigen Fällen geeignete wissenschaftliche oder historische Quellen.
-
-Bei Grenzfällen möglichst mehrere voneinander unabhängige Quellen verwenden und aktiv nach Gegenindikatoren suchen, etwa nur randständiger Verwendung, primärer Zuordnung zu einer anderen Küche oder sehr geringer Aussagekraft für die nationale Küche.
-
-Bloße Abwesenheit in einer Quelle gilt nicht als Gegenbeleg. Herkunft allein ist weder erforderlich noch ausreichend.
+Für jeden ernsthaft plausiblen Kandidaten belastbare Webquellen recherchieren und die [normativen Evidenz- und Gegenrechercheregeln](CULINARY_COUNTRY_ASSOCIATIONS.md#46-evidenz-und-gegenrecherche) anwenden. Quellenbefund, Schlussfolgerung und verbleibende Unsicherheit dem konkreten Kandidaten zuordnen. Bei regionaler Evidenz die tatsächliche Region und Rolle festhalten; die [Regionalregel](CULINARY_COUNTRY_ASSOCIATIONS.md#45-küchenumfang-und-regionale-traditionen) verlangt keine zusätzliche landesweite Bedeutung.
 
 ### 4. Bewertung bestehender Kandidaten
 
-Jeden untersuchten vorhandenen Kandidaten einordnen als:
+Jeden untersuchten vorhandenen Kandidaten nach den [normativen Arbeitsurteilen](CULINARY_COUNTRY_ASSOCIATIONS.md#47-urteil-und-freigabe) einordnen als:
 
 - **setzen**,
 - **Grenzfall / bewusst prüfen**,
@@ -100,9 +89,9 @@ Die Ergebnisdarstellung enthält mindestens:
 
 - Zutatenkonzept,
 - Empfehlung,
-- kurze fachliche Begründung,
+- kurze fachliche Begründung mit tragender Rolle und tatsächlichem Küchenkontext,
 - relevante Quellen,
-- bei Bedarf Hinweis auf sinnvollere Parent-/Child-Konzepte oder Granularitätsfragen.
+- bei Bedarf Hinweis auf genauer passende Parent-/Child-Konzepte oder offene Granularitätsfragen; jede Relation weiterhin eigenständig beurteilen.
 
 Grenzfälle werden nicht stillschweigend positiv interpretiert.
 
@@ -269,13 +258,9 @@ Historische Upgrade-, Restart-, Generator-, Challenge- oder Kompatibilitätstest
 
 ## Qualitätsregeln
 
-- Nicht versuchen, möglichst viele Relationen zu erzeugen. Informationswert ist wichtiger als Abdeckung.
-- Keine automatische Ableitung aus Rezeptlisten, Namen, Konkretisierungsgraph oder Modellwissen.
-- Spezifischere Konzepte bevorzugen, wenn sie die reale kulinarische Aussage klar besser tragen.
-- Breite Grundzutaten nur setzen, wenn ihre außergewöhnliche Bedeutung für die betreffende Küche gemäß #165 genügend eigenständiges oder kombinatorisches Signal liefert.
-- Regionale Besonderheiten nicht ohne Weiteres als Aussage über das gesamte Land behandeln; bei nationaler Relevanz aber selbstverständlich berücksichtigen.
-- Fehlende Zuordnung bedeutet weiterhin nicht, dass eine Zutat in der Küche unbekannt oder unüblich wäre.
-- Unsicherheit offen ausweisen statt durch scheinpräzise Sicherheit zu ersetzen.
+Die [normative Ländersemantik](CULINARY_COUNTRY_ASSOCIATIONS.md#4-redaktionelle-entscheidung) ist der einzige Kriterienkatalog für Begründungswege, Informationswert, Granularität, Regionalität und zulässige Gegenbefunde. Dieser Ablauf ergänzt keine strengeren Ausschlussschwellen.
+
+Für die Ergebnisprüfung kontrollieren: Sind Identität, tatsächliche Rolle und Küchenkontext belegt, Quellenbefund und Schlussfolgerung getrennt sowie offene Fragen und menschliche Freigaben erkennbar? Eine gewünschte Listenlänge darf weder positive Empfehlungen erzwingen noch fachlich berechtigte Relationen verdrängen. Eine fehlende Zuordnung bleibt fehlendes positives Katalogwissen, keine Aussage über Unbekanntheit oder Unüblichkeit.
 
 ## Nicht-Ziele
 
@@ -288,7 +273,8 @@ Historische Upgrade-, Restart-, Generator-, Challenge- oder Kompatibilitätstest
 
 ## Weitere Referenzen
 
-- #165 – verbindliche fachliche Semantik und Gesamtfeature
+- #165 – Ursprungsentscheidung und Gesamtfeature; aktuelle normative Fassung: [CULINARY_COUNTRY_ASSOCIATIONS.md](CULINARY_COUNTRY_ASSOCIATIONS.md)
+- #249 – Präzisierung der Entscheidungsschwelle und Kalibrierung einschließlich Regionalentscheidung Q1; keine automatische Revision alter Länderfreigaben
 - #166 – technischer Katalogkern der Länderrelationen
 - #178 – verbindliche redaktionelle Vollständigkeit und Stilregeln für Kuratornotizen
 
@@ -299,7 +285,7 @@ Wir gehen das nächste Land im Repository `venomenon328/mise-en-dice` an.
 
 **Land: <Land>**
 
-Lies den aktuellen vollständigen Body von Issue #172 und anschließend `docs/CULINARY_CATALOG_WORKFLOW.md` sowie sämtliche dort für die Analyse und Metadatenbewertung verpflichtenden Quellen vollständig. Verwende die aktuellen Fassungen, keine historischen Zwischenstände; #165 bleibt für die Ländersemantik maßgeblich.
+Lies den aktuellen vollständigen Body von Issue #172 und anschließend `docs/CULINARY_CATALOG_WORKFLOW.md` sowie sämtliche dort für die Analyse und Metadatenbewertung verpflichtenden Quellen vollständig. Verwende die aktuellen Fassungen, keine historischen Zwischenstände. Für die Ländersemantik ist `docs/CULINARY_COUNTRY_ASSOCIATIONS.md` maßgeblich; es konsolidiert die Ursprungsentscheidung #165 und die Präzisierung aus #249 einschließlich Q1.
 
 Arbeite auf `feat/172-country-catalog-curation`. Prüfe und synchronisiere den Branch gemäß Workflow mit dem aktuellen `main`, bevor du den resultierenden Katalog als Grundlage verwendest.
 
