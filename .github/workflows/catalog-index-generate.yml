@@ -97,6 +97,7 @@ jobs:
           CATALOG_INDEX_EXCLUDED_REASON: ${{ steps.source.outputs.excluded_reason }}
         run: >-
           ./mvnw --batch-mode --no-transfer-progress -Pcatalog-index -DskipTests
+          -Dexec.cleanupDaemonThreads=false
           -Dcatalog.index.main.class=io.github.venomenon328.miseendice.catalog.internal.catalogindex.CatalogIndexBuildMain
           -Dcatalog.index.classpath.scope=test test-compile exec:java
 

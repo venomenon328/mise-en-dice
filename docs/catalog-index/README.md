@@ -97,6 +97,7 @@ export CATALOG_INDEX_SOURCE_REF="<konsistent vorbereiteter Branch/Ref>"
 export CATALOG_INDEX_SCOPE="Vollständiger Liquibase-Master des bezeichneten Repository-Stands."
 export CATALOG_INDEX_OUTPUT_DIRECTORY="docs/catalog-index"
 ./mvnw -Pcatalog-index -DskipTests \
+  -Dexec.cleanupDaemonThreads=false \
   -Dcatalog.index.main.class=io.github.venomenon328.miseendice.catalog.internal.catalogindex.CatalogIndexBuildMain \
   -Dcatalog.index.classpath.scope=test test-compile exec:java
 ```
