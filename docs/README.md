@@ -11,6 +11,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
 - [`CULINARY_CATALOG_WORKFLOW.md`](CULINARY_CATALOG_WORKFLOW.md): verbindlicher Länderworkflow nach #172 von Recherchebeginn und aktuellem Katalogabgleich über zwei menschliche Freigaben bis zu Einpflege, Protokoll und Batch-Verify; enthält den wiederverwendbaren Startprompt
 - [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md): redaktionelle Semantik und technische Pflege der expliziten kulinarischen Länderzuordnungen
+- [`catalog-index/README.md`](catalog-index/README.md): erzeugter vollständiger Repository-Katalogindex, Herkunfts-/Gültigkeitsprüfung und sicherer Kandidatenabgleich
 - [`ADMINISTRATION_UI.md`](ADMINISTRATION_UI.md): verbindliche Bedien-, Interaktions-, Locking- und Sicherheitsentscheidungen für die private Katalogverwaltung ohne Runtime-Katalogaudit
 - [`CANDIDATE_GENERATOR.md`](CANDIDATE_GENERATOR.md): verbindliche Regeln für Gewichtung, harte Kandidatengültigkeit, Scores, Diversität, Determinismus, Recovery und Simulation
 - [`CURATION_AND_CHALLENGE_SELECTION.md`](CURATION_AND_CHALLENGE_SELECTION.md): verbindlicher Vertrag für 1–3 kuratierte Angebote, maximal zwei externe Kuratoraufrufe, Carry-over, Nutzerbestätigung und Historienwirkung
