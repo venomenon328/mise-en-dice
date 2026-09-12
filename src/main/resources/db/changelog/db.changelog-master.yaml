@@ -131,3 +131,9 @@ databaseChangeLog:
       file: db/changelog/catalog/038-availability-note-sentence-capitalization.sql
   - include:
       file: db/changelog/catalog/039-availability-r3-corrections.sql
+  - include:
+      file: db/changelog/reference/004-scotland-culinary-country.sql
+  - include:
+      file: db/changelog/catalog/040-scotland-curation.sql
+  - include:
+      file: db/changelog/catalog/041-finland-curation.sql

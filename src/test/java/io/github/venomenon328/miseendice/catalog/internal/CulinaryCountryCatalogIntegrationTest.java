@@ -60,12 +60,15 @@ class CulinaryCountryCatalogIntegrationTest extends CurrentSchemaPostgresIntegra
     }
 
     @Test
-    void loadsStableReferenceDataAndKeepsCountryFilteringExplicit() {
-        assertThat(jdbcTemplate.queryForObject("select count(*) from culinary_country", Integer.class)).isEqualTo(250);
+    void loadsIsoReferenceDataAndControlledExtensionsAndKeepsCountryFilteringExplicit() {
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from culinary_country where code ~ '^[A-Z]{2}$'", Integer.class)).isEqualTo(249);
         assertThat(jdbcTemplate.queryForObject(
                 "select display_name from culinary_country where code = 'PH'", String.class)).isEqualTo("Philippinen");
         assertThat(jdbcTemplate.queryForObject(
                 "select display_name from culinary_country where code = 'GB-ENG'", String.class)).isEqualTo("England");
+        assertThat(jdbcTemplate.queryForObject(
+                "select display_name from culinary_country where code = 'GB-SCT'", String.class)).isEqualTo("Schottland");
 
         long parent = insertConcept("PARENT", "Country parent", true);
         long child = insertConcept("CHILD", "Country child", true);
@@ -87,7 +90,7 @@ class CulinaryCountryCatalogIntegrationTest extends CurrentSchemaPostgresIntegra
                 .containsExactly("TH");
         assertThat(catalogQueries.findFilterOptions().culinaryCountries())
                 .extracting(CatalogQueries.CatalogCountry::code)
-                .contains("CN", "DE", "GB", "GB-ENG", "GR", "PH", "TH", "VN")
+                .contains("CN", "DE", "GB", "GB-ENG", "GB-SCT", "GR", "PH", "TH", "VN")
                 .isSorted();
 
         var anySelectedCountry = catalogQueries.search(criteria(null, Set.of("PH", "TH")));

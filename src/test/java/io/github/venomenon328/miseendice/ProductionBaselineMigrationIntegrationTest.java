@@ -22,6 +22,7 @@ class ProductionBaselineMigrationIntegrationTest {
     private static final String PRODUCTION_BASELINE =
             "db/changelog/db.changelog-production-baseline.yaml";
     private static final String MASTER = "db/changelog/db.changelog-master.yaml";
+    private static final int PRODUCTION_BASELINE_CHANGESET_COUNT = 51;
     private static final List<String> POST_PRODUCTION_CHANGESETS = List.of(
             "031-vietnam-curation",
             "032-thailand-curation",
@@ -37,7 +38,10 @@ class ProductionBaselineMigrationIntegrationTest {
             "037-availability-note-consolidation",
             "022-remove-runtime-catalog-audit",
             "038-availability-note-sentence-capitalization",
-            "039-availability-r3-corrections"
+            "039-availability-r3-corrections",
+            "004-scotland-culinary-country",
+            "040-scotland-curation",
+            "041-finland-curation"
     );
 
     @Test
@@ -46,21 +50,25 @@ class ProductionBaselineMigrationIntegrationTest {
                 Connection connection = database.openConnection()) {
             runLiquibase(connection, PRODUCTION_BASELINE);
 
-            assertThat(changesetIds(connection)).hasSize(51);
+            assertThat(changesetIds(connection)).hasSize(PRODUCTION_BASELINE_CHANGESET_COUNT);
             assertThat(lastChangesetId(connection)).isEqualTo("030-veal-concept-expansion");
             assertThat(changesetIds(connection)).doesNotContainAnyElementsOf(POST_PRODUCTION_CHANGESETS);
 
             runLiquibase(connection, MASTER);
 
-            assertThat(changesetIdsAfter(connection, 51)).containsExactlyElementsOf(POST_PRODUCTION_CHANGESETS);
-            assertThat(changesetIds(connection)).hasSize(66);
+            assertThat(changesetIdsAfter(connection, PRODUCTION_BASELINE_CHANGESET_COUNT))
+                    .containsExactlyElementsOf(POST_PRODUCTION_CHANGESETS);
+            assertThat(changesetIds(connection))
+                    .hasSize(PRODUCTION_BASELINE_CHANGESET_COUNT + POST_PRODUCTION_CHANGESETS.size());
             assertThat(tableExists(connection, "catalog_audit_entry")).isFalse();
             assertThat(columnExists(connection, "generation_batch", "result_snapshot")).isFalse();
             assertThat(columnExists(connection, "ingredient_availability", "curator_note")).isTrue();
 
             runLiquibase(connection, MASTER);
-            assertThat(changesetIds(connection)).hasSize(66);
-            assertThat(changesetIdsAfter(connection, 51)).containsExactlyElementsOf(POST_PRODUCTION_CHANGESETS);
+            assertThat(changesetIds(connection))
+                    .hasSize(PRODUCTION_BASELINE_CHANGESET_COUNT + POST_PRODUCTION_CHANGESETS.size());
+            assertThat(changesetIdsAfter(connection, PRODUCTION_BASELINE_CHANGESET_COUNT))
+                    .containsExactlyElementsOf(POST_PRODUCTION_CHANGESETS);
         }
     }
 
