@@ -40,7 +40,8 @@ class ProductionBaselineMigrationIntegrationTest {
             "038-availability-note-sentence-capitalization",
             "039-availability-r3-corrections",
             "004-scotland-culinary-country",
-            "040-scotland-curation"
+            "040-scotland-curation",
+            "041-finland-curation"
     );
 
     @Test
