@@ -14,7 +14,7 @@ Nur vor noch auszuführender Implementierung beziehungsweise konkreten technisch
 
 ## Kulinarische Facharbeit
 
-Länderanalysen nach #172 beginnen weiterhin mit dem aktuellen vollständigen Issue und [CULINARY_CATALOG_WORKFLOW.md](docs/CULINARY_CATALOG_WORKFLOW.md) samt Pflichtquellen. Jede Konzeptneuaufnahme oder wesentliche Produktformänderung folgt [INGREDIENT_CONCEPT_CURATION.md](docs/INGREDIENT_CONCEPT_CURATION.md) und [AVAILABILITY_AND_COOKING_NOVELTY.md](docs/AVAILABILITY_AND_COOKING_NOVELTY.md). Fachliche Recherche-, Einzelwert-, Notiz- und Freigabeverträge bleiben erhalten. Eine allgemeine Implementierungsfreigabe ersetzt keine dort erforderliche menschliche Fachentscheidung.
+Nach dem in #172 dokumentierten Einführungspunkt beginnen neue Länder-/Ergänzungsrunden mit dem aktuellen vollständigen zugehörigen Runden-Issue, dem aktuellen #172-Tracker und [CULINARY_CATALOG_WORKFLOW.md](docs/CULINARY_CATALOG_WORKFLOW.md); dessen Phasenmatrix bestimmt die jeweils zusätzlich vollständig beziehungsweise abschnittsweise zu lesenden Pflichtquellen. Solange #172 die Umstellung noch nicht als eingeführt ausweist, bleibt der dort bezeichnete bisherige Ablauf verbindlich. Jede Konzeptneuaufnahme oder wesentliche Produktformänderung folgt weiterhin vollständig [INGREDIENT_CONCEPT_CURATION.md](docs/INGREDIENT_CONCEPT_CURATION.md) und [AVAILABILITY_AND_COOKING_NOVELTY.md](docs/AVAILABILITY_AND_COOKING_NOVELTY.md). Fachliche Recherche-, Einzelwert-, Notiz- und Freigabeverträge bleiben erhalten. Eine allgemeine Implementierungsfreigabe ersetzt keine dort erforderliche menschliche Fachentscheidung.
 
 ## Unmittelbar wichtige Schutzgrenzen
 

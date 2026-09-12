@@ -257,7 +257,7 @@ Die exakten Baseline-Prüfungen werden bewusst übersprungen, sobald bereits ver
 
 ## 13. Pflegeprinzip für neue Zutaten
 
-Für den laufenden Länderreview nach #172 ist [CULINARY_CATALOG_WORKFLOW.md](CULINARY_CATALOG_WORKFLOW.md) der verbindliche Ablauf einschließlich beider Freigaben und Einpflege.
+Für Länder-/Ergänzungsrunden nach #172 ist [CULINARY_CATALOG_WORKFLOW.md](CULINARY_CATALOG_WORKFLOW.md) der verbindliche phasenbezogene Ablauf einschließlich Katalogindex, zugehörigem Runden-Issue, beider Freigaben und Einpflege. Der in #172 dokumentierte Einführungspunkt schützt den noch offenen Altbatch.
 
 Für jedes neue Zutatenkonzept müssen mindestens gepflegt werden:
 
