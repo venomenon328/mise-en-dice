@@ -36,9 +36,8 @@ on:
       - src/main/java/io/github/venomenon328/miseendice/catalog/internal/catalogindex/**
       - src/test/java/io/github/venomenon328/miseendice/catalog/internal/catalogindex/**
 
-# TEMPORARY for PR #257 only. This write permission is removed again before merge.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   generate:
@@ -102,84 +101,7 @@ jobs:
           -Dcatalog.index.main.class=io.github.venomenon328.miseendice.catalog.internal.catalogindex.CatalogIndexBuildMain
           -Dcatalog.index.classpath.scope=test test-compile exec:java
 
-      - name: Publish validated index pair for PR 257 once
-        if: >-
-          github.event_name == 'pull_request' &&
-          github.head_ref == 'chore/252-refresh-catalog-index'
-        shell: bash
-        env:
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -euo pipefail
-
-          expected_base="881a3138d632bc83ce0ace8a3022d03c0d3f9fa9"
-          if [[ "$PR_BASE_SHA" != "$expected_base" ]]; then
-            echo "Refusing one-time publication: unexpected PR base $PR_BASE_SHA" >&2
-            exit 1
-          fi
-
-          new_manifest="target/catalog-index/catalog-index.manifest.json"
-          new_payload="$(python3 - <<'PY'
-          import json
-          with open('target/catalog-index/catalog-index.manifest.json', encoding='utf-8') as f:
-              print(json.load(f)['payload']['path'])
-          PY
-          )"
-          old_payload="$(python3 - <<'PY'
-          import json
-          with open('docs/catalog-index/catalog-index.manifest.json', encoding='utf-8') as f:
-              print(json.load(f)['payload']['path'])
-          PY
-          )"
-
-          if [[ -f "docs/catalog-index/$new_payload" ]] && cmp -s "$new_manifest" docs/catalog-index/catalog-index.manifest.json; then
-            echo "Generated pair is already versioned; no publication commit needed."
-            git diff --check "$PR_BASE_SHA" HEAD
-            exit 0
-          fi
-
-          cp "target/catalog-index/$new_payload" "docs/catalog-index/$new_payload"
-          cp "$new_manifest" docs/catalog-index/catalog-index.manifest.json
-
-          ./mvnw --batch-mode --no-transfer-progress -Pcatalog-index -DskipTests compile exec:java \
-            -Dexec.args="validate --repository-root . --manifest docs/catalog-index/catalog-index.manifest.json"
-
-          ./mvnw --batch-mode --no-transfer-progress -Pcatalog-index -DskipTests compile exec:java \
-            -Dexec.args="search --repository-root . --manifest docs/catalog-index/catalog-index.manifest.json --candidates docs/catalog-index/candidates.example.jsonl --output target/catalog-index-search.jsonl --page-size 100"
-
-          python3 - <<'PY'
-          import json
-          summary = None
-          with open('target/catalog-index-search.jsonl', encoding='utf-8') as f:
-              for line in f:
-                  item = json.loads(line)
-                  if item.get('recordType') == 'searchSummary':
-                      summary = item
-          if summary is None or summary.get('complete') is not True:
-              raise SystemExit('searchSummary.complete=true missing')
-          print('SEARCH_SUMMARY_COMPLETE', json.dumps(summary, ensure_ascii=False, sort_keys=True))
-          PY
-
-          if [[ "$old_payload" != "$new_payload" ]]; then
-            rm -f "docs/catalog-index/$old_payload"
-          fi
-
-          git diff --check "$PR_BASE_SHA" HEAD
-          git diff --check
-          git add docs/catalog-index
-          git diff --cached --check
-
-          if git diff --cached --quiet; then
-            echo "No catalog-index changes to publish."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: refresh repository catalog index"
-          git push origin "HEAD:${{ github.head_ref }}"
-
-      - name: Upload generated pair
+      - name: Upload generated pair without repository write permission
         uses: actions/upload-artifact@v6
         with:
           name: catalog-index-${{ steps.source.outputs.source_commit }}
