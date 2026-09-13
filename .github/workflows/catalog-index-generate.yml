@@ -72,10 +72,10 @@ jobs:
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             echo "source_commit=$PR_BASE_SHA" >> "$GITHUB_OUTPUT"
             echo "source_ref=main" >> "$GITHUB_OUTPUT"
-            echo "scope=Complete Liquibase master at main@$PR_BASE_SHA; tooling branch contains export tooling only." >> "$GITHUB_OUTPUT"
-            echo "excluded_ref=feat/172-country-catalog-curation / draft PR #247" >> "$GITHUB_OUTPUT"
-            echo "excluded_commit=7589054ee43a75f459d9a18c349a08ba2101b2bc" >> "$GITHUB_OUTPUT"
-            echo "excluded_reason=Separate draft country-curation batch; neither merged into main nor copied into this main-based export." >> "$GITHUB_OUTPUT"
+            echo "scope=Complete Liquibase master at main@$PR_BASE_SHA; pull-request tooling validation uses the current main catalog without a separately excluded parallel source." >> "$GITHUB_OUTPUT"
+            echo "excluded_ref=" >> "$GITHUB_OUTPUT"
+            echo "excluded_commit=" >> "$GITHUB_OUTPUT"
+            echo "excluded_reason=" >> "$GITHUB_OUTPUT"
           else
             echo "source_commit=$DISPATCH_SOURCE_COMMIT" >> "$GITHUB_OUTPUT"
             echo "source_ref=$DISPATCH_SOURCE_REF" >> "$GITHUB_OUTPUT"
