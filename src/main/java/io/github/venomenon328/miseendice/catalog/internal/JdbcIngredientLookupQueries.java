@@ -43,6 +43,34 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
             throw new IllegalArgumentException("limit must be between 1 and 25");
         }
 
+        long exactMatches = jdbcTemplate.queryForObject("""
+                select count(*)
+                from ingredient_concept concept
+                where concept.active
+                  and (lower(concept.display_name) = ?
+                       or exists (
+                           select 1 from ingredient_concept_alias alias
+                           where alias.ingredient_concept_id = concept.id
+                             and lower(alias.alias_text) = ?
+                       ))
+                """, Long.class, normalized, normalized);
+        if (exactMatches > 0) {
+            List<SearchRow> exactRows = jdbcTemplate.query("""
+                    select concept.id, concept.display_name, true as exact_match
+                    from ingredient_concept concept
+                    where concept.active
+                      and (lower(concept.display_name) = ?
+                           or exists (
+                               select 1 from ingredient_concept_alias alias
+                               where alias.ingredient_concept_id = concept.id
+                                 and lower(alias.alias_text) = ?
+                           ))
+                    order by lower(concept.display_name), concept.id
+                    limit ?
+                    """, this::mapSearchRow, normalized, normalized, limit);
+            return searchResult(normalized, exactRows, exactMatches);
+        }
+
         long totalMatches = jdbcTemplate.queryForObject("""
                 select count(*)
                 from ingredient_concept concept
@@ -55,12 +83,7 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
                        ))
                 """, Long.class, normalized, normalized);
         List<SearchRow> rows = jdbcTemplate.query("""
-                select concept.id, concept.display_name,
-                       (lower(concept.display_name) = ? or exists (
-                           select 1 from ingredient_concept_alias exact_alias
-                           where exact_alias.ingredient_concept_id = concept.id
-                             and lower(exact_alias.alias_text) = ?
-                       )) as exact_match
+                select concept.id, concept.display_name, false as exact_match
                 from ingredient_concept concept
                 where concept.active
                   and (position(? in lower(concept.display_name)) > 0
@@ -76,8 +99,11 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
                          ) then 0 else 1 end,
                          lower(concept.display_name), concept.id
                 limit ?
-                """, this::mapSearchRow, normalized, normalized, normalized, normalized,
-                normalized, normalized, limit);
+                """, this::mapSearchRow, normalized, normalized, normalized, normalized, limit);
+        return searchResult(normalized, rows, totalMatches);
+    }
+
+    private IngredientLookupSearchResult searchResult(String normalized, List<SearchRow> rows, long totalMatches) {
         Map<Long, List<String>> parents = findActiveDirectParentNames(rows.stream().map(SearchRow::conceptId).toList());
         return new IngredientLookupSearchResult(normalized, rows.stream()
                 .map(row -> new IngredientLookupMatch(row.conceptId(), row.displayName(),
