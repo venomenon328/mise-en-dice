@@ -57,6 +57,47 @@ class PostgresIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
     }
 
     @Test
+    void aliasSchemaKeepsOwnNamesNormalizedAndAllowsCrossConceptAmbiguity() {
+        long first = insertConcept("alias-schema-first");
+        long second = insertConcept("alias-schema-second");
+        String firstName = jdbcTemplate.queryForObject(
+                "select display_name from ingredient_concept where id = ?", String.class, first);
+        try {
+            jdbcTemplate.update(
+                    "insert into ingredient_concept_alias (ingredient_concept_id, alias_text) values (?, ?)",
+                    first, "Former schema name");
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "insert into ingredient_concept_alias (ingredient_concept_id, alias_text) values (?, ?)",
+                    first, "former SCHEMA name"))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "insert into ingredient_concept_alias (ingredient_concept_id, alias_text) values (?, ?)",
+                    first, " padded alias "))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "insert into ingredient_concept_alias (ingredient_concept_id, alias_text) values (?, ?)",
+                    first, firstName.toUpperCase(java.util.Locale.ROOT)))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "update ingredient_concept set display_name = 'FORMER SCHEMA NAME' where id = ?", first))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+
+            jdbcTemplate.update(
+                    "insert into ingredient_concept_alias (ingredient_concept_id, alias_text) values (?, ?), (?, ?)",
+                    second, "FORMER SCHEMA NAME", second, firstName);
+            assertThat(jdbcTemplate.queryForObject(
+                    "select count(*) from ingredient_concept_alias where ingredient_concept_id in (?, ?)",
+                    Integer.class, first, second)).isEqualTo(3);
+        } finally {
+            jdbcTemplate.update("delete from ingredient_concept where id in (?, ?)", first, second);
+        }
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from ingredient_concept_alias where ingredient_concept_id in (?, ?)",
+                Integer.class, first, second)).isZero();
+    }
+
+    @Test
     void availabilityConstraintAcceptsAllFiveLevelsAndRejectsUnknownLevels() {
         long conceptId = insertConcept("five-level-availability");
         long participantId = insertReturningId(

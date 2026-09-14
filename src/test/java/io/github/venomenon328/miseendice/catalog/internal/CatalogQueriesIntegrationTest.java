@@ -143,6 +143,24 @@ class CatalogQueriesIntegrationTest extends CurrentSchemaPostgresIntegrationTest
     }
 
     @Test
+    void searchesAliasesLiterallyAndReturnsEachConceptOnlyOnce() {
+        long matching = insertConcept("ALIAS_SEARCH", "Query canonical alias owner", "SPECIFIC", true, false, null);
+        long decoy = insertConcept("ALIAS_DECOY", "Query canonical alias decoy", "SPECIFIC", true, false, null);
+        insertAlias(matching, "Query former 100%_\\name");
+        insertAlias(matching, "Query second former name");
+        insertAlias(decoy, "Query former 100XXname");
+
+        var result = catalogQueries.search(search("100%_\\", CatalogSort.DISPLAY_NAME_ASC));
+
+        assertThat(result.totalItems()).isEqualTo(1);
+        assertThat(result.items()).singleElement().extracting(item -> item.id()).isEqualTo(matching);
+        assertThat(catalogQueries.search(search("query former", CatalogSort.DISPLAY_NAME_ASC)).items())
+                .extracting(item -> item.id()).containsExactly(decoy, matching);
+        assertThat(catalogQueries.findConcept(matching).orElseThrow().aliases())
+                .containsExactly("Query former 100%_\\name", "Query second former name");
+    }
+
+    @Test
     void sortsAndPaginatesOnTheServer() {
         for (int number = 0; number < 51; number++) {
             insertConcept("PAGE_" + number, "Query page " + String.format("%02d", number), "SPECIFIC", false, false, null);
@@ -235,5 +253,11 @@ class CatalogQueriesIntegrationTest extends CurrentSchemaPostgresIntegrationTest
                 insert into ingredient_culinary_dimension (ingredient_concept_id, culinary_dimension_id, level)
                 select ?, id, ? from culinary_dimension where code = ?
                 """, conceptId, level, dimensionCode);
+    }
+
+    private void insertAlias(long conceptId, String alias) {
+        jdbcTemplate.update(
+                "insert into ingredient_concept_alias (ingredient_concept_id, alias_text) values (?, ?)",
+                conceptId, alias);
     }
 }

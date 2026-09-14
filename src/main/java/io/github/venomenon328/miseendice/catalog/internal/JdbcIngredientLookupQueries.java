@@ -45,23 +45,43 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
 
         long totalMatches = jdbcTemplate.queryForObject("""
                 select count(*)
-                from ingredient_concept
-                where active
-                  and position(? in lower(display_name)) > 0
-                """, Long.class, normalized);
+                from ingredient_concept concept
+                where concept.active
+                  and (position(? in lower(concept.display_name)) > 0
+                       or exists (
+                           select 1 from ingredient_concept_alias alias
+                           where alias.ingredient_concept_id = concept.id
+                             and position(? in lower(alias.alias_text)) > 0
+                       ))
+                """, Long.class, normalized, normalized);
         List<SearchRow> rows = jdbcTemplate.query("""
-                select id, display_name
-                from ingredient_concept
-                where active
-                  and position(? in lower(display_name)) > 0
-                order by case when position(? in lower(display_name)) = 1 then 0 else 1 end,
-                         lower(display_name), id
+                select concept.id, concept.display_name,
+                       (lower(concept.display_name) = ? or exists (
+                           select 1 from ingredient_concept_alias exact_alias
+                           where exact_alias.ingredient_concept_id = concept.id
+                             and lower(exact_alias.alias_text) = ?
+                       )) as exact_match
+                from ingredient_concept concept
+                where concept.active
+                  and (position(? in lower(concept.display_name)) > 0
+                       or exists (
+                           select 1 from ingredient_concept_alias alias
+                           where alias.ingredient_concept_id = concept.id
+                             and position(? in lower(alias.alias_text)) > 0
+                       ))
+                order by case when position(? in lower(concept.display_name)) = 1 or exists (
+                             select 1 from ingredient_concept_alias prefix_alias
+                             where prefix_alias.ingredient_concept_id = concept.id
+                               and position(? in lower(prefix_alias.alias_text)) = 1
+                         ) then 0 else 1 end,
+                         lower(concept.display_name), concept.id
                 limit ?
-                """, this::mapSearchRow, normalized, normalized, limit);
+                """, this::mapSearchRow, normalized, normalized, normalized, normalized,
+                normalized, normalized, limit);
         Map<Long, List<String>> parents = findActiveDirectParentNames(rows.stream().map(SearchRow::conceptId).toList());
         return new IngredientLookupSearchResult(normalized, rows.stream()
                 .map(row -> new IngredientLookupMatch(row.conceptId(), row.displayName(),
-                        parents.getOrDefault(row.conceptId(), List.of())))
+                        parents.getOrDefault(row.conceptId(), List.of()), row.exactMatch()))
                 .toList(), totalMatches);
     }
 
@@ -107,7 +127,8 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
                         resultSet.getString("code"), resultSet.getString("display_name"), resultSet.getInt("level")), conceptId),
                 findCulinaryCountries(conceptId),
                 findAvailabilityNotes(conceptId),
-                row.curatorNote()
+                row.curatorNote(),
+                findAliases(conceptId)
         ));
     }
 
@@ -268,12 +289,22 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
                 resultSet.getString("code"), resultSet.getString("display_name"), resultSet.getString("curator_note")), conceptId);
     }
 
+    private List<String> findAliases(long conceptId) {
+        return jdbcTemplate.queryForList("""
+                select alias_text
+                from ingredient_concept_alias
+                where ingredient_concept_id = ?
+                order by lower(alias_text), alias_text
+                """, String.class, conceptId);
+    }
+
     private CulinaryCountry mapCulinaryCountry(ResultSet resultSet, int rowNumber) throws SQLException {
         return new CulinaryCountry(resultSet.getString("code"), resultSet.getString("display_name"));
     }
 
     private SearchRow mapSearchRow(ResultSet resultSet, int rowNumber) throws SQLException {
-        return new SearchRow(resultSet.getLong("id"), resultSet.getString("display_name"));
+        return new SearchRow(resultSet.getLong("id"), resultSet.getString("display_name"),
+                resultSet.getBoolean("exact_match"));
     }
 
     private ProfileRow mapProfileRow(ResultSet resultSet, int rowNumber) throws SQLException {
@@ -282,7 +313,7 @@ public class JdbcIngredientLookupQueries implements IngredientLookupQueries {
                 resultSet.getObject("novelty_level", Integer.class), resultSet.getString("curator_note"));
     }
 
-    private record SearchRow(long conceptId, String displayName) {
+    private record SearchRow(long conceptId, String displayName, boolean exactMatch) {
     }
 
     private record ProfileRow(long conceptId, String displayName, boolean randomDrawEnabled, BigDecimal baseDrawWeight,

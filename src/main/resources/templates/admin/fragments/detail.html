@@ -31,6 +31,7 @@
         </div>
         <dl class="detail-list">
             <div><dt>Anzeigename</dt><dd th:text="${detail.displayName}">Kabeljau</dd></div>
+            <div><dt>Aliasse</dt><dd th:text="${detail.aliases.isEmpty() ? 'keine' : #strings.listJoin(detail.aliases, ', ')}">keine</dd></div>
             <div><dt>Code</dt><dd><code th:text="${detail.code}">COD</code></dd></div>
         </dl>
     </section>
@@ -233,6 +234,7 @@
                 <h3>Dein Stand</h3>
                 <dl class="conflict-list">
                     <div th:classappend="${form.displayName != currentDetail.displayName} ? ' is-different'"><dt>Anzeigename</dt><dd th:text="${form.displayName}">Mein Name</dd></div>
+                    <div th:classappend="${form.aliasesText != #strings.listJoin(currentDetail.aliases, '\n')} ? ' is-different'"><dt>Aliasse</dt><dd th:text="${form.aliasesText.isEmpty() ? 'keine' : form.aliasesText}">keine</dd></div>
                     <div th:classappend="${form.active != currentDetail.active} ? ' is-different'"><dt>Status</dt><dd th:text="${form.active ? 'Aktiv' : 'Inaktiv'}">Aktiv</dd></div>
                     <div th:classappend="${form.randomDrawEnabled != currentDetail.randomDrawEnabled} ? ' is-different'"><dt>Ziehbar</dt><dd th:text="${form.randomDrawEnabled ? 'Ja' : 'Nein'}">Nein</dd></div>
                     <div th:classappend="${form.challengeSpecificity != currentDetail.challengeSpecificity} ? ' is-different'"><dt>Spezifität</dt><dd th:text="${form.challengeSpecificity == 'OPEN' ? 'Offen' : 'Spezifisch'}">Spezifisch</dd></div>
@@ -260,6 +262,7 @@
                 <h3>Aktueller Datenbankstand</h3>
                 <dl class="conflict-list">
                     <div th:classappend="${form.displayName != currentDetail.displayName} ? ' is-different'"><dt>Anzeigename</dt><dd th:text="${currentDetail.displayName}">Aktueller Name</dd></div>
+                    <div th:classappend="${form.aliasesText != #strings.listJoin(currentDetail.aliases, '\n')} ? ' is-different'"><dt>Aliasse</dt><dd th:text="${currentDetail.aliases.isEmpty() ? 'keine' : #strings.listJoin(currentDetail.aliases, ', ')}">keine</dd></div>
                     <div th:classappend="${form.active != currentDetail.active} ? ' is-different'"><dt>Status</dt><dd th:text="${currentDetail.active ? 'Aktiv' : 'Inaktiv'}">Aktiv</dd></div>
                     <div th:classappend="${form.randomDrawEnabled != currentDetail.randomDrawEnabled} ? ' is-different'"><dt>Ziehbar</dt><dd th:text="${currentDetail.randomDrawEnabled ? 'Ja' : 'Nein'}">Nein</dd></div>
                     <div th:classappend="${form.challengeSpecificity != currentDetail.challengeSpecificity} ? ' is-different'"><dt>Spezifität</dt><dd th:text="${currentDetail.challengeSpecificity == 'OPEN' ? 'Offen' : 'Spezifisch'}">Spezifisch</dd></div>
@@ -284,6 +287,7 @@
             <a class="button button--secondary" th:href="${state.detailUrl(currentDetail.id)}">Aktuellen Stand laden und meine Änderungen verwerfen</a>
             <form method="post" th:action="${state.detailUrl(form.conceptId)}">
                 <input type="hidden" name="displayName" th:value="${form.displayName}">
+                <input type="hidden" name="aliasesText" th:value="${form.aliasesText}">
                 <input type="hidden" name="active" th:value="${form.active}">
                 <input type="hidden" name="randomDrawEnabled" th:value="${form.randomDrawEnabled}">
                 <input type="hidden" name="challengeSpecificity" th:value="${form.challengeSpecificity}">
@@ -316,6 +320,8 @@
 
         <form method="post" th:action="${formMode.name() == 'CREATE' ? state.createUrl() : state.detailUrl(form.conceptId)}"
               data-catalog-concept-form th:attr="data-original-active=${detail != null and detail.active}">
+            <input th:each="acknowledgement : ${form.nameCollisionAcknowledgementValues}"
+                   type="hidden" name="nameCollisionAcknowledgement" th:value="${acknowledgement}">
             <div th:if="${formErrors != null and !formErrors.isEmpty()}" class="form-errors" role="alert">
                 <h3>Bitte überprüfe die Eingaben</h3>
                 <ul><li th:each="error : ${formErrors}" th:text="${error.value}">Feldfehler</li></ul>
@@ -332,6 +338,16 @@
                 <ul><li th:each="warning : ${relationWarnings}" th:text="${warning}">Warnung</li></ul>
                 <label class="confirmation-check"><input type="checkbox" name="inactiveRelationsAcknowledged" value="true" th:checked="${form.inactiveRelationsAcknowledged}"> Ich möchte diese Beziehung zu einem inaktiven Konzept bewusst speichern.</label>
             </aside>
+            <aside th:if="${nameCollisionWarnings != null and !nameCollisionWarnings.isEmpty()}" class="weight-warning" data-testid="name-collision-warning">
+                <h3>Mehrdeutige Bezeichnung bewusst bestätigen</h3>
+                <p>Diese Bestätigung gilt nur für die durch diesen Speichervorgang betroffenen Überschneidungen.</p>
+                <label th:each="collision : ${nameCollisionWarnings}" class="confirmation-check">
+                    <input type="checkbox" name="nameCollisionAcknowledgement"
+                           th:value="${collision.acknowledgement.formValue()}"
+                           th:checked="${form.nameCollisionAcknowledgementValues.contains(collision.acknowledgement.formValue())}">
+                    <span th:text="|„${collision.localText}“ überschneidet sich mit „${collision.otherText}“ bei ${collision.otherConceptDisplayName} (${collision.otherConceptCode}).|">Kollision</span>
+                </label>
+            </aside>
 
             <section class="detail-section">
                 <div class="detail-section-heading"><p class="section-kicker">Identität</p><h3>Basis</h3></div>
@@ -340,6 +356,11 @@
                         <input name="displayName" required th:value="${form.displayName}" aria-describedby="display-name-error" data-display-name>
                     </label>
                     <p id="display-name-error" class="field-error" th:if="${formErrors != null and formErrors.get('displayName') != null}" th:text="${formErrors.get('displayName')}">Fehler</p>
+                    <label class="textarea-field"> Aliasse (ein Alias pro Zeile)
+                        <textarea name="aliasesText" rows="4" th:text="${form.aliasesText}" aria-describedby="aliases-help aliases-error"></textarea>
+                    </label>
+                    <p id="aliases-help" class="muted-copy">Nur alternative Namen derselben kulinarischen Identität; leer ist zulässig.</p>
+                    <p id="aliases-error" class="field-error" th:if="${formErrors != null and formErrors.get('aliases') != null}" th:text="${formErrors.get('aliases')}">Fehler</p>
                     <label th:if="${formMode.name() == 'CREATE'}"> Code
                         <input name="code" required pattern="[A-Z][A-Z0-9_]*" th:value="${form.code}" data-code-from-display-name>
                     </label>

@@ -154,6 +154,64 @@ class CatalogAdministrationEditingMvcTest extends CurrentSchemaPostgresIntegrati
     }
 
     @Test
+    void maintainsAliasesAndRequiresTheServerRecomputedCollisionAcknowledgement() throws Exception {
+        MockHttpSession session = authenticate();
+        long existing = insertConcept(
+                "ALIAS_EXISTING", "Issue 263 existing canonical", "SPECIFIC", true, false, null);
+        String code = PREFIX + "ALIAS_CREATE";
+
+        mockMvc.perform(post("/admin/catalog")
+                        .session(session).with(csrf())
+                        .param("code", code)
+                        .param("displayName", "Issue 263 alias owner")
+                        .param("aliasesText", "Issue 263 existing canonical\nIssue 263 second alias")
+                        .param("curatorNote", "Technische Testnotiz."))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(containsString("Mehrdeutige Bezeichnung bewusst bestätigen")))
+                .andExpect(content().string(containsString(existing + "|issue 263 existing canonical")));
+        assertFalse(Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+                "select exists(select 1 from ingredient_concept where code = ?)", Boolean.class, code)));
+
+        mockMvc.perform(post("/admin/catalog")
+                        .session(session).with(csrf())
+                        .param("code", code)
+                        .param("displayName", "Issue 263 alias owner")
+                        .param("aliasesText", "Issue 263 existing canonical\nIssue 263 second alias")
+                        .param("curatorNote", "Technische Testnotiz.")
+                        .param("nameCollisionAcknowledgement", (existing + 999) + "|issue 263 existing canonical"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().string(containsString("Mehrdeutige Bezeichnung bewusst bestätigen")));
+
+        mockMvc.perform(post("/admin/catalog")
+                        .session(session).with(csrf())
+                        .param("code", code)
+                        .param("displayName", "Issue 263 alias owner")
+                        .param("aliasesText", "Issue 263 existing canonical\nIssue 263 second alias")
+                        .param("curatorNote", "Technische Testnotiz.")
+                        .param("nameCollisionAcknowledgement", existing + "|issue 263 existing canonical"))
+                .andExpect(status().is3xxRedirection());
+
+        long created = conceptId(code);
+        assertTrue(jdbcTemplate.queryForObject(
+                "select count(*) = 2 from ingredient_concept_alias where ingredient_concept_id = ?",
+                Boolean.class, created));
+        mockMvc.perform(post("/admin/catalog/{id}", created)
+                        .session(session).with(csrf())
+                        .param("displayName", "Issue 263 alias owner")
+                        .param("active", "true")
+                        .param("challengeSpecificity", "SPECIFIC")
+                        .param("baseDrawWeight", "1.0")
+                        .param("curatorNote", "Technische Testnotiz.")
+                        .param("aliasesText", "Issue 263 replacement alias")
+                        .param("version", "0"))
+                .andExpect(status().is3xxRedirection());
+        assertTrue(jdbcTemplate.queryForObject("""
+                select count(*) = 1 and min(alias_text) = 'Issue 263 replacement alias'
+                from ingredient_concept_alias where ingredient_concept_id = ?
+                """, Boolean.class, created));
+    }
+
+    @Test
     void rejectsBlankCuratorNotesOnCreationAndUpdate() throws Exception {
         MockHttpSession session = authenticate();
 

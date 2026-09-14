@@ -202,13 +202,19 @@ Die Erfassung darf eine Katalogreferenz nicht allein deshalb leer lassen, weil d
 Der Admin-Workflow bietet deshalb eine optionale Zuordnungsstufe ähnlich der vorhandenen `/zutat`-Suche:
 
 1. Der Freitext wird immer als fachliche Autorität erfasst.
-2. Ein eindeutiger case-insensitiver exakter Treffer auf Name oder Code darf vorgeschlagen werden.
-3. Für nicht eindeutige oder nicht gefundene Einträge kann der Admin eine literale Teilstringsuche starten.
+2. Ein eindeutiger case-insensitiver exakter Konzepttreffer auf Name, Code oder gepflegten Alias darf vorgeschlagen
+   werden; mehrere passende Namens-/Aliaszeilen desselben Konzepts zählen einmal.
+3. Für nicht eindeutige oder nicht gefundene Einträge kann der Admin eine literale Teilstringsuche über Name, Code
+   und Aliasse starten.
 4. Höchstens 25 priorisierte Treffer werden zur Auswahl gezeigt.
 5. Die Suche darf für diesen Admin-Anwendungsfall auch inaktive Konzepte liefern, muss sie aber sichtbar kennzeichnen.
 6. `ohne Katalogreferenz` bleibt jederzeit eine ausdrückliche gültige Auswahl.
 7. Fuzzy Matching oder semantische Ähnlichkeit erzeugen niemals ungefragt eine Referenz.
 8. Das spätere Setzen, Ändern oder Entfernen der Referenz verändert den gespeicherten Freitext nicht.
+
+Für persönliche Konkretisierungen historischer `OPEN`-Vorgaben gelten dieselben Aliasmatches ausschließlich im
+bereits zulässigen direkten/transitiven Refinement-Teilbaum. Inaktive Konzepte bleiben dort wie bisher
+referenzierbar; weder Alias noch Code umgehen die Abstammungsprüfung.
 
 Die Zuordnung ist optional und darf die erfolgreiche Speicherung eines ansonsten vollständigen Ergebnisses nicht blockieren.
 

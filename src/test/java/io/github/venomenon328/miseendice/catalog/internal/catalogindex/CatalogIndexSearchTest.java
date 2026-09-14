@@ -70,4 +70,28 @@ class CatalogIndexSearchTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("exact catalog hit");
     }
+
+    @Test
+    void searchesAliasesAndReportsCrossConceptAliasNormalizationAmbiguity() {
+        List<CatalogIndexFiles.Concept> concepts = CatalogIndexTestFixtures.concepts();
+        var exactAlias = new CatalogIndexSearch.Candidate(
+                "alias", "Oil and grain", List.of(), null);
+        var ambiguousAlias = new CatalogIndexSearch.Candidate(
+                "ambiguous-alias", "shared historic parent", List.of(), null);
+
+        var exactResult = CatalogIndexSearch.evaluate(exactAlias, concepts);
+        var ambiguousResult = CatalogIndexSearch.evaluate(ambiguousAlias, concepts);
+
+        assertThat(exactResult.automaticFinding()).isEqualTo("EXACT_CODE_OR_TEXT_MATCH");
+        assertThat(exactResult.searchPaths()).contains("aliases");
+        assertThat(exactResult.matches()).filteredOn(match -> match.code().equals("CHILD"))
+                .singleElement().satisfies(match -> {
+                    assertThat(match.matchedFields()).contains("aliases");
+                    assertThat(match.exactIdentityMatch()).isTrue();
+                });
+        assertThat(ambiguousResult.automaticFinding()).isEqualTo("AMBIGUOUS_NORMALIZED_IDENTITY");
+        assertThat(ambiguousResult.ambiguousNormalizedIdentity()).isTrue();
+        assertThat(ambiguousResult.matches()).filteredOn(match -> match.exactIdentityMatch())
+                .extracting(match -> match.code()).containsExactlyInAnyOrder("PARENT_A", "PARENT_B");
+    }
 }

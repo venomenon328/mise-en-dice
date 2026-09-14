@@ -59,13 +59,31 @@ class CatalogRelationCandidateSearchRegressionTest extends CurrentSchemaPostgres
                 .containsExactly(TEST_PREFIX + "LITERAL");
     }
 
-    private void insertConcept(String code, String displayName) {
-        jdbcTemplate.update("""
+    @Test
+    void findsAliasesLiterallyAndDeduplicatesConceptsWithSeveralMatchingAliases() {
+        long matching = insertConcept(TEST_PREFIX + "ALIAS", "Picker canonical alias owner");
+        insertAlias(matching, "Picker former 100%_\\name");
+        insertAlias(matching, "Picker second 100%_\\name");
+        insertConcept(TEST_PREFIX + "ALIAS_DECOY", "Picker former 100XXname");
+
+        assertThat(codes(catalogQueries.searchRelationCandidates("100%_\\", 0)))
+                .containsExactly(TEST_PREFIX + "ALIAS");
+    }
+
+    private long insertConcept(String code, String displayName) {
+        return jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (
                     code, display_name, active, random_draw_enabled, challenge_specificity,
                     base_draw_weight, novelty_level, curator_note
                 ) values (?, ?, false, false, 'SPECIFIC', 1.0000, null, 'Technische Testnotiz.')
-                """, code, displayName);
+                returning id
+                """, Long.class, code, displayName);
+    }
+
+    private void insertAlias(long conceptId, String alias) {
+        jdbcTemplate.update(
+                "insert into ingredient_concept_alias (ingredient_concept_id, alias_text) values (?, ?)",
+                conceptId, alias);
     }
 
     private static List<String> codes(List<CatalogQueries.CatalogRelationCandidate> candidates) {

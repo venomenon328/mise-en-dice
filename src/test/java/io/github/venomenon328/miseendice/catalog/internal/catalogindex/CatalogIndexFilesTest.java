@@ -36,7 +36,7 @@ class CatalogIndexFilesTest {
         assertThat(first.payload().conceptCount()).isEqualTo(concepts.size());
         assertThat(first.payload().refinementRelationCount()).isEqualTo(2);
         assertThat(first.payload().countryRelationCount()).isEqualTo(2);
-        assertThat(first.payload().normalizationCollisionCount()).isEqualTo(1);
+        assertThat(first.payload().normalizationCollisionCount()).isEqualTo(2);
 
         CatalogIndexFiles.Validation validation = CatalogIndexFiles.validate(
                 temporaryDirectory.resolve("first").resolve(CatalogIndexFiles.MANIFEST_FILE), repository, true);
@@ -47,11 +47,14 @@ class CatalogIndexFilesTest {
         assertThat(child.displayName()).isEqualTo("Öl & Ähre");
         assertThat(child.curatorNote()).isEqualTo("Unveränderte Notiz – mit Umlaut.");
         assertThat(child.directParents()).containsExactly("PARENT_A", "PARENT_B");
+        assertThat(child.aliases()).containsExactly("Former oil name", "Oil and grain");
         assertThat(child.culinaryCountries()).containsExactly(
                 new CatalogIndexFiles.Country("DE", "Deutschland"),
                 new CatalogIndexFiles.Country("GB-XYZ", "Testregion"));
         assertThat(validation.normalizationCollisions()).containsEntry(
                 "creme", List.of("CREME", "CREME_VARIANT"));
+        assertThat(validation.normalizationCollisions()).containsEntry(
+                "shared historic parent", List.of("PARENT_A", "PARENT_B"));
     }
 
     @Test
@@ -90,5 +93,26 @@ class CatalogIndexFilesTest {
         assertThat(Files.readAllBytes(output.resolve(original.payload().path()))).isEqualTo(originalPayload);
         assertThat(CatalogIndexFiles.validate(output.resolve(CatalogIndexFiles.MANIFEST_FILE), repository, true)
                 .manifest().payload().sha256()).isEqualTo(original.payload().sha256());
+    }
+
+    @Test
+    void rejectsCaseInsensitiveOwnAliasDuplicatesAndAliasesEqualToTheCanonicalName() throws Exception {
+        Path repository = Path.of(".").toAbsolutePath().normalize();
+        CatalogIndexFiles.SourceMetadata source = CatalogIndexTestFixtures.source(repository);
+        var duplicateAliases = List.of(new CatalogIndexFiles.Concept(
+                "BROKEN", "Canonical", "Technical fixture.", true, false, "SPECIFIC",
+                List.of(), List.of(), List.of(), List.of("Former", "FORMER")));
+        var ownNameAlias = List.of(new CatalogIndexFiles.Concept(
+                "BROKEN", "Canonical", "Technical fixture.", true, false, "SPECIFIC",
+                List.of(), List.of(), List.of(), List.of("CANONICAL")));
+
+        assertThatThrownBy(() -> CatalogIndexFiles.publish(
+                temporaryDirectory.resolve("duplicate-alias"), repository, duplicateAliases, source, Instant.now()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Case-insensitive duplicate aliases");
+        assertThatThrownBy(() -> CatalogIndexFiles.publish(
+                temporaryDirectory.resolve("own-name-alias"), repository, ownNameAlias, source, Instant.now()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Alias duplicates display name");
     }
 }

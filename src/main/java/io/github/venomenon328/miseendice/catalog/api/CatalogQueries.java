@@ -237,7 +237,8 @@ public interface CatalogQueries {
             List<CatalogCountry> culinaryCountries,
             List<CatalogAvailabilityValue> availability,
             List<CatalogSeasonValue> seasonality,
-            List<String> directExclusionRules
+            List<String> directExclusionRules,
+            List<String> aliases
     ) {
 
         public CatalogConceptDetail(
@@ -267,7 +268,38 @@ public interface CatalogQueries {
                     baseDrawWeight, noveltyLevel, curatorNote, version, updatedAt,
                     directParents, directChildren, transitiveAncestors, transitiveDescendants,
                     functionalRoles, culinaryFlags, culinaryDimensions, List.of(),
-                    availability, seasonality, directExclusionRules);
+                    availability, seasonality, directExclusionRules, List.of());
+        }
+
+        public CatalogConceptDetail(
+                long id,
+                String displayName,
+                String code,
+                boolean active,
+                boolean randomDrawEnabled,
+                String challengeSpecificity,
+                BigDecimal baseDrawWeight,
+                Integer noveltyLevel,
+                String curatorNote,
+                long version,
+                OffsetDateTime updatedAt,
+                List<CatalogConceptRelation> directParents,
+                List<CatalogConceptRelation> directChildren,
+                List<CatalogConceptRelation> transitiveAncestors,
+                List<CatalogConceptRelation> transitiveDescendants,
+                List<CatalogReferenceValue> functionalRoles,
+                List<CatalogReferenceValue> culinaryFlags,
+                List<CatalogDimensionValue> culinaryDimensions,
+                List<CatalogCountry> culinaryCountries,
+                List<CatalogAvailabilityValue> availability,
+                List<CatalogSeasonValue> seasonality,
+                List<String> directExclusionRules
+        ) {
+            this(id, displayName, code, active, randomDrawEnabled, challengeSpecificity,
+                    baseDrawWeight, noveltyLevel, curatorNote, version, updatedAt,
+                    directParents, directChildren, transitiveAncestors, transitiveDescendants,
+                    functionalRoles, culinaryFlags, culinaryDimensions, culinaryCountries,
+                    availability, seasonality, directExclusionRules, List.of());
         }
 
         public CatalogConceptDetail {
@@ -282,6 +314,7 @@ public interface CatalogQueries {
             availability = List.copyOf(availability);
             seasonality = List.copyOf(seasonality);
             directExclusionRules = List.copyOf(directExclusionRules);
+            aliases = List.copyOf(aliases);
         }
     }
 

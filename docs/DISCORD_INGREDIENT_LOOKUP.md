@@ -49,7 +49,8 @@ Die Berechtigung zum Starten von `/challenge` ist davon unabhängig und wird im 
 
 Durchsucht werden alle aktiven Zutatenkonzepte unabhängig von `random_draw_enabled`.
 
-Gesucht wird ausschließlich im sichtbaren Namen `display_name`:
+Gesucht wird ausschließlich in sichtbaren Bezeichnungen: im kanonischen `display_name` und in explizit gepflegten
+Aliassen:
 
 - führende und folgende Leerzeichen werden entfernt,
 - Vergleich erfolgt case-insensitive mit stabiler Locale,
@@ -61,15 +62,17 @@ Eine nach dem Trimmen leere Eingabe wird ohne Katalogabfrage verständlich abgew
 
 Die Trefferentscheidung ist deterministisch:
 
-1. Ein case-insensitiver exakter Namensfund wird unmittelbar angezeigt.
-2. Ohne exakten Fund wird ein einzelner Teilstringtreffer unmittelbar angezeigt.
-3. Mehrere Teilstringtreffer erzeugen eine öffentliche String-Select-Auswahl.
-4. Ohne Treffer erscheint eine kurze verständliche Meldung.
+1. Exakte case-insensitive Treffer auf kanonischen Namen oder Alias werden nach Konzept dedupliziert.
+2. Genau ein exaktes Konzept wird unmittelbar angezeigt; mehrere exakte Konzepte erzeugen eine Auswahl, ohne einen
+   kanonischen Match still zu bevorzugen.
+3. Ohne exakten Fund wird ein einzelner Teilstring-Konzepttreffer unmittelbar angezeigt.
+4. Mehrere Teilstringtreffer erzeugen eine öffentliche String-Select-Auswahl.
+5. Ohne Treffer erscheint eine kurze verständliche Meldung.
 
 Mehrdeutige Treffer werden sortiert nach:
 
-1. Name beginnt mit dem Suchtext,
-2. Suchtext steht an anderer Stelle im Namen,
+1. kanonischer Name oder Alias beginnt mit dem Suchtext,
+2. Suchtext steht an anderer Stelle in Name oder Alias,
 3. alphabetisch nach sichtbarem Namen,
 4. stabil nach Konzept-ID.
 
@@ -93,6 +96,7 @@ Das aktive Profil enthält ausschließlich:
 
 - Konzept-ID als opake interne Interaktionsreferenz,
 - sichtbaren Namen,
+- explizit gepflegte Aliasse in deterministischer Reihenfolge,
 - Ziehbarkeit und Gewichtung,
 - Kochungewöhnlichkeit,
 - aktive direkte Eltern und Kinder als `IngredientLookupRelation(conceptId, displayName)`,
@@ -130,6 +134,10 @@ Gewichtung        nicht eigenständig ziehbar
 Die Kochungewöhnlichkeit beschreibt ausschließlich die Außergewöhnlichkeit als Kochzutat und verwendet dieselbe fünfstufige verbale Skala wie das Datenmodell. Ein fehlender Wert erscheint ausdrücklich als `nicht gepflegt`; er wird weder als Stufe 0 noch als Stufe 1 interpretiert. Die verbindliche Begriffsabgrenzung steht in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md); Availability-Stufen bleiben ausdrücklich nicht Teil dieses Discord-Profils.
 
 ## 6. Zutaten-Card
+
+Der Card-Titel bleibt der kanonische Anzeigename. Eine nicht leere Aliasliste erscheint kompakt als
+`Auch bekannt als`; Aliastexte erhalten dieselbe Mention-, Markdown-, Link- und Längenabsicherung wie andere
+Katalogtexte. Mehrere passende Aliaszeilen ändern weder Titel noch Konzeptidentität.
 
 Das fertige Profil ist ein kompaktes Discord-Embed mit einer festen zurückhaltenden warmen Akzentfarbe. Es folgt dieser Reihenfolge:
 

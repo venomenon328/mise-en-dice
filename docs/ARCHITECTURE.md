@@ -276,6 +276,12 @@ Der optional aktivierbare Administrationsadapter schützt `/admin/**` mit Spring
 
 `ingredient_concept` und `exclusion_rule` besitzen eine Aggregatversion für optimistisches Locking. Schreibende Application Services erhöhen sie innerhalb ihrer Transaktion ausschließlich beim erwarteten Versionswert. Gemäß ADR 0010 führt die Katalogverwaltung keine anwendungsinterne Vorher-/Nachher-Historie; Konkurrenzschutz und Integrität hängen nicht von einem Audit-Write ab.
 
+Die relationale `ingredient_concept_alias`-Menge ist Bestandteil desselben Zutatenaggregats. Sie besitzt keine eigene
+Version oder Historie. Ein separater transaktionsgebundener PostgreSQL-Advisory-Lock serialisiert nur Saves, die den
+kanonischen Namen oder die Aliasidentitäten ändern, damit die serverseitig neu berechnete Bestätigung zulässiger
+Cross-Concept-Mehrdeutigkeiten nicht durch konkurrierende Namenswrites unterlaufen wird. Unveränderte, bereits
+genehmigte Mehrdeutigkeiten blockieren fachlich unabhängige Saves nicht.
+
 Schreibende Änderungen an `ingredient_refinement` und an der Spezifität nehmen zusätzlich vor jeder Graphvalidierung einen stabilen PostgreSQL-Transaktions-Advisory-Lock. Dieser Lock serialisiert den vollständigen Graph-Read/Validate/Write-Ablauf auch zwischen mehreren Anwendungsprozessen; er ersetzt weder die deterministische Sperrung und Versionsprüfung aller betroffenen Zutatenaggregate noch den Zyklus-Trigger als letzte Datenbanksicherung. Funktionale Rollen sind davon unabhängige Generatormetadaten.
 
 ## 9. Konfiguration und Betrieb

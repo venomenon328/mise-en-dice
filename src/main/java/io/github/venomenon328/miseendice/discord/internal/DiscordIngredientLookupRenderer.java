@@ -85,6 +85,9 @@ final class DiscordIngredientLookupRenderer {
         if (!profile.culinaryCountries().isEmpty()) {
             embed.add("🌍 Kulinarische Zuordnung", countryFlags(profile.culinaryCountries()), false);
         }
+        if (!profile.aliases().isEmpty()) {
+            embed.add("Auch bekannt als", listValue(profile.aliases()), false);
+        }
         if (profile.curatorNote() != null && !profile.curatorNote().isBlank()) {
             embed.addText("💡 Hinweis aus dem Zutatenkatalog", safe(profile.curatorNote()), MAX_CURATOR_NOTE_FIELDS);
         }
@@ -286,6 +289,10 @@ final class DiscordIngredientLookupRenderer {
             return null;
         }
         return oneLine(String.join(", ", parents), 100);
+    }
+
+    private static String listValue(List<String> values) {
+        return values.stream().map(value -> oneLine(value, 200)).collect(java.util.stream.Collectors.joining("\n"));
     }
 
     private static String label(String value) {

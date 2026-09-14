@@ -16,7 +16,9 @@ Für jedes neue oder wesentlich geänderte Konzept müssen vor einer zufälligen
 ### Identität
 
 - stabiler technischer Konzeptcode,
-- eindeutiger deutscher Anzeigename,
+- unter kanonischen Namen case-insensitive eindeutiger deutscher Anzeigename,
+- ausdrücklich geprüfte Aliasliste, die auch bewusst leer sein darf, gemäß
+  [`INGREDIENT_NAMING_AND_ALIASES.md`](INGREDIENT_NAMING_AND_ALIASES.md),
 - kurze fachliche Kuratornotiz,
 - Status `OPEN` oder `SPECIFIC`,
 - Entscheidungen `active` und `random_draw_enabled`,

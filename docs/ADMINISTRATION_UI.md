@@ -130,6 +130,7 @@ Die Suche steht permanent oben im linken Bereich.
 Standardmäßig durchsucht sie:
 
 - `display_name`,
+- explizit gepflegte Aliasse,
 - `code`.
 
 Die Kuratornotiz wird nicht standardmäßig in die Volltextsuche einbezogen, damit inhaltliche Notizen nicht zu überraschenden Treffern führen. Ein späterer expliziter Filter `auch Kuratornotizen durchsuchen` ist zulässig, aber kein Muss der ersten Stufe.
@@ -279,7 +280,15 @@ Sichtbar sind immer:
 Pflegbar:
 
 - `display_name`,
+- null bis mehrere explizit gepflegte Aliasse (ein Alias pro Zeile),
 - `active`.
+
+Die Aliasliste folgt vollständig [`INGREDIENT_NAMING_AND_ALIASES.md`](INGREDIENT_NAMING_AND_ALIASES.md). Eigene
+Duplikate und der eigene Anzeigename sind unzulässig. Eine durch die konkrete Namens-/Aliasänderung neu betroffene
+Cross-Concept-Kollision wird mit beiden Konzepten und der Bezeichnung sichtbar gemacht und muss einzeln bestätigt
+werden. Der Server berechnet die erforderlichen Bestätigungen beim Save neu; manipulierte oder veraltete Werte
+umgehen das Gate nicht. Eine bereits genehmigte, durch einen fachlich unabhängigen Save unveränderte Mehrdeutigkeit
+wird nicht erneut geöffnet. Kanonische Anzeigenamen verschiedener Konzepte bleiben stets case-insensitive eindeutig.
 
 `code` wird bei Neuanlage vorgeschlagen und darf **bis zum ersten Speichern** bearbeitet werden. Danach ist der Code in der normalen Weboberfläche unveränderlich. Eine Änderung des stabilen technischen Schlüssels erfordert eine bewusste Migration.
 
@@ -459,7 +468,9 @@ Vorteile:
 
 ### 9.2 Keine Autosaves
 
-`Speichern` persistiert alle Änderungen des aktuellen Aggregats in **einer Transaktion**. Dazu gehört auch die explizit gewählte Menge kulinarischer Länderzuordnungen; sie besitzt keinen separaten Speichern-Button oder Autosave.
+`Speichern` persistiert alle Änderungen des aktuellen Aggregats in **einer Transaktion**. Dazu gehören Aliasliste und
+die explizit gewählte Menge kulinarischer Länderzuordnungen; beide besitzen keinen separaten Speichern-Button oder
+Autosave.
 
 `Verwerfen` stellt den zuletzt geladenen Serverzustand wieder her.
 
@@ -690,6 +701,7 @@ exclusion_rule.version     bigint not null default 0
 
 Die Version eines Zutatenkonzepts schützt **das gesamte in der Weboberfläche bearbeitete Zutatenaggregat**, also auch Änderungen an:
 
+- Aliasliste,
 - direkten Konkretisierungsbeziehungen,
 - Rollen,
 - Flags,
@@ -776,6 +788,8 @@ Die Anwendung validiert verständlich vor dem Datenbankzugriff; die Datenbank bl
 |---|---|
 | Anzeigename leer | Feldfehler am Anzeigenamen |
 | Anzeigename bereits vorhanden, unabhängig von Groß-/Kleinschreibung | Feldfehler mit Link zum bestehenden Konzept |
+| Alias leer, eigener Anzeigename oder eigenes case-insensitives Duplikat | Feldfehler an den Aliassen |
+| neue/betroffene Alias↔Alias- oder Alias↔Name-Kollision mit anderem Konzept | sichtbare Einzelwarnung; Save erst nach exakt passender Bestätigung |
 | Code leer/ungültiges Format bei Neuanlage | Feldfehler am Code |
 | Code bereits vorhanden | Feldfehler mit bestehendem Konzept |
 | Codeänderung nach Anlage | UI bietet sie nicht an; manipulierte Requests werden abgelehnt |
@@ -918,11 +932,16 @@ Benötigt Listen- und Detailprojektionen einschließlich Zielinformationen.
 
 **Zutatenkonzept anlegen**
 
-Eine Transaktion für Basisdaten und die in diesem Paket bereits implementierten Zuordnungen einschließlich der expliziten Ländermenge. Bei Anlage startet die Aggregatversion bei 0.
+Eine Transaktion für Basisdaten, Aliasliste und die bereits implementierten Zuordnungen einschließlich der expliziten
+Ländermenge. Bei Anlage startet die Aggregatversion bei 0.
 
 **Zutatenkonzept ändern**
 
-Eine Transaktion mit erwartetem Versionswert. Basisfelder, Rollen, Eigenschaften, kulinarische Länderzuordnungen, Beschaffbarkeit, Saison und vorgemerkte direkte Beziehungen werden gegen denselben resultierenden Zustand validiert, atomar gespeichert und genau einmal versioniert. Vor dem Graph-Read/Validate/Write-Ablauf serialisiert ein PostgreSQL-Transaktionslock Relations- und Spezifitätsänderungen; Rollen bleiben davon unabhängig.
+Eine Transaktion mit erwartetem Versionswert. Basisfelder, Aliasliste, Rollen, Eigenschaften, kulinarische
+Länderzuordnungen, Beschaffbarkeit, Saison und vorgemerkte direkte Beziehungen werden gegen denselben resultierenden
+Zustand validiert, atomar gespeichert und genau einmal versioniert. Ein eigener transaktionsgebundener Namenslock
+serialisiert neu betroffene Cross-Concept-Kollisionsprüfungen. Vor dem Graph-Read/Validate/Write-Ablauf serialisiert
+der bestehende PostgreSQL-Transaktionslock Relations- und Spezifitätsänderungen; Rollen bleiben davon unabhängig.
 
 **Konkretisierungsbeziehung hinzufügen/entfernen**
 

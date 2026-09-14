@@ -25,6 +25,12 @@ final class CatalogIndexExporter {
             join ingredient_concept child on child.id = refinement.child_concept_id
             order by parent.code, child.code
             """;
+    private static final String ALIASES_SQL = """
+            select concept.code as concept_code, alias.alias_text
+            from ingredient_concept_alias alias
+            join ingredient_concept concept on concept.id = alias.ingredient_concept_id
+            order by concept.code, lower(alias.alias_text), alias.alias_text
+            """;
     private static final String COUNTRIES_SQL = """
             select concept.code as concept_code, country.code as country_code, country.display_name
             from ingredient_culinary_country relation
@@ -62,6 +68,7 @@ final class CatalogIndexExporter {
             }
 
             Map<String, MutableConcept> concepts = readConcepts(connection);
+            readAliases(connection, concepts);
             readRefinements(connection, concepts);
             readCountries(connection, concepts);
             List<CatalogIndexFiles.Concept> result = concepts.values().stream().map(MutableConcept::immutable).toList();
@@ -109,6 +116,15 @@ final class CatalogIndexExporter {
         }
     }
 
+    private static void readAliases(Connection connection, Map<String, MutableConcept> concepts)
+            throws SQLException {
+        try (var statement = connection.prepareStatement(ALIASES_SQL); ResultSet rows = statement.executeQuery()) {
+            while (rows.next()) {
+                requiredConcept(concepts, rows.getString("concept_code")).aliases.add(rows.getString("alias_text"));
+            }
+        }
+    }
+
     private static void readCountries(Connection connection, Map<String, MutableConcept> concepts)
             throws SQLException {
         try (var statement = connection.prepareStatement(COUNTRIES_SQL); ResultSet rows = statement.executeQuery()) {
@@ -136,6 +152,7 @@ final class CatalogIndexExporter {
         private final String challengeSpecificity;
         private final List<String> parents = new ArrayList<>();
         private final List<String> children = new ArrayList<>();
+        private final List<String> aliases = new ArrayList<>();
         private final List<CatalogIndexFiles.Country> countries = new ArrayList<>();
 
         private MutableConcept(
@@ -156,7 +173,8 @@ final class CatalogIndexExporter {
 
         private CatalogIndexFiles.Concept immutable() {
             return new CatalogIndexFiles.Concept(code, displayName, curatorNote, active, randomDrawEnabled,
-                    challengeSpecificity, List.copyOf(parents), List.copyOf(children), List.copyOf(countries));
+                    challengeSpecificity, List.copyOf(parents), List.copyOf(children), List.copyOf(countries),
+                    List.copyOf(aliases));
         }
     }
 }

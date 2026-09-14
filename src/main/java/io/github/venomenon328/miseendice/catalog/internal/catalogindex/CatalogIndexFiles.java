@@ -28,9 +28,9 @@ import tools.jackson.databind.ObjectMapper;
 final class CatalogIndexFiles {
 
     static final String FORMAT = "mise-en-dice-catalog-index-jsonl";
-    static final int FORMAT_VERSION = 1;
+    static final int FORMAT_VERSION = 2;
     static final String GENERATOR_NAME = "mise-en-dice-catalog-index";
-    static final String GENERATOR_VERSION = "1.0.0";
+    static final String GENERATOR_VERSION = "2.0.0";
     static final String MANIFEST_FILE = "catalog-index.manifest.json";
     static final String MASTER_CHANGELOG = "src/main/resources/db/changelog/db.changelog-master.yaml";
     private static final String PAYLOAD_PREFIX = "catalog-index.";
@@ -55,8 +55,24 @@ final class CatalogIndexFiles {
             String challengeSpecificity,
             List<String> directParents,
             List<String> directChildren,
-            List<Country> culinaryCountries
+            List<Country> culinaryCountries,
+            List<String> aliases
     ) {
+        Concept(
+                String code,
+                String displayName,
+                String curatorNote,
+                boolean active,
+                boolean randomDrawEnabled,
+                String challengeSpecificity,
+                List<String> directParents,
+                List<String> directChildren,
+                List<Country> culinaryCountries
+        ) {
+            this(code, displayName, curatorNote, active, randomDrawEnabled, challengeSpecificity,
+                    directParents, directChildren, culinaryCountries, List.of());
+        }
+
         Concept canonical() {
             return new Concept(
                     code,
@@ -69,7 +85,8 @@ final class CatalogIndexFiles {
                     sortedCopy(directChildren),
                     culinaryCountries == null ? List.of() : culinaryCountries.stream()
                             .sorted(Comparator.comparing(Country::code))
-                            .toList());
+                            .toList(),
+                    sortedCopy(aliases));
         }
     }
 
@@ -378,6 +395,17 @@ final class CatalogIndexFiles {
                     "Invalid challenge specificity for " + concept.code());
             requireDistinct(concept.directParents(), "direct parents for " + concept.code());
             requireDistinct(concept.directChildren(), "direct children for " + concept.code());
+            requireDistinct(concept.aliases(), "aliases for " + concept.code());
+            Set<String> aliasIdentities = concept.aliases().stream()
+                    .map(alias -> alias.toLowerCase(Locale.ROOT))
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            require(aliasIdentities.size() == concept.aliases().size(),
+                    "Case-insensitive duplicate aliases for " + concept.code());
+            for (String alias : concept.aliases()) {
+                requireText(alias, "alias for " + concept.code());
+                require(!alias.toLowerCase(Locale.ROOT).equals(concept.displayName().toLowerCase(Locale.ROOT)),
+                        "Alias duplicates display name for " + concept.code());
+            }
             requireDistinct(concept.culinaryCountries().stream().map(Country::code).toList(),
                     "culinary countries for " + concept.code());
             for (String parent : concept.directParents()) {
@@ -435,7 +463,11 @@ final class CatalogIndexFiles {
     private static Map<String, List<String>> normalizationCollisions(List<Concept> concepts) {
         Map<String, Set<String>> values = new TreeMap<>();
         for (Concept concept : concepts) {
-            for (String identity : List.of(concept.code(), concept.displayName())) {
+            List<String> identities = new ArrayList<>();
+            identities.add(concept.code());
+            identities.add(concept.displayName());
+            identities.addAll(concept.aliases());
+            for (String identity : identities) {
                 String normalized = normalizeSearchText(identity);
                 if (!normalized.isBlank()) {
                     values.computeIfAbsent(normalized, ignored -> new LinkedHashSet<>()).add(concept.code());
@@ -535,6 +567,7 @@ final class CatalogIndexFiles {
     private static Map<String, Object> conceptMap(Concept concept) {
         Map<String, Object> value = new TreeMap<>();
         value.put("active", concept.active());
+        value.put("aliases", concept.aliases());
         value.put("challengeSpecificity", concept.challengeSpecificity());
         value.put("code", concept.code());
         value.put("culinaryCountries", concept.culinaryCountries().stream().map(country -> {

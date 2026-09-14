@@ -47,7 +47,16 @@ public interface IngredientLookupQueries {
         }
     }
 
-    record IngredientLookupMatch(long conceptId, String displayName, List<String> activeDirectParents) {
+    record IngredientLookupMatch(
+            long conceptId,
+            String displayName,
+            List<String> activeDirectParents,
+            boolean exactMatch
+    ) {
+
+        public IngredientLookupMatch(long conceptId, String displayName, List<String> activeDirectParents) {
+            this(conceptId, displayName, activeDirectParents, false);
+        }
 
         public IngredientLookupMatch {
             positiveId(conceptId);
@@ -77,7 +86,8 @@ public interface IngredientLookupQueries {
             List<IngredientLookupDimension> culinaryDimensions,
             List<IngredientLookupCountry> culinaryCountries,
             List<IngredientLookupAvailabilityNote> availabilityNotes,
-            String curatorNote
+            String curatorNote,
+            List<String> aliases
     ) {
 
         public IngredientLookupProfile(
@@ -95,7 +105,7 @@ public interface IngredientLookupQueries {
         ) {
             this(conceptId, displayName, randomDrawEnabled, baseDrawWeight, noveltyLevel,
                     activeDirectParents, activeDirectChildren, functionalRoles, culinaryFlags,
-                    culinaryDimensions, List.of(), List.of(), curatorNote);
+                    culinaryDimensions, List.of(), List.of(), curatorNote, List.of());
         }
 
         public IngredientLookupProfile(
@@ -114,7 +124,27 @@ public interface IngredientLookupQueries {
         ) {
             this(conceptId, displayName, randomDrawEnabled, baseDrawWeight, noveltyLevel,
                     activeDirectParents, activeDirectChildren, functionalRoles, culinaryFlags,
-                    culinaryDimensions, culinaryCountries, List.of(), curatorNote);
+                    culinaryDimensions, culinaryCountries, List.of(), curatorNote, List.of());
+        }
+
+        public IngredientLookupProfile(
+                long conceptId,
+                String displayName,
+                boolean randomDrawEnabled,
+                BigDecimal baseDrawWeight,
+                Integer noveltyLevel,
+                List<IngredientLookupRelation> activeDirectParents,
+                List<IngredientLookupRelation> activeDirectChildren,
+                List<String> functionalRoles,
+                List<String> culinaryFlags,
+                List<IngredientLookupDimension> culinaryDimensions,
+                List<IngredientLookupCountry> culinaryCountries,
+                List<IngredientLookupAvailabilityNote> availabilityNotes,
+                String curatorNote
+        ) {
+            this(conceptId, displayName, randomDrawEnabled, baseDrawWeight, noveltyLevel,
+                    activeDirectParents, activeDirectChildren, functionalRoles, culinaryFlags,
+                    culinaryDimensions, culinaryCountries, availabilityNotes, curatorNote, List.of());
         }
 
         public IngredientLookupProfile {
@@ -133,6 +163,7 @@ public interface IngredientLookupQueries {
             culinaryDimensions = List.copyOf(culinaryDimensions);
             culinaryCountries = List.copyOf(culinaryCountries);
             availabilityNotes = List.copyOf(availabilityNotes);
+            aliases = List.copyOf(aliases);
         }
     }
 
