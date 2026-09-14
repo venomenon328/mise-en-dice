@@ -137,3 +137,5 @@ databaseChangeLog:
       file: db/changelog/catalog/040-scotland-curation.sql
   - include:
       file: db/changelog/catalog/041-finland-curation.sql
+  - include:
+      file: db/changelog/catalog/042-d3-approved-country-relations.sql
