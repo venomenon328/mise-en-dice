@@ -41,7 +41,8 @@ class ProductionBaselineMigrationIntegrationTest {
             "039-availability-r3-corrections",
             "004-scotland-culinary-country",
             "040-scotland-curation",
-            "041-finland-curation"
+            "041-finland-curation",
+            "042-d3-approved-country-relations"
     );
 
     @Test
