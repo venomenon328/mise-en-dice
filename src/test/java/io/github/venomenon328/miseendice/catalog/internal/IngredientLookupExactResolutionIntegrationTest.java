@@ -14,7 +14,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @SpringBootTest
 class IngredientLookupExactResolutionIntegrationTest extends CurrentSchemaPostgresIntegrationTest {
     private static final String PREFIX = "TEST_INGREDIENT_LOOKUP_B1_";
-    private static final String SEARCH_TEXT = "review b1 needle";
+    private static final String SEARCH_TEXT = "issue 263 b1 exact needle q7v9k";
+    private static final String SEARCH_LABEL = "Issue 263 B1 Exact Needle Q7V9K";
 
     @Autowired
     private IngredientLookupQueries queries;
@@ -29,16 +30,16 @@ class IngredientLookupExactResolutionIntegrationTest extends CurrentSchemaPostgr
 
     @Test
     void resolvesAllExactConceptsBeforeTheDiscordLimitAndExcludesSubstringMatches() {
-        long canonicalExact = insertConcept("EXACT_CANONICAL", "Review B1 Needle");
-        long aliasExact = insertConcept("EXACT_ALIAS", "Zulu review B1 exact alias owner");
-        insertAlias(aliasExact, "REVIEW B1 NEEDLE");
+        long canonicalExact = insertConcept("EXACT_CANONICAL", SEARCH_LABEL);
+        long aliasExact = insertConcept("EXACT_ALIAS", "Zulu issue 263 B1 exact alias owner Q7V9K");
+        insertAlias(aliasExact, "ISSUE 263 B1 EXACT NEEDLE Q7V9K");
 
         for (int number = 0; number < 30; number++) {
-            insertConcept("PREFIX_" + number, "Review B1 Needle " + String.format("%02d", number));
+            insertConcept("PREFIX_" + number, SEARCH_LABEL + " " + String.format("%02d", number));
         }
-        insertConcept("CONTAINS", "Former review b1 needle label");
+        insertConcept("CONTAINS", "Former " + SEARCH_TEXT + " label");
 
-        var result = queries.searchActiveByDisplayName("  " + SEARCH_TEXT.toUpperCase() + "  ", 25);
+        var result = queries.searchActiveByDisplayName("  ISSUE 263 B1 EXACT NEEDLE Q7V9K  ", 25);
 
         assertThat(result.totalMatches()).isEqualTo(2);
         assertThat(result.hasMoreMatches()).isFalse();
