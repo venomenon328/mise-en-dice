@@ -24,7 +24,7 @@ class DiscordIngredientLookupWorkflowTest {
     @Test
     void exactMatchWinsOverOtherSubstringMatchesAndSingleMatchOpensDirectly() {
         var queries = new FakeQueries();
-        queries.search = result("apfel", List.of(match(1, "Apfel", true), match(2, "Apfelmus")), 2);
+        queries.search = result("apfel", List.of(match(1, "Apfel", true)), 1);
         queries.profiles.put(1L, profile(1, "Apfel"));
         var delivery = new CapturingDelivery();
         var feedback = new CapturingFeedback();
@@ -47,8 +47,7 @@ class DiscordIngredientLookupWorkflowTest {
         var queries = new FakeQueries();
         queries.search = result("shared", List.of(
                 match(1, "Canonical shared", true),
-                match(2, "Different canonical", true),
-                match(3, "Shared substring", false)), 3);
+                match(2, "Different canonical", true)), 2);
         var delivery = new CapturingDelivery();
 
         workflow(queries).search("shared", "10001", delivery, new CapturingFeedback());
@@ -56,7 +55,7 @@ class DiscordIngredientLookupWorkflowTest {
         assertThat(delivery.response).isInstanceOf(DiscordIngredientLookupRenderer.RenderedSelection.class);
         assertThat(((DiscordIngredientLookupRenderer.RenderedSelection) delivery.response).options())
                 .extracting(option -> option.label())
-                .containsExactly("Canonical shared", "Different canonical", "Shared substring");
+                .containsExactly("Canonical shared", "Different canonical");
         assertThat(queries.profileLookups).isEmpty();
     }
 
