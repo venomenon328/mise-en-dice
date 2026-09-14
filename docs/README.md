@@ -10,6 +10,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`INGREDIENT_CONCEPT_CURATION.md`](INGREDIENT_CONCEPT_CURATION.md): verbindliche operative Checkliste für jede neue Zutatenkonzeptanlage, Konkretisierung und wesentliche Produktformänderung einschließlich Availability-Marktbreite, Evidenz und Freigabe-Gates
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
 - [`CULINARY_CATALOG_WORKFLOW.md`](CULINARY_CATALOG_WORKFLOW.md): phasenbezogener Länderworkflow mit Quellenmatrix, generiertem Katalogindex, issuebasierter Entscheidungsführung, zwei menschlichen Freigaben und getrenntem technischem Batchabschluss
+- [`CULINARY_CATALOG_CHEAT_SHEET.md`](CULINARY_CATALOG_CHEAT_SHEET.md): zentrale kopierbare Aufträge P1–P7 für Vorbereitung, Recherche, Wiederaufnahme, Metadaten, Einpflege, Review und Batchabschluss; Bedienhilfe zum Länderworkflow, keine zweite Normfassung
 - [`.github/ISSUE_TEMPLATE/culinary-country.md`](../.github/ISSUE_TEMPLATE/culinary-country.md): schlanke Vorlage für ein Land oder eine ausdrücklich beauftragte Ergänzungsrunde einschließlich revisionsgebundener Freigaben und technischem Nachweisstand
 - [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md): redaktionelle Semantik und technische Pflege der expliziten kulinarischen Länderzuordnungen
 - [`catalog-index/README.md`](catalog-index/README.md): erzeugter vollständiger Repository-Katalogindex, Herkunfts-/Gültigkeitsprüfung und sicherer Kandidatenabgleich
