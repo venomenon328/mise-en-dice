@@ -43,9 +43,15 @@ final class DiscordIngredientLookupWorkflow {
                 return;
             }
             var direct = result.matches().stream()
-                    .filter(match -> match.displayName().equalsIgnoreCase(result.searchText()))
-                    .findFirst()
-                    .or(() -> result.totalMatches() == 1 ? result.matches().stream().findFirst() : java.util.Optional.empty());
+                    .filter(IngredientLookupQueries.IngredientLookupMatch::exactMatch)
+                    .collect(java.util.stream.Collectors.collectingAndThen(
+                            java.util.stream.Collectors.toList(), exact -> exact.size() == 1
+                                    ? java.util.Optional.of(exact.getFirst())
+                                    : java.util.Optional.<IngredientLookupQueries.IngredientLookupMatch>empty()))
+                    .or(() -> result.matches().stream().noneMatch(IngredientLookupQueries.IngredientLookupMatch::exactMatch)
+                            && result.totalMatches() == 1
+                            ? result.matches().stream().findFirst()
+                            : java.util.Optional.empty());
             if (direct.isPresent()) {
                 renderCurrentProfile(direct.orElseThrow().conceptId(), delivery, feedback);
                 return;

@@ -26,6 +26,7 @@ class CatalogIndexExporterIntegrationTest {
             assertThat(child.displayName()).isEqualTo("Öl & Ähre");
             assertThat(child.curatorNote()).isEqualTo("Unveränderte Notiz – mit Umlaut.");
             assertThat(child.directParents()).containsExactly("PARENT_A", "PARENT_B");
+            assertThat(child.aliases()).containsExactly("Former oil name", "Oil and grain");
             assertThat(child.culinaryCountries()).containsExactly(
                     new CatalogIndexFiles.Country("DE", "Deutschland"),
                     new CatalogIndexFiles.Country("GB-XYZ", "Testregion"));
@@ -55,6 +56,10 @@ class CatalogIndexExporterIntegrationTest {
                         parent_concept_id bigint not null,
                         child_concept_id bigint not null
                     );
+                    create table ingredient_concept_alias (
+                        ingredient_concept_id bigint not null,
+                        alias_text text not null
+                    );
                     create table culinary_country (
                         code varchar(6) primary key,
                         display_name varchar(120) not null
@@ -69,6 +74,8 @@ class CatalogIndexExporterIntegrationTest {
                         (3, 'CHILD', 'Öl & Ähre', 'Unveränderte Notiz – mit Umlaut.', true, true, 'SPECIFIC'),
                         (4, 'PARENT_A', 'Parent A', 'First parent fixture.', true, false, 'OPEN');
                     insert into ingredient_refinement values (1, 3), (4, 3);
+                    insert into ingredient_concept_alias values
+                        (3, 'Oil and grain'), (3, 'Former oil name');
                     insert into culinary_country values ('GB-XYZ', 'Testregion'), ('DE', 'Deutschland');
                     insert into ingredient_culinary_country values (3, 'GB-XYZ'), (3, 'DE');
                     """);

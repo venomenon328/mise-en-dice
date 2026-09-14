@@ -6,6 +6,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogCommands;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CatalogMetadata;
 import io.github.venomenon328.miseendice.catalog.api.CatalogConceptNotFoundException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogDrawWeightWarningException;
+import io.github.venomenon328.miseendice.catalog.api.CatalogNameCollisionWarningException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogRelationWarningException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogVersionConflictException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogAvailability;
@@ -170,6 +171,11 @@ class CatalogAdministrationController {
         } catch (CatalogDrawWeightWarningException exception) {
             return renderFormFailure(state, FormMode.CREATE, null, form, Map.of(), exception.warnings(),
                     authentication, model, response);
+        } catch (CatalogNameCollisionWarningException exception) {
+            String view = renderFormFailure(state, FormMode.CREATE, null, form, Map.of(), List.of(),
+                    authentication, model, response);
+            model.addAttribute("nameCollisionWarnings", exception.collisions());
+            return view;
         } catch (CatalogCommandValidationException exception) {
             return renderFormFailure(state, FormMode.CREATE, null, form, exception.fieldErrors(), List.of(),
                     authentication, model, response);
@@ -205,7 +211,8 @@ class CatalogAdministrationController {
             CatalogConceptForm malformedForm = CatalogConceptForm.forEdit(
                     conceptId, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
                     noveltyLevel, curatorNote, version, weightWarningsAcknowledged,
-                    inactiveRelationsAcknowledged, List.of(), FormMetadata.from(parameters)
+                    inactiveRelationsAcknowledged, CatalogConceptForm.text(parameters.getFirst("aliasesText")),
+                    acknowledgementValues(parameters), List.of(), FormMetadata.from(parameters)
             );
             return renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), malformedForm,
                     exception.fieldErrors(), List.of(), authentication, model, response);
@@ -213,7 +220,8 @@ class CatalogAdministrationController {
         CatalogConceptForm form = CatalogConceptForm.forEdit(
                 conceptId, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
                 noveltyLevel, curatorNote, version, weightWarningsAcknowledged,
-                inactiveRelationsAcknowledged, pendingRefinements, FormMetadata.from(parameters)
+                inactiveRelationsAcknowledged, CatalogConceptForm.text(parameters.getFirst("aliasesText")),
+                acknowledgementValues(parameters), pendingRefinements, FormMetadata.from(parameters)
         );
         if (parameters.containsKey("code")) {
             return renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), form,
@@ -243,6 +251,11 @@ class CatalogAdministrationController {
             String view = renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), form,
                     Map.of(), List.of(), authentication, model, response);
             model.addAttribute("relationWarnings", exception.warnings());
+            return view;
+        } catch (CatalogNameCollisionWarningException exception) {
+            String view = renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), form,
+                    Map.of(), List.of(), authentication, model, response);
+            model.addAttribute("nameCollisionWarnings", exception.collisions());
             return view;
         } catch (CatalogCommandValidationException exception) {
             return renderFormFailure(state, FormMode.EDIT, catalogQueries.findConcept(conceptId).orElse(null), form,
@@ -442,6 +455,11 @@ class CatalogAdministrationController {
         return List.of("Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez");
     }
 
+    private static Set<String> acknowledgementValues(MultiValueMap<String, String> parameters) {
+        List<String> values = parameters.get("nameCollisionAcknowledgement");
+        return values == null ? Set.of() : Set.copyOf(values);
+    }
+
     enum CatalogView {
         HIERARCHY,
         LIST
@@ -530,18 +548,24 @@ class CatalogAdministrationController {
             String version,
             boolean weightWarningsAcknowledged,
             boolean inactiveRelationsAcknowledged,
+            String aliasesText,
+            Set<String> nameCollisionAcknowledgementValues,
             List<PendingRefinement> pendingRefinements,
             FormMetadata metadata
     ) {
 
         public CatalogConceptForm {
             pendingRefinements = pendingRefinements == null ? List.of() : List.copyOf(pendingRefinements);
+            aliasesText = text(aliasesText);
+            nameCollisionAcknowledgementValues = nameCollisionAcknowledgementValues == null
+                    ? Set.of()
+                    : Set.copyOf(nameCollisionAcknowledgementValues);
             metadata = metadata == null ? FormMetadata.empty() : metadata;
         }
 
         static CatalogConceptForm forCreate() {
             return new CatalogConceptForm(0, "", "", true, false, "SPECIFIC", "1.0000", "", "", "", false, false,
-                    List.of(), FormMetadata.empty());
+                    "", Set.of(), List.of(), FormMetadata.empty());
         }
 
         static CatalogConceptForm forCreate(String code, String displayName, MultiValueMap<String, String> parameters) {
@@ -552,6 +576,7 @@ class CatalogAdministrationController {
                     textOrDefault(parameters.getFirst("baseDrawWeight"), "1.0000"),
                     text(parameters.getFirst("noveltyLevel")), text(parameters.getFirst("curatorNote")), "",
                     "true".equalsIgnoreCase(parameters.getFirst("weightWarningsAcknowledged")), false,
+                    text(parameters.getFirst("aliasesText")), acknowledgementValues(parameters),
                     List.of(), FormMetadata.from(parameters));
         }
 
@@ -560,7 +585,8 @@ class CatalogAdministrationController {
                     detail.id(), detail.displayName(), detail.active(), detail.randomDrawEnabled(),
                     detail.challengeSpecificity(), detail.baseDrawWeight().toPlainString(),
                     detail.noveltyLevel() == null ? "" : detail.noveltyLevel().toString(), detail.curatorNote(),
-                    Long.toString(detail.version()), false, false, List.of(), FormMetadata.from(detail)
+                    Long.toString(detail.version()), false, false, String.join("\n", detail.aliases()), Set.of(),
+                    List.of(), FormMetadata.from(detail)
             );
         }
 
@@ -576,13 +602,16 @@ class CatalogAdministrationController {
                 String version,
                 boolean weightWarningsAcknowledged,
                 boolean inactiveRelationsAcknowledged,
+                String aliasesText,
+                Set<String> nameCollisionAcknowledgementValues,
                 List<PendingRefinement> pendingRefinements,
                 FormMetadata metadata
         ) {
             return new CatalogConceptForm(
                     conceptId, "", text(displayName), active, randomDrawEnabled, text(challengeSpecificity),
                     text(baseDrawWeight), text(noveltyLevel), text(curatorNote), text(version), weightWarningsAcknowledged,
-                    inactiveRelationsAcknowledged, pendingRefinements, metadata
+                    inactiveRelationsAcknowledged, aliasesText, nameCollisionAcknowledgementValues,
+                    pendingRefinements, metadata
             );
         }
 
@@ -590,7 +619,8 @@ class CatalogAdministrationController {
             return new CatalogConceptForm(
                     conceptId, code, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
                     noveltyLevel, curatorNote, Long.toString(currentVersion), weightWarningsAcknowledged,
-                    inactiveRelationsAcknowledged, pendingRefinements, metadata
+                    inactiveRelationsAcknowledged, aliasesText, nameCollisionAcknowledgementValues,
+                    pendingRefinements, metadata
             );
         }
 
@@ -602,7 +632,7 @@ class CatalogAdministrationController {
             return new CatalogConceptForm(
                     conceptId, code, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight,
                     noveltyLevel, curatorNote, Long.toString(currentVersion), false,
-                    false, rebased, metadata
+                    false, aliasesText, Set.of(), rebased, metadata
             );
         }
 
@@ -611,12 +641,15 @@ class CatalogAdministrationController {
             BigDecimal weight = parseWeight(baseDrawWeight, errors);
             Integer novelty = parseNovelty(noveltyLevel, errors);
             CatalogMetadata catalogMetadata = metadata.toCatalogMetadata(errors);
+            List<String> aliases = parseAliases(aliasesText, errors);
+            Set<CatalogCommands.NameCollisionAcknowledgement> acknowledgements =
+                    parseNameCollisionAcknowledgements(nameCollisionAcknowledgementValues, errors);
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);
             }
             return new CatalogCommands.CreateIngredientConceptCommand(
                     code, displayName, active, randomDrawEnabled, challengeSpecificity, weight, novelty, curatorNote,
-                    catalogMetadata, weightWarningsAcknowledged);
+                    catalogMetadata, weightWarningsAcknowledged, aliases, acknowledgements);
         }
 
         CatalogCommands.UpdateIngredientConceptCommand toUpdateCommand() {
@@ -625,6 +658,9 @@ class CatalogAdministrationController {
             BigDecimal weight = parseWeight(baseDrawWeight, errors);
             Integer novelty = parseNovelty(noveltyLevel, errors);
             CatalogMetadata catalogMetadata = metadata.toCatalogMetadata(errors);
+            List<String> aliases = parseAliases(aliasesText, errors);
+            Set<CatalogCommands.NameCollisionAcknowledgement> acknowledgements =
+                    parseNameCollisionAcknowledgements(nameCollisionAcknowledgementValues, errors);
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);
             }
@@ -651,8 +687,43 @@ class CatalogAdministrationController {
             return new CatalogCommands.UpdateIngredientConceptCommand(
                     conceptId, expectedVersion, displayName, active, randomDrawEnabled, challengeSpecificity,
                     weight, novelty, curatorNote, weightWarningsAcknowledged,
-                    changes, relatedVersions, inactiveRelationsAcknowledged, catalogMetadata
+                    changes, relatedVersions, inactiveRelationsAcknowledged, catalogMetadata,
+                    aliases, acknowledgements
             );
+        }
+
+        private static List<String> parseAliases(String value, Map<String, String> errors) {
+            String normalized = text(value);
+            if (normalized.isEmpty()) {
+                return List.of();
+            }
+            List<String> aliases = java.util.Arrays.stream(normalized.replace("\r", "").split("\n", -1))
+                    .map(String::strip)
+                    .toList();
+            if (aliases.stream().anyMatch(String::isEmpty)) {
+                errors.put("aliases", "Zwischen Aliaszeilen darf keine leere Zeile stehen.");
+            }
+            return aliases;
+        }
+
+        private static Set<CatalogCommands.NameCollisionAcknowledgement> parseNameCollisionAcknowledgements(
+                Set<String> values,
+                Map<String, String> errors
+        ) {
+            Set<CatalogCommands.NameCollisionAcknowledgement> acknowledgements = new LinkedHashSet<>();
+            for (String value : values) {
+                try {
+                    String[] parts = value.split("\\|", 2);
+                    if (parts.length != 2) {
+                        throw new IllegalArgumentException();
+                    }
+                    acknowledgements.add(new CatalogCommands.NameCollisionAcknowledgement(
+                            Long.parseLong(parts[0]), parts[1]));
+                } catch (RuntimeException exception) {
+                    errors.put("aliases", "Eine Kollisionsbestätigung ist ungültig. Bitte prüfe die Aliasse erneut.");
+                }
+            }
+            return Set.copyOf(acknowledgements);
         }
 
         private static long parseLong(String value, String field, String message, Map<String, String> errors) {

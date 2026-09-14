@@ -73,6 +73,41 @@ class IngredientLookupQueriesIntegrationTest extends CurrentSchemaPostgresIntegr
     }
 
     @Test
+    void searchesAliasesWithExactFirstLiteralTextDeduplicationSortingAndTotals() {
+        long prefix = insertConcept("ALIAS_PREFIX", "Zulu canonical alias", true, true, 2, "Technische Testnotiz.");
+        long contains = insertConcept("ALIAS_CONTAINS", "Alpha canonical alias", true, true, 2, "Technische Testnotiz.");
+        long secondExact = insertConcept("ALIAS_EXACT_2", "Beta canonical alias", true, true, 2, "Technische Testnotiz.");
+        long inactive = insertConcept("ALIAS_INACTIVE", "Inactive canonical alias", false, true, 2, "Technische Testnotiz.");
+        insertAlias(prefix, "Needle");
+        insertAlias(prefix, "Needle second match");
+        insertAlias(contains, "Former needle label");
+        insertAlias(secondExact, "NEEDLE");
+        insertAlias(inactive, "Needle");
+
+        var exactResult = queries.searchActiveByDisplayName(" needle ", 25);
+
+        assertThat(exactResult.totalMatches()).isEqualTo(2);
+        assertThat(exactResult.matches()).extracting(match -> match.conceptId())
+                .containsExactly(secondExact, prefix)
+                .doesNotContain(contains, inactive);
+        assertThat(exactResult.matches()).allSatisfy(match -> assertThat(match.exactMatch()).isTrue());
+
+        var substringResult = queries.searchActiveByDisplayName("needle label", 25);
+        assertThat(substringResult.totalMatches()).isEqualTo(1);
+        assertThat(substringResult.matches()).singleElement().satisfies(match -> {
+            assertThat(match.conceptId()).isEqualTo(contains);
+            assertThat(match.exactMatch()).isFalse();
+        });
+
+        long literal = insertConcept("ALIAS_LITERAL", "Literal alias owner", true, true, 2, "Technische Testnotiz.");
+        insertAlias(literal, "Former 100%_\\name");
+        assertThat(queries.searchActiveByDisplayName("100%_\\", 25).matches())
+                .singleElement().extracting(match -> match.conceptId()).isEqualTo(literal);
+        assertThat(queries.findActiveProfile(prefix).orElseThrow().aliases())
+                .containsExactly("Needle", "Needle second match");
+    }
+
+    @Test
     void projectsOnlyTheAllowedCurrentDirectFields() {
         long activeParentB = insertConcept("PARENT_ACTIVE_B", "Lookup Oberbegriff Beta", true, false, 1, "Technische Testnotiz.");
         long activeParentA = insertConcept("PARENT_ACTIVE_A", "Lookup Oberbegriff Alpha", true, false, 1, "Technische Testnotiz.");
@@ -167,6 +202,12 @@ class IngredientLookupQueriesIntegrationTest extends CurrentSchemaPostgresIntegr
                 insert into ingredient_culinary_dimension (ingredient_concept_id, culinary_dimension_id, level)
                 select ?, id, ? from culinary_dimension where code = ?
                 """, conceptId, level, dimensionCode);
+    }
+
+    private void insertAlias(long conceptId, String alias) {
+        jdbcTemplate.update(
+                "insert into ingredient_concept_alias (ingredient_concept_id, alias_text) values (?, ?)",
+                conceptId, alias);
     }
 
     @Test

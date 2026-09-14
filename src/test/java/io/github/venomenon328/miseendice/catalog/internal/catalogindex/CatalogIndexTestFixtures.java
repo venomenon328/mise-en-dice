@@ -28,7 +28,8 @@ final class CatalogIndexTestFixtures {
                 "CHILD", "Öl & Ähre", "Unveränderte Notiz – mit Umlaut.", true, true, "SPECIFIC",
                 List.of("PARENT_B", "PARENT_A"), List.of(),
                 List.of(new CatalogIndexFiles.Country("GB-XYZ", "Testregion"),
-                        new CatalogIndexFiles.Country("DE", "Deutschland")));
+                        new CatalogIndexFiles.Country("DE", "Deutschland")),
+                List.of("Oil and grain", "Former oil name"));
         var creme = new CatalogIndexFiles.Concept(
                 "CREME", "Crème", "First normalization fixture.", true, true, "SPECIFIC",
                 List.of(), List.of(), List.of());
@@ -37,10 +38,10 @@ final class CatalogIndexTestFixtures {
                 List.of(), List.of(), List.of());
         var parentA = new CatalogIndexFiles.Concept(
                 "PARENT_A", "Parent A", "First parent fixture.", true, false, "OPEN",
-                List.of(), List.of("CHILD"), List.of());
+                List.of(), List.of("CHILD"), List.of(), List.of("Shared historic parent"));
         var parentB = new CatalogIndexFiles.Concept(
                 "PARENT_B", "Parent B", "Second parent fixture.", true, false, "OPEN",
-                List.of(), List.of("CHILD"), List.of());
+                List.of(), List.of("CHILD"), List.of(), List.of("SHARED HISTORIC PARENT"));
         var structure = new CatalogIndexFiles.Concept(
                 "STRUCTURE", "Structure", "Inactive relationless fixture.", false, false, "OPEN",
                 List.of(), List.of(), List.of());

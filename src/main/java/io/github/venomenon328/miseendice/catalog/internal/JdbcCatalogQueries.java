@@ -155,7 +155,8 @@ public class JdbcCatalogQueries implements CatalogQueries {
                         join exclusion_rule er on er.id = ert.exclusion_rule_id
                         where ert.ingredient_concept_id = ?
                         order by lower(er.display_text), er.id
-                        """, String.class, conceptId)
+                        """, String.class, conceptId),
+                findAliases(conceptId)
         ));
     }
 
@@ -178,11 +179,16 @@ public class JdbcCatalogQueries implements CatalogQueries {
                        base_draw_weight, novelty_level, curator_note, version, updated_at
                 from ingredient_concept
                 where id <> ?
-                  and (position(? in lower(display_name)) > 0 or position(? in lower(code)) > 0)
+                  and (position(? in lower(display_name)) > 0 or position(? in lower(code)) > 0
+                       or exists (
+                           select 1 from ingredient_concept_alias alias
+                           where alias.ingredient_concept_id = ingredient_concept.id
+                             and position(? in lower(alias.alias_text)) > 0
+                       ))
                 order by lower(display_name), id
                 limit 40
                 """,
-                this::mapConceptRow, excludedConceptId, normalized, normalized
+                this::mapConceptRow, excludedConceptId, normalized, normalized, normalized
         );
         if (rows.isEmpty()) {
             return List.of();
@@ -223,8 +229,11 @@ public class JdbcCatalogQueries implements CatalogQueries {
         List<String> predicates = new ArrayList<>();
         List<Object> arguments = new ArrayList<>();
         if (!criteria.searchTerm().isBlank()) {
-            predicates.add("(lower(ic.display_name) like ? or lower(ic.code) like ?)");
+            predicates.add("(lower(ic.display_name) like ? or lower(ic.code) like ? or exists ("
+                    + "select 1 from ingredient_concept_alias alias where alias.ingredient_concept_id = ic.id "
+                    + "and lower(alias.alias_text) like ?))");
             String search = "%" + criteria.searchTerm().toLowerCase(Locale.ROOT) + "%";
+            arguments.add(search);
             arguments.add(search);
             arguments.add(search);
         }
@@ -356,6 +365,15 @@ public class JdbcCatalogQueries implements CatalogQueries {
                         .add(resultSet.getString("display_name")),
                 conceptIds.toArray());
         return immutableListMap(roles);
+    }
+
+    private List<String> findAliases(long conceptId) {
+        return jdbcTemplate.queryForList("""
+                select alias_text
+                from ingredient_concept_alias
+                where ingredient_concept_id = ?
+                order by lower(alias_text), alias_text
+                """, String.class, conceptId);
     }
 
     private Map<Long, Map<String, CatalogAvailability>> findAvailability(List<Long> conceptIds) {

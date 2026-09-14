@@ -64,6 +64,18 @@ class CatalogPhase8QueryIntegrationTest extends CurrentSchemaPostgresIntegration
                 .anySatisfy(candidate -> assertThat(candidate.id()).isEqualTo(inactiveTarget));
     }
 
+    @Test
+    void exclusionTargetPickerSearchesAliasesLiterallyAndDeduplicatesConcepts() {
+        long matching = insertConcept("ALIAS_TARGET", true);
+        long decoy = insertConcept("ALIAS_DECOY", true);
+        insertAlias(matching, "Exclusion former 100%_\\name");
+        insertAlias(matching, "Exclusion second 100%_\\name");
+        insertAlias(decoy, "Exclusion former 100XXname");
+
+        assertThat(exclusionQueries.searchTargetCandidates("100%_\\"))
+                .singleElement().extracting(candidate -> candidate.id()).isEqualTo(matching);
+    }
+
     private long insertConcept(String suffix, boolean active) {
         return jdbcTemplate.queryForObject("""
                 insert into ingredient_concept (code, display_name, active, random_draw_enabled,
@@ -77,6 +89,12 @@ class CatalogPhase8QueryIntegrationTest extends CurrentSchemaPostgresIntegration
                 insert into exclusion_rule (code, display_text, active, base_draw_weight)
                 values (?, ?, ?, 1.0000) returning id
                 """, Long.class, PREFIX + suffix, text, active);
+    }
+
+    private void insertAlias(long conceptId, String alias) {
+        jdbcTemplate.update(
+                "insert into ingredient_concept_alias (ingredient_concept_id, alias_text) values (?, ?)",
+                conceptId, alias);
     }
 
 }

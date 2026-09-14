@@ -41,6 +41,15 @@ Es gibt bewusst keinen festen Typ `INGREDIENT` oder `CATEGORY`.
 
 `code` dient als stabiler technischer Schlüssel; `display_name` darf sich ändern, ohne technische Referenzen umzubenennen.
 
+`ingredient_concept_alias` speichert null bis mehrere explizit kuratierte alternative Namen unterhalb desselben
+Konzepts. Aliastexte sind getrimmt und nicht leer; innerhalb eines Konzepts sind sie case-insensitive eindeutig und
+dürfen nicht dem eigenen `display_name` entsprechen. Die case-insensitive Eindeutigkeit kanonischer
+`display_name`-Werte untereinander bleibt bestehen. Alias↔Alias- und Alias↔kanonischer-Name-Überschneidungen
+zwischen verschiedenen Konzepten sind dagegen technisch möglich und unterliegen dem bestätigungspflichtigen
+Redaktionsgate aus [`INGREDIENT_NAMING_AND_ALIASES.md`](INGREDIENT_NAMING_AND_ALIASES.md). Aliasse gehören zum
+`ingredient_concept`-Aggregat, werden atomar mit dessen übrigen Feldern und genau einer Aggregatversion gespeichert
+und bleiben bei Deaktivierung erhalten. Es gibt weder Alias-Audit noch Alias-Einzelversion.
+
 Jedes Zutatenkonzept besitzt außerdem eine nicht leere `curator_note`. Sie beschreibt kurz und sachlich die kulinarische Identität, sinnvolle Produktformen oder wichtige Abgrenzungen. Strukturierte Felder wie Ziehbarkeit, Gewicht, Rollen oder Beschaffbarkeit werden dort nicht durch Freitext ersetzt. PostgreSQL verhindert `NULL`, leere und ausschließlich aus Leerraum bestehende Notizen.
 
 Drei voneinander unabhängige Fragen werden getrennt behandelt:

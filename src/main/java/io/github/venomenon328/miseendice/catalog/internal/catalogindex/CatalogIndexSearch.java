@@ -26,7 +26,7 @@ final class CatalogIndexSearch {
             "ABSENT_AFTER_FULL_REVIEW",
             "UNRESOLVED");
     private static final List<String> SEARCH_PATHS = List.of(
-            "code", "displayName", "curatorNote", "directParents", "directChildren");
+            "code", "displayName", "aliases", "curatorNote", "directParents", "directChildren");
 
     private CatalogIndexSearch() {
     }
@@ -174,6 +174,9 @@ final class CatalogIndexSearch {
         String normalizedCode = CatalogIndexFiles.normalizeSearchText(concept.code());
         String normalizedName = CatalogIndexFiles.normalizeSearchText(concept.displayName());
         String normalizedNote = CatalogIndexFiles.normalizeSearchText(concept.curatorNote());
+        List<String> normalizedAliases = concept.aliases().stream()
+                .map(CatalogIndexFiles::normalizeSearchText)
+                .toList();
         for (String term : terms) {
             String normalizedTerm = CatalogIndexFiles.normalizeSearchText(term);
             if (concept.code().equalsIgnoreCase(term.strip())) {
@@ -186,6 +189,11 @@ final class CatalogIndexSearch {
                 exact = true;
                 score = Math.max(score, 95);
             }
+            if (concept.aliases().stream().anyMatch(alias -> alias.equalsIgnoreCase(term.strip()))) {
+                fields.add("aliases");
+                exact = true;
+                score = Math.max(score, 95);
+            }
             if (!normalizedTerm.isBlank() && normalizedCode.equals(normalizedTerm)) {
                 fields.add("code");
                 score = Math.max(score, 85);
@@ -194,12 +202,21 @@ final class CatalogIndexSearch {
                 fields.add("displayName");
                 score = Math.max(score, 80);
             }
+            if (!normalizedTerm.isBlank() && normalizedAliases.contains(normalizedTerm)) {
+                fields.add("aliases");
+                score = Math.max(score, 80);
+            }
             if (normalizedTerm.length() >= 3 && normalizedCode.contains(normalizedTerm)) {
                 fields.add("code");
                 score = Math.max(score, 65);
             }
             if (normalizedTerm.length() >= 3 && normalizedName.contains(normalizedTerm)) {
                 fields.add("displayName");
+                score = Math.max(score, 60);
+            }
+            if (normalizedTerm.length() >= 3
+                    && normalizedAliases.stream().anyMatch(alias -> alias.contains(normalizedTerm))) {
+                fields.add("aliases");
                 score = Math.max(score, 60);
             }
             if (normalizedTerm.length() >= 3 && normalizedNote.contains(normalizedTerm)) {
@@ -235,7 +252,9 @@ final class CatalogIndexSearch {
             String normalized = CatalogIndexFiles.normalizeSearchText(term);
             long matches = concepts.stream().filter(concept ->
                     CatalogIndexFiles.normalizeSearchText(concept.code()).equals(normalized)
-                            || CatalogIndexFiles.normalizeSearchText(concept.displayName()).equals(normalized))
+                            || CatalogIndexFiles.normalizeSearchText(concept.displayName()).equals(normalized)
+                            || concept.aliases().stream().map(CatalogIndexFiles::normalizeSearchText)
+                            .anyMatch(normalized::equals))
                     .map(CatalogIndexFiles.Concept::code)
                     .distinct()
                     .limit(2)

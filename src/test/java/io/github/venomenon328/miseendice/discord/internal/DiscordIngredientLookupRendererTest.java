@@ -41,6 +41,21 @@ class DiscordIngredientLookupRendererTest {
     }
 
     @Test
+    void rendersAliasesSafelyWhileKeepingTheCanonicalTitle() {
+        var profile = new IngredientLookupProfile(
+                42, "Testzutat", true, new BigDecimal("0.8500"), 2,
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null,
+                List.of("Früher @here *Alias*", "Zweiter `Alias` https://example.test"));
+
+        var embed = renderer.profile(profile);
+
+        assertThat(embed.title()).isEqualTo("🥢 Testzutat");
+        assertThat(field(embed, "Auch bekannt als"))
+                .contains("Früher @\u200Bhere \\*Alias\\*", "Zweiter ˋAliasˋ h\u200Bttps")
+                .doesNotContain("@here", "https://");
+    }
+
+    @Test
     void rendersOnlyDeterministicFlagsForExplicitCulinaryCountries() {
         var embed = renderer.profile(profile(true, 2, List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(
                 new IngredientLookupCountry("DE", "Deutschland"),

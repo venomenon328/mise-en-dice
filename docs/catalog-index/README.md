@@ -11,6 +11,7 @@ inhaltsadressierte Datei `catalog-index.<sha256>.jsonl`. Jede JSONL-Zeile enthä
 stabilem `code` sortiert, mit:
 
 - unverändertem `displayName` und `curatorNote`,
+- unveränderten Aliastexten in deterministischer Reihenfolge (`aliases`, ausdrücklich auch leer),
 - `active`, `randomDrawEnabled` und `challengeSpecificity`,
 - direkten Parents und Children als sortierten stabilen Codes,
 - direkt gepflegten kulinarischen Ländern als sortierten Paaren aus Code und Anzeigename.
@@ -60,7 +61,7 @@ Eine Eingabe ist JSONL. Ausgangspunkt ist
 
 Die Suche prüft zuerst Integrität, relevante Eingaben und Quellcommit. Sie normalisiert nur technisch für den
 Abgleich (Unicode-Diakritika, Groß-/Kleinschreibung und Trennzeichen); exportierte Originaltexte bleiben unverändert.
-Sie durchsucht Codes, Namen und Kuratornotizen, ergänzt direkte Parents/Children, gibt **alle** Treffer aus und
+Sie durchsucht Codes, Namen, Aliasse und Kuratornotizen, ergänzt direkte Parents/Children, gibt **alle** Treffer aus und
 markiert mehrdeutige normalisierte Identitäten. Die Ausgabe enthält alle Seiten und endet mit genau einem
 `searchSummary` mit `complete: true`, Seitenzahl, Kandidatenzahl, Quellcommit und Payload-SHA. Es gibt kein Top-N-
 Abschneiden. Fehler ersetzen keine vorhandene Ergebnisdatei und erzeugen keine erfolgreiche leere Suche.
@@ -111,27 +112,31 @@ im zugehörigen Runden-Issue separat dokumentierte offene Arbeit. Zwei Exporte w
 phasenbezogene Einsatz und die im Runden-Issue festzuhaltenden Kennungen stehen im
 [`CULINARY_CATALOG_WORKFLOW.md`](../CULINARY_CATALOG_WORKFLOW.md).
 
-Ohne lokalen Docker-Daemon darf der Workflow **Catalog Index Generation** verwendet werden. Bei seiner erstmaligen
-Einführung läuft er eng auf dem Draft-PR und verwendet dessen exakten `main`-Basis-SHA; nach Aufnahme in den
-Default-Branch kann er manuell auf einem Tooling-Ref gestartet werden. Er besitzt nur `contents: read`, erzeugt
+Ohne lokalen Docker-Daemon darf der Workflow **Catalog Index Generation** verwendet werden. Bei Pull Requests prüft
+er mit dem Head-Tooling zunächst, ob sich die vollständigen Kataloginputs gegenüber dem `main`-Basis-SHA geändert
+haben. Bei geänderten Inputs verwendet er den exakten PR-Head als `source_commit`/`source_ref`; bei einem reinen
+Tooling-PR darf der unveränderte Base-Katalog die Quelle bleiben. Vor der Generierung wird der ausgewählte Commit
+nochmals gegen die tatsächlich ausgecheckten Kataloginputs geprüft; die Quellcommit-Sicherung des Generators bleibt
+unverändert streng. Nach Aufnahme in den Default-Branch kann der Workflow manuell auf einem Tooling-Ref gestartet
+werden. Er besitzt nur `contents: read`, erzeugt
 denselben isolierten PostgreSQL-/Liquibase-Stand und lädt das Paar als siebentägiges Artefakt hoch. Beim manuellen
 Start sind `source_commit`, `source_ref` und `scope` Pflicht; die drei Exclusion-Eingaben sind gemeinsam oder gar nicht
 zu setzen. Nach Download beide erzeugten Dateien unverändert nach `docs/catalog-index` übernehmen, den neuen Stand
 mit dem obigen Validator prüfen und erst danach die vom neuen Manifest nicht mehr referenzierte alte Payload
 entfernen. Der Workflow schreibt nicht selbst ins Repository.
 
-Für den aktuell eingecheckten Erststand gilt ausschließlich der im Manifest ausgewiesene `main`-Quellcommit. Der
-separate Draft-PR #247 beziehungsweise `feat/172-country-catalog-curation` ist ausdrücklich nicht enthalten. Deshalb
-darf der Erststand nicht verwendet werden, um dort bereits vorhandene Sammelkonzepte als gesichert fehlend zu
-bezeichnen.
+Für jeden eingecheckten Stand gilt ausschließlich der im Manifest ausgewiesene Quellcommit. Andere Branches oder
+parallele Sammelstände sind nur enthalten, wenn sie dort ausdrücklich als Quelle bezeichnet und vom Inputfingerprint
+gedeckt sind.
 
 ## Technische Prüfgrenze
 
-Unit-Tests sichern Kanonisierung, Checksummen, Referenzen, Normalisierungskollisionen, vollständige Seitenausgabe,
+Formatversion 2 und Generatorversion 2.0.0 führen das verpflichtende Aliasfeld ein. Unit-Tests sichern
+Alias-Kanonisierung, Checksummen, Referenzen, Normalisierungskollisionen, vollständige Seitenausgabe,
 Resolution-Gates sowie Abbruch-/Teilausgabewege. Der PostgreSQL-Vertragstest verwendet ausschließlich synthetische
-Katalogdaten und deckt relationslose/inaktive Datensätze, Mehrfach-Parents/-Children, erweiterte Ländercodes und
-Originaltexte ab. Der tatsächlich eingecheckte Index wird einmalig aus dem ausgewiesenen vollständigen Master
-erzeugt; seine produktiven Einzelwerte und Gesamtzahlen sind kein dauerhaftes Test-Oracle.
+Katalogdaten und deckt leere/mehrere Aliasse, relationslose/inaktive Datensätze, Mehrfach-Parents/-Children,
+erweiterte Ländercodes und Originaltexte ab. Der tatsächlich eingecheckte Index wird aus dem ausgewiesenen
+vollständigen Master erzeugt; seine produktiven Einzelwerte und Gesamtzahlen sind kein dauerhaftes Test-Oracle.
 
 Der Zugriffstest aus einem frischen Recherche-/Reviewkontext und die Auftraggeberabnahme des Erststands wurden im
 Abschluss von #250/PR #255 dokumentiert. Sie waren weder eine Freigabe realer Länderrelationen noch ein

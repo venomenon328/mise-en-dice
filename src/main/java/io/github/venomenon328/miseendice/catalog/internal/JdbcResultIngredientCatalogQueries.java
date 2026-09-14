@@ -28,11 +28,15 @@ public class JdbcResultIngredientCatalogQueries implements ResultIngredientCatal
         }
         List<IngredientConcept> matches = jdbcTemplate.query("""
                 select id, code, display_name, active
-                from ingredient_concept
+                from ingredient_concept concept
                 where lower(display_name) = ? or lower(code) = ?
+                   or exists (
+                       select 1 from ingredient_concept_alias alias
+                       where alias.ingredient_concept_id = concept.id and lower(alias.alias_text) = ?
+                   )
                 order by id
                 limit 2
-                """, this::mapConcept, term, term);
+                """, this::mapConcept, term, term, term);
         return matches.size() == 1 ? Optional.of(matches.getFirst()) : Optional.empty();
     }
 
@@ -41,11 +45,16 @@ public class JdbcResultIngredientCatalogQueries implements ResultIngredientCatal
         String term = normalize(searchTerm);
         return jdbcTemplate.query("""
                 select id, code, display_name, active
-                from ingredient_concept
+                from ingredient_concept concept
                 where position(? in lower(display_name)) > 0 or position(? in lower(code)) > 0
+                   or exists (
+                       select 1 from ingredient_concept_alias alias
+                       where alias.ingredient_concept_id = concept.id
+                         and position(? in lower(alias.alias_text)) > 0
+                   )
                 order by lower(display_name), id
                 limit ?
-                """, this::mapConcept, term, term, MAX_SEARCH_RESULTS);
+                """, this::mapConcept, term, term, term, MAX_SEARCH_RESULTS);
     }
 
     @Override
@@ -73,9 +82,13 @@ public class JdbcResultIngredientCatalogQueries implements ResultIngredientCatal
                 from descendants
                 join ingredient_concept concept on concept.id = descendants.concept_id
                 where lower(concept.display_name) = ? or lower(concept.code) = ?
+                   or exists (
+                       select 1 from ingredient_concept_alias alias
+                       where alias.ingredient_concept_id = concept.id and lower(alias.alias_text) = ?
+                   )
                 order by concept.id
                 limit 2
-                """, this::mapConcept, openRequirementConceptId, term, term);
+                """, this::mapConcept, openRequirementConceptId, term, term, term);
         return matches.size() == 1 ? Optional.of(matches.getFirst()) : Optional.empty();
     }
 
@@ -88,9 +101,14 @@ public class JdbcResultIngredientCatalogQueries implements ResultIngredientCatal
                 from descendants
                 join ingredient_concept concept on concept.id = descendants.concept_id
                 where position(? in lower(concept.display_name)) > 0 or position(? in lower(concept.code)) > 0
+                   or exists (
+                       select 1 from ingredient_concept_alias alias
+                       where alias.ingredient_concept_id = concept.id
+                         and position(? in lower(alias.alias_text)) > 0
+                   )
                 order by lower(concept.display_name), concept.id
                 limit ?
-                """, this::mapConcept, openRequirementConceptId, term, term, MAX_SEARCH_RESULTS);
+                """, this::mapConcept, openRequirementConceptId, term, term, term, MAX_SEARCH_RESULTS);
     }
 
     @Override

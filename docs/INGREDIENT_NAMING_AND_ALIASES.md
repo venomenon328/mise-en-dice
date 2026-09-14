@@ -1,7 +1,7 @@
 # Bezeichnungen und Aliasse von Zutatenkonzepten
 
 Stand: 14. September 2026
-Status: freigegebene fachliche Ziel- und Redaktionsspezifikation
+Status: verbindliche Fach-, Laufzeit- und Redaktionsspezifikation; technische Grundlage durch #263
 Übergeordnet: [Issue #262](https://github.com/venomenon328/mise-en-dice/issues/262)
 Technische Grundlage: [Issue #263](https://github.com/venomenon328/mise-en-dice/issues/263)
 Katalogweiter Review und Einpflege: [Issue #264](https://github.com/venomenon328/mise-en-dice/issues/264)
@@ -10,7 +10,9 @@ Dieses Dokument definiert die dauerhafte Semantik für kanonische Anzeigenamen u
 
 Es ist **keine allgemeine Übersetzungs-, Such- oder Lebensmittelontologie**. Ziel ist eine saubere, für Menschen verständliche Katalogbezeichnung: genau ein kanonischer Name je Konzept und nur solche alternativen Bezeichnungen als Aliasse, die tatsächlich dieselbe kulinarische Identität mit demselben Bedeutungsumfang benennen.
 
-Die bestehenden Dokumente zu Administration, Discord-Lookup, Challenge-Ergebnissen und Repository-Katalogindex beschreiben bis zur Umsetzung von #263 teilweise noch den heutigen aliasfreien Laufzeitstand. Für Namens- und Aliasentscheidungen ist dieses Dokument bereits die freigegebene Zielautorität. #263 muss die betroffenen technischen Verträge bei der Implementierung konsistent auf diesen Stand bringen; bis dahin darf aus dieser Spezifikation nicht behauptet werden, die Aliasfunktion sei bereits produktiv vorhanden.
+Die technische Aliasgrundlage ist mit #263 in Administration, Laufzeitsuchen, Discord-Lookup,
+Challenge-Ergebnisreferenzen und Repository-Katalogindex durchgängig umgesetzt. Die Ablage startet bewusst leer;
+der katalogweite fachliche Review und reale Umbenennungen bleiben ausschließlich #264 vorbehalten.
 
 ## 1. Grundmodell
 
@@ -146,6 +148,11 @@ Jede neu entstehende oder katalogweit einzuarbeitende Cross-Concept-Kollision be
 Eine allgemeine Freigabe der Aliasfunktion oder eines größeren Reviewbatches ersetzt diese Einzelfreigabe nicht.
 
 Die private Administration muss eine relevante Kollision vor dem Speichern sichtbar machen und eine bewusste Bestätigung verlangen. Ein manipulierter Request darf dieses Gate nicht umgehen. Die Bestätigung schafft keinen neuen Auditbestand; ADR 0010 bleibt unverändert maßgeblich.
+
+Das Gate gilt für neu entstehende beziehungsweise durch die konkrete Namens-/Aliasänderung betroffene
+Kollisionen. Eine bereits bestätigte und im Save unveränderte Mehrdeutigkeit wird bei späteren fachlich unabhängigen
+Aggregatänderungen nicht erneut verlangt. Kanonische `display_name`-Werte verschiedener Konzepte sind von dieser
+Ausnahme ausgenommen und bleiben case-insensitive eindeutig.
 
 Bereits genehmigte natürliche Mehrdeutigkeit wird von Suchfunktionen anschließend als Mehrdeutigkeit behandelt, nicht durch eine künstliche Rangregel wegdefiniert.
 

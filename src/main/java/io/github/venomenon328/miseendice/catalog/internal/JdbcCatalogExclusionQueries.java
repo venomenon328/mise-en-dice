@@ -67,16 +67,21 @@ public class JdbcCatalogExclusionQueries implements CatalogExclusionQueries {
 
     @Override
     public List<CatalogExclusionTargetCandidate> searchTargetCandidates(String searchTerm) {
-        String normalized = searchTerm == null ? "" : searchTerm.strip().toLowerCase(Locale.ROOT)
-                .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        String normalized = searchTerm == null ? "" : searchTerm.strip().toLowerCase(Locale.ROOT);
         return jdbcTemplate.query("""
-                select id, display_name, code, active
-                from ingredient_concept
-                where lower(display_name) like ? escape '\\' or lower(code) like ? escape '\\'
-                order by lower(display_name), id limit 40
+                select concept.id, concept.display_name, concept.code, concept.active
+                from ingredient_concept concept
+                where position(? in lower(concept.display_name)) > 0
+                   or position(? in lower(concept.code)) > 0
+                   or exists (
+                       select 1 from ingredient_concept_alias alias
+                       where alias.ingredient_concept_id = concept.id
+                         and position(? in lower(alias.alias_text)) > 0
+                   )
+                order by lower(concept.display_name), concept.id limit 40
                 """, (resultSet, rowNumber) -> new CatalogExclusionTargetCandidate(
                 resultSet.getLong("id"), resultSet.getString("display_name"), resultSet.getString("code"),
-                resultSet.getBoolean("active")), "%" + normalized + "%", "%" + normalized + "%");
+                resultSet.getBoolean("active")), normalized, normalized, normalized);
     }
 
     private Condition condition(CatalogExclusionSearchCriteria criteria) {

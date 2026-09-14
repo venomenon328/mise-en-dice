@@ -48,12 +48,30 @@ public interface CatalogCommands {
             Integer noveltyLevel,
             String curatorNote,
             CatalogMetadata metadata,
-            boolean weightWarningsAcknowledged
+            boolean weightWarningsAcknowledged,
+            List<String> aliases,
+            Set<NameCollisionAcknowledgement> nameCollisionAcknowledgements
     ) {
 
         public CreateIngredientConceptCommand(String code, String displayName, String curatorNote) {
             this(code, displayName, true, false, "SPECIFIC", new BigDecimal("1.0000"), null,
-                    curatorNote, null, false);
+                    curatorNote, null, false, List.of(), Set.of());
+        }
+
+        public CreateIngredientConceptCommand(
+                String code,
+                String displayName,
+                boolean active,
+                boolean randomDrawEnabled,
+                String challengeSpecificity,
+                BigDecimal baseDrawWeight,
+                Integer noveltyLevel,
+                String curatorNote,
+                CatalogMetadata metadata,
+                boolean weightWarningsAcknowledged
+        ) {
+            this(code, displayName, active, randomDrawEnabled, challengeSpecificity, baseDrawWeight, noveltyLevel,
+                    curatorNote, metadata, weightWarningsAcknowledged, List.of(), Set.of());
         }
 
         public CreateIngredientConceptCommand {
@@ -61,6 +79,10 @@ public interface CatalogCommands {
             displayName = normalized(displayName);
             challengeSpecificity = normalized(challengeSpecificity);
             curatorNote = normalized(curatorNote);
+            aliases = normalizedAliases(aliases, displayName);
+            nameCollisionAcknowledgements = nameCollisionAcknowledgements == null
+                    ? Set.of()
+                    : Set.copyOf(nameCollisionAcknowledgements);
             Map<String, String> errors = new LinkedHashMap<>();
             if (!Pattern.matches(INGREDIENT_CONCEPT_CODE_PATTERN, code)) {
                 errors.put("code", "Der Code muss dem Muster A-Z, Ziffern und Unterstriche folgen.");
@@ -100,7 +122,9 @@ public interface CatalogCommands {
             List<RefinementChange> refinementChanges,
             Map<Long, Long> expectedRelatedVersions,
             boolean inactiveRelationsAcknowledged,
-            CatalogMetadata metadata
+            CatalogMetadata metadata,
+            List<String> aliases,
+            Set<NameCollisionAcknowledgement> nameCollisionAcknowledgements
     ) {
 
         public UpdateIngredientConceptCommand(
@@ -117,7 +141,7 @@ public interface CatalogCommands {
         ) {
             this(conceptId, expectedVersion, displayName, active, randomDrawEnabled, challengeSpecificity,
                     baseDrawWeight, noveltyLevel, curatorNote, weightWarningsAcknowledged,
-                    List.of(), Map.of(), false, null);
+                    List.of(), Map.of(), false, null, null, Set.of());
         }
 
         public UpdateIngredientConceptCommand(
@@ -137,7 +161,29 @@ public interface CatalogCommands {
         ) {
             this(conceptId, expectedVersion, displayName, active, randomDrawEnabled, challengeSpecificity,
                     baseDrawWeight, noveltyLevel, curatorNote, weightWarningsAcknowledged,
-                    refinementChanges, expectedRelatedVersions, inactiveRelationsAcknowledged, null);
+                    refinementChanges, expectedRelatedVersions, inactiveRelationsAcknowledged, null,
+                    null, Set.of());
+        }
+
+        public UpdateIngredientConceptCommand(
+                long conceptId,
+                long expectedVersion,
+                String displayName,
+                boolean active,
+                boolean randomDrawEnabled,
+                String challengeSpecificity,
+                BigDecimal baseDrawWeight,
+                Integer noveltyLevel,
+                String curatorNote,
+                boolean weightWarningsAcknowledged,
+                List<RefinementChange> refinementChanges,
+                Map<Long, Long> expectedRelatedVersions,
+                boolean inactiveRelationsAcknowledged,
+                CatalogMetadata metadata
+        ) {
+            this(conceptId, expectedVersion, displayName, active, randomDrawEnabled, challengeSpecificity,
+                    baseDrawWeight, noveltyLevel, curatorNote, weightWarningsAcknowledged, refinementChanges,
+                    expectedRelatedVersions, inactiveRelationsAcknowledged, metadata, null, Set.of());
         }
 
         public UpdateIngredientConceptCommand {
@@ -146,6 +192,10 @@ public interface CatalogCommands {
             curatorNote = normalized(curatorNote);
             refinementChanges = refinementChanges == null ? List.of() : List.copyOf(refinementChanges);
             expectedRelatedVersions = expectedRelatedVersions == null ? Map.of() : Map.copyOf(expectedRelatedVersions);
+            aliases = aliases == null ? null : normalizedAliases(aliases, displayName);
+            nameCollisionAcknowledgements = nameCollisionAcknowledgements == null
+                    ? Set.of()
+                    : Set.copyOf(nameCollisionAcknowledgements);
             Map<String, String> errors = new LinkedHashMap<>();
             if (conceptId <= 0) {
                 errors.put("conceptId", "Das Zutatenkonzept ist nicht gültig.");
@@ -174,6 +224,48 @@ public interface CatalogCommands {
             }
             if (!errors.isEmpty()) {
                 throw new CatalogCommandValidationException(errors);
+            }
+        }
+    }
+
+    /** Exact acknowledgement key supplied by the editor and recomputed by the application service. */
+    record NameCollisionAcknowledgement(long otherConceptId, String normalizedText) {
+
+        public NameCollisionAcknowledgement {
+            if (otherConceptId <= 0) {
+                throw new IllegalArgumentException("otherConceptId must be positive");
+            }
+            normalizedText = normalizedName(normalizedText);
+            if (normalizedText.isEmpty()) {
+                throw new IllegalArgumentException("normalizedText must not be blank");
+            }
+        }
+
+        public String formValue() {
+            return otherConceptId + "|" + normalizedText;
+        }
+    }
+
+    /** Human-readable collision detail returned to an administration adapter. */
+    record NameCollision(
+            NameCollisionAcknowledgement acknowledgement,
+            String localText,
+            String otherConceptCode,
+            String otherConceptDisplayName,
+            String otherText
+    ) {
+
+        public NameCollision {
+            if (acknowledgement == null) {
+                throw new IllegalArgumentException("acknowledgement is required");
+            }
+            localText = normalized(localText);
+            otherConceptCode = normalized(otherConceptCode);
+            otherConceptDisplayName = normalized(otherConceptDisplayName);
+            otherText = normalized(otherText);
+            if (localText.isEmpty() || otherConceptCode.isEmpty()
+                    || otherConceptDisplayName.isEmpty() || otherText.isEmpty()) {
+                throw new IllegalArgumentException("Collision descriptions must not be blank");
             }
         }
     }
@@ -308,5 +400,35 @@ public interface CatalogCommands {
 
     private static String normalized(String value) {
         return value == null ? "" : value.strip();
+    }
+
+    private static String normalizedName(String value) {
+        return normalized(value).toLowerCase(Locale.ROOT);
+    }
+
+    private static List<String> normalizedAliases(List<String> values, String displayName) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        Map<String, String> aliases = new LinkedHashMap<>();
+        Map<String, String> errors = new LinkedHashMap<>();
+        String normalizedDisplayName = normalizedName(displayName);
+        for (String value : values) {
+            String alias = normalized(value);
+            if (alias.isEmpty()) {
+                errors.put("aliases", "Aliasse dürfen nicht leer sein.");
+                continue;
+            }
+            String identity = normalizedName(alias);
+            if (identity.equals(normalizedDisplayName)) {
+                errors.put("aliases", "Ein Alias darf nicht dem eigenen Anzeigenamen entsprechen.");
+            } else if (aliases.putIfAbsent(identity, alias) != null) {
+                errors.put("aliases", "Derselbe Alias darf unabhängig von Groß-/Kleinschreibung nur einmal vorkommen.");
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new CatalogCommandValidationException(errors);
+        }
+        return List.copyOf(aliases.values());
     }
 }

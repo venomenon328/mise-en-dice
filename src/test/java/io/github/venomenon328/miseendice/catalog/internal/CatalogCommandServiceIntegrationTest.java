@@ -13,12 +13,16 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.RefinementC
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.RefinementChangeType;
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.UpdateIngredientConceptCommand;
 import io.github.venomenon328.miseendice.catalog.api.CatalogDrawWeightWarningException;
+import io.github.venomenon328.miseendice.catalog.api.CatalogNameCollisionWarningException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
 import io.github.venomenon328.miseendice.catalog.api.CatalogVersionConflictException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,6 +79,163 @@ class CatalogCommandServiceIntegrationTest extends CurrentSchemaPostgresIntegrat
         ).containsExactly(true, false, "SPECIFIC", new BigDecimal("1.0000"), null,
                 "Technische Testnotiz.", 0L);
 
+    }
+
+    @Test
+    void normalizesAndPersistsAliasesButRejectsOwnNamesDuplicatesAndBlankValues() {
+        var created = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                PREFIX + "ALIASES", "Issue 263 canonical", true, false, "SPECIFIC", BigDecimal.ONE,
+                null, "Technische Testnotiz.", null, false,
+                List.of("  Issue 263 former name  ", "Issue 263 short"), Set.of()));
+
+        assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow().aliases())
+                .containsExactly("Issue 263 former name", "Issue 263 short");
+        assertThatThrownBy(() -> new CreateIngredientConceptCommand(
+                PREFIX + "OWN_NAME", "Issue 263 own", true, false, "SPECIFIC", BigDecimal.ONE,
+                null, "Technische Testnotiz.", null, false, List.of("issue 263 OWN"), Set.of()))
+                .isInstanceOf(CatalogCommandValidationException.class)
+                .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
+                        .containsKey("aliases"));
+        assertThatThrownBy(() -> new CreateIngredientConceptCommand(
+                PREFIX + "DUPLICATE_ALIAS", "Issue 263 duplicate", true, false, "SPECIFIC", BigDecimal.ONE,
+                null, "Technische Testnotiz.", null, false,
+                List.of("Issue 263 same", " issue 263 SAME "), Set.of()))
+                .isInstanceOf(CatalogCommandValidationException.class)
+                .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
+                        .containsKey("aliases"));
+        assertThatThrownBy(() -> new CreateIngredientConceptCommand(
+                PREFIX + "BLANK_ALIAS", "Issue 263 blank", true, false, "SPECIFIC", BigDecimal.ONE,
+                null, "Technische Testnotiz.", null, false, List.of("   "), Set.of()))
+                .isInstanceOf(CatalogCommandValidationException.class)
+                .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
+                        .containsKey("aliases"));
+    }
+
+    @Test
+    void requiresExactCollisionAcknowledgementAndDoesNotReopenAnApprovedUnchangedAmbiguity() {
+        var first = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                PREFIX + "COLLISION_A", "Issue 263 first", true, false, "SPECIFIC", BigDecimal.ONE,
+                null, "Technische Testnotiz.", null, false, List.of("Issue 263 shared"), Set.of()));
+        var secondCommand = new CreateIngredientConceptCommand(
+                PREFIX + "COLLISION_B", "Issue 263 second", true, false, "SPECIFIC", BigDecimal.ONE,
+                null, "Technische Testnotiz.", null, false, List.of(" ISSUE 263 SHARED "), Set.of());
+
+        CatalogNameCollisionWarningException warning = org.assertj.core.api.Assertions.catchThrowableOfType(
+                () -> catalogCommands.createIngredientConcept(secondCommand),
+                CatalogNameCollisionWarningException.class);
+        assertThat(warning.collisions()).singleElement().satisfies(collision -> {
+            assertThat(collision.acknowledgement())
+                    .isEqualTo(new CatalogCommands.NameCollisionAcknowledgement(first.conceptId(), "issue 263 shared"));
+            assertThat(collision.otherConceptCode()).isEqualTo(PREFIX + "COLLISION_A");
+        });
+
+        assertThatThrownBy(() -> catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                secondCommand.code(), secondCommand.displayName(), secondCommand.active(),
+                secondCommand.randomDrawEnabled(), secondCommand.challengeSpecificity(),
+                secondCommand.baseDrawWeight(), secondCommand.noveltyLevel(), secondCommand.curatorNote(),
+                secondCommand.metadata(), false, secondCommand.aliases(),
+                Set.of(new CatalogCommands.NameCollisionAcknowledgement(first.conceptId() + 999, "issue 263 shared")))))
+                .isInstanceOf(CatalogNameCollisionWarningException.class);
+
+        var accepted = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                secondCommand.code(), secondCommand.displayName(), secondCommand.active(),
+                secondCommand.randomDrawEnabled(), secondCommand.challengeSpecificity(),
+                secondCommand.baseDrawWeight(), secondCommand.noveltyLevel(), secondCommand.curatorNote(),
+                secondCommand.metadata(), false, secondCommand.aliases(),
+                Set.of(warning.collisions().getFirst().acknowledgement())));
+        var current = catalogQueries.findConcept(accepted.conceptId()).orElseThrow();
+
+        var unrelatedSave = catalogCommands.updateIngredientConcept(command(
+                current, current.displayName(), false, false, current.challengeSpecificity(),
+                current.baseDrawWeight(), current.noveltyLevel(), "Unrelated technical edit.", false));
+
+        assertThat(unrelatedSave.version()).isEqualTo(1);
+        assertThat(catalogQueries.findConcept(accepted.conceptId()).orElseThrow().aliases())
+                .containsExactly("ISSUE 263 SHARED");
+    }
+
+    @Test
+    void requiresAcknowledgementForAliasToCanonicalCollisionsButNeverAllowsCanonicalDuplicates() {
+        var first = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                PREFIX + "CANONICAL_A", "Issue 263 canonical collision", "Technische Testnotiz."));
+        var aliasCommand = new CreateIngredientConceptCommand(
+                PREFIX + "CANONICAL_ALIAS", "Issue 263 alias owner", true, false, "SPECIFIC", BigDecimal.ONE,
+                null, "Technische Testnotiz.", null, false,
+                List.of("issue 263 CANONICAL COLLISION"), Set.of());
+
+        CatalogNameCollisionWarningException warning = org.assertj.core.api.Assertions.catchThrowableOfType(
+                () -> catalogCommands.createIngredientConcept(aliasCommand),
+                CatalogNameCollisionWarningException.class);
+        assertThat(warning.collisions()).singleElement().extracting(collision -> collision.acknowledgement().otherConceptId())
+                .isEqualTo(first.conceptId());
+        assertThat(catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                aliasCommand.code(), aliasCommand.displayName(), aliasCommand.active(),
+                aliasCommand.randomDrawEnabled(), aliasCommand.challengeSpecificity(), aliasCommand.baseDrawWeight(),
+                aliasCommand.noveltyLevel(), aliasCommand.curatorNote(), null, false, aliasCommand.aliases(),
+                Set.of(warning.collisions().getFirst().acknowledgement()))).conceptId()).isPositive();
+
+        assertThatThrownBy(() -> catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                PREFIX + "CANONICAL_B", "ISSUE 263 CANONICAL COLLISION", "Technische Testnotiz.")))
+                .isInstanceOf(CatalogCommandValidationException.class)
+                .satisfies(exception -> assertThat(((CatalogCommandValidationException) exception).fieldErrors())
+                        .containsKey("displayName"));
+    }
+
+    @Test
+    void aliasReplacementIsAtomicVersionedAndSurvivesDeactivation() {
+        var created = catalogCommands.createIngredientConcept(new CreateIngredientConceptCommand(
+                PREFIX + "ATOMIC_ALIAS", "Issue 263 atomic", true, false, "SPECIFIC", BigDecimal.ONE,
+                null, "Technische Testnotiz.", null, false, List.of("Issue 263 before"), Set.of()));
+        var original = catalogQueries.findConcept(created.conceptId()).orElseThrow();
+        var updated = catalogCommands.updateIngredientConcept(aliasCommand(
+                original, original.displayName(), true, "Changed technical note.", List.of("Issue 263 after"), Set.of()));
+
+        assertThat(updated.version()).isEqualTo(1);
+        assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow().aliases())
+                .containsExactly("Issue 263 after");
+        assertThatThrownBy(() -> catalogCommands.updateIngredientConcept(aliasCommand(
+                original, original.displayName(), true, original.curatorNote(), List.of("Issue 263 stale"), Set.of())))
+                .isInstanceOf(CatalogVersionConflictException.class);
+        assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow().aliases())
+                .containsExactly("Issue 263 after");
+
+        var beforeDeactivation = catalogQueries.findConcept(created.conceptId()).orElseThrow();
+        catalogCommands.updateIngredientConcept(aliasCommand(
+                beforeDeactivation, beforeDeactivation.displayName(), false, beforeDeactivation.curatorNote(),
+                beforeDeactivation.aliases(), Set.of()));
+        assertThat(catalogQueries.findConcept(created.conceptId()).orElseThrow())
+                .satisfies(detail -> {
+                    assertThat(detail.active()).isFalse();
+                    assertThat(detail.aliases()).containsExactly("Issue 263 after");
+                    assertThat(detail.version()).isEqualTo(2);
+                });
+    }
+
+    @Test
+    void concurrentCreatesCannotBothBypassTheCollisionGate() throws Exception {
+        var first = new CreateIngredientConceptCommand(
+                PREFIX + "CONCURRENT_ALIAS_A", "Issue 263 concurrent first", true, false, "SPECIFIC",
+                BigDecimal.ONE, null, "Technische Testnotiz.", null, false,
+                List.of("Issue 263 concurrent shared"), Set.of());
+        var second = new CreateIngredientConceptCommand(
+                PREFIX + "CONCURRENT_ALIAS_B", "Issue 263 concurrent second", true, false, "SPECIFIC",
+                BigDecimal.ONE, null, "Technische Testnotiz.", null, false,
+                List.of("ISSUE 263 CONCURRENT SHARED"), Set.of());
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var firstResult = executor.submit(() -> createAfterStart(ready, start, first));
+            var secondResult = executor.submit(() -> createAfterStart(ready, start, second));
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            assertThat(List.of(firstResult.get(10, TimeUnit.SECONDS), secondResult.get(10, TimeUnit.SECONDS)))
+                    .filteredOn(CatalogCommands.CatalogCommandResult.class::isInstance).hasSize(1)
+                    .allSatisfy(result -> assertThat(result).isInstanceOf(CatalogCommands.CatalogCommandResult.class));
+            assertThat(List.of(firstResult.get(), secondResult.get()))
+                    .filteredOn(CatalogNameCollisionWarningException.class::isInstance).hasSize(1);
+        }
     }
 
     @Test
@@ -439,6 +600,36 @@ class CatalogCommandServiceIntegrationTest extends CurrentSchemaPostgresIntegrat
                 detail.id(), detail.version(), detail.displayName(), detail.active(), randomDrawEnabled,
                 detail.challengeSpecificity(), weight, detail.noveltyLevel(), detail.curatorNote(),
                 acknowledgeWarnings, List.of(), Map.of(), false, metadata);
+    }
+
+    private CatalogCommands.UpdateIngredientConceptCommand aliasCommand(
+            CatalogQueries.CatalogConceptDetail detail,
+            String displayName,
+            boolean active,
+            String curatorNote,
+            List<String> aliases,
+            Set<CatalogCommands.NameCollisionAcknowledgement> acknowledgements
+    ) {
+        return new UpdateIngredientConceptCommand(
+                detail.id(), detail.version(), displayName, active, detail.randomDrawEnabled(),
+                detail.challengeSpecificity(), detail.baseDrawWeight(), detail.noveltyLevel(), curatorNote,
+                false, List.of(), Map.of(), false, null, aliases, acknowledgements);
+    }
+
+    private Object createAfterStart(
+            CountDownLatch ready,
+            CountDownLatch start,
+            CreateIngredientConceptCommand command
+    ) throws Exception {
+        ready.countDown();
+        if (!start.await(10, TimeUnit.SECONDS)) {
+            throw new AssertionError("Concurrent alias save did not start");
+        }
+        try {
+            return catalogCommands.createIngredientConcept(command);
+        } catch (RuntimeException exception) {
+            return exception;
+        }
     }
 
     private long insertConcept(String suffix, String displayName, String specificity, boolean active, boolean drawable, Integer novelty) {

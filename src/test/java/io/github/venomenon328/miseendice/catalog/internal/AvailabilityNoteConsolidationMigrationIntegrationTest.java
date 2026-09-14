@@ -31,6 +31,7 @@ import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 @Tag("migration")
 class AvailabilityNoteConsolidationMigrationIntegrationTest {
     private static final String MIGRATION = "db/changelog/catalog/037-availability-note-consolidation.sql";
+    private static final String ALIAS_SCHEMA = "db/changelog/schema/023-ingredient-concept-aliases.sql";
     private static final String FIXTURE = """
             INSERT INTO availability_note_consolidation_review VALUES
                 ('TEST_NOTE_SHARED', 'EASY', 'EASY', 'Old Georgia.', 'Old Tobias.', 'Shared target.', 'Shared target.'),
@@ -47,12 +48,16 @@ class AvailabilityNoteConsolidationMigrationIntegrationTest {
     private String migration;
 
     @BeforeAll
-    static void buildsEmptyDatabaseThroughTheFullMaster() throws Exception {
+    static void buildsHistoricalDatabaseWithTheCurrentQuerySchema() throws Exception {
         try (Connection connection = connect()) {
             var database = DatabaseFactory.getInstance()
                     .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-            new Liquibase("db/changelog/db.changelog-before-catalog-audit-cleanup.yaml",
-                    new ClassLoaderResourceAccessor(), database).update(new Contexts(), new LabelExpression());
+            var resources = new ClassLoaderResourceAccessor();
+            new Liquibase("db/changelog/db.changelog-before-catalog-audit-cleanup.yaml", resources, database)
+                    .update(new Contexts(), new LabelExpression());
+            // The test deliberately keeps migration 037 isolated, while JdbcCatalogQueries represents the
+            // current application projection and therefore requires the later additive alias table.
+            new Liquibase(ALIAS_SCHEMA, resources, database).update(new Contexts(), new LabelExpression());
         }
     }
 

@@ -8,6 +8,7 @@ import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.CreateIngre
 import io.github.venomenon328.miseendice.catalog.api.CatalogCommands.UpdateIngredientConceptCommand;
 import io.github.venomenon328.miseendice.catalog.api.CatalogConceptNotFoundException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogDrawWeightWarningException;
+import io.github.venomenon328.miseendice.catalog.api.CatalogNameCollisionWarningException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogRelationWarningException;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries;
 import io.github.venomenon328.miseendice.catalog.api.CatalogQueries.CatalogConceptDetail;
@@ -19,6 +20,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.dao.DataAccessException;
@@ -35,21 +37,27 @@ class CatalogCommandService implements CatalogCommands {
     private final JdbcTemplate jdbcTemplate;
     private final CatalogQueries catalogQueries;
     private final CatalogGraphLock graphLock;
+    private final CatalogNameLock nameLock;
 
     CatalogCommandService(
             JdbcTemplate jdbcTemplate,
             CatalogQueries catalogQueries,
-            CatalogGraphLock graphLock
+            CatalogGraphLock graphLock,
+            CatalogNameLock nameLock
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.catalogQueries = catalogQueries;
         this.graphLock = graphLock;
+        this.nameLock = nameLock;
     }
 
     @Override
     @Transactional
     public CatalogCommandResult createIngredientConcept(CreateIngredientConceptCommand command) {
         validateMetadataReferences(command.metadata());
+        nameLock.acquire();
+        validateAndAcknowledgeNameCollisions(0, List.of(), command.displayName(), command.aliases(),
+                command.nameCollisionAcknowledgements());
         MetadataState metadata = command.metadata() == null
                 ? MetadataState.empty()
                 : MetadataState.from(command.metadata());
@@ -80,6 +88,7 @@ class CatalogCommandService implements CatalogCommands {
         if (command.metadata() != null) {
             replaceMetadata(conceptId, command.metadata());
         }
+        replaceAliases(conceptId, command.aliases());
         return new CatalogCommandResult(conceptId, findRequired(conceptId).version());
     }
 
@@ -102,6 +111,18 @@ class CatalogCommandService implements CatalogCommands {
         }
         Map<Long, CatalogConceptDetail> before = new LinkedHashMap<>();
         affectedIds.stream().sorted().forEach(id -> before.put(id, findRequired(id)));
+        CatalogConceptDetail current = before.get(command.conceptId());
+        List<String> resultingAliases = command.aliases() == null ? current.aliases() : command.aliases();
+        validateAliasSet(command.displayName(), resultingAliases);
+        if (nameState(command.displayName(), resultingAliases)
+                .equals(nameState(current.displayName(), current.aliases()))) {
+            // An unrelated aggregate save must not reopen already approved ambiguities.
+        } else {
+            nameLock.acquire();
+            validateAndAcknowledgeNameCollisions(
+                    command.conceptId(), occurrences(current.displayName(), current.aliases()),
+                    command.displayName(), resultingAliases, command.nameCollisionAcknowledgements());
+        }
         GraphState graph = null;
         if (graphSemanticsChange) {
             graph = loadGraph();
@@ -137,7 +158,14 @@ class CatalogCommandService implements CatalogCommands {
         if (command.metadata() != null) {
             replaceMetadata(command.conceptId(), command.metadata());
         }
+        if (command.aliases() != null) {
+            jdbcTemplate.update("delete from ingredient_concept_alias where ingredient_concept_id = ?",
+                    command.conceptId());
+        }
         updateAffectedVersionsAndBaseFields(command, locked);
+        if (command.aliases() != null) {
+            insertAliases(command.conceptId(), command.aliases());
+        }
 
         return new CatalogCommandResult(command.conceptId(), findRequired(command.conceptId()).version());
     }
@@ -462,6 +490,137 @@ class CatalogCommandService implements CatalogCommands {
                         conceptId, entry.getKey(), entry.getValue()));
     }
 
+    private void replaceAliases(long conceptId, List<String> aliases) {
+        jdbcTemplate.update("delete from ingredient_concept_alias where ingredient_concept_id = ?", conceptId);
+        insertAliases(conceptId, aliases);
+    }
+
+    private void insertAliases(long conceptId, List<String> aliases) {
+        aliases.stream()
+                .sorted(String.CASE_INSENSITIVE_ORDER.thenComparing(Comparator.naturalOrder()))
+                .forEach(alias -> jdbcTemplate.update(
+                        "insert into ingredient_concept_alias (ingredient_concept_id, alias_text) values (?, ?)",
+                        conceptId, alias));
+    }
+
+    private void validateAliasSet(String displayName, List<String> aliases) {
+        Set<String> identities = new HashSet<>();
+        String displayIdentity = normalizeName(displayName);
+        for (String alias : aliases) {
+            String identity = normalizeName(alias);
+            if (identity.isEmpty()) {
+                throw new CatalogCommandValidationException(Map.of("aliases", "Aliasse dürfen nicht leer sein."));
+            }
+            if (identity.equals(displayIdentity)) {
+                throw new CatalogCommandValidationException(Map.of(
+                        "aliases", "Ein Alias darf nicht dem eigenen Anzeigenamen entsprechen."));
+            }
+            if (!identities.add(identity)) {
+                throw new CatalogCommandValidationException(Map.of(
+                        "aliases", "Derselbe Alias darf unabhängig von Groß-/Kleinschreibung nur einmal vorkommen."));
+            }
+        }
+    }
+
+    private void validateAndAcknowledgeNameCollisions(
+            long conceptId,
+            List<NameOccurrence> previousOccurrences,
+            String displayName,
+            List<String> aliases,
+            Set<CatalogCommands.NameCollisionAcknowledgement> acknowledgements
+    ) {
+        List<NameOccurrence> resulting = occurrences(displayName, aliases);
+        Set<NameOccurrenceIdentity> previous = previousOccurrences.stream()
+                .map(NameOccurrence::identity)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        List<NameOccurrence> affected = resulting.stream()
+                .filter(occurrence -> !previous.contains(occurrence.identity()))
+                .toList();
+        if (affected.isEmpty()) {
+            return;
+        }
+        Set<String> normalizedTexts = affected.stream().map(NameOccurrence::normalizedText)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        String placeholders = placeholders(normalizedTexts.size());
+        List<OtherNameOccurrence> others = jdbcTemplate.query("""
+                select concept.id, concept.code, concept.display_name, concept.display_name as matched_text,
+                       false as alias
+                from ingredient_concept concept
+                where concept.id <> ? and lower(btrim(concept.display_name)) in (%s)
+                union all
+                select concept.id, concept.code, concept.display_name, alias.alias_text as matched_text,
+                       true as alias
+                from ingredient_concept_alias alias
+                join ingredient_concept concept on concept.id = alias.ingredient_concept_id
+                where concept.id <> ? and lower(btrim(alias.alias_text)) in (%s)
+                order by 2, 1, 4
+                """.formatted(placeholders, placeholders), (resultSet, rowNumber) -> new OtherNameOccurrence(
+                resultSet.getLong("id"), resultSet.getString("code"), resultSet.getString("display_name"),
+                resultSet.getString("matched_text"), resultSet.getBoolean("alias")),
+                collisionArguments(conceptId, normalizedTexts));
+
+        for (NameOccurrence local : affected) {
+            if (local.alias()) {
+                continue;
+            }
+            boolean canonicalDuplicate = others.stream().anyMatch(other -> !other.alias()
+                    && normalizeName(other.matchedText()).equals(local.normalizedText()));
+            if (canonicalDuplicate) {
+                throw new CatalogCommandValidationException(Map.of(
+                        "displayName", "Dieser Anzeigename wird bereits als kanonischer Name verwendet."));
+            }
+        }
+
+        List<CatalogCommands.NameCollision> collisions = new ArrayList<>();
+        for (NameOccurrence local : affected) {
+            others.stream()
+                    .filter(other -> normalizeName(other.matchedText()).equals(local.normalizedText()))
+                    .filter(other -> local.alias() || other.alias())
+                    .map(other -> new CatalogCommands.NameCollision(
+                            new CatalogCommands.NameCollisionAcknowledgement(
+                                    other.conceptId(), local.normalizedText()),
+                            local.text(), other.code(), other.displayName(), other.matchedText()))
+                    .forEach(collisions::add);
+        }
+        collisions.sort(Comparator.comparing(
+                        (CatalogCommands.NameCollision collision) -> collision.acknowledgement().normalizedText())
+                .thenComparing(CatalogCommands.NameCollision::otherConceptCode)
+                .thenComparing(CatalogCommands.NameCollision::otherText));
+        if (!collisions.isEmpty()) {
+            Set<CatalogCommands.NameCollisionAcknowledgement> required = collisions.stream()
+                    .map(CatalogCommands.NameCollision::acknowledgement)
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            if (!acknowledgements.containsAll(required)) {
+                throw new CatalogNameCollisionWarningException(collisions);
+            }
+        }
+    }
+
+    private static Object[] collisionArguments(long conceptId, Set<String> normalizedTexts) {
+        List<Object> arguments = new ArrayList<>();
+        arguments.add(conceptId);
+        arguments.addAll(normalizedTexts);
+        arguments.add(conceptId);
+        arguments.addAll(normalizedTexts);
+        return arguments.toArray();
+    }
+
+    private static Set<NameOccurrenceIdentity> nameState(String displayName, List<String> aliases) {
+        return occurrences(displayName, aliases).stream().map(NameOccurrence::identity)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    private static List<NameOccurrence> occurrences(String displayName, List<String> aliases) {
+        List<NameOccurrence> occurrences = new ArrayList<>();
+        occurrences.add(new NameOccurrence(displayName, normalizeName(displayName), false));
+        aliases.forEach(alias -> occurrences.add(new NameOccurrence(alias, normalizeName(alias), true)));
+        return List.copyOf(occurrences);
+    }
+
+    private static String normalizeName(String value) {
+        return value == null ? "" : value.strip().toLowerCase(Locale.ROOT);
+    }
+
     private static String placeholders(int count) {
         return String.join(", ", java.util.Collections.nCopies(count, "?"));
     }
@@ -478,6 +637,24 @@ class CatalogCommandService implements CatalogCommands {
     }
 
     private record LockedConcept(long id, long version) {
+    }
+
+    private record NameOccurrence(String text, String normalizedText, boolean alias) {
+        private NameOccurrenceIdentity identity() {
+            return new NameOccurrenceIdentity(normalizedText, alias);
+        }
+    }
+
+    private record NameOccurrenceIdentity(String normalizedText, boolean alias) {
+    }
+
+    private record OtherNameOccurrence(
+            long conceptId,
+            String code,
+            String displayName,
+            String matchedText,
+            boolean alias
+    ) {
     }
 
     private record MetadataState(Set<String> functionalRoleCodes) {

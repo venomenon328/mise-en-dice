@@ -749,6 +749,9 @@ class OfferDecisionLifecycleIntegrationTest extends CurrentSchemaPostgresIntegra
         long openTwo = insertResultConcept("OPEN_TWO", "Test open requirement two", true, "OPEN");
         long refinedTwo = insertResultConcept("REFINED_TWO", "Test refined ingredient two", true, "SPECIFIC");
         long unrelated = insertResultConcept("UNRELATED", "Test unrelated ingredient", true, "SPECIFIC");
+        insertResultAlias(refinedOne, "Test historical refinement alias");
+        insertResultAlias(refinedOne, "Test historical refinement alias extended");
+        insertResultAlias(unrelated, "TEST HISTORICAL REFINEMENT ALIAS");
         linkResultConcepts(openOne, refinedOne);
         linkResultConcepts(openTwo, refinedTwo);
         setRequirement(challengeNumber, 1, openOne, "Test open requirement one", "OPEN");
@@ -762,6 +765,15 @@ class OfferDecisionLifecycleIntegrationTest extends CurrentSchemaPostgresIntegra
         assertThat(resultIngredientCatalogQueries.searchRefinementsLiterally(openOne, "refined ingredient one"))
                 .extracting(ResultIngredientCatalogQueries.IngredientConcept::id)
                 .contains(refinedOne).doesNotContain(unrelated);
+        assertThat(resultIngredientCatalogQueries.findUniqueExactMatch("test historical refinement alias"))
+                .isEmpty();
+        assertThat(resultIngredientCatalogQueries.findUniqueExactRefinementMatch(
+                openOne, "test historical refinement alias"))
+                .get().extracting(ResultIngredientCatalogQueries.IngredientConcept::id).isEqualTo(refinedOne);
+        assertThat(resultIngredientCatalogQueries.searchRefinementsLiterally(
+                openOne, "historical refinement alias"))
+                .extracting(ResultIngredientCatalogQueries.IngredientConcept::id)
+                .containsExactly(refinedOne);
 
         jdbcTemplate.update("update ingredient_concept set active = false where id = ?", refinedOne);
         try {
@@ -1127,6 +1139,12 @@ class OfferDecisionLifecycleIntegrationTest extends CurrentSchemaPostgresIntegra
                 ) values (?, ?, ?, false, ?, 1.0000, 'Technische Testnotiz.')
                 returning id
                 """, Long.class, TEST_CONCEPT_PREFIX + suffix, displayName, active, specificity);
+    }
+
+    private void insertResultAlias(long conceptId, String alias) {
+        jdbcTemplate.update(
+                "insert into ingredient_concept_alias (ingredient_concept_id, alias_text) values (?, ?)",
+                conceptId, alias);
     }
 
     private void linkResultConcepts(long parentId, long childId) {
