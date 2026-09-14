@@ -73,7 +73,7 @@ class IngredientLookupQueriesIntegrationTest extends CurrentSchemaPostgresIntegr
     }
 
     @Test
-    void searchesAliasesWithExactFlagsLiteralTextDeduplicationSortingAndTotals() {
+    void searchesAliasesWithExactFirstLiteralTextDeduplicationSortingAndTotals() {
         long prefix = insertConcept("ALIAS_PREFIX", "Zulu canonical alias", true, true, 2, "Technische Testnotiz.");
         long contains = insertConcept("ALIAS_CONTAINS", "Alpha canonical alias", true, true, 2, "Technische Testnotiz.");
         long secondExact = insertConcept("ALIAS_EXACT_2", "Beta canonical alias", true, true, 2, "Technische Testnotiz.");
@@ -84,14 +84,20 @@ class IngredientLookupQueriesIntegrationTest extends CurrentSchemaPostgresIntegr
         insertAlias(secondExact, "NEEDLE");
         insertAlias(inactive, "Needle");
 
-        var result = queries.searchActiveByDisplayName(" needle ", 25);
+        var exactResult = queries.searchActiveByDisplayName(" needle ", 25);
 
-        assertThat(result.totalMatches()).isEqualTo(3);
-        assertThat(result.matches()).extracting(match -> match.conceptId())
-                .containsExactly(secondExact, prefix, contains)
-                .doesNotContain(inactive);
-        assertThat(result.matches()).filteredOn(match -> match.exactMatch())
-                .extracting(match -> match.conceptId()).containsExactlyInAnyOrder(prefix, secondExact);
+        assertThat(exactResult.totalMatches()).isEqualTo(2);
+        assertThat(exactResult.matches()).extracting(match -> match.conceptId())
+                .containsExactly(secondExact, prefix)
+                .doesNotContain(contains, inactive);
+        assertThat(exactResult.matches()).allSatisfy(match -> assertThat(match.exactMatch()).isTrue());
+
+        var substringResult = queries.searchActiveByDisplayName("needle label", 25);
+        assertThat(substringResult.totalMatches()).isEqualTo(1);
+        assertThat(substringResult.matches()).singleElement().satisfies(match -> {
+            assertThat(match.conceptId()).isEqualTo(contains);
+            assertThat(match.exactMatch()).isFalse();
+        });
 
         long literal = insertConcept("ALIAS_LITERAL", "Literal alias owner", true, true, 2, "Technische Testnotiz.");
         insertAlias(literal, "Former 100%_\\name");
