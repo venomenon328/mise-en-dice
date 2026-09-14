@@ -16,6 +16,8 @@ Nur vor noch auszuführender Implementierung beziehungsweise konkreten technisch
 
 Nach dem in #172 dokumentierten Einführungspunkt beginnen neue Länder-/Ergänzungsrunden mit dem aktuellen vollständigen zugehörigen Runden-Issue, dem aktuellen #172-Tracker und [CULINARY_CATALOG_WORKFLOW.md](docs/CULINARY_CATALOG_WORKFLOW.md); dessen Phasenmatrix bestimmt die jeweils zusätzlich vollständig beziehungsweise abschnittsweise zu lesenden Pflichtquellen. Solange #172 die Umstellung noch nicht als eingeführt ausweist, bleibt der dort bezeichnete bisherige Ablauf verbindlich. Jede Konzeptneuaufnahme oder wesentliche Produktformänderung folgt weiterhin vollständig [INGREDIENT_CONCEPT_CURATION.md](docs/INGREDIENT_CONCEPT_CURATION.md) und [AVAILABILITY_AND_COOKING_NOVELTY.md](docs/AVAILABILITY_AND_COOKING_NOVELTY.md). Fachliche Recherche-, Einzelwert-, Notiz- und Freigabeverträge bleiben erhalten. Eine allgemeine Implementierungsfreigabe ersetzt keine dort erforderliche menschliche Fachentscheidung.
 
+Namens- und Aliasarbeit an Zutatenkonzepten folgt zusätzlich vollständig [INGREDIENT_NAMING_AND_ALIASES.md](docs/INGREDIENT_NAMING_AND_ALIASES.md). Insbesondere ersetzen allgemeine Katalog- oder Implementierungsfreigaben dort nicht die erforderliche menschliche Einzelentscheidung für Cross-Concept-Namens-/Aliaskollisionen.
+
 ## Unmittelbar wichtige Schutzgrenzen
 
 PostgreSQL, Liquibase und explizites JDBC/SQL bleiben die technische Grundlage. Veröffentlichte Changesets sind append-only; keine Ersatztests gegen H2 und kein ungefragter ORM-/Datenbankwechsel. Modulgrenzen sowie Versions- und Integritätsverträge aus den Fach-/Architekturquellen beachten.
