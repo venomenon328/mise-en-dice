@@ -1,9 +1,9 @@
 # Bezeichnungen und Aliasse von Zutatenkonzepten
 
-Stand: 14. September 2026  
-Status: freigegebene fachliche Ziel- und Redaktionsspezifikation  
-Übergeordnet: [Issue #262](https://github.com/venomenon328/mise-en-dice/issues/262)  
-Technische Grundlage: [Issue #263](https://github.com/venomenon328/mise-en-dice/issues/263)  
+Stand: 14. September 2026
+Status: freigegebene fachliche Ziel- und Redaktionsspezifikation
+Übergeordnet: [Issue #262](https://github.com/venomenon328/mise-en-dice/issues/262)
+Technische Grundlage: [Issue #263](https://github.com/venomenon328/mise-en-dice/issues/263)
 Katalogweiter Review und Einpflege: [Issue #264](https://github.com/venomenon328/mise-en-dice/issues/264)
 
 Dieses Dokument definiert die dauerhafte Semantik für kanonische Anzeigenamen und Aliasse von `ingredient_concept`. Es gilt für neue beziehungsweise wesentlich umbenannte Konzepte ebenso wie für den einmaligen katalogweiten Namens- und Aliasreview aus #264.
