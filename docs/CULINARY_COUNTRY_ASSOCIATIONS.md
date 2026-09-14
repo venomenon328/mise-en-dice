@@ -1,6 +1,6 @@
 # Kulinarische Länderzuordnungen
 
-Stand: 11. September 2026
+Stand: 14. September 2026
 
 Dieses Dokument ist die aktuelle normative Fassung der redaktionellen Ländersemantik und beschreibt ihre technische Pflege im Zutatenkatalog. Die Ursprungsentscheidung liegt in [#165](https://github.com/venomenon328/mise-en-dice/issues/165); die Präzisierung aus [#249](https://github.com/venomenon328/mise-en-dice/issues/249), Arbeitsfassung `COUNTRY_RULES_A2_20260911` einschließlich Regionalentscheidung Q1, ist hier konsolidiert. Die technischen Verträge bleiben unverändert. Historische Länderfreigaben werden dadurch weder umgeschrieben noch automatisch revidiert.
 
@@ -61,16 +61,18 @@ Ein hinreichend tragfähiger Begründungsweg genügt. Mehrere schwache Behauptun
 |---|---|---|
 | Produkt-/Kulturidentität | Das konkrete Produkt oder eine etablierte Tradition ist charakteristischer Bestandteil der betrachteten Küche. | Produktionsort, Produktname, Erfindungsort oder Herkunftsschutz ohne passende kulinarische Aussage. |
 | Prägende Verwendung | Typische wichtige Rolle in der Küche, ihrer Würzlogik oder ihren Produkt-/Gerichtsfamilien. | „Wird dort ebenfalls gegessen, verwendet oder verkauft.“ |
-| Repräsentatives Einzelgericht | Belegte repräsentative Bedeutung des Gerichts beziehungsweise einer etablierten Ausprägung **und** prägende Rolle des konkreten Konzepts darin. | Ein gefundenes Rezept mit beiläufiger Zutat oder eine individuelle Neuschöpfung. |
+| Repräsentatives Einzelgericht | Belegte repräsentative Bedeutung des Gerichts beziehungsweise einer etablierten Ausprägung **und** prägende Rolle des konkreten Konzepts darin. Wenn dieses Gericht die wesentliche oder einzige Relationsgrundlage ist, muss die Begründung sichtbar erklären, warum gerade diese Gerichtstradition für den herangezogenen nationalen oder regionalen Küchenkontext repräsentativ ist. | Ein gefundenes Rezept, die bloße Bezeichnung als lokale Spezialität, ein Gericht mit nur beiläufiger Zutat oder eine individuelle Neuschöpfung. |
 | Kombinatorischer Informationswert | Eine belegte charakteristische Rolle erklärt mit weiteren Zutaten ein tatsächlich etabliertes kulinarisches Muster. | Eine nur erdachte Kombination oder die bloße Behauptung „passt zusammen“. |
 
 Die Wege gelten gleichermaßen für nationale und etablierte regionale Küchen. Es gibt keine Pflichtmengen von Gerichten oder Quellen, kein Punktesystem und keine neuen Relationstypen oder -gewichte. Auch breite, weltweit verbreitete Grundzutaten werden nach diesen Wegen beurteilt, nicht nach einem zusätzlichen Alltags-, Exklusivitäts- oder Mindestgerichtetest. Häufigkeit allein genügt weiterhin nicht.
+
+Der Einzelgerichtweg ist **kein Rezeptfund-Shortcut**. Wird eine positive Relation im Wesentlichen über ein einzelnes Gericht begründet, müssen Quellenbefund und redaktionelle Schlussfolgerung nachvollziehbar zeigen, weshalb das Gericht beziehungsweise die konkrete Ausprägung innerhalb der betrachteten nationalen oder etablierten regionalen Küche tatsächlich repräsentativ ist und welche prägende Rolle das Zutatenkonzept darin besitzt. Je schmaler die Begründung auf dieses eine Gericht zuläuft, desto vollständiger muss dieser Zusammenhang erklärt werden; eine zusätzliche Mindestzahl von Quellen oder Gerichten folgt daraus nicht. Ist dagegen eine breitere Verwendung, Produktfamilie, Festtagsfunktion oder sonstige kulturelle Verankerung belegt, soll diese tatsächliche Bedeutung dargestellt und nicht auf die bloße Nennung eines einzelnen Beispielgerichts verkürzt werden.
 
 ### 4.2 Prägende Rolle und Varianten
 
 Prägung kann Produktidentität, Hauptkomponente, charakteristisches Aroma oder Geschmacksbild, **Farbe, Textur oder Struktur** sowie eine belegte kulturelle Funktion betreffen. Eine kleine verwendete Menge ist kein Gegenargument. Allgemeine Küchenfunktionen wie „salzt“, „macht süß“ oder „liefert Fett“ begründen ohne charakteristischen konkreten Kontext noch keine Relation.
 
-„Prägend“ bedeutet nicht, dass eine Zutat technisch unersetzbar ist oder in jeder anerkannten Rezeptvariante vorkommt. Eine optionale Zutat kann eine belegte charakteristische Rolle besitzen; beliebiges Beiwerk genügt nicht. Weder ein amtlicher Nationalgerichtstitel noch landesweit identische Rezepturen sind erforderlich. Beim Einzelgerichtweg müssen Repräsentativität im herangezogenen Küchenkontext und prägende Zutatenrolle tatsächlich belegt sein.
+„Prägend“ bedeutet nicht, dass eine Zutat technisch unersetzbar ist oder in jeder anerkannten Rezeptvariante vorkommt. Eine optionale Zutat kann eine belegte charakteristische Rolle besitzen; beliebiges Beiwerk genügt nicht. Weder ein amtlicher Nationalgerichtstitel noch landesweit identische Rezepturen sind erforderlich. Beim Einzelgerichtweg müssen Repräsentativität im herangezogenen Küchenkontext und prägende Zutatenrolle tatsächlich belegt sein; ein traditionsreicher Gerichtstitel allein ersetzt diese beiden Nachweise nicht.
 
 ### 4.3 Keine Verdrängung oder Sonderhürden
 
@@ -79,7 +81,7 @@ Folgende Umstände dürfen weder allein eine Ablehnung noch einen pauschalen Bew
 - Verwendung in vielen anderen Ländern;
 - größere Bekanntheit oder stärkere Assoziation einer anderen Küche;
 - bereits vorhandene ähnliche positive Zuordnungen oder ein noch charakteristischeres Geschwisterkonzept;
-- nur ein repräsentatives Gericht bei belegter prägender Zutatenrolle;
+- nur ein tatsächlich repräsentatives Gericht bei belegter prägender Zutatenrolle;
 - geringe Dosierung, rein farbliche Prägung oder etablierte Varianten ohne die Zutat;
 - fehlende landesweite Verbreitung, überregionale Bekanntheit oder nationale Repräsentativität bei belegter charakteristischer Rolle in einer etablierten regionalen Küche.
 
@@ -99,7 +101,7 @@ Identität und Existenz im geprüften Bestand, Berechtigung der Länderrelation 
 
 Da das Projekt Länder und keine separate regionale Küchenebene abbildet, genügt eine belastbar belegte charakteristische Rolle in einer **etablierten regionalen Küche des betrachteten Landes** für dessen Länderrelation. Zusätzliche landesweite Verbreitung, überregionale Bekanntheit oder nationale Repräsentativität sind nicht erforderlich. Region und tatsächliche Reichweite werden in der Begründung benannt; die Relation behauptet keine gleichmäßige Verwendung im ganzen Land.
 
-Bloßer geografischer Ort, ein einzelnes Restaurant, eine lokale Neuschöpfung oder unklarer Traditionsbezug genügen weiterhin nicht. Die Rolle muss innerhalb der etablierten regionalen Küche einen der Begründungswege tragen; die regionale Einordnung wertet bloßes Vorkommen nicht auf.
+Bloßer geografischer Ort, ein einzelnes Restaurant, eine lokale Neuschöpfung oder unklarer Traditionsbezug genügen weiterhin nicht. Die Rolle muss innerhalb der etablierten regionalen Küche einen der Begründungswege tragen; die regionale Einordnung wertet bloßes Vorkommen nicht auf. Stützt sich die Relation auf ein einzelnes Regionalgericht, muss dessen Verankerung beziehungsweise Repräsentativität innerhalb dieser etablierten Regionalküche belegt und in der Begründung ausdrücklich sichtbar gemacht werden; „Spezialität aus Ort/Region X“ genügt für sich allein nicht.
 
 Der ausdrücklich beauftragte Küchenumfang bleibt maßgeblich. Bereits getrennt behandelte Küchen wie Schottland und England werden nicht zum gesamten Vereinigten Königreich zusammengelegt. Kontrollierte erweiterte Codes gemäß Abschnitt 3 bleiben erhalten; eine Relation zu einer solchen Untereinheit erzeugt keine automatische zusätzliche Zuordnung zum übergeordneten Staat oder zu Nachbarküchen. Die regionale Evidenz begründet unmittelbar die konkret geprüfte Landesrelation, keine technische Hierarchievererbung. Q1 führt weder eine Regionenontologie noch zusätzliche Referenzcodes ein.
 
@@ -118,15 +120,17 @@ Entscheidend ist die Eignung für die konkrete Aussage: Herkunftsschutz belegt n
 
 Eine geeignete Quelle darf sowohl Repräsentativität als auch prägende Rolle belegen. Es gibt keine feste Mindestzahl; bei Grenzfällen und belastbaren Gegenbefunden unabhängige Quellen ergänzen. Wiederveröffentlichungen derselben Ursprungsaussage sind keine unabhängigen Bestätigungen.
 
+Die Begründung einer positiven Länderrelation muss die **Bedeutung des konkreten Zutatenkonzepts für die betrachtete Küche** nachvollziehbar darstellen. Eine belegte breitere Verwendung, kulturelle Funktion oder regionale Verankerung darf nicht auf die Nennung eines einzelnen Gerichts verkürzt werden. Wird die Relation tatsächlich ausschließlich oder im Wesentlichen über ein Einzelgericht begründet, müssen dessen Repräsentativität im betreffenden Küchenkontext und die prägende Rolle der Zutat ausdrücklich erläutert und von der verwendeten Evidenz getragen werden. Bloße Rezeptvorkommen und unbelegte Bezeichnungen wie „traditionell“, „typisch“ oder „prägend“ ersetzen diese Erläuterung nicht. Nicht belegte Reichweite darf umgekehrt nicht ergänzt oder hochgerechnet werden.
+
 Gegenrecherche prüft fachlich relevante Einwände wie Fehlattribution, unpassende Produktidentität, bloß randständige Verwendung oder unbelegte Repräsentativität **im tatsächlich herangezogenen Küchenkontext**. „Anderswo auch üblich“ oder „nur regional charakteristisch“ sind keine Gegenbelege. Abwesenheit in einer einzelnen Übersicht widerlegt keine positive Evidenz; fehlende Evidenz ist nicht mit einem Gegenbeweis gleichzusetzen. Herkunft allein ist weder erforderlich noch ausreichend.
 
 ### 4.7 Urteil und Freigabe
 
 | Arbeitsurteil | Bedeutung |
 |---|---|
-| `setzen` | Identität und Umfang sind geklärt, mindestens ein Begründungsweg ist tragfähig und keine entscheidungserhebliche Unsicherheit bleibt offen. Empfehlung bis zur menschlichen Freigabe. |
-| `Grenzfall / bewusst prüfen` (ungeklärt) | Identität, Beleglage, Repräsentativität im tatsächlichen Küchenkontext oder Reichweite bleibt materiell offen. Die fehlende Klärung benennen; hinreichend belegte regionale Reichweite ist kein Mangel. |
-| `nicht setzen` | Die geprüfte Begründung trägt die Relation nicht, etwa weil sie nur beiläufiges Vorkommen oder eine falsche Produktform belegt. Kein dauerhaftes Verbot und keine Behauptung, die Küche kenne die Zutat nicht. |
+| `setzen` | Identität und Umfang sind geklärt, mindestens ein Begründungsweg ist tragfähig, die kulinarische Bedeutung und tatsächliche Reichweite sind für die menschliche Entscheidung nachvollziehbar dargestellt und keine entscheidungserhebliche Unsicherheit bleibt offen. Empfehlung bis zur menschlichen Freigabe. |
+| `Grenzfall / bewusst prüfen` (ungeklärt) | Identität, Beleglage, Repräsentativität im tatsächlichen Küchenkontext oder Reichweite bleibt materiell offen. Dazu gehört insbesondere ein Einzelgericht, dessen repräsentative Bedeutung oder prägende Zutatenrolle nicht ausreichend belegt ist. Die fehlende Klärung benennen; hinreichend belegte regionale Reichweite ist kein Mangel. |
+| `nicht setzen` | Die geprüfte Begründung trägt die Relation nicht, etwa weil sie nur beiläufiges Vorkommen, einen bloßen Rezeptfund oder eine falsche Produktform belegt. Kein dauerhaftes Verbot und keine Behauptung, die Küche kenne die Zutat nicht. |
 
 Technisch fehlender Quellen- oder Katalogzugriff ist kein negativer Existenz- oder Relevanznachweis. Unsichere Fälle werden nicht stillschweigend positiv interpretiert. Persistiert wird weiterhin nur die ausdrücklich freigegebene positive Relation; die Arbeitsurteile sind keine Datenbankstatus.
 
