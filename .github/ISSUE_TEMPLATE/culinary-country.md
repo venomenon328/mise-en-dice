@@ -43,7 +43,7 @@ ergänzt. Keine Katalogeinpflege ohne ausdrücklichen Auftrag und erfüllte Fach
 
 ## Küchenkontext und Suchabdeckung
 
-<!-- Knapp: prägende Produktfamilien, Würzlogik, relevante regionale Traditionen und beide Suchrichtungen. -->
+<!-- Knapp: Küchenprofil einschließlich spezifischer Spezialitäten, regionaler Traditionen und beider Suchrichtungen. -->
 
 - Katalog → Küche:
 - Küche → Katalog:
@@ -51,14 +51,17 @@ ergänzt. Keine Katalogeinpflege ohne ausdrücklichen Auftrag und erfüllte Fach
 
 ## Kandidatenentscheidungen
 
-| Ref | Konzeptcode / noch ungeklärte Identität | Existenzstatus und Quellkennung | Relationsvorschlag | Aufnahmevorschlag | Begründung und Evidenz | Offene Produkt-/Graphfragen | Freigabestatus |
+| Ref | Konzeptcode / noch ungeklärte Identität | Existenzstatus und Quellkennung | Relationsvorschlag | Aufnahmevorschlag | Fachlicher Nachweis nach Ländersemantik 4.7 | Offene Sach-/Bewertungs-/Produktfragen | Freigabestatus |
 |---|---|---|---|---|---|---|---|
 | C-001 |  | `UNRESOLVED` | Grenzfall | nicht anwendbar / offen |  |  | offen |
 
 <!--
 Zulässige Existenzstatus: PRESENT_MATCH, PRESENT_OTHER_CODE_OR_NAME, RELATED_NOT_IDENTICAL,
 ABSENT_AFTER_FULL_REVIEW, UNRESOLVED. Nur ABSENT_AFTER_FULL_REVIEW darf einen belastbaren
-Neuaufnahmevorschlag wegen Abwesenheit tragen. Quellenbefund und redaktionelle Schlussfolgerung trennen.
+Neuaufnahmevorschlag wegen Abwesenheit tragen.
+Für den fachlichen Nachweis ausschließlich docs/CULINARY_COUNTRY_ASSOCIATIONS.md, Abschnitt 4.7 verwenden;
+Darstellung und Haltepunkt folgen docs/CULINARY_CATALOG_WORKFLOW.md, Abschnitten 1.2–1.3.
+Offene Fragen als fehlende Sach-/Evidenzklärung oder redaktionelle Grenzentscheidung bei geklärten Fakten ausweisen.
 Ernsthaft geprüfte Grenzfälle/Ablehnungen aufnehmen, nicht jeden unplausiblen Katalogeintrag künstlich ablehnen.
 Bei langem Anhang hier die eindeutige versionierte Hauptquelle und ihre Revision verlinken.
 -->
