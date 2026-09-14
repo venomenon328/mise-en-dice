@@ -291,22 +291,6 @@ Die vorbereitete Einführung, der synthetische Verfahrensdurchgang und die begre
 
 ## Wiederverwendbarer Startprompt nach Einführung
 
-```text
-Wir bearbeiten die ausdrücklich beauftragte Länder-/Ergänzungsrunde im Repository
-`venomenon328/mise-en-dice`.
-
-Runden-Issue: <URL>
-Land/Küchenumfang: <Name und Code>
-Technischer Batchbranch, falls bereits beauftragt: <Branch oder „noch keiner“>
-
-Lies `AGENTS.md`, den aktuellen Body des Runden-Issues, den aktuellen #172-Tracker und
-`docs/CULINARY_CATALOG_WORKFLOW.md`. Ziehe danach die Quellen aus dessen Matrix für die jetzt beauftragte Phase
-vollständig beziehungsweise in den dort ausdrücklich genannten Abschnitten heran. Prüfe den vorbereiteten
-Gesamtstand und den Repository-Katalogindex samt Manifest; separat dokumentierte freigegebene, noch nicht
-eingepflegte Vorschläge sind offene Arbeit und keine existenten DB-Konzepte.
-
-Führe jetzt ausschließlich Phase <Phase> bis zum nächsten Haltepunkt durch und pflege die aktuelle Revision im
-zugehörigen Runden-Issue. Überspringe kein offenes fachliches Gate, verlange aber keine Wiederfreigabe bereits
-eindeutig freigegebener unveränderter Teile. Keine Katalog-/Migrationsänderung vor dem beauftragten Einpflegeschritt,
-kein Merge oder Deployment.
-```
+Die kopierbaren Aufträge P1–P7 stehen zentral im
+[Cheat-Sheet für den Länderworkflow](CULINARY_CATALOG_CHEAT_SHEET.md).
+Dort die passende Phase wählen; Quellenmatrix, Fachgates und Befugnisgrenzen dieses Workflows bleiben maßgeblich.
