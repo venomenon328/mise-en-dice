@@ -1,6 +1,6 @@
 # Kulinarischer Katalogausbau: Recherche, Freigabe und Einpflege
 
-Stand: 11. September 2026
+Stand: 15. September 2026
 Status: Zielablauf für neue Länder- und Ergänzungsrunden nach dem in Issue #172 dokumentierten Einführungspunkt
 
 ## Ziel und Geltung
@@ -46,7 +46,7 @@ pflegen; er darf daraus keine Katalog-, Migrations- oder Metadatenfreigabe ablei
 | Phase | Eingabe | Ergebnis und Haltepunkt | Zulässige Änderung |
 |---|---|---|---|
 | 0. Technische Vorbereitung | Auftrag, aktueller Tracker, Runden-Issue, Branch-/PR-Stand, Index | Konsistenter Gesamtstand mit Quellenkennungen, gültigem Index und separat benannter offener Sammelarbeit | Runden-Issue und lokale Rechercheartefakte; nötige technische Synchronisierung nur im beauftragten Scope |
-| 1. Fachliche Recherche | Vorbereiteter Bestand, Ländersemantik, Küchen- und Produktquellen | Küchenkontext, Kandidaten in beide Suchrichtungen, vollständige Existenzauflösung, getrennte Relations-/Aufnahmeempfehlungen; **Stopp vor Gate 1** | Runden-Issue einschließlich Evidenz und offener Fragen; keine Katalogdaten oder vollständigen Metadaten ungeklärter Neuaufnahmen |
+| 1. Fachliche Recherche | Vorbereiteter Bestand, Ländersemantik, Küchen- und Produktquellen | Küchenkontext, beide Suchrichtungen, vollständige Existenzauflösung und getrennte Relations-/Aufnahmeempfehlungen mit fachlichem Nachweis nach der Ländersemantik; **Stopp vor Gate 1** | Runden-Issue einschließlich Evidenz und offener Fragen; keine Katalogdaten oder vollständigen Metadaten ungeklärter Neuaufnahmen |
 | Gate 1. Menschliche Auswahl | Revisionsgebundene Recherchefassung | Explizit freigegebene Relationen und Neuaufnahmen; offene Kandidaten bleiben offen | Fest verlinkter Gate-1-Schnappschuss |
 | 2. Metadatenentwurf, falls nötig | Gate-1-freigegebene Neuaufnahmen oder ausdrücklich geöffnete bestehende Metadaten | Vollständige Vorlage und exakte Texte; **Stopp vor Gate 2** | Runden-Issue/zugehöriger Anhang, noch keine Katalogpersistierung |
 | Gate 2. Menschliche Metadatenfreigabe | Revisionsgebundener vollständiger Metadatenentwurf | Alle erforderlichen Werte, Kanten und exakten Texte freigegeben | Fest verlinkter Gate-2-Schnappschuss; bei reinen bestehenden Relationen ohne Metadatendelta entfällt Gate 2 |
@@ -67,7 +67,7 @@ begrenzt. Ein alter Prompt, Suchauszug oder Chattext ersetzt keine Pflichtquelle
 | Beginn jedes Auftrags und jeder Wiederaufnahme | [`AGENTS.md`](../AGENTS.md), lokale [`WORKFLOW.md`](dev-rules/WORKFLOW.md), [`PROJECT_PROFILE.md`](PROJECT_PROFILE.md), vollständiger aktueller Body des Runden-Issues sowie konkret benannter PR-/Reviewstand | Befugnis, Scope, Schutzgrenzen und aktueller Entscheidungsstand | Auftrag, Body, Branch, PR, Review oder eine dieser Regeln geändert wurde |
 | Technische Vorbereitung | aktueller Body von [#172](https://github.com/venomenon328/mise-en-dice/issues/172), dieses Dokument, [`catalog-index/README.md`](catalog-index/README.md) und `catalog-index.manifest.json` vollständig | Runde, aktiven Batch, offene Sammelarbeit, Indexvertrag und Quellenumfang bestimmen | Tracker/Batch/Manifest geändert wurde oder der Indexvalidator keinen aktuellen passenden Stand bestätigt |
 | Erste fachliche Phase | [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md) vollständig; #165 als Ursprungsentscheidung bei erstmaliger Einführung, geänderter Normherkunft oder echtem Auslegungswiderspruch; [`VISION.md`, Abschnitt 7](VISION.md#7-zutaten--und-kategorienbasis); [`INITIAL_CATALOG.md`, Abschnitt 13](INITIAL_CATALOG.md#13-pflegeprinzip-für-neue-zutaten); [`DATA_MODEL.md`, Abschnitte 2–7](DATA_MODEL.md#2-zutatenkonzepte-statt-zutatkategorie-dichotomie) | Ländersemantik, Identität, Granularität, Graph, Aufnahmegrundsätze und vorhandene Metadaten verstehen | Norm-/Produktform-/Graphvertrag geändert wurde oder Identität/Umfang unklar ist |
-| Kandidatenrecherche | belastbare aktuelle externe Quellen gemäß Ländersemantik; bei Zweifeln zusätzliche unabhängige Gegenrecherche | Rolle, Küchenkontext, Reichweite und Gegenbefunde belegen | Quelle die Entscheidung nicht mehr trägt, veraltet/unerreichbar ist oder ein materieller Gegenbefund erscheint |
+| Kandidatenrecherche | belastbare aktuelle externe Quellen gemäß Ländersemantik; bei Zweifeln zusätzliche unabhängige Gegenrecherche | Begründungswege und Prüfungen der Ländersemantik mit tatsächlicher Reichweite und Gegenbefunden belegen | Quelle die Entscheidung nicht mehr trägt, veraltet/unerreichbar ist oder ein materieller Gegenbefund erscheint |
 | Vor jedem Metadatenentwurf | [`INGREDIENT_CONCEPT_CURATION.md`](INGREDIENT_CONCEPT_CURATION.md) und [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md) vollständig; [finaler #188-Review](analysis/availability-novelty-final-review-v1-20260907.md) vollständig; passende tatsächlich freigegebene Zeilen des [finalen TSV](analysis/availability-novelty-final-review-v1-20260907.tsv) | Vollständige Konzeptvorlage, Exaktproduktbewertung, aktuelle Skalen, Personenprofile sowie Notiz-/Vergleichsanker | Produktform, Markt, Personenprofil, Fachregel oder betroffener Entwurf geändert wurde; historische Anker gelten nie als aktueller Händlernachweis |
 | Vor technischer Einpflege | [`MODEL_SELECTION.md`](dev-rules/MODEL_SELECTION.md) und [`MODEL_CATALOG.md`](dev-rules/MODEL_CATALOG.md), [`ARCHITECTURE.md`, Abschnitte 6–7](ARCHITECTURE.md#6-persistenzstrategie), [`DATA_MODEL.md`, Abschnitte 13 und 16](DATA_MODEL.md#13-administrationsversionen), [ADR 0002](adr/0002-liquibase-as-single-migration-authority.md), [ADR 0003](adr/0003-runtime-catalog-owned-by-postgresql.md), [ADR 0010](adr/0010-remove-runtime-catalog-audit.md) sowie aktueller [Master-Changelog](../src/main/resources/db/changelog/db.changelog-master.yaml) und betroffener technischer Review vollständig beziehungsweise wie dort eingebunden | Modellauswahl für noch auszuführende Implementierung sowie Append-only-, Datenhoheits-, Transaktions-, Versions- und Integritätsvertrag | Basis, Changesets, operative Deltaauskunft, Zielbranch, Review oder Modellkatalog geändert wurde |
 | Technische Prüfung und Mergevorbereitung | Projektprofil, [ADR 0004](adr/0004-postgresql-only-persistence-tests.md) und [ADR 0011](adr/0011-risk-based-ci-verification.md) sowie betroffene Workflows/Testhilfen | aktuelle risikobasierte Verify-/Deployment-Verify- und PostgreSQL-Regeln | Diffklasse, Workflow, Testinfrastruktur, Basis oder PR-Head geändert wurde |
@@ -146,38 +146,54 @@ fachlicher Prüfung trägt einen Neuaufnahmevorschlag wegen Abwesenheit.
 ### 1.1 Küchenkontext und Kandidatensuche in beide Richtungen
 
 Eine kurze fachliche Einordnung der nationalen beziehungsweise ausdrücklich abgegrenzten Küche erarbeiten:
-prägende Grundprodukte, Würzlogik, Produktformen und entscheidungsrelevante regionale Unterschiede.
-
-Danach beide Suchrichtungen durchführen und zusammenführen:
+prägende Grundprodukte, Würzlogik, Produktformen, spezifisch gebundene Spezialitäten und entscheidungsrelevante
+regionale Traditionen. Die beiden Suchrichtungen zusammenführen:
 
 1. **Katalog → Küche:** Bestand breit über relevante Zutatenfamilien, Produktformen und Verwendungsbereiche auf
    plausible Kandidaten prüfen.
-2. **Küche → Katalog:** prägende Produkte und Traditionen unabhängig recherchieren und anschließend gegen
-   denselben vollständigen Bestand auflösen.
+2. **Küche → Katalog:** prägende Produkte und spezifische Traditionen unabhängig recherchieren und anschließend
+   gegen denselben vollständigen Bestand auflösen.
 
-Die Abdeckungsübersicht ist eine Suchhilfe, keine Trefferquote. Parent und Child, Saat und Öl, Mischung und
-Einzelgewürz sowie Zutat und Fertiggericht nicht gleichsetzen. Spezifischere vorhandene Konzepte zuerst auf
-Produktpassung prüfen; dies ist keine Verdrängungsregel. Globale Verbreitung, stärkere Assoziation einer anderen
-Küche, bereits zugeordnete Geschwister oder nur ein repräsentatives Gericht sind keine pauschalen Ausschlüsse.
+Die fachliche Entscheidung richtet sich ausschließlich nach
+[Abschnitt 4 der Ländersemantik](CULINARY_COUNTRY_ASSOCIATIONS.md#4-redaktionelle-entscheidung).
+Für jeden ernsthaft geprüften Kandidaten den möglichen Weg A beziehungsweise B untersuchen und die dortigen
+[drei Prüfungen](CULINARY_COUNTRY_ASSOCIATIONS.md#42-verbindliche-prüfungen) anwenden. Die Regeln für globale
+Allzweckzutaten, Einzelgerichte, Produktpassung und regionale Reichweite werden hier nicht eigenständig neu
+festgelegt. Die Abdeckungsübersicht ist eine Suchhilfe, keine Trefferquote.
+
+Vorhandene Quellen auf die entscheidenden Aussagen auswerten; fehlende Nachweise gezielt nachrecherchieren und
+materielle Einwände mit geeigneter Gegenrecherche prüfen. Ungeklärte Fälle gemäß den Arbeitsurteilen der
+Ländersemantik sichtbar belassen. Eine längere Beschreibung ersetzt keine fachliche Neubewertung.
 
 ### 1.2 Ergebnisdarstellung
 
 Pro ernsthaft geprüftem Kandidaten mindestens festhalten:
 
-- stabile Arbeitsreferenz,
-- Konzeptcode beziehungsweise noch ungeklärte Identität,
-- Existenzstatus samt Index-/Quellkennung und kurzer Auflösung,
-- Relationsvorschlag `setzen`, `Grenzfall / bewusst prüfen` oder `nicht setzen`,
+- stabile Arbeitsreferenz und Konzeptcode beziehungsweise noch ungeklärte Identität,
+- Existenzstatus samt Index-/Quellkennung und kurzer manueller Auflösung,
+- Relationsvorschlag gemäß [Ländersemantik 4.7](CULINARY_COUNTRY_ASSOCIATIONS.md#47-urteil-und-freigabe),
 - bei bestätigter Lücke getrennten Aufnahmevorschlag `aufnehmen`, `Grenzfall` oder `nicht aufnehmen`,
-- Quellenbefund, redaktionelle Schlussfolgerung und verbleibende Unsicherheit,
-- offene Produktform-, Granularitäts- oder Graphfragen,
-- Freigabestatus.
+- die dort geforderte fachliche Begründung mit Weg A/B, Quellenbefund, tatsächlicher Reichweite, den Antworten
+  auf die drei Prüfungen, redaktionellem Schluss und sachlich relevanten Einwänden beziehungsweise Grenzen,
+- offene Sach-/Evidenzfragen getrennt von redaktionellen Grenzentscheidungen bei geklärten Fakten; konkrete
+  fehlende Klärung und Auswirkung auf den Vorschlag benennen,
+- offene Produktform-, Granularitäts- oder Graphfragen sowie Freigabestatus.
+
+Bei nicht getragenen oder ungeklärten Relationen den gescheiterten beziehungsweise offenen Nachweis benennen,
+keinen Begründungsweg als erfüllt ausgeben. Die Angaben dürfen als kompakte integrierte Begründung erscheinen;
+keine mechanische Wiederholung derselben Inhalte in Tabelle, Einzelabsätzen und Chat. Die
+[Rundenvorlage](../.github/ISSUE_TEMPLATE/culinary-country.md) dient als Struktur, nicht als weitere Normfassung.
 
 Auch ernsthaft geprüfte Grenzfälle und Ablehnungen zeigen; nicht jeden offensichtlich unplausiblen Katalogeintrag
 mit einer künstlichen Ablehnung versehen. Der vollständige Existenzabgleich bleibt im Issue oder einem eindeutig
 versionierten Hauptanhang nachvollziehbar, während die menschliche Übersicht lesbar bleibt.
 
 ### 1.3 Gate 1
+
+Eine Recherchefassung ist erst als Entscheidungsvorlage bereit, wenn die positiven Vorschläge den fachlichen
+Nachweis aus 1.2 enthalten und offene Fragen dem zutreffenden Arbeitsurteil zugeordnet sind. Fehlende Sachrecherche
+nicht unausgesprochen an den Abnehmer delegieren. Die menschliche Entscheidung wählt auf dieser Grundlage aus;
+sie ersetzt keine fehlende Quellenprüfung und setzt keine vollständige eigene Kenntnis der Küche voraus.
 
 Die Recherche liefert Empfehlungen, keine Datenpflege. Der aktuelle Body wird auf eine benannte Revision gebracht.
 Die menschliche Entscheidung nennt explizit freigegebene positive Relationen, Neuaufnahmen und weiterhin offene
@@ -283,7 +299,7 @@ Die vorbereitete Einführung, der synthetische Verfahrensdurchgang und die begre
 
 - keine automatische Länderklassifikation oder Regionenontologie,
 - keine Vollständigkeitsdatenbank sämtlicher Weltküchen,
-- keine Herkunfts- oder Exklusivitätsbehauptungen,
+- keine Herkunfts- oder Exklusivitätsbehauptung allein aus einer Länderrelation,
 - keine automatische Vererbung zwischen Zutatenkonzepten,
 - keine ungeprüfte Katalogerweiterung oder automatische Umkehr früherer Entscheidungen,
 - kein Produktions-Exportdienst, keine neue Workflow-Automatisierungsplattform und keine neuen Pflichtlabels,
