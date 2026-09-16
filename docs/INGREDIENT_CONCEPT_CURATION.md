@@ -1,6 +1,6 @@
 # Operative Kurationsregeln für neue Zutatenkonzepte
 
-Stand: 10. September 2026
+Stand: 16. September 2026
 Status: verbindliche Arbeitscheckliste für Neuaufnahmen und wesentliche Konzeptänderungen
 
 Dieses Dokument operationalisiert die fachliche Semantik aus [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md). Es ist bei jeder neuen Konzeptanlage, neuen Konkretisierung und jeder Änderung zu verwenden, die Name, Produktform, Ziehbarkeit oder Beschaffungsrealität eines bestehenden Konzepts wesentlich verändert.
@@ -81,6 +81,17 @@ Für jedes neu angelegte Zutatenkonzept ist eine **echte, nichtleere deutsche Ku
 - **Keine Dummy-, Platzhalter- oder rein technischen Notizen**, nur um die Datenbankinvariante zu erfüllen. Die technische Pflicht ersetzt die redaktionelle Prüfung nicht.
 
 Diese kulinarische Notiz gehört zum Konzept. Die davon getrennten Availability-Notizen erklären ausschließlich die Beschaffung für die jeweilige Person.
+
+## 1b. Kanonischer Name und Aliasse bei jeder Neuaufnahme
+
+Die Namens-/Aliasprüfung gilt für **jedes** neue Konzept, einschließlich neuer Konkretisierungen und reiner Strukturknoten, unabhängig von `active` und `random_draw_enabled`. Sie ist keine einmalige Besonderheit des initialen Backfills aus #264. Vor der Metadatenfreigabe [`INGREDIENT_NAMING_AND_ALIASES.md`](INGREDIENT_NAMING_AND_ALIASES.md) vollständig lesen; dort bleiben Sprach-, Bedeutungs-, Evidenz-, Normalisierungs- und Kollisionsregeln zentral definiert.
+
+- Den kanonischen Anzeigenamen und die **vollständige vorgesehene Aliasmenge** ausdrücklich vorlegen. `[]` bedeutet bewusst geprüft und keine geeigneten Aliasse gefunden, nicht „Aliasprüfung ausgelassen“.
+- Nicht offensichtliche Namens-/Aliasentscheidungen mit der nach dem Namensvertrag erforderlichen Begründung und Evidenz dokumentieren. Eine ausdrückliche menschliche Ausnahme mit ihrem konkreten Geltungsbereich und Entscheidungsverweis übernehmen; sie nicht anschließend erneut dem allgemeinen Default unterordnen.
+- Für Existenz- und Kollisionsabgleich die kanonischen Namen **und Aliasse** des aktuellen Katalogbestands sowie die übrigen Vorschläge desselben Pakets berücksichtigen. Ein anderer Name allein begründet kein neues Konzept; Ober-/Unterbegriffe und andere Produktformen nicht stillschweigend als Aliasse behandeln.
+- Canonical↔canonical-Duplikate sind unzulässig. Alias↔canonical- und Alias↔alias-Kollisionen mit beteiligten Konzeptcodes und Bezeichnungen offenlegen und gemäß Namensvertrag jeweils ausdrücklich menschlich entscheiden lassen. Eine allgemeine Paketfreigabe ersetzt diese konkrete Kollisionsentscheidung nicht.
+
+Anzeigename und vollständige Aliasmenge gehören zur **bestehenden Metadatenfreigabe**, bei Länderpaketen zu Gate 2. Es entsteht keine zusätzliche Freigaberunde. Bei Einpflege und abschließender Bestands-/Index-QA den freigegebenen Namen und die exakte Aliasmenge abgleichen; Aliasse weder aus Kuratornotizen automatisch übernehmen noch erst nach der Freigabe ungeprüft ergänzen.
 
 ## 2. Verbindlicher Ablauf der Kochungewöhnlichkeitsbewertung
 
@@ -360,6 +371,7 @@ Regionale Vorteile verschieben nur bei einem konkreten Weg die Stufe. Sie sind k
 
 Ein neues zufällig ziehbares Konzept darf erst aktiviert werden, wenn:
 
+- Anzeigename und vollständige Aliasmenge einschließlich etwaiger Kollisionsentscheidungen gemäß Abschnitt 1b freigegeben sind,
 - Produktform und Ersatzformen eindeutig sind,
 - Kochungewöhnlichkeit freigegeben ist,
 - die Kochungewöhnlichkeit das exakte Konzept als verpflichtende Kochzutat bewertet und die Parent-Kontrolle dokumentiert ist,
@@ -393,6 +405,10 @@ Kleine Preisänderungen oder ein einzelner temporärer Ausverkauf lösen allein 
 ```text
 Konzeptcode:
 Anzeigename:
+Aliasse (vollständige Zielmenge; [] bei bewusst keinem Alias):
+Namens-/Aliasbegründung und Evidenz beziehungsweise dokumentierte menschliche Ausnahme:
+Namens-/Aliaskollisionen mit Bestand und Paket (keine / beteiligte Codes und Bezeichnungen):
+Erforderliche Alias-Kollisionsentscheidungen (nicht erforderlich / offen / Freigabeverweise je Fall):
 Aktiv:
 Spezifität:
 Zulässige Produktform:
@@ -436,7 +452,7 @@ Länderzuordnungen (explizite Länder/ISO-Codes):
 Exclusions und weitere besondere Metadaten (oder nicht erforderlich):
 Katalog-Ausgangscommit und Metadatenversion:
 Freigabe der Katalogaufnahme/Länderrelation:
-Freigabe der vollständigen Metadaten einschließlich aller Notiztexte:
+Freigabe der vollständigen Metadaten einschließlich Anzeigename, Aliasmenge und aller Notiztexte:
 ```
 
 Diese Vorlage ist bei neuen Paketen und bei späteren Katalogerweiterungen als Mindestinhalt zu verwenden.

@@ -58,7 +58,7 @@ ergänzt. Keine Katalogeinpflege ohne ausdrücklichen Auftrag und erfüllte Fach
 <!--
 Zulässige Existenzstatus: PRESENT_MATCH, PRESENT_OTHER_CODE_OR_NAME, RELATED_NOT_IDENTICAL,
 ABSENT_AFTER_FULL_REVIEW, UNRESOLVED. Nur ABSENT_AFTER_FULL_REVIEW darf einen belastbaren
-Neuaufnahmevorschlag wegen Abwesenheit tragen.
+Neuaufnahmevorschlag wegen Abwesenheit tragen. Dabei kanonische Namen und vorhandene Aliasse berücksichtigen.
 Für den fachlichen Nachweis ausschließlich docs/CULINARY_COUNTRY_ASSOCIATIONS.md, Abschnitt 4.7 verwenden;
 Darstellung und Haltepunkt folgen docs/CULINARY_CATALOG_WORKFLOW.md, Abschnitten 1.2–1.3.
 Offene Fragen als fehlende Sach-/Evidenzklärung oder redaktionelle Grenzentscheidung bei geklärten Fakten ausweisen.
@@ -79,20 +79,26 @@ Bei langem Anhang hier die eindeutige versionierte Hauptquelle und ihre Revision
 
 <!--
 Nur für Gate-1-freigegebene Neuaufnahmen oder ausdrücklich geöffnete bestehende Metadaten. Die vollständige
-Vorlage aus docs/INGREDIENT_CONCEPT_CURATION.md verwenden; bei langen Daten eine einzige versionierte Hauptquelle
+Vorlage aus docs/INGREDIENT_CONCEPT_CURATION.md einschließlich Abschnitt 1b und die vollständigen Regeln aus
+docs/INGREDIENT_NAMING_AND_ALIASES.md verwenden; bei langen Daten eine einzige versionierte Hauptquelle
 verlinken. Bei reinen bestehenden Relationen ohne Metadatendelta „nicht erforderlich“ eintragen.
+Namens-/Aliasfelder gehören zu derselben Vorlage und Freigabe, nicht zu einer zusätzlichen Freigaberunde.
 -->
 
 - Metadatenrevision / Hauptquelle:
 - Betroffene neue Konzepte:
 - Betroffene bestehende Metadatendeltas:
+- Kanonischer Anzeigename und vollständige Aliasmenge je betroffenem Konzept (auch bewusst `[]`):
+- Namens-/Aliasbegründung und Evidenz beziehungsweise dokumentierte menschliche Ausnahmen:
+- Namens-/Aliaskollisionen gegen Bestand und Paket (keine / beteiligte Codes und Bezeichnungen):
 - Vollständigkeits-/Evidenzstatus:
 
 ## Gate 2 — vollständige Metadaten und exakte Texte
 
 - Status: offen / freigegeben / nicht erforderlich
 - Bezugsrevision:
-- Umfang der Freigabe einschließlich exakter Kurator- und Availability-Notiztexte:
+- Umfang der Freigabe einschließlich kanonischer Namen, vollständiger Aliaslisten und exakter Kurator- und Availability-Notiztexte:
+- Erforderliche Alias-Kollisionsentscheidungen (nicht erforderlich / offen / Freigabeverweise je Fall; kanonische Duplikate sind unzulässig):
 - Fest verlinkter Gate-2-Freigabeschnappschuss:
 
 ## Technische Einpflege und Prüfung
@@ -102,6 +108,8 @@ verlinken. Bei reinen bestehenden Relationen ohne Metadatendelta „nicht erford
 - Implementierungscommit:
 - Batch-PR:
 - Einmaliger Diff-/Freigabeabgleich:
+- Exakte Namen-/Aliasgleichheit Freigabe ↔ Einpflege ↔ resultierender Index:
+- Globale Namens-/Aliaskollisionsprüfung und Zuordnung erforderlicher Einzelentscheidungen:
 - `git diff --check`:
 - Weitere ausgeführte technische Prüfungen:
 - Nicht anwendbare beziehungsweise noch offene Prüfungen:

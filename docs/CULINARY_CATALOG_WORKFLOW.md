@@ -1,6 +1,6 @@
 # Kulinarischer Katalogausbau: Recherche, Freigabe und Einpflege
 
-Stand: 15. September 2026
+Stand: 16. September 2026
 Status: Zielablauf für neue Länder- und Ergänzungsrunden nach dem in Issue #172 dokumentierten Einführungspunkt
 
 ## Ziel und Geltung
@@ -49,7 +49,7 @@ pflegen; er darf daraus keine Katalog-, Migrations- oder Metadatenfreigabe ablei
 | 1. Fachliche Recherche | Vorbereiteter Bestand, Ländersemantik, Küchen- und Produktquellen | Küchenkontext, beide Suchrichtungen, vollständige Existenzauflösung und getrennte Relations-/Aufnahmeempfehlungen mit fachlichem Nachweis nach der Ländersemantik; **Stopp vor Gate 1** | Runden-Issue einschließlich Evidenz und offener Fragen; keine Katalogdaten oder vollständigen Metadaten ungeklärter Neuaufnahmen |
 | Gate 1. Menschliche Auswahl | Revisionsgebundene Recherchefassung | Explizit freigegebene Relationen und Neuaufnahmen; offene Kandidaten bleiben offen | Fest verlinkter Gate-1-Schnappschuss |
 | 2. Metadatenentwurf, falls nötig | Gate-1-freigegebene Neuaufnahmen oder ausdrücklich geöffnete bestehende Metadaten | Vollständige Vorlage und exakte Texte; **Stopp vor Gate 2** | Runden-Issue/zugehöriger Anhang, noch keine Katalogpersistierung |
-| Gate 2. Menschliche Metadatenfreigabe | Revisionsgebundener vollständiger Metadatenentwurf | Alle erforderlichen Werte, Kanten und exakten Texte freigegeben | Fest verlinkter Gate-2-Schnappschuss; bei reinen bestehenden Relationen ohne Metadatendelta entfällt Gate 2 |
+| Gate 2. Menschliche Metadatenfreigabe | Revisionsgebundener vollständiger Metadatenentwurf | Alle erforderlichen Werte, Kanten und exakten Texte einschließlich Anzeigenamen und vollständiger Aliaslisten freigegeben | Fest verlinkter Gate-2-Schnappschuss; bei reinen bestehenden Relationen ohne Metadatendelta entfällt Gate 2 |
 | 3. Beauftragte Einpflege | Beide erforderlichen Gates, aktueller technischer Stand | Nur freigegebene append-only Deltas, einmalige Diff-QA, Commit und PR-Nachweis | Repositoryänderungen auf dem beauftragten Batchbranch |
 | 4. Review und Batch-Abschluss | Konkreter Commit/PR und akkumuliertes Batch | Review am Head; vollständige technische Batchprüfung bei beauftragter Mergevorbereitung | Review-/PR-Dokumentation; Merge und Deployment nur mit eigener Befugnis |
 
@@ -68,7 +68,7 @@ begrenzt. Ein alter Prompt, Suchauszug oder Chattext ersetzt keine Pflichtquelle
 | Technische Vorbereitung | aktueller Body von [#172](https://github.com/venomenon328/mise-en-dice/issues/172), dieses Dokument, [`catalog-index/README.md`](catalog-index/README.md) und `catalog-index.manifest.json` vollständig | Runde, aktiven Batch, offene Sammelarbeit, Indexvertrag und Quellenumfang bestimmen | Tracker/Batch/Manifest geändert wurde oder der Indexvalidator keinen aktuellen passenden Stand bestätigt |
 | Erste fachliche Phase | [`CULINARY_COUNTRY_ASSOCIATIONS.md`](CULINARY_COUNTRY_ASSOCIATIONS.md) vollständig; #165 als Ursprungsentscheidung bei erstmaliger Einführung, geänderter Normherkunft oder echtem Auslegungswiderspruch; [`VISION.md`, Abschnitt 7](VISION.md#7-zutaten--und-kategorienbasis); [`INITIAL_CATALOG.md`, Abschnitt 13](INITIAL_CATALOG.md#13-pflegeprinzip-für-neue-zutaten); [`DATA_MODEL.md`, Abschnitte 2–7](DATA_MODEL.md#2-zutatenkonzepte-statt-zutatkategorie-dichotomie) | Ländersemantik, Identität, Granularität, Graph, Aufnahmegrundsätze und vorhandene Metadaten verstehen | Norm-/Produktform-/Graphvertrag geändert wurde oder Identität/Umfang unklar ist |
 | Kandidatenrecherche | belastbare aktuelle externe Quellen gemäß Ländersemantik; bei Zweifeln zusätzliche unabhängige Gegenrecherche | Begründungswege und Prüfungen der Ländersemantik mit tatsächlicher Reichweite und Gegenbefunden belegen | Quelle die Entscheidung nicht mehr trägt, veraltet/unerreichbar ist oder ein materieller Gegenbefund erscheint |
-| Vor jedem Metadatenentwurf | [`INGREDIENT_CONCEPT_CURATION.md`](INGREDIENT_CONCEPT_CURATION.md) und [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md) vollständig; [finaler #188-Review](analysis/availability-novelty-final-review-v1-20260907.md) vollständig; passende tatsächlich freigegebene Zeilen des [finalen TSV](analysis/availability-novelty-final-review-v1-20260907.tsv) | Vollständige Konzeptvorlage, Exaktproduktbewertung, aktuelle Skalen, Personenprofile sowie Notiz-/Vergleichsanker | Produktform, Markt, Personenprofil, Fachregel oder betroffener Entwurf geändert wurde; historische Anker gelten nie als aktueller Händlernachweis |
+| Vor jedem Metadatenentwurf | [`INGREDIENT_CONCEPT_CURATION.md`](INGREDIENT_CONCEPT_CURATION.md), [`INGREDIENT_NAMING_AND_ALIASES.md`](INGREDIENT_NAMING_AND_ALIASES.md) und [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md) vollständig; [finaler #188-Review](analysis/availability-novelty-final-review-v1-20260907.md) vollständig; passende tatsächlich freigegebene Zeilen des [finalen TSV](analysis/availability-novelty-final-review-v1-20260907.tsv) | Vollständige Konzeptvorlage, Namens-/Aliasprüfung, Exaktproduktbewertung, aktuelle Skalen, Personenprofile sowie Notiz-/Vergleichsanker | Produktform, Markt, Personenprofil, Fachregel oder betroffener Entwurf geändert wurde; historische Anker gelten nie als aktueller Händlernachweis |
 | Vor technischer Einpflege | [`MODEL_SELECTION.md`](dev-rules/MODEL_SELECTION.md) und [`MODEL_CATALOG.md`](dev-rules/MODEL_CATALOG.md), [`ARCHITECTURE.md`, Abschnitte 6–7](ARCHITECTURE.md#6-persistenzstrategie), [`DATA_MODEL.md`, Abschnitte 13 und 16](DATA_MODEL.md#13-administrationsversionen), [ADR 0002](adr/0002-liquibase-as-single-migration-authority.md), [ADR 0003](adr/0003-runtime-catalog-owned-by-postgresql.md), [ADR 0010](adr/0010-remove-runtime-catalog-audit.md) sowie aktueller [Master-Changelog](../src/main/resources/db/changelog/db.changelog-master.yaml) und betroffener technischer Review vollständig beziehungsweise wie dort eingebunden | Modellauswahl für noch auszuführende Implementierung sowie Append-only-, Datenhoheits-, Transaktions-, Versions- und Integritätsvertrag | Basis, Changesets, operative Deltaauskunft, Zielbranch, Review oder Modellkatalog geändert wurde |
 | Technische Prüfung und Mergevorbereitung | Projektprofil, [ADR 0004](adr/0004-postgresql-only-persistence-tests.md) und [ADR 0011](adr/0011-risk-based-ci-verification.md) sowie betroffene Workflows/Testhilfen | aktuelle risikobasierte Verify-/Deployment-Verify- und PostgreSQL-Regeln | Diffklasse, Workflow, Testinfrastruktur, Basis oder PR-Head geändert wurde |
 
@@ -128,6 +128,10 @@ Kandidaten als JSONL eingeben und den dokumentierten vollständigen Suchlauf ver
 Die Ausgabe ist nur vollständig, wenn ihr `searchSummary` `complete: true`, Kandidaten-/Seitenzahl,
 Quellcommit und Payload-SHA ausweist. `--integrity-only true`, ein Top-N-Ausschnitt, ein einzelner SQL-Treffer oder
 ein fehlender Zugriff sind kein abschließender Existenznachweis.
+
+Der Existenzabgleich berücksichtigt kanonische Namen und vorhandene Aliasse. Ein unter einem Alias geführtes
+Produkt ist keine Kataloglücke; weitere Vorschläge desselben Pakets und offene Sammelarbeit ebenfalls auf
+identische Konzepte prüfen. Die vollständige Aliasredaktion für Neuaufnahmen folgt erst nach Gate 1 in Phase 2.
 
 Jeder Kandidat erhält nach manueller Identitätsprüfung genau einen Zustand aus dem Indexvertrag:
 
@@ -210,7 +214,11 @@ keine fachliche Einpflege.
 Nur für Gate-1-freigegebene Neuaufnahmen oder ausdrücklich geöffnete bestehende Metadaten die vollständige Vorlage
 aus `INGREDIENT_CONCEPT_CURATION.md` verwenden. Mindestens sichtbar sind:
 
-- Code, Anzeigename, Aktivstatus, Spezifität, Ziehbarkeit, zulässige und ausgeschlossene Produktformen,
+- Code, kanonischer Anzeigename, vollständige Aliasmenge (ausdrücklich auch `[]`), Namens-/Aliasbegründung und
+  erforderliche Evidenz beziehungsweise dokumentierte menschliche Ausnahme,
+- Namens-/Aliaskollisionen gegen den aktuellen Bestand und alle Vorschläge des Pakets mit beteiligten Codes,
+  Bezeichnungen und den erforderlichen Einzelentscheidungen gemäß `INGREDIENT_NAMING_AND_ALIASES.md`,
+- Aktivstatus, Spezifität, Ziehbarkeit, zulässige und ausgeschlossene Produktformen,
 - echte allgemeine Kuratornotiz,
 - explizite Parent-/Child-Kanten, Rollen, Dimensionen, Flags und gegebenenfalls Saison,
 - eigenständig begründete Kochungewöhnlichkeit und `base_draw_weight`,
@@ -222,6 +230,11 @@ Kochungewöhnlichkeit und Beschaffung unabhängig bewerten. Historische Referenz
 Textkalibrierung, nicht als aktueller Händlernachweis. Research-Evidenz bleibt von Nutztexten getrennt. Beide
 Availability-Stufen und beide exakten Personennotizen sowie die allgemeine Kuratornotiz gehören ausdrücklich zur
 Freigabe; eine Zahlenfreigabe genehmigt keine später erfundenen Texte.
+
+Die Namens-/Aliasprüfung aus Abschnitt 1b der Konzeptkuratierung gilt auch für nicht ziehbare Neuaufnahmen und
+Strukturknoten. Kanonischer Name und vollständige Aliasmenge werden innerhalb von Gate 2 freigegeben; etwaige
+Alias-Kollisionen benötigen dort ihre konkret benannte Einzelentscheidung. Canonical↔canonical-Duplikate bleiben
+unzulässig. Es gibt weder eine zusätzliche Alias-Freigaberunde noch eine Wiederholung des katalogweiten #264-Reviews.
 
 Gate 2 wird wie Gate 1 revisionsgebunden in einem nicht nachträglich editierten, fest verlinkten Kommentar
 festgehalten. Ändert sich nachher nur ein Teil des Entwurfs, wird ausschließlich dieses Delta mit neuer Revision
@@ -239,10 +252,11 @@ abgleichen. Nur den ausdrücklich freigegebenen Umfang übernehmen:
 - neue append-only Liquibase-Changesets nach den bestehenden Includes; veröffentlichte Changesets, #188-Review
   und historische Manifeste nicht umschreiben,
 - stabile Codes statt geratener IDs; Kollisionen oder unbekannte Deltas sichtbar stoppen,
-- Kurator- und Availability-Notizen exakt wie freigegeben übernehmen,
+- kanonische Anzeigenamen, vollständige Aliaslisten sowie Kurator- und Availability-Notizen exakt wie freigegeben
+  übernehmen; keine ungeprüften Aliasse nachtragen oder aus Notizen ableiten,
 - Kanten und Änderungen an bestehenden Aggregaten explizit pflegen; keine abgeleiteten Länder-, Rating-, Rollen-
   oder sonstigen Fachänderungen ergänzen,
-- aktuelle Transaktions-, Integritäts-, Graphlock- und Versionsverträge wahren,
+- aktuelle Transaktions-, Integritäts-, Namens-/Aliaslock-, Graphlock- und Versionsverträge wahren,
 - vor Commit den vollständigen Diff einmalig gegen beide Freigabeschnappschüsse prüfen.
 
 Marktklassen, URLs, Prüfdaten und ausführliche Evidenz sind Reviewunterlagen, keine neu einzuführenden
@@ -255,6 +269,12 @@ Automatisierte Tests bilden keine redaktionelle Fachlichkeit des produktiven Kat
 insbesondere Assertions auf konkrete produktive Konzept-/Relationslisten, Sollmengen, Länderablehnungen, Ratings,
 Notizen, Rollen, Dimensionen, Flags, Availability, Saison, Kanten oder Content-Snapshots. Testeigene synthetische
 Daten dürfen technische Verträge prüfen.
+
+Die einmalige Freigabe-/Bestands-QA vergleicht für jedes neu aufgenommene oder ausdrücklich namensbezogen geänderte
+Konzept den kanonischen Namen und die exakte Aliasmenge mit Gate 2. Globale Namens-/Aliaskollisionen gegen den
+aktuellen Bestand und innerhalb des Batches samt etwaiger Einzelentscheidungen prüfen. Den resultierenden
+Repository-Index gemäß seinem Vertrag erzeugen und validieren; auch dort müssen die freigegebenen Namen und
+Aliaslisten vollständig enthalten sein. Das ist einmalige redaktionelle QA, kein dauerhaftes Content-Test-Oracle.
 
 Ein reiner weiterer Länder-/Katalogcommit verlangt keinen Vollsuite-Lauf. Gezielt dürfen technische
 PostgreSQL-/Migrationstests laufen, wenn sie zusätzlichen Schutz bieten. Der vollständige
