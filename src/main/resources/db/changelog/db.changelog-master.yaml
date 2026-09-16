@@ -142,4 +142,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/catalog/042-d3-approved-country-relations.sql
   - include:
-      file: db/changelog/catalog/043-ingredient-name-alias-curation.sql
+      file: db/changelog/catalog/043-germany-curation.sql
+  - include:
+      file: db/changelog/catalog/044-ingredient-name-alias-curation.sql

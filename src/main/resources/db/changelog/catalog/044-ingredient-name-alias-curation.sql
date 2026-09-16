@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset venomenon328:043-ingredient-name-alias-curation splitStatements:false
+--changeset venomenon328:044-ingredient-name-alias-curation splitStatements:false
 -- Issue #264, approved review INGREDIENT_ALIAS_REVIEW_R3_20260916 at
 -- 59d769c32fee142e9dd0e61fe387289a0e6e5281. General approval:
 -- issue comment 5694003700; BEEF_SUET exception: issue comment 5693948899.
@@ -946,15 +946,17 @@ BEGIN
         RAISE EXCEPTION 'Issue #264: invalid approved R3 target cardinality (expected 37 names / 206 aliases / 191 changed concepts)';
     END IF;
 
-    SELECT string_agg(coalesce(ic.code, review.code), ', '
-                      ORDER BY coalesce(ic.code, review.code) COLLATE "C")
+    -- The approved R3 review covers the 906 concepts present at its baseline.
+    -- Concepts appended by already-published later changesets are allowed, but
+    -- every reviewed code and its exact reviewed pre-state remain mandatory.
+    SELECT string_agg(review.code, ', ' ORDER BY review.code COLLATE "C")
     INTO mismatches
-    FROM ingredient_concept ic
-    FULL JOIN ingredient_name_alias_r3_review review USING (code)
-    WHERE ic.code IS NULL OR review.code IS NULL;
+    FROM ingredient_name_alias_r3_review review
+    LEFT JOIN ingredient_concept ic USING (code)
+    WHERE ic.code IS NULL;
 
     IF mismatches IS NOT NULL THEN
-        RAISE EXCEPTION 'Issue #264: missing, renamed or new catalog codes: %', mismatches;
+        RAISE EXCEPTION 'Issue #264: missing reviewed catalog codes: %', mismatches;
     END IF;
 
     SELECT string_agg(review.code, ', ' ORDER BY review.code COLLATE "C")
@@ -1023,6 +1025,51 @@ BEGIN
 
     IF invalid_targets IS NOT NULL THEN
         RAISE EXCEPTION 'Issue #264: unapproved cross-concept R3 target collisions: %', invalid_targets;
+    END IF;
+
+    -- Also protect against name collisions with concepts appended after the R3
+    -- baseline. Those concepts are outside this package and remain untouched.
+    WITH reviewed_names AS (
+        SELECT review.code, 'canonical'::text AS name_kind,
+               review.target_display_name AS name_text
+        FROM ingredient_name_alias_r3_review review
+        UNION ALL
+        SELECT review.code, 'alias', alias.alias_text
+        FROM ingredient_name_alias_r3_review review
+        CROSS JOIN LATERAL unnest(review.target_aliases) AS alias(alias_text)
+    ), unreviewed_names AS (
+        SELECT concept.code, 'canonical'::text AS name_kind,
+               concept.display_name AS name_text
+        FROM ingredient_concept concept
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM ingredient_name_alias_r3_review review
+            WHERE review.code = concept.code
+        )
+        UNION ALL
+        SELECT concept.code, 'alias', alias.alias_text
+        FROM ingredient_concept concept
+        JOIN ingredient_concept_alias alias
+          ON alias.ingredient_concept_id = concept.id
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM ingredient_name_alias_r3_review review
+            WHERE review.code = concept.code
+        )
+    )
+    SELECT string_agg(collision, ', ' ORDER BY collision COLLATE "C")
+    INTO invalid_targets
+    FROM (
+        SELECT DISTINCT reviewed.code || '(' || reviewed.name_kind || ')<->'
+               || unreviewed.code || '(' || unreviewed.name_kind || '):'
+               || reviewed.name_text AS collision
+        FROM reviewed_names reviewed
+        JOIN unreviewed_names unreviewed
+          ON lower(btrim(reviewed.name_text)) = lower(btrim(unreviewed.name_text))
+    ) collisions;
+
+    IF invalid_targets IS NOT NULL THEN
+        RAISE EXCEPTION 'Issue #264: R3 targets collide with later catalog concepts: %', invalid_targets;
     END IF;
 
     -- Immediate canonical-name uniqueness is safe because no target name is the
