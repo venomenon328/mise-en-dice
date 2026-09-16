@@ -53,7 +53,7 @@ pflegen; er darf daraus keine Katalog-, Migrations- oder Metadatenfreigabe ablei
 | 3. Beauftragte Einpflege | Beide erforderlichen Gates, aktueller technischer Stand | Nur freigegebene append-only Deltas, einmalige Diff-QA, Commit und PR-Nachweis | Repositoryänderungen auf dem beauftragten Batchbranch |
 | 4. Review und Batch-Abschluss | Konkreter Commit/PR und akkumuliertes Batch | Review am Head; vollständige technische Batchprüfung bei beauftragter Mergevorbereitung | Review-/PR-Dokumentation; Merge und Deployment nur mit eigener Befugnis |
 
-Ein kombinierter oder bedingter Auftrag darf mehrere bereits ausreichend bestimmte Phasen abdeckencken. Er erzeugt
+Ein kombinierter oder bedingter Auftrag darf mehrere bereits ausreichend bestimmte Phasen abdecken. Er erzeugt
 keine künstliche Wiederfreigabe, überspringt aber kein fachlich noch offenes Gate.
 
 ## Quellenmatrix und Revalidierung
