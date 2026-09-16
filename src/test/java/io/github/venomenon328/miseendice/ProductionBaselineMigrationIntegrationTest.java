@@ -44,7 +44,8 @@ class ProductionBaselineMigrationIntegrationTest {
             "040-scotland-curation",
             "041-finland-curation",
             "042-d3-approved-country-relations",
-            "043-germany-curation"
+            "043-germany-curation",
+            "044-ingredient-name-alias-curation"
     );
 
     @Test
