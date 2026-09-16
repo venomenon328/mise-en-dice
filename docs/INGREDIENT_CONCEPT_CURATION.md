@@ -114,7 +114,7 @@ begründen, senkt aber nicht pauschal jede Zutat aus diesen Küchen.
 ### Schritt 3: Verpflichtende Kochrolle prüfen
 
 Die Frage lautet, wie ungewöhnlich genau das Produkt als erkennbarer verpflichtender Bestandteil eines Gerichts
-ist. Dass es technisch gebraten, gebacken, geschmort oder wie sein Parent gewürzt werden kann, beweist
+ist. Dass es technisch gebraten, gebacken, geschmort, püriert oder wie sein Parent gewürzt werden kann, beweist
 keine vertraute Verwendung. Für Stufe 1 oder 2 muss die konkrete Zutat selbst als Kochzutat vertraut sein; für
 Stufe 3 bis 5 muss ihre geringere konkrete Zutatenvertrautheit vorliegen, nicht bloß eine enge Verwendungsrolle.
 
