@@ -312,6 +312,10 @@ JOIN ingredient_availability tobias
 DO $validation$
 DECLARE conflicts text;
 BEGIN
+    IF (SELECT count(*) FROM germany_existing_metadata_actual) <> 2 THEN
+        RAISE EXCEPTION 'Germany curation requires complete Georgia/Tobias metadata for HERRING and TEA';
+    END IF;
+
     SELECT string_agg(code, ', ' ORDER BY code)
     INTO conflicts
     FROM germany_existing_metadata_actual actual
