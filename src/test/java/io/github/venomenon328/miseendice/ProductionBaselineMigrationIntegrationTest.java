@@ -67,7 +67,7 @@ class ProductionBaselineMigrationIntegrationTest {
             assertThat(columnExists(connection, "generation_batch", "result_snapshot")).isFalse();
             assertThat(columnExists(connection, "ingredient_availability", "curator_note")).isTrue();
             assertThat(tableExists(connection, "ingredient_concept_alias")).isTrue();
-            assertThat(rowCount(connection, "ingredient_concept_alias")).isZero();
+            assertThat(rowCount(connection, "ingredient_concept_alias")).isEqualTo(6);
 
             runLiquibase(connection, MASTER);
             assertThat(changesetIds(connection))
