@@ -8,6 +8,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`DATA_MODEL.md`](DATA_MODEL.md): fachliche Entscheidungen des PostgreSQL-Datenmodells
 - [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md): verbindliche Ziel- und Redaktionssemantik für die getrennte Bewertung von personenspezifischer Beschaffbarkeit und gemeinsamer Kochungewöhnlichkeit einschließlich des katalogweiten Reviewprozesses
 - [`INGREDIENT_CONCEPT_CURATION.md`](INGREDIENT_CONCEPT_CURATION.md): verbindliche operative Checkliste für jede neue Zutatenkonzeptanlage, Konkretisierung und wesentliche Produktformänderung einschließlich Availability-Marktbreite, Evidenz und Freigabe-Gates
+- [`INGREDIENT_CONCEPT_SCOPE_DECISIONS.md`](INGREDIENT_CONCEPT_SCOPE_DECISIONS.md): freigegebene Zielumfänge und Graphabgrenzungen der Katalogfolgearbeiten aus #262/#264; konkrete Fachgates und tatsächliche Einpflege bleiben in #276–#279 nachgewiesen
 - [`INGREDIENT_NAMING_AND_ALIASES.md`](INGREDIENT_NAMING_AND_ALIASES.md): freigegebene Ziel- und Redaktionssemantik für kanonische Zutatenbezeichnungen, Aliasse, Mehrdeutigkeitsfreigaben und aliassensitive Such-/Zuordnungspfade
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
 - [`CULINARY_CATALOG_WORKFLOW.md`](CULINARY_CATALOG_WORKFLOW.md): phasenbezogener Länderworkflow mit Quellenmatrix, generiertem Katalogindex, issuebasierter Entscheidungsführung, zwei menschlichen Freigaben und getrenntem technischem Batchabschluss
