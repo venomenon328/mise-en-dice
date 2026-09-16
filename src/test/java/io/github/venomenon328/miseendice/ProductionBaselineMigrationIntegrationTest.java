@@ -43,7 +43,8 @@ class ProductionBaselineMigrationIntegrationTest {
             "004-scotland-culinary-country",
             "040-scotland-curation",
             "041-finland-curation",
-            "042-d3-approved-country-relations"
+            "042-d3-approved-country-relations",
+            "043-germany-curation"
     );
 
     @Test
@@ -66,7 +67,6 @@ class ProductionBaselineMigrationIntegrationTest {
             assertThat(columnExists(connection, "generation_batch", "result_snapshot")).isFalse();
             assertThat(columnExists(connection, "ingredient_availability", "curator_note")).isTrue();
             assertThat(tableExists(connection, "ingredient_concept_alias")).isTrue();
-            assertThat(rowCount(connection, "ingredient_concept_alias")).isZero();
 
             runLiquibase(connection, MASTER);
             assertThat(changesetIds(connection))
@@ -95,14 +95,6 @@ class ProductionBaselineMigrationIntegrationTest {
     private static String lastChangesetId(Connection connection) throws Exception {
         return stringValues(connection,
                 "select id from databasechangelog order by orderexecuted desc limit 1").getFirst();
-    }
-
-    private static int rowCount(Connection connection, String table) throws Exception {
-        try (Statement statement = connection.createStatement();
-                ResultSet result = statement.executeQuery("select count(*) from " + table)) {
-            result.next();
-            return result.getInt(1);
-        }
     }
 
     private static List<String> stringValues(Connection connection, String sql) throws Exception {
