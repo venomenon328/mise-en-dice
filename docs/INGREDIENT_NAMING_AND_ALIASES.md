@@ -51,7 +51,8 @@ Je nach tatsächlicher Gebräuchlichkeit können insbesondere geeignet sein:
 - regional entstandene Bezeichnungen, wenn sie überregional so bekannt oder relevant sind, dass sie real mit der allgemeineren Bezeichnung konkurrieren,
 - etablierte deutsche beziehungsweise eingedeutschte Formen eines fremdsprachigen Produktnamens,
 - etablierte fremdsprachige Formen, wenn im deutschen Kochkontext sowohl diese als auch eine deutsche Form üblich sind,
-- etablierte alternative Transkriptionen oder Schreibweisen, beispielsweise `Calamansi` und `Kalamansi`.
+- etablierte alternative Transkriptionen oder Schreibweisen, beispielsweise `Calamansi` und `Kalamansi`,
+- wissenschaftliche Arten- oder Taxonbezeichnungen, wenn sie exakt dieselbe kulinarische Identität mit demselben Bedeutungsumfang bezeichnen und als alternativer Such- oder Produktname sinnvoll sind; die bloße taxonomische Bestimmung macht sie noch nicht zum Alias.
 
 ### Keine Aliasse
 
@@ -113,7 +114,9 @@ Eine Namensbereinigung darf kein Sammelkonzept unbemerkt verengen oder in mehrer
 
 Die Alias- und Namenssemantik ersetzt die allgemeine Kuratornotiz nicht.
 
-`curator_note` beschreibt weiterhin kulinarische Identität, sinnvolle Produktformen und notwendige Abgrenzungen gemäß `INGREDIENT_CONCEPT_CURATION.md`. Sie darf einen Alias-Kandidaten erwähnen und damit auf eine mögliche alternative Bezeichnung hinweisen. Daraus folgt jedoch keine automatische Aliasentscheidung.
+`curator_note` beschreibt weiterhin kulinarische Identität, sinnvolle Produktformen und notwendige Abgrenzungen gemäß `INGREDIENT_CONCEPT_CURATION.md`. Da der kanonische Anzeigename in der Oberfläche bereits zusammen mit der Notiz erscheint, wird er dort nicht ohne klaren kulinarischen Informationsgewinn wiederholt. Wissenschaftliche beziehungsweise taxonomische Namen gehören nicht in die Kuratornotiz. Sind sie für dieselbe Identität und denselben Umfang als alternative Bezeichnung sinnvoll, werden sie nach Abschnitt 2 ausdrücklich als Alias geprüft; andernfalls verbleiben sie ausschließlich in der Research-Evidenz.
+
+Andere Alias-Kandidaten dürfen in einer Kuratornotiz nur erwähnt werden, wenn die Bezeichnung selbst zum kulinarischen Verständnis oder zu einer notwendigen Produktabgrenzung beiträgt. Auch daraus folgt keine automatische Aliasentscheidung; die freigegebene Aliasliste bleibt allein maßgeblich.
 
 Umgekehrt löst eine reine Änderung von kanonischem Namen oder Aliasliste **keine Pflicht zur redaktionellen Anpassung der Kuratornotiz** aus. Im katalogweiten Paket #264 ist die Änderung von `curator_note` ausdrücklich ausgeschlossen.
 
