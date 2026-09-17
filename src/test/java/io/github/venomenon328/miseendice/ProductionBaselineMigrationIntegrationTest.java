@@ -45,7 +45,8 @@ class ProductionBaselineMigrationIntegrationTest {
             "041-finland-curation",
             "042-d3-approved-country-relations",
             "043-germany-curation",
-            "044-ingredient-name-alias-curation"
+            "044-ingredient-name-alias-curation",
+            "045-crustacean-catalog-expansion"
     );
 
     @Test
