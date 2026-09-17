@@ -422,6 +422,8 @@ Folgende Signale bleiben fachlich getrennt:
 ### 9.1 Keine automatische Gewichtskopplung
 
 `base_draw_weight` wird nicht mechanisch aus Beschaffbarkeit oder Kochungewöhnlichkeit berechnet.
+Die vollständige eigenständige Gewichtssemantik, Skala und Familienkontrolle steht in
+[`INGREDIENT_DRAW_WEIGHTS.md`](INGREDIENT_DRAW_WEIGHTS.md).
 
 Insbesondere gelten keine pauschalen Regeln der Form:
 

@@ -209,6 +209,22 @@
                 </plugins>
             </build>
         </profile>
+        <profile>
+            <id>catalog-draw-weights</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.6.3</version>
+                        <configuration>
+                            <mainClass>io.github.venomenon328.miseendice.catalog.internal.drawweight.CatalogDrawWeightCli</mainClass>
+                            <classpathScope>runtime</classpathScope>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
 </project>

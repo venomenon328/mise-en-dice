@@ -8,6 +8,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`DATA_MODEL.md`](DATA_MODEL.md): fachliche Entscheidungen des PostgreSQL-Datenmodells
 - [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md): verbindliche Ziel- und Redaktionssemantik für die getrennte Bewertung von personenspezifischer Beschaffbarkeit und gemeinsamer Kochungewöhnlichkeit einschließlich des katalogweiten Reviewprozesses
 - [`INGREDIENT_CONCEPT_CURATION.md`](INGREDIENT_CONCEPT_CURATION.md): verbindliche operative Checkliste für jede neue Zutatenkonzeptanlage, Konkretisierung und wesentliche Produktformänderung einschließlich Availability-Marktbreite, Evidenz und Freigabe-Gates
+- [`INGREDIENT_DRAW_WEIGHTS.md`](INGREDIENT_DRAW_WEIGHTS.md): verbindliche eigenständige Semantik, Skala, Referenzanker sowie Einzel- und Familienkontrolle für `base_draw_weight`
 - [`INGREDIENT_CONCEPT_SCOPE_DECISIONS.md`](INGREDIENT_CONCEPT_SCOPE_DECISIONS.md): freigegebene Zielumfänge und Graphabgrenzungen der Katalogfolgearbeiten aus #262/#264; konkrete Fachgates und tatsächliche Einpflege bleiben in #276–#279 nachgewiesen
 - [`INGREDIENT_NAMING_AND_ALIASES.md`](INGREDIENT_NAMING_AND_ALIASES.md): freigegebene Ziel- und Redaktionssemantik für kanonische Zutatenbezeichnungen, Aliasse, Mehrdeutigkeitsfreigaben und aliassensitive Such-/Zuordnungspfade
 - [`INITIAL_CATALOG.md`](INITIAL_CATALOG.md): Aufbau und Pflegeprinzipien der initialen Katalog-Baseline
@@ -30,6 +31,7 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`analysis/availability-novelty-final-review-v1-20260907.md`](analysis/availability-novelty-final-review-v1-20260907.md): autoritativer #188-Abschlussstand; ausschließlich das dort verlinkte TSV liefert die freigegebenen Einzelwerte und Notizen
 - [`analysis/availability-novelty-migration-20260907.md`](analysis/availability-novelty-migration-20260907.md): #189-Migrationsumfang, exakter einmaliger QA-Abgleich, technischer Fingerprint und Release-Gate #190
 - [`analysis/availability-novelty-calibration-20260907.md`](analysis/availability-novelty-calibration-20260907.md): #202-Stichprobenmatrix, Generatorfingerprints, Availability-/Novelty-Befunde und menschlicher Haltepunkt vor #190B
+- [`analysis/catalog-draw-weights-review-20260917.md`](analysis/catalog-draw-weights-review-20260917.md): #288-Vollreview, revisionsgebundene Arbeitsbasis, Wirkungsvergleich und geschützte Einpflege der Basisgewichte
 - [`analysis/country-workflow-transition-20260911.md`](analysis/country-workflow-transition-20260911.md): #251-Einführungsentwurf für #172, synthetischer Verfahrensdurchgang und begrenzte D3-Fallliste zur Auftraggeberbestätigung vor #252
 - [`analysis/availability-reference-anchors-v2-20260904.md`](analysis/availability-reference-anchors-v2-20260904.md): historische Vorbereitung des strengeren Availability-Ankersatzes; durch den finalen #188-Vertrag abgelöst
 - [`analysis/final-catalog-review-20260813.md`](analysis/final-catalog-review-20260813.md): verbindlicher fachlicher Review für den finalen Katalog
