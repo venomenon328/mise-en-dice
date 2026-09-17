@@ -115,6 +115,9 @@ final class CatalogDrawWeightFiles {
                         "Target weight is outside the approved scale for " + decision.conceptCode());
                 require(!decision.comparisonGroup().equals("STRUCTURE_ONLY"),
                         "Applicable concept uses the structure-only group: " + decision.conceptCode());
+                require(decisionsByCode.get(decision.anchorCode()).applicability().equals("APPLICABLE"),
+                        "Applicable concept uses a non-applicable anchor: " + decision.conceptCode()
+                                + " -> " + decision.anchorCode());
             } else if (decision.applicability().equals("NOT_APPLICABLE")) {
                 require(!concept.randomDrawEnabled() && concept.noveltyLevel() == null
                                 && concept.availability().isEmpty()

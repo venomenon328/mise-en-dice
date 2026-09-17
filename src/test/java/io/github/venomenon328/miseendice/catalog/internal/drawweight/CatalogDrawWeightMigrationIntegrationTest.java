@@ -5,19 +5,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.venomenon328.miseendice.testsupport.PostgreSqlTestServer;
 import java.math.BigDecimal;
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import liquibase.Contexts;
 import liquibase.LabelExpression;
 import liquibase.Liquibase;
+import liquibase.changelog.ChangeSet;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.exception.LiquibaseException;
 import liquibase.resource.ClassLoaderResourceAccessor;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -25,59 +28,88 @@ import org.junit.jupiter.api.Test;
 class CatalogDrawWeightMigrationIntegrationTest {
 
     private static final String MASTER = "db/changelog/db.changelog-master.yaml";
-    private static final Path SOURCE = Path.of("docs/analysis/catalog-draw-weights-source-20260917.jsonl");
-    private static final Path DECISIONS = Path.of("docs/analysis/catalog-draw-weights-decisions-20260917.tsv");
+    private static final String CALIBRATION_CHANGESET_ID = "047-catalog-draw-weight-calibration";
+    private static List<CalibrationChange> calibrationChanges;
+
+    @BeforeAll
+    static void discoverCalibrationChangesFromTheMigrationItself() throws Exception {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("draw_weight_probe");
+                Connection connection = database.openConnection()) {
+            applyChangesBeforeCalibration(connection);
+            Map<String, BigDecimal> before = weights(connection);
+            applyCalibrationOnly(connection);
+            Map<String, BigDecimal> after = weights(connection);
+
+            List<CalibrationChange> changes = new ArrayList<>();
+            before.forEach((code, expected) -> {
+                BigDecimal target = after.get(code);
+                if (expected.compareTo(target) != 0) {
+                    changes.add(new CalibrationChange(code, expected, target));
+                }
+            });
+            changes.sort(Comparator.comparing(CalibrationChange::code));
+            assertThat(changes).hasSizeGreaterThan(1);
+            calibrationChanges = List.copyOf(changes);
+        }
+    }
 
     @Test
     void appliesOnlyApprovedWeightsAndPreservesConcurrentOperationalStateWithExactVersions() throws Exception {
-        var validation = CatalogDrawWeightFiles.validate(SOURCE, DECISIONS);
-        List<CatalogDrawWeightFiles.Decision> changed = validation.changedDecisions();
+        CalibrationChange operationallyChanged = calibrationChanges.getFirst();
+        CalibrationChange alreadyAtTarget = calibrationChanges.get(1);
         try (var database = PostgreSqlTestServer.createTemporaryDatabase("draw_weight_safe");
                 Connection connection = database.openConnection()) {
-            applyAllExceptCalibration(connection);
-            CatalogDrawWeightFiles.Decision operationallyChanged = changed.getFirst();
-            CatalogDrawWeightFiles.Decision alreadyAtTarget = changed.get(1);
+            applyChangesBeforeCalibration(connection);
+
+            assertThat(weight(connection, operationallyChanged.code()))
+                    .isEqualByComparingTo(operationallyChanged.expectedWeight());
+            assertThat(weight(connection, alreadyAtTarget.code()))
+                    .isEqualByComparingTo(alreadyAtTarget.expectedWeight());
 
             executeUpdate(connection, """
                     update ingredient_concept
                        set active = false, random_draw_enabled = false, version = version + 1
                      where code = ?
-                    """, operationallyChanged.conceptCode());
+                    """, operationallyChanged.code());
             executeUpdate(connection, """
                     update ingredient_concept
                        set base_draw_weight = ?, version = version + 1
                      where code = ?
-                    """, alreadyAtTarget.targetWeight(), alreadyAtTarget.conceptCode());
+                    """, alreadyAtTarget.targetWeight(), alreadyAtTarget.code());
+            connection.commit();
 
+            Map<String, BigDecimal> weightsBefore = weights(connection);
             Map<String, Long> versionsBefore = versions(connection);
             Map<String, String> protectedStateBefore = protectedState(connection);
-            applyMaster(connection);
+            applyCalibrationOnly(connection);
 
             assertThat(changesetApplied(connection)).isTrue();
             assertThat(protectedState(connection)).isEqualTo(protectedStateBefore);
-            assertThat(booleanValue(connection, operationallyChanged.conceptCode(), "active")).isFalse();
-            assertThat(booleanValue(connection, operationallyChanged.conceptCode(), "random_draw_enabled")).isFalse();
-            assertThat(weight(connection, operationallyChanged.conceptCode()))
+            assertThat(booleanValue(connection, operationallyChanged.code(), "active")).isFalse();
+            assertThat(booleanValue(connection, operationallyChanged.code(), "random_draw_enabled")).isFalse();
+            assertThat(weight(connection, operationallyChanged.code()))
                     .isEqualByComparingTo(operationallyChanged.targetWeight());
-            assertThat(version(connection, operationallyChanged.conceptCode()))
-                    .isEqualTo(versionsBefore.get(operationallyChanged.conceptCode()) + 1);
-            assertThat(version(connection, alreadyAtTarget.conceptCode()))
-                    .isEqualTo(versionsBefore.get(alreadyAtTarget.conceptCode()));
+            assertThat(version(connection, operationallyChanged.code()))
+                    .isEqualTo(versionsBefore.get(operationallyChanged.code()) + 1);
+            assertThat(weight(connection, alreadyAtTarget.code()))
+                    .isEqualByComparingTo(alreadyAtTarget.targetWeight());
+            assertThat(version(connection, alreadyAtTarget.code()))
+                    .isEqualTo(versionsBefore.get(alreadyAtTarget.code()));
 
-            for (CatalogDrawWeightFiles.Decision decision : validation.decisions()) {
-                assertThat(weight(connection, decision.conceptCode()))
-                        .as("target weight for %s", decision.conceptCode())
-                        .isEqualByComparingTo(decision.targetWeight());
-                long expectedVersion = versionsBefore.get(decision.conceptCode())
-                        + (decision.changed() && !decision.conceptCode().equals(alreadyAtTarget.conceptCode()) ? 1 : 0);
-                assertThat(version(connection, decision.conceptCode()))
-                        .as("version for %s", decision.conceptCode()).isEqualTo(expectedVersion);
+            Map<String, BigDecimal> weightsAfter = weights(connection);
+            Map<String, Long> versionsAfter = versions(connection);
+            for (Map.Entry<String, BigDecimal> entry : weightsBefore.entrySet()) {
+                boolean weightChanged = entry.getValue().compareTo(weightsAfter.get(entry.getKey())) != 0;
+                long expectedVersion = versionsBefore.get(entry.getKey()) + (weightChanged ? 1 : 0);
+                assertThat(versionsAfter.get(entry.getKey()))
+                        .as("version follows actual weight change for %s", entry.getKey())
+                        .isEqualTo(expectedVersion);
             }
 
             assertThat(executeUpdate(connection, """
                     update ingredient_concept set display_name = display_name
                      where code = ? and version = ?
-                    """, operationallyChanged.conceptCode(), versionsBefore.get(operationallyChanged.conceptCode())))
+                    """, operationallyChanged.code(), versionsBefore.get(operationallyChanged.code())))
                     .as("an edit holding the pre-migration aggregate version is stale")
                     .isZero();
         }
@@ -85,45 +117,54 @@ class CatalogDrawWeightMigrationIntegrationTest {
 
     @Test
     void unexpectedWeightDriftAbortsAtomicallyBeforeAnyOtherConceptChanges() throws Exception {
-        var validation = CatalogDrawWeightFiles.validate(SOURCE, DECISIONS);
-        CatalogDrawWeightFiles.Decision drifted = validation.changedDecisions().getFirst();
-        CatalogDrawWeightFiles.Decision untouched = validation.changedDecisions().get(1);
+        CalibrationChange drifted = calibrationChanges.getFirst();
         try (var database = PostgreSqlTestServer.createTemporaryDatabase("draw_weight_drift");
                 Connection connection = database.openConnection()) {
-            applyAllExceptCalibration(connection);
+            applyChangesBeforeCalibration(connection);
             executeUpdate(connection, """
                     update ingredient_concept
                        set base_draw_weight = 0.3333, version = version + 1
                      where code = ?
-                    """, drifted.conceptCode());
-            BigDecimal untouchedWeight = weight(connection, untouched.conceptCode());
-            long untouchedVersion = version(connection, untouched.conceptCode());
+                    """, drifted.code());
+            connection.commit();
+            Map<String, String> stateBefore = completeConceptState(connection);
 
-            assertThatThrownBy(() -> applyMaster(connection))
+            assertThatThrownBy(() -> applyCalibrationOnly(connection))
                     .isInstanceOf(LiquibaseException.class)
                     .hasStackTraceContaining("unexpected weight drift")
-                    .hasStackTraceContaining(drifted.conceptCode());
+                    .hasStackTraceContaining(drifted.code());
 
             assertThat(changesetApplied(connection)).isFalse();
-            assertThat(weight(connection, drifted.conceptCode())).isEqualByComparingTo("0.3333");
-            assertThat(weight(connection, untouched.conceptCode())).isEqualByComparingTo(untouchedWeight);
-            assertThat(version(connection, untouched.conceptCode())).isEqualTo(untouchedVersion);
+            assertThat(completeConceptState(connection)).isEqualTo(stateBefore);
         }
     }
 
-    private static void applyAllExceptCalibration(Connection connection) throws Exception {
+    private static void applyChangesBeforeCalibration(Connection connection) throws Exception {
         Liquibase liquibase = liquibase(connection);
         Contexts contexts = new Contexts();
         LabelExpression labels = new LabelExpression();
-        int unrun = liquibase.listUnrunChangeSets(contexts, labels).size();
-        assertThat(unrun).isGreaterThan(1);
-        liquibase.update(unrun - 1, contexts, labels);
+        List<ChangeSet> unrun = liquibase.listUnrunChangeSets(contexts, labels);
+        int calibrationIndex = -1;
+        for (int index = 0; index < unrun.size(); index++) {
+            if (unrun.get(index).getId().equals(CALIBRATION_CHANGESET_ID)) {
+                assertThat(calibrationIndex).as("calibration changeset occurs once").isEqualTo(-1);
+                calibrationIndex = index;
+            }
+        }
+        assertThat(calibrationIndex).as("calibration changeset is present in master").isNotNegative();
+        liquibase.update(calibrationIndex, contexts, labels);
         assertThat(changesetApplied(connection)).isFalse();
-        assertThat(lastChangeset(connection)).isEqualTo("046-japan-curation");
     }
 
-    private static void applyMaster(Connection connection) throws Exception {
-        liquibase(connection).update(new Contexts(), new LabelExpression());
+    private static void applyCalibrationOnly(Connection connection) throws Exception {
+        Liquibase liquibase = liquibase(connection);
+        Contexts contexts = new Contexts();
+        LabelExpression labels = new LabelExpression();
+        List<ChangeSet> unrun = liquibase.listUnrunChangeSets(contexts, labels);
+        assertThat(unrun).isNotEmpty();
+        assertThat(unrun.getFirst().getId()).isEqualTo(CALIBRATION_CHANGESET_ID);
+        liquibase.update(1, contexts, labels);
+        assertThat(changesetApplied(connection)).isTrue();
     }
 
     private static Liquibase liquibase(Connection connection) throws Exception {
@@ -142,6 +183,18 @@ class CatalogDrawWeightMigrationIntegrationTest {
         return values;
     }
 
+    private static Map<String, BigDecimal> weights(Connection connection) throws Exception {
+        Map<String, BigDecimal> values = new LinkedHashMap<>();
+        try (var statement = connection.createStatement();
+                ResultSet result = statement.executeQuery(
+                        "select code, base_draw_weight from ingredient_concept order by code")) {
+            while (result.next()) {
+                values.put(result.getString(1), result.getBigDecimal(2));
+            }
+        }
+        return values;
+    }
+
     private static Map<String, String> protectedState(Connection connection) throws Exception {
         Map<String, String> values = new LinkedHashMap<>();
         try (var statement = connection.createStatement();
@@ -150,6 +203,18 @@ class CatalogDrawWeightMigrationIntegrationTest {
                           from ingredient_concept concept
                          order by code
                         """)) {
+            while (result.next()) {
+                values.put(result.getString(1), result.getString(2));
+            }
+        }
+        return values;
+    }
+
+    private static Map<String, String> completeConceptState(Connection connection) throws Exception {
+        Map<String, String> values = new LinkedHashMap<>();
+        try (var statement = connection.createStatement();
+                ResultSet result = statement.executeQuery(
+                        "select code, to_jsonb(concept)::text from ingredient_concept concept order by code")) {
             while (result.next()) {
                 values.put(result.getString(1), result.getString(2));
             }
@@ -201,12 +266,6 @@ class CatalogDrawWeightMigrationIntegrationTest {
         }
     }
 
-    private static String lastChangeset(Connection connection) throws Exception {
-        try (var statement = connection.createStatement();
-                ResultSet result = statement.executeQuery(
-                        "select id from databasechangelog order by orderexecuted desc limit 1")) {
-            result.next();
-            return result.getString(1);
-        }
+    private record CalibrationChange(String code, BigDecimal expectedWeight, BigDecimal targetWeight) {
     }
 }

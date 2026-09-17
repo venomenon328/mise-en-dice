@@ -93,6 +93,22 @@ class CatalogDrawWeightFilesTest {
     }
 
     @Test
+    void rejectsStructureNodeAsAnchorForApplicableConcept() throws Exception {
+        Path source = source(
+                concept("CUMIN", "Kreuzkümmel", "0.6000", true, 1, "[\"SEASONING\"]", "{}", "[]"),
+                concept("SPICES", "Gewürze", "0.4500", false, null, "[]", "{}", "[\"CUMIN\"]"));
+        Path decisions = decisions(
+                decision("CUMIN", "Kreuzkümmel", "APPLICABLE", "0.6000", "0.7500", "CHANGED",
+                        "SPICES", "SPICES", "", "review"),
+                decision("SPICES", "Gewürze", "NOT_APPLICABLE", "0.4500", "0.4500", "UNCHANGED",
+                        "STRUCTURE_ONLY", "SPICES", "STRUCTURE_ONLY_NOT_APPLICABLE", "review"));
+
+        assertThatThrownBy(() -> CatalogDrawWeightFiles.validate(source, decisions))
+                .hasMessageContaining("non-applicable anchor")
+                .hasMessageContaining("CUMIN -> SPICES");
+    }
+
+    @Test
     void invalidInputFailsClosedWithoutCreatingOutput() throws Exception {
         Path source = source(concept("APPLE", "Apfel", "0.6000", true, 1, "[]", "{}", "[]"));
         Path decisions = decisions(decision("APPLE", "Apfel", "APPLICABLE", "0.6000", "0.6100", "CHANGED",

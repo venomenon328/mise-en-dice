@@ -43,6 +43,8 @@ Jede Bewertung beantwortet gemeinsam:
 
 Jedes anwendbare Konzept erhält eine primäre Vergleichsgruppe und einen Anker. Diese Angaben sind reine Reviewmetadaten, keine neue produktive Ontologie. Mehrfachrollen und weitere Graphbeziehungen dienen der Ausreißerdiagnose, werden aber nicht mehrfach als Abschlag verrechnet. Weder werden alle Familien gleich gewichtet noch wird ein Parentgewicht durch die Kinderzahl geteilt. Tatsächlich unterschiedliche Kochaufgaben dürfen zusammen mehr Präsenz erhalten; bloße Erfassungstiefe genügt dafür nicht.
 
+Der Anker eines anwendbaren Konzepts muss selbst fachlich anwendbar sein und eine echte relative Gewichtsaussage ermöglichen. Ein ausschließlich technischer Strukturknoten ist kein zulässiger Referenzanker. Die Einzelbegründung nennt neben der abgegrenzten Semantik den konkreten Grund für Gleichstand oder Abstand zum Anker, etwa Rohstoff- und Einsatzbreite, bereits festgelegte Verarbeitung beziehungsweise Würzung, Bindungswirkung oder Verdichtung naher Varianten. Die vier Skalenbeschreibungen allein sind keine Einzelbegründung.
+
 `random_draw_enabled = false` begründet allein kein `NOT_APPLICABLE`. Nur echte Strukturknoten ohne eigenständige Zutatenvorgabe werden so geführt; ihr technisch erforderlicher Bestandswert bleibt erhalten.
 
 ## 4. Dauerhafter Pflegeablauf

@@ -15,7 +15,7 @@
     "sourcePath": "docs/analysis/catalog-draw-weights-source-20260917.jsonl",
     "sourceSha256": "0eefe6312695460ec360ec2212d7cae8b1890a1d31fa283f8916def5e12070f9",
     "decisionsPath": "docs/analysis/catalog-draw-weights-decisions-20260917.tsv",
-    "decisionsSha256": "db81983a32576d6c193a6c5f2af96c54a041a47c0a536806e6d1c435b8ad8bba",
+    "decisionsSha256": "3703871eade39c16683d09b4c9c40f7211b0c6211a1465176652e799a9683f09",
     "exportQueryPath": "docs/analysis/catalog-draw-weights-source-export.sql",
     "exportQuerySha256": "53549246d05d38aa97fc0c5d1626b1aaf53299e01c87d6611a590105c158de3d"
   },
