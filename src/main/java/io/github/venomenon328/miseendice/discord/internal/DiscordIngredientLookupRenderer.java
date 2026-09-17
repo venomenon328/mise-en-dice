@@ -33,6 +33,7 @@ final class DiscordIngredientLookupRenderer {
     private static final int AVAILABILITY_NOTE_VALUE_LIMIT = 512;
     private static final String PARENT_FIELD_NAME = "⬆️ Allgemeinere Begriffe";
     private static final String CHILD_FIELD_NAME = "⬇️ Bekannte Konkretisierungen";
+    private static final String ALIAS_HEADING = "**Auch bekannt als**";
     private static final int HIERARCHY_RESERVATION = PARENT_FIELD_NAME.length() + CHILD_FIELD_NAME.length()
             + (2 * LIST_VALUE_LIMIT);
     private static final String EMPTY_SCALE = "▫️";
@@ -71,7 +72,7 @@ final class DiscordIngredientLookupRenderer {
         List<IngredientLookupRelation> children = sortedRelations(profile.activeDirectChildren());
         List<AvailabilityField> availabilityFields = availabilityFields(profile.availabilityNotes());
         String title = "🥢 " + oneLine(profile.displayName(), TITLE_LIMIT - 3);
-        BoundedEmbed embed = new BoundedEmbed(title, codeBlock(baseLines(profile)));
+        BoundedEmbed embed = new BoundedEmbed(title, profileDescription(profile));
         int availabilityReservation = availabilityFields.stream()
                 .mapToInt(field -> field.name().length() + AVAILABILITY_NOTE_VALUE_LIMIT)
                 .sum();
@@ -84,9 +85,6 @@ final class DiscordIngredientLookupRenderer {
                 : codeBlock(dimensionLines(profile.culinaryDimensions())), false);
         if (!profile.culinaryCountries().isEmpty()) {
             embed.add("🌍 Kulinarische Zuordnung", countryFlags(profile.culinaryCountries()), false);
-        }
-        if (!profile.aliases().isEmpty()) {
-            embed.add("Auch bekannt als", listValue(profile.aliases()), false);
         }
         if (profile.curatorNote() != null && !profile.curatorNote().isBlank()) {
             embed.addText("💡 Hinweis aus dem Zutatenkatalog", safe(profile.curatorNote()), MAX_CURATOR_NOTE_FIELDS);
@@ -135,6 +133,17 @@ final class DiscordIngredientLookupRenderer {
         return new RenderedCountryIngredients(title, content,
                 new DiscordIngredientComponentId.CountryBrowseContext(page.country().code(), page.page()), options,
                 page.hasPreviousPage(), page.hasNextPage());
+    }
+
+    private static String profileDescription(IngredientLookupProfile profile) {
+        String baseData = codeBlock(baseLines(profile));
+        if (profile.aliases().isEmpty()) {
+            return baseData;
+        }
+        int aliasLimit = Math.min(FIELD_VALUE_LIMIT,
+                DESCRIPTION_LIMIT - ALIAS_HEADING.length() - 2 - baseData.length());
+        String aliases = truncate(listValue(profile.aliases()), aliasLimit);
+        return ALIAS_HEADING + "\n" + aliases + "\n\n" + baseData;
     }
 
     private static List<String> baseLines(IngredientLookupProfile profile) {
