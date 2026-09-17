@@ -27,9 +27,9 @@ class DiscordIngredientLookupRendererTest {
         assertThat(drawable.title()).isEqualTo("🥢 Testzutat");
         assertThat(drawable.description())
                 .contains("Gewichtung            0,85", "Kochungewöhnlichkeit  hoch  ✨✨✨✨▫️")
-                .doesNotContain("Einordnung", "Außergewöhnlichkeit als Kochzutat");
+                .doesNotContain("Einordnung", "Außergewöhnlichkeit als Kochzutat", "Auch bekannt als");
         assertThat(drawable.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
-                .doesNotContain("Basisdaten")
+                .doesNotContain("Basisdaten", "Auch bekannt als")
                 .endsWith("⬆️ Allgemeinere Begriffe", "⬇️ Bekannte Konkretisierungen");
         assertThat(field(drawable, "⬆️ Allgemeinere Begriffe")).isEqualTo("Sojaprodukt");
         assertThat(field(drawable, "⬇️ Bekannte Konkretisierungen")).isEqualTo("keine");
@@ -39,7 +39,7 @@ class DiscordIngredientLookupRendererTest {
                 .doesNotContain("💡 Hinweis aus dem Zutatenkatalog", "🌍 Kulinarische Zuordnung");
         assertThat(nonDrawable.description())
                 .contains("Gewichtung            nicht eigenständig ziehbar", "Kochungewöhnlichkeit  nicht gepflegt")
-                .doesNotContain("✨");
+                .doesNotContain("✨", "Auch bekannt als");
     }
 
     @Test
@@ -56,7 +56,7 @@ class DiscordIngredientLookupRendererTest {
     }
 
     @Test
-    void rendersAliasesSafelyWhileKeepingTheCanonicalTitle() {
+    void rendersAliasesSafelyAboveBaseDataWhileKeepingTheCanonicalTitle() {
         var profile = new IngredientLookupProfile(
                 42, "Testzutat", true, new BigDecimal("0.8500"), 2,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null,
@@ -65,9 +65,33 @@ class DiscordIngredientLookupRendererTest {
         var embed = renderer.profile(profile);
 
         assertThat(embed.title()).isEqualTo("🥢 Testzutat");
-        assertThat(field(embed, "Auch bekannt als"))
-                .contains("Früher @\u200Bhere \\*Alias\\*", "Zweiter ˋAliasˋ h\u200Bttps")
+        assertThat(embed.description())
+                .startsWith("**Auch bekannt als**\nFrüher @\u200Bhere \\*Alias\\*\nZweiter ˋAliasˋ h\u200Bttps://example.test\n\n```\n")
+                .contains("Gewichtung            0,85", "Kochungewöhnlichkeit  niedrig  ✨✨▫️▫️▫️")
                 .doesNotContain("@here", "https://");
+        assertThat(embed.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
+                .doesNotContain("Auch bekannt als");
+    }
+
+    @Test
+    void truncatesLongAliasContentWithoutDamagingTheBaseDataBlock() {
+        List<String> aliases = java.util.stream.IntStream.rangeClosed(1, 30)
+                .mapToObj(number -> "Alias " + number + " " + "x".repeat(190))
+                .toList();
+        var profile = new IngredientLookupProfile(
+                42, "Testzutat", true, new BigDecimal("0.8500"), 2,
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null, aliases);
+
+        var embed = renderer.profile(profile);
+        String baseData = "```\nGewichtung            0,85\nKochungewöhnlichkeit  niedrig  ✨✨▫️▫️▫️\n```";
+
+        assertThat(embed.description())
+                .hasSizeLessThanOrEqualTo(4_096)
+                .startsWith("**Auch bekannt als**\n")
+                .contains("… (+")
+                .endsWith(baseData);
+        assertThat(embed.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
+                .doesNotContain("Auch bekannt als");
     }
 
     @Test
