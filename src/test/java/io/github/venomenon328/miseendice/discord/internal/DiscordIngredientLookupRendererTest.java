@@ -25,9 +25,9 @@ class DiscordIngredientLookupRendererTest {
                 List.of(), List.of(), List.of(), List.of()));
 
         assertThat(drawable.title()).isEqualTo("🥢 Testzutat");
-        assertThat(drawable.description()).contains(
-                "Gewichtung            0,85", "Kochungewöhnlichkeit  hoch", "✨✨✨✨▫️",
-                "Einordnung            Außergewöhnlichkeit als Kochzutat");
+        assertThat(drawable.description())
+                .contains("Gewichtung            0,85", "Kochungewöhnlichkeit  hoch  ✨✨✨✨▫️")
+                .doesNotContain("Einordnung", "Außergewöhnlichkeit als Kochzutat");
         assertThat(drawable.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
                 .doesNotContain("Basisdaten")
                 .endsWith("⬆️ Allgemeinere Begriffe", "⬇️ Bekannte Konkretisierungen");
@@ -37,7 +37,22 @@ class DiscordIngredientLookupRendererTest {
         assertThat(drawable.color()).isEqualTo(DiscordIngredientLookupRenderer.CARD_COLOR);
         assertThat(nonDrawable.fields()).extracting(DiscordIngredientLookupRenderer.EmbedField::name)
                 .doesNotContain("💡 Hinweis aus dem Zutatenkatalog", "🌍 Kulinarische Zuordnung");
-        assertThat(nonDrawable.description()).contains("nicht eigenständig ziehbar", "nicht gepflegt");
+        assertThat(nonDrawable.description())
+                .contains("Gewichtung            nicht eigenständig ziehbar", "Kochungewöhnlichkeit  nicht gepflegt")
+                .doesNotContain("✨");
+    }
+
+    @Test
+    void keepsNoveltyScaleCompactWhenWeightValueIsLong() {
+        var embed = renderer.profile(profile(false, 4, List.of(), null,
+                List.of(), List.of(), List.of(), List.of()));
+        List<String> lines = embed.description().lines()
+                .filter(line -> !line.equals("```") && !line.isBlank())
+                .toList();
+
+        assertThat(lines).containsExactly(
+                "Gewichtung            nicht eigenständig ziehbar",
+                "Kochungewöhnlichkeit  hoch  ✨✨✨✨▫️");
     }
 
     @Test
