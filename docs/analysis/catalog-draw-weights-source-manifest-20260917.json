@@ -1,0 +1,328 @@
+{
+  "format": "mise-en-dice-catalog-draw-weight-source",
+  "formatVersion": 1,
+  "source": {
+    "repository": "venomenon328/mise-en-dice",
+    "ref": "main",
+    "commit": "c6044088c3ff501261e01e36bdec915f9bfdb1d5",
+    "changelog": "src/main/resources/db/changelog/db.changelog-master.yaml",
+    "lastChangeset": "046-japan-curation",
+    "database": "PostgreSQL 17.6",
+    "excludedSources": [],
+    "parallelState": "#287 merged in source commit; no unmerged catalog PR included"
+  },
+  "artifacts": {
+    "sourcePath": "docs/analysis/catalog-draw-weights-source-20260917.jsonl",
+    "sourceSha256": "0eefe6312695460ec360ec2212d7cae8b1890a1d31fa283f8916def5e12070f9",
+    "decisionsPath": "docs/analysis/catalog-draw-weights-decisions-20260917.tsv",
+    "decisionsSha256": "3703871eade39c16683d09b4c9c40f7211b0c6211a1465176652e799a9683f09",
+    "exportQueryPath": "docs/analysis/catalog-draw-weights-source-export.sql",
+    "exportQuerySha256": "53549246d05d38aa97fc0c5d1626b1aaf53299e01c87d6611a590105c158de3d"
+  },
+  "inputs": [
+    {
+      "path": "src/main/resources/db/changelog/catalog/002-ingredient-catalog.sql",
+      "gitBlob": "457dd380649ba004f4debe1bc60083c364b1dfbb"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/003-functional-roles.sql",
+      "gitBlob": "75416e21ef0bbf3bb33103ef1d3c1bda68f9cda8"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/004-availability.sql",
+      "gitBlob": "f7cff475fdb05090308f61ebb7064fa4c598b74d"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/005-culinary-properties.sql",
+      "gitBlob": "576e09356bc5efeb0ba553905560f346b5695a07"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/006-seasonality.sql",
+      "gitBlob": "8e1cc3080263927a666cce24bb1ce2e2b1f42c99"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/007-exclusion-rules.sql",
+      "gitBlob": "5a41f3a354d209278fddc38dd7384a1eae29ebc6"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/008-ingredient-catalog-expansion-1.sql",
+      "gitBlob": "dec8dea42b8ec1b7e5fcae3c39023c0777d88240"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/009-ingredient-catalog-expansion-2.sql",
+      "gitBlob": "4bab11c5b611d2a339183537280597eac6e8713d"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/010-ingredient-catalog-expansion-3.sql",
+      "gitBlob": "e79d2f87c0368b34fee91c7b8667b2f384c95924"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/011-ingredient-refinements-expansion.sql",
+      "gitBlob": "2d723f0f3b02fa88cac36bdea5164683ca885cb3"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/012-seasonality-expansion.sql",
+      "gitBlob": "35578fc74874406c5cc3221cb12ee910e898ef89"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/013-exclusion-rules-expansion.sql",
+      "gitBlob": "1c16e9c131297b9774296d69a50e7dc7e05bbee0"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/014-catalog-consolidation.sql",
+      "gitBlob": "456204154f2b4c59d67fbee4b34fd5b05563dd30"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/015-catalog-gap-review.sql",
+      "gitBlob": "196819109b9922fd7f18403786839a3834c5b798"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/016-final-catalog-snapshot.sql",
+      "gitBlob": "4151844235a3dfb322575753e0bfdbd758b4f7f5"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/017-no-beef-veal-exclusion.sql",
+      "gitBlob": "600fa6a5eb4ba00a2ed5ea67346396a14929d83b"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/018-sweden-curation.sql",
+      "gitBlob": "a8ac70ef6b570a2af8254725511fa819ca6a5c0e"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/019-poland-curation.sql",
+      "gitBlob": "1b403fd06ddc10f5836a05c9c36885c5b43c2614"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/020-denmark-curation.sql",
+      "gitBlob": "826513da6e676cda27d8ad3be6d737786ac44e94"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/021-netherlands-curation.sql",
+      "gitBlob": "171c6783448f07f5ad70320012c1282ad09388fd"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/022-belgium-curation.sql",
+      "gitBlob": "488cc596c43c2f71680ee992f4e60c34575fbb62"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/023-czechia-curation.sql",
+      "gitBlob": "6424ad7974aba71b7f8b975be7aa41dcee78d5f3"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/024-philippines-curation.sql",
+      "gitBlob": "ce73bb9541d66e97634e2fc99e26a171c1ba9445"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/025-germany-curation.sql",
+      "gitBlob": "aa7f3b74234ac2e5eedc0f67417f9aff12774751"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/026-norway-curation.sql",
+      "gitBlob": "ba144471021272c9144082c7c8d205e3cfa007d9"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/027-france-curation.sql",
+      "gitBlob": "4ad2377f9827d75c9b43eb67bcaeedeb86c4ef58"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/028-curator-note-completeness.sql",
+      "gitBlob": "cbed0b77dfe221317744ef61e80be34bd1d5746a"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/029-spain-curation.sql",
+      "gitBlob": "1064fb401c0a06633997bf473a802b9833ba66e8"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/030-veal-concept-expansion.sql",
+      "gitBlob": "039efd586a320f1c8be118750b8dbdd75ac9fad5"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/031-vietnam-curation.sql",
+      "gitBlob": "4e048abec8a41cc6cd5b0886c095f590c790267c"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/032-thailand-curation.sql",
+      "gitBlob": "f3a42cac5c84cbb7dd75cc0119709ccf34e7e034"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/033-availability-novelty-final-review.sql",
+      "gitBlob": "bc00badb6aa7c9036a14380cef101f82013b3ae9"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/034-austria-curation.sql",
+      "gitBlob": "69c19b5820239db2143ae5a607b87d70caabe8f7"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/035-england-curation.sql",
+      "gitBlob": "4693f964b8ec9b2ff068dd921dbbbd0845a7cf4f"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/036-availability-note-prefix-cleanup.sql",
+      "gitBlob": "8cd2d565bc51674b2018e17c8e8e61448487ba86"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/037-availability-note-consolidation.sql",
+      "gitBlob": "0dbd5b03be831a348543a4a443ace9fbd9b63ebe"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/038-availability-note-sentence-capitalization.sql",
+      "gitBlob": "853e0ba27aa86991701cc138794705d744231f2f"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/039-availability-r3-corrections.sql",
+      "gitBlob": "d07589a0ded793d8ca0f66dec450ed2199b0c193"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/040-scotland-curation.sql",
+      "gitBlob": "b94625b4c7f07ca565dd42f548317bbd48c58f14"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/041-finland-curation.sql",
+      "gitBlob": "58f0dec0c50a23af90194532f63d502720087642"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/042-d3-approved-country-relations.sql",
+      "gitBlob": "af6112b5a4a4c75ce6f2617ef4f0184889b034f6"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/043-germany-curation.sql",
+      "gitBlob": "d156d8f6e9db02235a59eccb00bb3a7dbccf62b2"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/044-ingredient-name-alias-curation.sql",
+      "gitBlob": "e56eda18b145625d6087eb4ae45784b82f0c3fb9"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/045-crustacean-catalog-expansion.sql",
+      "gitBlob": "dfc9b5a2161caa66ab9553afcbc162f01970d35c"
+    },
+    {
+      "path": "src/main/resources/db/changelog/catalog/046-japan-curation.sql",
+      "gitBlob": "49e0171e0bacc11ab7739e6f33d6e447e8c3af6d"
+    },
+    {
+      "path": "src/main/resources/db/changelog/checks/001-seed-sanity.sql",
+      "gitBlob": "7c12ee157c766eefd924134fec7704c7f0fb97f1"
+    },
+    {
+      "path": "src/main/resources/db/changelog/checks/002-final-catalog-sanity.sql",
+      "gitBlob": "c7111828a59923dc49a5649b18c503cdf18b1c6b"
+    },
+    {
+      "path": "src/main/resources/db/changelog/checks/003-catalog-gap-sanity.sql",
+      "gitBlob": "6147c4219885db450307a01a1204bed86e25e43f"
+    },
+    {
+      "path": "src/main/resources/db/changelog/db.changelog-master.yaml",
+      "gitBlob": "a0dbc768c7a37f44aada65157e953961cbcfcaaf"
+    },
+    {
+      "path": "src/main/resources/db/changelog/reference/001-reference-data.sql",
+      "gitBlob": "04df01012499c8e1b7c443cb48111a92466798f8"
+    },
+    {
+      "path": "src/main/resources/db/changelog/reference/002-culinary-countries.sql",
+      "gitBlob": "31aea595edb70d15d34e344fa521e5cf65ce5e53"
+    },
+    {
+      "path": "src/main/resources/db/changelog/reference/003-england-culinary-country.sql",
+      "gitBlob": "bc751789260d6d4bfd9f0b6e9c56d6f944566c60"
+    },
+    {
+      "path": "src/main/resources/db/changelog/reference/004-scotland-culinary-country.sql",
+      "gitBlob": "4d29f5cb50a4a7229ba55f1d3f4e5174df49f031"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/001-catalog-schema.sql",
+      "gitBlob": "29e0c80dd69dfd21d2e4b6699435d647c54ca2e4"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/002-challenge-history-schema.sql",
+      "gitBlob": "5a8f8283304c483b91a51f48c40066d97a481192"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/003-administration-foundation.sql",
+      "gitBlob": "a35a7cbc9c6e1a180cf604d5f2daf2a3a7f82cf8"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/004-persisted-candidate-generation.sql",
+      "gitBlob": "8740b25a793be8658f882fa8879387a3d13b7fd9"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/005-curation-offer-lifecycle.sql",
+      "gitBlob": "5f3cd9035873ecde6c106e4fee8f7d93081181e7"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/006-curation-state-machine-hardening.sql",
+      "gitBlob": "87fab65b6f14c9674447aa7afe7a15766013d134"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/007-bounded-curator-dispatch.sql",
+      "gitBlob": "c8be5128e0c73e9c34955da4b627383e1cf83e45"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/008-offer-decision-lifecycle.sql",
+      "gitBlob": "a837e4cf295e15f1f66f662bb5372a0e60300989"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/009-challenge-voting-participation.sql",
+      "gitBlob": "e7d4b8c7852fe0a3b833a1451a4c0998c86de5b6"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/010-selection-voting-review-hardening.sql",
+      "gitBlob": "f1440ebf2e5f331e7e4c42658a7407b31cf2560f"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/011-candidate-specific-restrictions.sql",
+      "gitBlob": "06588966a24755a325ce355a80f3b84d34a6cd28"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/012-remove-legacy-generator-compatibility.sql",
+      "gitBlob": "f2fa3ec892143a507d7bf4ba76f30f5f021f63a5"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/013-challenge-archive-core.sql",
+      "gitBlob": "105a09a6bc7ebf27a5822bd9b1c130334cccec62"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/014-participant-electorate-core.sql",
+      "gitBlob": "675d2ff7edb223ec9b2fc14a25ed4049b40bc246"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/015-challenge-results-completion-core.sql",
+      "gitBlob": "27a6d8b12e838a8ef4e5023acd4c2c6c11cfd671"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/016-result-open-requirement-concretizations.sql",
+      "gitBlob": "aa51785525854fc4443b9fe3e4e1e0473022f588"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/017-culinary-country-associations.sql",
+      "gitBlob": "8884ff3dbd32d76c827cd2c546964cc6db71dd0c"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/018-five-level-availability.sql",
+      "gitBlob": "2db5af97cf5c20183232a3bae79ae2f551894837"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/019-availability-curator-note.sql",
+      "gitBlob": "619efaa4cb9de8fc93f147ab93d317c07edfe80e"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/020-remove-generator-replay-result.sql",
+      "gitBlob": "b2fe4ee0236ddc5d36cfc8423e36a4e912f5cff9"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/021-culinary-country-subdivision-codes.sql",
+      "gitBlob": "260ea5de1053437bde78fcbe7c57d430109a2700"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/022-remove-runtime-catalog-audit.sql",
+      "gitBlob": "e78165856488ee516d5e17cebb35bbe24c7ee75f"
+    },
+    {
+      "path": "src/main/resources/db/changelog/schema/023-ingredient-concept-aliases.sql",
+      "gitBlob": "854610ae63b54f54b201371bd90abe3630db8162"
+    }
+  ]
+}

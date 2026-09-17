@@ -47,7 +47,8 @@ class ProductionBaselineMigrationIntegrationTest {
             "043-germany-curation",
             "044-ingredient-name-alias-curation",
             "045-crustacean-catalog-expansion",
-            "046-japan-curation"
+            "046-japan-curation",
+            "047-catalog-draw-weight-calibration"
     );
 
     @Test

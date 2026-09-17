@@ -63,6 +63,10 @@ Die Availability-Notiz ist ausschließlich eine Beschaffungsnotiz. Sie beschreib
 
 ### Gewicht
 
+Der vollständige Bewertungs-, Skalen-, Anker- und Familienvertrag steht zentral in
+[`INGREDIENT_DRAW_WEIGHTS.md`](INGREDIENT_DRAW_WEIGHTS.md). Die folgenden Punkte sind seine Mindestkontrolle
+innerhalb der bestehenden Metadatenfreigabe; sie erzeugen kein zusätzliches fachliches Gate.
+
 - eigenständig begründetes `base_draw_weight`,
 - keine mechanische Ableitung aus Kochungewöhnlichkeit oder Beschaffbarkeit,
 - keine doppelte Bestrafung schwieriger Beschaffung,
