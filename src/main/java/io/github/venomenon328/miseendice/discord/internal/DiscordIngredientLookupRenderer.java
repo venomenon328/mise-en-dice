@@ -144,7 +144,6 @@ final class DiscordIngredientLookupRenderer {
         lines.add(profile.noveltyLevel() == null
                 ? new ScaleLine("Kochungewöhnlichkeit", "nicht gepflegt", null)
                 : scaleLine("Kochungewöhnlichkeit", profile.noveltyLevel(), "✨"));
-        lines.add(new ScaleLine("Einordnung", "Außergewöhnlichkeit als Kochzutat", null));
         return aligned(lines);
     }
 
@@ -213,10 +212,13 @@ final class DiscordIngredientLookupRenderer {
 
     private static List<String> aligned(List<ScaleLine> lines) {
         int labelWidth = lines.stream().mapToInt(line -> line.label().length()).max().orElse(0);
-        int valueWidth = lines.stream().mapToInt(line -> line.value().length()).max().orElse(0);
+        int scaleValueWidth = lines.stream()
+                .filter(line -> line.scale() != null)
+                .mapToInt(line -> line.value().length())
+                .max().orElse(0);
         return lines.stream().map(line -> line.scale() == null
                 ? "%s  %s".formatted(pad(line.label(), labelWidth), line.value())
-                : "%s  %s  %s".formatted(pad(line.label(), labelWidth), pad(line.value(), valueWidth), line.scale()))
+                : "%s  %s  %s".formatted(pad(line.label(), labelWidth), pad(line.value(), scaleValueWidth), line.scale()))
                 .toList();
     }
 

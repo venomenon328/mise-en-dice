@@ -131,7 +131,7 @@ Bei einem aktiven, aber nicht eigenständig ziehbaren Konzept wird stattdessen a
 Gewichtung        nicht eigenständig ziehbar
 ```
 
-Die Kochungewöhnlichkeit beschreibt ausschließlich die Außergewöhnlichkeit als Kochzutat und verwendet dieselbe fünfstufige verbale Skala wie das Datenmodell. Ein fehlender Wert erscheint ausdrücklich als `nicht gepflegt`; er wird weder als Stufe 0 noch als Stufe 1 interpretiert. Die verbindliche Begriffsabgrenzung steht in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md); Availability-Stufen bleiben ausdrücklich nicht Teil dieses Discord-Profils.
+Die Kochungewöhnlichkeit beschreibt ausschließlich die Außergewöhnlichkeit als Kochzutat und verwendet dieselbe fünfstufige verbale Skala wie das Datenmodell. Ein fehlender Wert erscheint ausdrücklich als `nicht gepflegt`; er wird weder als Stufe 0 noch als Stufe 1 interpretiert. Die verbindliche Begriffsabgrenzung steht in [`AVAILABILITY_AND_COOKING_NOVELTY.md`](AVAILABILITY_AND_COOKING_NOVELTY.md); Availability-Stufen bleiben ausdrücklich nicht Teil dieses Discord-Profils. Die Card wiederholt diese fachliche Definition nicht als separate Einordnungszeile.
 
 ## 6. Zutaten-Card
 
@@ -171,7 +171,7 @@ Der Discord-Adapter besitzt dafür weder einen eigenen Länderreferenzbestand no
 
 ## 7. Skalen und Geschmacksprofil
 
-Basisdaten und Geschmacksprofil verwenden mehrzeilige Codeblöcke. Eigenschaftsname, verbale Stufe und Beginn der Symbolskala starten in jeder Zeile an denselben berechneten Textspalten; hinter der Emoji-Skala folgt keine weitere auszurichtende Spalte.
+Basisdaten und Geschmacksprofil verwenden mehrzeilige Codeblöcke. In den Basisdaten beginnen die Werte nach der längsten Basisbezeichnung; bei gepflegter Kochungewöhnlichkeit folgt die Symbolskala unmittelbar nach der verbalen Stufe. Nicht-Skalenwerte wie `nicht eigenständig ziehbar` vergrößern den Abstand vor dieser Symbolskala nicht. Im Geschmacksprofil starten Eigenschaftsname, verbale Stufe und Beginn der Symbolskala weiterhin in jeder Zeile an denselben berechneten Textspalten; hinter der Emoji-Skala folgt keine weitere auszurichtende Spalte.
 
 Die verbale Fünfer-Skala lautet:
 
@@ -194,20 +194,20 @@ Symbolik:
 - Schärfe: `🌶️`
 - Salzigkeit: `🧂`
 - Umami: `🍄`
-- unbesetzte Position: `○`
+- unbesetzte Position: `▫️`
 
 Jede gepflegte Skala besitzt exakt fünf Positionen. Nicht gepflegte kulinarische Dimensionen werden vollständig ausgelassen, weil ihr Fehlen keine niedrige Ausprägung behauptet.
 
 Beispiel:
 
 ```text
-Gewichtung        0,75
-Kochungewöhnlichkeit  niedrig  ✨✨○○○
+Gewichtung            0,75
+Kochungewöhnlichkeit  niedrig  ✨✨▫️▫️▫️
 ```
 
 ```text
-Dominanz  mittel  📣📣📣○○
-Umami     mittel  🍄🍄🍄○○
+Dominanz  mittel  📣📣📣▫️▫️
+Umami     mittel  🍄🍄🍄▫️▫️
 ```
 
 ## 8. Kuratornotiz und sichere Katalogtexte
@@ -309,7 +309,7 @@ Automatisierte Tests decken mindestens ab:
 - Lookup-Profil ohne, mit einer und mit mehreren expliziten Länderzuordnungen in stabiler Code-Reihenfolge ohne Parent-/Child-Vererbung,
 - korrekte deterministische Flaggen-/Tag-Sequenzdarstellung aus kulinarischen Ländercodes ohne Ländertexte oder Codes sowie ohne leeren Länderabschnitt,
 - Länderabschnitt zusammen mit maximalen übrigen Card-Inhalten innerhalb der Discord-Limits,
-- verbale Stufen, `○`-Leersymbol und exakt fünf Skalenpositionen,
+- verbale Stufen, `▫️`-Leersymbol, exakt fünf Skalenpositionen und kompakte Kochungewöhnlichkeitszeile ohne separate Einordnung,
 - Kuratornotiz- und Längenbegrenzung,
 - 1 bis 25 Beziehungen als Select, leere Richtungen ohne Navigation, mehr als 25 mit sichtbarer Restanzahl,
 - getrennte Eltern-/Kind-Selects mit den verbindlichen Platzhaltern,
