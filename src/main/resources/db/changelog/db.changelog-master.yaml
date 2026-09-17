@@ -147,3 +147,5 @@ databaseChangeLog:
       file: db/changelog/catalog/044-ingredient-name-alias-curation.sql
   - include:
       file: db/changelog/catalog/045-crustacean-catalog-expansion.sql
+  - include:
+      file: db/changelog/catalog/046-japan-curation.sql
