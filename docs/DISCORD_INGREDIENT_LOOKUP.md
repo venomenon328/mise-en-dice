@@ -135,22 +135,21 @@ Die Kochungewöhnlichkeit beschreibt ausschließlich die Außergewöhnlichkeit a
 
 ## 6. Zutaten-Card
 
-Der Card-Titel bleibt der kanonische Anzeigename. Eine nicht leere Aliasliste erscheint kompakt als
-`Auch bekannt als`; Aliastexte erhalten dieselbe Mention-, Markdown-, Link- und Längenabsicherung wie andere
-Katalogtexte. Mehrere passende Aliaszeilen ändern weder Titel noch Konzeptidentität.
+Der Card-Titel bleibt der kanonische Anzeigename. Eine nicht leere Aliasliste erscheint direkt darunter in der Embed-Description unter der Überschrift `Auch bekannt als` und noch vor den Basisdaten; Aliastexte erhalten dieselbe Mention-, Markdown-, Link- und Längenabsicherung wie andere Katalogtexte. Mehrere passende Aliaszeilen ändern weder Titel noch Konzeptidentität. Ohne Aliasse entfallen Überschrift und zusätzlicher Leerraum vollständig. Muss die Aliasdarstellung aus technischen Längengründen gekürzt werden, wird ausschließlich der Aliasanteil sichtbar gekürzt; der nachfolgende vollständige Basisdaten-Codeblock bleibt erhalten.
 
 Das fertige Profil ist ein kompaktes Discord-Embed mit einer festen zurückhaltenden warmen Akzentfarbe. Es folgt dieser Reihenfolge:
 
 1. Titel `🥢 <Anzeigename>`,
-2. Basisdaten als Embed-Description ohne separate Überschrift,
-3. `Funktion im Gericht` und `Besondere Eigenschaften` als zwei native Inline-Embed-Felder,
-4. `🍽️ Geschmacksprofil`,
-5. optional `🌍 Kulinarische Zuordnung`,
-6. optional `💡 Hinweis aus dem Zutatenkatalog`,
-7. optional ein gemeinsames Feld `📦 Verfügbarkeit` bei exakt identischen Georgia-/Tobias-Notizen; bei unterschiedlichen oder nur einseitig vorhandenen Notizen personenspezifische Felder `📦 Verfügbarkeit – Georgia` beziehungsweise `📦 Verfügbarkeit – Tobias`,
-8. `⬆️ Allgemeinere Begriffe`,
-9. `⬇️ Bekannte Konkretisierungen`,
-10. direkt unter dem Embed die String-Select-Navigation für vorhandene direkte Beziehungen.
+2. optional `Auch bekannt als` mit den gepflegten Aliasen als erster Teil der Embed-Description,
+3. Basisdaten direkt anschließend als Codeblock in derselben Embed-Description ohne separate Überschrift,
+4. `Funktion im Gericht` und `Besondere Eigenschaften` als zwei native Inline-Embed-Felder,
+5. `🍽️ Geschmacksprofil`,
+6. optional `🌍 Kulinarische Zuordnung`,
+7. optional `💡 Hinweis aus dem Zutatenkatalog`,
+8. optional ein gemeinsames Feld `📦 Verfügbarkeit` bei exakt identischen Georgia-/Tobias-Notizen; bei unterschiedlichen oder nur einseitig vorhandenen Notizen personenspezifische Felder `📦 Verfügbarkeit – Georgia` beziehungsweise `📦 Verfügbarkeit – Tobias`,
+9. `⬆️ Allgemeinere Begriffe`,
+10. `⬇️ Bekannte Konkretisierungen`,
+11. direkt unter dem Embed die String-Select-Navigation für vorhandene direkte Beziehungen.
 
 Die beiden Inline-Felder werden nicht durch Leerzeichen oder Tabulatoren als Texttabelle simuliert. Lange Werte im linken Feld verschieben daher die rechte Spalte nicht. Mehrere Werte stehen innerhalb ihres Feldes untereinander; leere Listen erscheinen als `keine`. Auf schmalen Clients darf Discord die Felder untereinander stapeln.
 
@@ -261,6 +260,7 @@ Discord-Grenzen werden vor dem Senden deterministisch eingehalten. Eine überlan
 
 - Lange Listen werden an semantischen Grenzen gekürzt.
 - Jede Kürzung nennt sichtbar die Restmenge beziehungsweise Zeichenmenge.
+- Ein überlanger Aliasanteil der Embed-Description wird sichtbar begrenzt, ohne den nachfolgenden Basisdaten-Codeblock anzuschneiden oder syntaktisch zu beschädigen.
 - Navigation wird auf maximal 25 Optionen je Richtung beschränkt.
 - Die Hierarchiefelder bleiben auch bei langen Kuratornotizen erhalten.
 - Die gesamte Card bleibt innerhalb der Embed-, Field-, Component-, Label- und `custom_id`-Grenzen.
@@ -305,6 +305,7 @@ Automatisierte Tests decken mindestens ab:
 - `/zutat` für nicht als Participant registrierte Mitglieder der konfigurierten Guild,
 - Abweisung von `/zutat` außerhalb der konfigurierten Guild vor Lookup-Arbeit,
 - ziehbare/nicht ziehbare Profile und fehlende Werte,
+- Aliasdarstellung direkt unter dem Titel vor den Basisdaten einschließlich sicherer Texte und Längenbegrenzung ohne beschädigten Basisblock,
 - native Inline-Felder mit langen linken Inhalten,
 - Lookup-Profil ohne, mit einer und mit mehreren expliziten Länderzuordnungen in stabiler Code-Reihenfolge ohne Parent-/Child-Vererbung,
 - korrekte deterministische Flaggen-/Tag-Sequenzdarstellung aus kulinarischen Ländercodes ohne Ländertexte oder Codes sowie ohne leeren Länderabschnitt,
