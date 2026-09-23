@@ -59,6 +59,64 @@ command_production_deploy() {
     printf 'CADDY_UPSTREAM=http://127.0.0.1:%s\n' "$PRODUCTION_PORT"
 }
 
+ensure_production_deployed() {
+    [[ -f $PRODUCTION_DIR/metadata ]] || med_die 'Produktion wurde noch nicht deployt.'
+    load_metadata "$PRODUCTION_DIR"
+    [[ $INSTANCE_TYPE == production && $INSTANCE_NAME == production && $PROJECT_NAME == med-production ]] \
+        || med_die 'Die Produktionsmetadaten sind ungültig; Aktion wird verweigert.'
+}
+
+command_production_reconcile_availability_novelty() {
+    ensure_runtime_initialized
+    check_base_commands
+    acquire_lock
+    ensure_production_deployed
+
+    local state
+    state=$(production_availability_novelty_reconciliation_state "$PRODUCTION_DIR")
+    case "$state" in
+        APPLIED)
+            med_note 'Changeset 033 ist bereits abgehandelt; keine Fachschreibvorgänge erforderlich.'
+            printf 'RECONCILIATION=already-applied\n'
+            return 0
+            ;;
+        PENDING) ;;
+        *)
+            med_die 'Unbekannter Datenbankzustand: Reconciliation ist nur unmittelbar vor Changeset 033 zulässig.'
+            ;;
+    esac
+
+    med_note 'Stoppe ausschließlich die Produktionsanwendung; PostgreSQL bleibt in Betrieb ...'
+    compose_instance "$PRODUCTION_DIR" stop app
+    local app_container
+    app_container=$(compose_instance "$PRODUCTION_DIR" ps -q app 2>/dev/null || true)
+    if [[ -n $app_container ]] \
+        && [[ $(docker inspect --format '{{.State.Running}}' "$app_container" 2>/dev/null || printf unknown) != false ]]; then
+        med_die 'Die Produktionsanwendung konnte nicht sicher gestoppt werden; Reconciliation abgebrochen.'
+    fi
+
+    state=$(production_availability_novelty_reconciliation_state "$PRODUCTION_DIR")
+    [[ $state == PENDING ]] \
+        || med_die 'Der Datenbankzustand hat sich nach dem App-Stopp verändert; Reconciliation abgebrochen.'
+
+    local backup_output backup_file
+    backup_output=$(backup_instance "$PRODUCTION_DIR")
+    backup_file=$(printf '%s\n' "$backup_output" | sed -n 's/^BACKUP_FILE=//p')
+    [[ -n $backup_file && -s $backup_file && -s $backup_file.sha256 ]] \
+        || med_die 'Das erforderliche validierte Produktionsbackup konnte nicht bestätigt werden.'
+
+    med_note 'Wende den eng begrenzten Availability-/Novelty-Reconciliation-Stand an ...'
+    apply_production_availability_novelty_reconciliation "$PRODUCTION_DIR"
+
+    state=$(production_availability_novelty_reconciliation_state "$PRODUCTION_DIR")
+    [[ $state == APPLIED ]] \
+        || med_die 'Reconciliation endete ohne eindeutigen Changeset-033-Historienstand.'
+
+    med_note 'Reconciliation erfolgreich. Die App bleibt für den anschließenden normalen Production-Deploy gestoppt.'
+    printf 'RECONCILIATION=applied\n'
+    printf 'BACKUP_FILE=%s\n' "$backup_file"
+}
+
 normalise_preview_name() {
     local raw_name=$1
     local slug
@@ -273,6 +331,10 @@ handle_production() {
     shift || true
     case "$action" in
         deploy) command_production_deploy "$@" ;;
+        reconcile-availability-novelty)
+            [[ $# -eq 0 ]] || med_die 'production reconcile-availability-novelty akzeptiert keine weiteren Argumente.'
+            command_production_reconcile_availability_novelty
+            ;;
         status)
             ensure_runtime_initialized; check_base_commands
             [[ -f $PRODUCTION_DIR/metadata ]] || med_die 'Produktion wurde noch nicht deployt.'

@@ -5,6 +5,8 @@ Die vollständige Betriebsanleitung steht in [`../docs/DEPLOYMENT.md`](../docs/D
 Nach der einmaligen Initialisierung lauten die wichtigsten Befehle:
 
 ```bash
+# Ausschließlich für den einmaligen, dokumentierten Vor-033-Zustand aus Issue #291:
+./deploy/mise-en-dice.sh production reconcile-availability-novelty
 ./deploy/mise-en-dice.sh production deploy main
 ./deploy/mise-en-dice.sh acceptance deploy main
 ./deploy/mise-en-dice.sh preview deploy feat/example-branch
