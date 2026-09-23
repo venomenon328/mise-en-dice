@@ -17,6 +17,8 @@ Nach dem Aufbau ist die laufende PostgreSQL-Datenbank die Quelle der Wahrheit f�
 
 Spätere, bewusst auszuliefernde Datenänderungen können als neue explizite Changesets ergänzt werden, müssen aber von gewöhnlicher redaktioneller Pflege unterscheidbar bleiben.
 
+Präzisierung durch Issue #293: Redaktionelle Inhalte des laufenden Bestands dürfen kein Deployment-Gate sein. Historische Content-Fingerprints und expected-old-value-Prüfungen sind für neue Katalogmigrationen verboten. Freigegebene Zielwrites werden nur innerhalb ihres tatsächlichen Schreibumfangs angewandt; Fremdfelder bleiben erhalten. Strukturelle Integritätsprüfungen bleiben verpflichtend. Die vollständigen Regeln stehen in [CATALOG_MIGRATIONS.md](../CATALOG_MIGRATIONS.md).
+
 Die operative Datenbank wird regelmäßig gesichert. Ein späterer Export in ein reviewbares Format kann Transport, Analyse oder die bewusste Erstellung einer neuen Baseline unterstützen, ersetzt aber kein Datenbank-Backup.
 
 ## Konsequenzen

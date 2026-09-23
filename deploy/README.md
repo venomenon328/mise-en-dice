@@ -7,6 +7,8 @@ Nach der einmaligen Initialisierung lauten die wichtigsten Befehle:
 ```bash
 # Ausschließlich für den einmaligen, dokumentierten Vor-033-Zustand aus Issue #291:
 ./deploy/mise-en-dice.sh production reconcile-availability-novelty
+# Ausschließlich für den aktuellen Nach-036-Incident aus #293:
+./deploy/mise-en-dice.sh production reconcile-editorial-upgrade
 ./deploy/mise-en-dice.sh production deploy main
 ./deploy/mise-en-dice.sh acceptance deploy main
 ./deploy/mise-en-dice.sh preview deploy feat/example-branch

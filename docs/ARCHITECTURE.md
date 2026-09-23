@@ -230,6 +230,8 @@ Für die Katalog-Baseline wird weder `runAlways` noch ein anderer Mechanismus ve
 
 Nach Einführung der Webverwaltung ist die laufende PostgreSQL-Datenbank die Quelle der Wahrheit für redaktionelle Katalogänderungen. Die Baseline bleibt der Startstand für neue Installationen, nicht eine ständig erneut angewandte Sollkopie.
 
+Die [Katalogmigrationsregeln](CATALOG_MIGRATIONS.md) verbieten historische redaktionelle Vorzustände als Deployment-Gate. Bewusst ausgelieferte Zielwrites und echte Struktur-/Integritätsprüfungen bleiben zulässig; der Rest des operativen Bestands bleibt erhalten.
+
 Regelmäßige Datenbank-Backups sind deshalb verpflichtender Bestandteil des Betriebs. Ein späterer JSON- oder CSV-Export kann Review, Transport und bewusste Rückführung geeigneter Änderungen in eine neue Baseline unterstützen, ersetzt aber kein Backup.
 
 ## 8. Webverwaltung

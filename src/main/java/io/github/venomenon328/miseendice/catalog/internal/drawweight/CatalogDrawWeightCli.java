@@ -4,7 +4,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Repository tool for validating issue-288 review inputs and deriving its guarded migration. */
+/** Repository tool for validating draw-weight reviews and rendering new target-only migrations. */
 public final class CatalogDrawWeightCli {
 
     private CatalogDrawWeightCli() {

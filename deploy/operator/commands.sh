@@ -331,6 +331,10 @@ handle_production() {
     shift || true
     case "$action" in
         deploy) command_production_deploy "$@" ;;
+        reconcile-editorial-upgrade)
+            [[ $# -eq 0 ]] || med_die 'production reconcile-editorial-upgrade akzeptiert keine weiteren Argumente.'
+            command_production_reconcile_editorial_upgrade
+            ;;
         reconcile-availability-novelty)
             [[ $# -eq 0 ]] || med_die 'production reconcile-availability-novelty akzeptiert keine weiteren Argumente.'
             command_production_reconcile_availability_novelty

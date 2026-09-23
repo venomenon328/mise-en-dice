@@ -38,6 +38,8 @@ Die Dokumente erfüllen unterschiedliche Zwecke und sollten nicht gegeneinander 
 - [`analysis/final-catalog-snapshot-contract-20260813.md`](analysis/final-catalog-snapshot-contract-20260813.md): Normalisierung, Upgrade-Schutz, Endfingerprint und Dimensionsabdeckung aus Issue #52
 - [`analysis/generator-laboratory-implementation-notes.md`](analysis/generator-laboratory-implementation-notes.md): historische Implementierungsgrenze des damaligen Preview-/Replay-Kerns aus Phase 9E1; der aktuelle Vertrag steht in ADR 0009
 
+- [`CATALOG_MIGRATIONS.md`](CATALOG_MIGRATIONS.md): verbindliche Prävention redaktioneller Deployment-Gates, tatsächliche Zielwrite-Grenzen und strukturelle Integrität ab #293.
+
 ## Architektur, Betrieb und Umsetzung
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): verbindliche Zielarchitektur und Modulgrenzen

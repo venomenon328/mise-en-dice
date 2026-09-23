@@ -134,6 +134,7 @@ jobs:
           shellcheck -x -S warning deploy/lib.sh deploy/mise-en-dice.sh deploy/tests/*.sh
           bash deploy/tests/lib-test.sh
           bash deploy/tests/runtime-test.sh
+          bash deploy/tests/editorial-upgrade-test.sh
 
       - name: Configure isolated CI runtime
         if: ${{ needs.classify.outputs.mode != 'skip' }}
@@ -305,6 +306,38 @@ jobs:
           backups_after_second=$(find "$MISE_EN_DICE_DEPLOY_ROOT/backups" -maxdepth 1 -type f \
             -name 'mise-en-dice-*.dump' | wc -l)
           test "$backups_after_second" -eq "$backups_after"
+
+          # Reproduce the real next incident: 033 MARK_RAN, 034-036 EXECUTED,
+          # EGG renamed before the name-driven 036 prefix cleanup.
+          production_psql --command "UPDATE ingredient_concept SET display_name='Hühnerei' WHERE code='EGG';"
+          for migration in \
+            schema/020-remove-generator-replay-result.sql \
+            catalog/034-austria-curation.sql \
+            schema/021-culinary-country-subdivision-codes.sql \
+            reference/003-england-culinary-country.sql \
+            catalog/035-england-curation.sql \
+            catalog/036-availability-note-prefix-cleanup.sql; do
+            migration_file="src/main/resources/db/changelog/$migration"
+            identity=$(sed -n 's/^--changeset \([^ ]*\).*/\1/p' "$migration_file")
+            author=${identity%%:*}
+            changeset=${identity#*:}
+            {
+              echo 'BEGIN;'
+              cat "$migration_file"
+              printf "\nINSERT INTO databasechangelog (id,author,filename,dateexecuted,orderexecuted,exectype,description) SELECT '%s','%s','db/changelog/%s',current_timestamp,max(orderexecuted)+1,'EXECUTED','sql' FROM databasechangelog;\nCOMMIT;\n" \
+                "$changeset" "$author" "$migration"
+            } | production_psql
+          done
+          reconciliation_293=$(./deploy/mise-en-dice.sh production reconcile-editorial-upgrade)
+          printf '%s\n' "$reconciliation_293" | grep -qx 'RECONCILIATION=applied'
+          backup_293=$(printf '%s\n' "$reconciliation_293" | sed -n 's/^BACKUP_FILE=//p')
+          test -s "$backup_293"
+          test -s "$backup_293.sha256"
+          count_after_293=$(find "$MISE_EN_DICE_DEPLOY_ROOT/backups" -maxdepth 1 -name '*.dump' | wc -l)
+          repeat_293=$(./deploy/mise-en-dice.sh production reconcile-editorial-upgrade)
+          printf '%s\n' "$repeat_293" | grep -qx 'RECONCILIATION=already-applied'
+          test "$(find "$MISE_EN_DICE_DEPLOY_ROOT/backups" -maxdepth 1 -name '*.dump' | wc -l)" = "$count_after_293"
+          test "$(production_psql --tuples-only --no-align --quiet --command "SELECT display_name FROM ingredient_concept WHERE code='EGG';" | tr -d '\r\n')" = 'Hühnerei'
 
           ./deploy/mise-en-dice.sh production deploy "$GITHUB_SHA"
           test "$(production_psql --tuples-only --no-align --quiet --command "

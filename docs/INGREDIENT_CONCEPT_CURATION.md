@@ -392,6 +392,8 @@ Reine Strukturknoten erhalten ausdrücklich `NOT_APPLICABLE` statt erfundener Be
 
 Eine Freigabe muss angeben, ob sie Rating, Notiz oder beides umfasst. Ein freigegebener Referenzanker schützt seine Stufe, darf aber nicht als aktuelle Händler- oder Bestandsprüfung erscheinen und verleiht einem nachträglich redigierten Notiztext keinen stillschweigenden Freigabestatus.
 
+Für die technische Auslieferung gilt zusätzlich [CATALOG_MIGRATIONS.md](CATALOG_MIGRATIONS.md): Diese fachlichen Freigaben erfolgen vor Merge; historische redaktionelle Werte dürfen spätere Deployments nicht blockieren. Nur explizite Zielwrites werden gesetzt, echte Integritätsprüfungen bleiben erhalten.
+
 ## 8. Änderungs- und Revalidierungsregeln
 
 Eine bestehende Entscheidung wird erneut geöffnet, wenn:

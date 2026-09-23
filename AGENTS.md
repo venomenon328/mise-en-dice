@@ -22,7 +22,7 @@ Namens- und Aliasarbeit an Zutatenkonzepten folgt zusätzlich vollständig [INGR
 
 ## Unmittelbar wichtige Schutzgrenzen
 
-PostgreSQL, Liquibase und explizites JDBC/SQL bleiben die technische Grundlage. Veröffentlichte Changesets sind append-only; keine Ersatztests gegen H2 und kein ungefragter ORM-/Datenbankwechsel. Modulgrenzen sowie Versions- und Integritätsverträge aus den Fach-/Architekturquellen beachten.
+PostgreSQL, Liquibase und explizites JDBC/SQL bleiben die technische Grundlage. Für neue Katalogmigrationen gelten die [Regeln ohne redaktionelle Deployment-Gates](docs/CATALOG_MIGRATIONS.md): keine historischen Content-Fingerprints oder Altwert-Guards, nur tatsächliche Zielwrites und strukturelle Integrität. Veröffentlichte Changesets sind append-only; keine Ersatztests gegen H2 und kein ungefragter ORM-/Datenbankwechsel. Modulgrenzen sowie Versions- und Integritätsverträge aus den Fach-/Architekturquellen beachten.
 
 Entwicklung und automatisierte Tests dürfen keine echten Discord- oder OpenAI-Verbindungen verwenden. Echter OpenAI-Zugriff bleibt ausschließlich im explizit aktivierten Produktivbetrieb zulässig; [ADR 0008](docs/adr/0008-production-only-openai-access.md) ist verbindlich. Vorhandene Schlüssel schaffen keine Ausnahme. Keine produktiven Datenzugriffe, Deployments oder Benachrichtigungen aus einer bloßen Entwicklungsfreigabe ableiten.
 

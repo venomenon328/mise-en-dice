@@ -10,7 +10,7 @@ Bei Produkt-, Architektur-, Persistenz- oder Schnittstellenänderungen [VISION.m
 | --- | --- |
 | Länder-/Ergänzungsrunde nach #172 | Nach dem dort dokumentierten Einführungspunkt: aktueller vollständiger Body des zugehörigen Runden-Issues, aktueller #172-Tracker und [Länderworkflow](CULINARY_CATALOG_WORKFLOW.md); dessen Phasenmatrix bindet die weiteren Pflichtquellen ein. Bis dahin gilt der im Tracker bezeichnete bisherige Ablauf. |
 | Konzeptanlage oder wesentliche Produktformänderung | [Konzeptkuratierung](INGREDIENT_CONCEPT_CURATION.md), [Availability und Kochungewöhnlichkeit](AVAILABILITY_AND_COOKING_NOVELTY.md) |
-| Katalogdaten, verfügbare operative Bestände und Migrationen | Relevante ADRs einschließlich ADR 0003 sowie aktuelle freigegebene Änderungen, nicht nur historische Baselines |
+| Katalogdaten, verfügbare operative Bestände und Migrationen | [Katalogmigrationen](CATALOG_MIGRATIONS.md) vollständig, relevante ADRs einschließlich ADR 0003 sowie aktuelle freigegebene Änderungen, nicht nur historische Baselines |
 | Generator/Kuratierung | [Generator](CANDIDATE_GENERATOR.md), [Datenbereitschaft](CANDIDATE_GENERATOR_DATA_READINESS.md), [Kuratierung](CURATION_AND_CHALLENGE_SELECTION.md), relevante ADRs |
 | Teilnehmer, Voting, Challenge-Ergebnisse, Karten oder Discord-Lookup | Die jeweils zuständigen vollständigen Fachverträge aus dem Dokumentindex |
 | CI-, PostgreSQL-Test- oder Migrations-Testinfrastruktur | [ADR 0004](adr/0004-postgresql-only-persistence-tests.md), [ADR 0011](adr/0011-risk-based-ci-verification.md), betroffene Workflows/Testhilfen und aktuelles Paket-Issue |
