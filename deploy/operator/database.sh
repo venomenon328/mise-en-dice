@@ -204,11 +204,25 @@ apply_production_availability_novelty_reconciliation() {
         || med_die 'Das #291-Reconciliation-Manifest stimmt nicht mit dem freigegebenen Stand überein.'
 
     load_compose_env "$instance_dir"
+    local postgres_container container_manifest container_manifest_sha reconciliation_status
+    postgres_container=$(compose_instance "$instance_dir" ps -q postgres)
+    [[ -n $postgres_container ]] || med_die 'Die PostgreSQL-Instanz läuft nicht; Reconciliation abgebrochen.'
+    container_manifest="/tmp/mise-en-dice-issue-291-$$-${RANDOM}.tsv"
+    docker cp "$manifest" "$postgres_container:$container_manifest" >/dev/null \
+        || med_die 'Das #291-Reconciliation-Manifest konnte nicht in den PostgreSQL-Container übertragen werden.'
+    if ! container_manifest_sha=$(docker exec "$postgres_container" sha256sum "$container_manifest" | awk '{print $1}'); then
+        docker exec "$postgres_container" rm -f -- "$container_manifest" >/dev/null 2>&1 || true
+        med_die 'Die Prüfsumme des übertragenen #291-Reconciliation-Manifests konnte nicht ermittelt werden.'
+    fi
+    if [[ $container_manifest_sha != "$expected_manifest_sha" ]]; then
+        docker exec "$postgres_container" rm -f -- "$container_manifest" >/dev/null 2>&1 || true
+        med_die 'Das übertragene #291-Reconciliation-Manifest hat eine unerwartete Prüfsumme.'
+    fi
+
+    reconciliation_status=0
     {
         cat "$setup_sql"
-        printf '%s\n' "COPY issue_291_availability_novelty_source FROM STDIN WITH (FORMAT csv, HEADER true, DELIMITER E'\\t', ENCODING 'UTF8');"
-        cat "$manifest"
-        printf '%s\n' '\.'
+        printf '%s\n' "\\copy issue_291_availability_novelty_source FROM '$container_manifest' WITH (FORMAT csv, HEADER true, DELIMITER E'\\t', ENCODING 'UTF8')"
         cat "$apply_sql"
     } | compose_instance "$instance_dir" exec -T \
         -e "PGPASSWORD=$MISE_EN_DICE_DB_PASSWORD" \
@@ -217,5 +231,8 @@ apply_production_availability_novelty_reconciliation() {
         --username="$MISE_EN_DICE_DB_USERNAME" \
         --dbname="$MISE_EN_DICE_DB_NAME" \
         --no-psqlrc \
-        --set ON_ERROR_STOP=1
+        --set ON_ERROR_STOP=1 || reconciliation_status=$?
+    docker exec "$postgres_container" rm -f -- "$container_manifest" >/dev/null 2>&1 \
+        || med_warn "Temporäres #291-Reconciliation-Manifest konnte nicht entfernt werden: $container_manifest"
+    return "$reconciliation_status"
 }

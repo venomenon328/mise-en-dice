@@ -192,6 +192,9 @@ class AvailabilityNoveltyProductionReconciliationIntegrationTest {
             migrateToImmediatePredecessor(connection);
             var jdbc = jdbc(connection);
             jdbc.execute(mutation);
+            if (!connection.getAutoCommit()) {
+                connection.commit();
+            }
             String conceptsBefore = jsonAggregate(jdbc, "ingredient_concept");
             String availabilityBefore = jsonAggregate(jdbc, "ingredient_availability");
 
