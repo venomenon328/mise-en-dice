@@ -233,7 +233,20 @@ class EditorialUpgradeProductionReconciliationIntegrationTest {
                         """);
             }
             if (drift && part[0].endsWith("040-apply.sql")) {
-                execute(c,"insert into ingredient_culinary_country select id,'GB-SCT' from ingredient_concept where code='OATS' on conflict do nothing");
+                execute(c,"""
+                        insert into ingredient_culinary_country select id,'GB-SCT' from ingredient_concept
+                        where code='OATS' on conflict do nothing;
+                        create temp table issue_293_scotland_version as
+                        select id,version from ingredient_concept where code='OATS';
+                        """);
+            }
+            if (drift && part[0].endsWith("041-apply.sql")) {
+                execute(c,"""
+                        insert into ingredient_culinary_country select id,'FI' from ingredient_concept
+                        where code='RYE_BREAD' on conflict do nothing;
+                        create temp table issue_293_finland_version as
+                        select id,version from ingredient_concept where code='RYE_BREAD';
+                        """);
             }
             if (drift && part[0].endsWith("042-apply.sql")) {
                 execute(c,"""
@@ -265,6 +278,12 @@ class EditorialUpgradeProductionReconciliationIntegrationTest {
                 left join ingredient_availability a on a.ingredient_concept_id=c.id and a.participant_id=p.id
                 where row(a.availability_level,a.curator_note) is distinct from row(t.level,t.note)
                 """,Integer.class)).isZero();
+            }
+            if (drift && part[0].endsWith("040-apply.sql")) {
+                assertThat(jdbc(c).queryForObject("select count(*) from ingredient_concept c join issue_293_scotland_version v using(id) where c.version<>v.version",Integer.class)).isZero();
+            }
+            if (drift && part[0].endsWith("041-apply.sql")) {
+                assertThat(jdbc(c).queryForObject("select count(*) from ingredient_concept c join issue_293_finland_version v using(id) where c.version<>v.version",Integer.class)).isZero();
             }
             if (drift && part[0].endsWith("042-apply.sql")) {
                 assertThat(jdbc(c).queryForObject("select count(*) from ingredient_concept c join issue_293_d3_versions v using(id) where c.version<>v.version",Integer.class)).isZero();

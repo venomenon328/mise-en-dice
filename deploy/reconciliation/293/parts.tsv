@@ -7,9 +7,9 @@ src/main/resources/db/changelog/catalog/039-availability-r3-corrections.sql	1	13
 deploy/reconciliation/293/039-apply.sql	1	64	72309092f8db7659baaa1586ba0d583256184d6df5c827fcdba6c2efef92a397
 deploy/reconciliation/293/004-reference.sql	1	3	dc8349e7ef9ad1bdc6a0888fcd82b02c114576f40493693eb4e7fc168e50b7ce
 src/main/resources/db/changelog/catalog/040-scotland-curation.sql	1	154	4b2a34b139adfec81070855074f41fafa7bf2886b622534cd2bb6c4072ba1653
-deploy/reconciliation/293/040-apply.sql	1	153	d791963c655a0d42af3eadc3dd7f714a0ceb9af84307a46f6ba587771fda091d
+deploy/reconciliation/293/040-apply.sql	1	186	700b9db2a44b379d6e4d7e9628c10525c4f4b94c6ac761c7c1c86f3a1baba1ad
 src/main/resources/db/changelog/catalog/041-finland-curation.sql	1	125	60f13af95465f827273fb27585b94684d9e1c9f4a4348dd28278a1955fdc529b
-deploy/reconciliation/293/041-apply.sql	1	148	3054871245b89b794432640abdded8933e586abac74f5b577799511cb154e9a4
+deploy/reconciliation/293/041-apply.sql	1	199	a51c37899494553613030d8cd8af7d470a174f68ffa7980060e38c6f79405bf8
 src/main/resources/db/changelog/catalog/042-d3-approved-country-relations.sql	1	36	c49adcd85faf25d5629f912b03b0624ea9350bd33b07ff4afb56b64b38f45399
 deploy/reconciliation/293/042-apply.sql	1	54	55c010935d901d98660c6fec3dd31ca75f1242d476e14ee9ec425a9ece942b21
 src/main/resources/db/changelog/catalog/043-germany-curation.sql	1	146	fa239d5ace5155ac976380d47a96ec903e54af3e9d1ae484227bd69796bee11e

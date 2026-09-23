@@ -27,8 +27,12 @@ BEGIN
 END;
 $validation$;
 
-CREATE TEMP TABLE scotland_existing_before ON COMMIT DROP AS
-SELECT concept.id, concept.code, concept.version
+CREATE TEMP TABLE scotland_existing_at_start (
+    ingredient_concept_id bigint PRIMARY KEY
+) ON COMMIT DROP;
+
+INSERT INTO scotland_existing_at_start
+SELECT concept.id
 FROM ingredient_concept concept
 JOIN scotland_required_existing required ON required.code = concept.code;
 
@@ -39,6 +43,35 @@ INSERT INTO ingredient_concept (
 SELECT code, display_name, true, true, challenge_specificity,
        base_draw_weight, novelty_level, curator_note
 FROM scotland_new_concept;
+
+CREATE TEMP TABLE scotland_existing_changes (
+    ingredient_concept_id bigint PRIMARY KEY
+) ON COMMIT DROP;
+
+INSERT INTO scotland_existing_changes
+SELECT existing.ingredient_concept_id
+FROM scotland_refinement target
+JOIN ingredient_concept parent ON parent.code = target.parent_code
+JOIN ingredient_concept child ON child.code = target.child_code
+JOIN scotland_existing_at_start existing
+  ON existing.ingredient_concept_id IN (parent.id, child.id)
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM ingredient_refinement relation
+    WHERE relation.parent_concept_id = parent.id
+      AND relation.child_concept_id = child.id
+)
+UNION
+SELECT existing.ingredient_concept_id
+FROM scotland_existing_country target
+JOIN ingredient_concept concept ON concept.code = target.code
+JOIN scotland_existing_at_start existing ON existing.ingredient_concept_id = concept.id
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM ingredient_culinary_country country
+    WHERE country.ingredient_concept_id = concept.id
+      AND country.country_code = 'GB-SCT'
+);
 
 INSERT INTO ingredient_refinement (parent_concept_id, child_concept_id)
 SELECT parent.id, child.id
@@ -147,7 +180,7 @@ ON CONFLICT (ingredient_concept_id, country_code) DO NOTHING;
 
 UPDATE ingredient_concept concept
 SET version = concept.version + 1
-FROM scotland_existing_before old
-WHERE concept.id = old.id;
+FROM scotland_existing_changes changes
+WHERE concept.id = changes.ingredient_concept_id;
 
 -- No season rows: all approved concepts use the default multiplier 1.0 in every month.

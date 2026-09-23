@@ -32,8 +32,8 @@ PostgreSQL-/Operatornachweis erneut ausführen. Dieser Plan wird nicht um künft
 | 038 | Nur ein technisch möglicher einstelliger Uppercase-Ersatz wird angewandt. Nicht anwendbare Unicode-Zeichen bleiben erhalten. |
 | 039 | Zielpaare werden unabhängig von Source-Paaren geschrieben, fehlende Zielzeilen angelegt. Zielmenge und tatsächliche Writes werden geprüft. |
 | reference 004 | Stabiles `GB-SCT` wird angelegt, ein vorhandener Referenzcode bleibt erhalten. |
-| 040 | Referenzen und neue Codeidentitäten bleiben geschützt. Bereits vorhandene Länder-/Graphrelationen werden idempotent behandelt; Länderanzeigenamen sind kein Gate. |
-| 041 | Die zwei historischen Graphzustandsprüfungen entfallen. Nur beauftragte Kante löschen beziehungsweise Zielkanten ergänzen; Graphtrigger bleibt aktiv. Länderrelationen sind idempotent. |
+| 040 | Referenzen und neue Codeidentitäten bleiben geschützt. Bereits vorhandene Länder-/Graphrelationen werden idempotent behandelt; Länderanzeigenamen sind kein Gate. Bestehende Aggregate erhöhen ihre Version nur bei einer tatsächlich neu geschriebenen Zielrelation. |
+| 041 | Die zwei historischen Graphzustandsprüfungen entfallen. Nur beauftragte Kante löschen beziehungsweise Zielkanten ergänzen; Graphtrigger bleibt aktiv. Länderrelationen sind idempotent; bestehende Aggregate erhöhen ihre Version nur bei tatsächlich geänderter Notiz, Kante oder Länderrelation. |
 | 042 | Existierende freigegebene Relationen sind No-op, einschließlich unveränderter Aggregatversion. Pflichtcodes und interne Zielmenge bleiben geprüft. |
 | 043 | HERRING-/TEA-Zielmetadaten werden unabhängig vom Source-Paar gesetzt; Sparse-Availability wird vervollständigt. Alle Neuaufnahme-/Referenz-/Kollisionsprüfungen bleiben. |
 | 044 | Nur die 37 tatsächlich umbenannten Konzepte und additive Zielaliasse werden geschrieben. Unverändert reviewte Namen und zusätzliche operative Aliasse bleiben erhalten. Ein Zielalias, der bereits eigener kanonischer Name ist, benötigt keine redundante Aliaszeile. Ein zum Zielnamen promovierter eigener Alias entfällt zur Wahrung der Normalisierung. Zielkollisionen und Zielnormalisierung bleiben geprüft. |
