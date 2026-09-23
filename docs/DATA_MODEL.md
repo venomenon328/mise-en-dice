@@ -1,6 +1,6 @@
 # Datenmodell
 
-Stand: 9. September 2026
+Stand: 23. September 2026
 
 Dieses Dokument beschreibt die fachlichen Entscheidungen hinter der PostgreSQL-Struktur von Mise en Dice. Die konkrete Struktur liegt als explizit geordnete Liquibase-Changesets vor:
 
@@ -173,6 +173,16 @@ G/T-Stufen, Status, Namen, Gewichten und Konzeptnotizen. Unbekannte Deltas schei
 IDs, Zeitstempel und Versionszähler sind keine fachlichen Fingerprintwerte; andere Teilnehmer bleiben erhalten.
 Die 860 Aggregatversionen werden einmal erhöht, damit vor der Migration geöffnete Editoren einen Konflikt erhalten.
 Nach erfolgreicher Liquibase-Ausführung bleibt wieder die operative Datenbank autoritativ.
+
+Diese Vollaggregatprüfung beschreibt das unverändert veröffentlichte Changeset `033`, ist aber kein allgemeines
+Deployment-Gate mehr. Für den einmaligen, real beobachteten Produktionsübergang aus dem unmittelbaren Vor-`033`-Stand
+verwendet der Operator den versionierten Reconciliation-Pfad aus Issue #291: Er prüft Liquibase-Reihenfolge,
+Reviewcode- und Teilnehmerexistenz, setzt ausschließlich Novelty, Georgia-/Tobias-Availability und deren Notizen,
+erhöht dieselben 860 Aggregatversionen einmal und markiert `033` anschließend als bewusst abgehandelt. Operative
+Änderungen an Namen, Status, Gewichten, Konzeptnotizen, Rollen, Flags, Dimensionen, Ländern, Saison, Graph sowie Daten
+weiterer Teilnehmer und zusätzliche irrelevante Datensätze werden dadurch weder zum Blocker noch überschrieben.
+Damit bleibt ADR 0003 maßgeblich: Außerhalb des ausdrücklich ausgelieferten Schreibumfangs ist die laufende
+PostgreSQL-Datenbank die Quelle der Wahrheit.
 
 Availability-Notizen gehören zur Katalogpflege. Die schmale öffentliche `/zutat`-Lookup-Projektion
 transportiert ausschließlich die aktuell gepflegten individuellen Georgia-/Tobias-Notizen zur sicheren Darstellung; sie
@@ -488,6 +498,12 @@ Sie bildet den bestätigten Produktionsstand
 `catalog/030-veal-concept-expansion.sql` aus denselben veröffentlichten Includes ab. Sie enthält weder einen
 Produktionsdump noch kopierte Changesets. PostgreSQL 17 prüft ihren Upgradepfad zum aktuellen Master samt
 idempotentem zweiten Master-Lauf; der vollständige Aufbau einer leeren Datenbank bleibt ein eigenständiger Test.
+
+Der spezielle Incidentpfad aus Issue #291 ergänzt diesen automatischen Horizont, ohne die Production-Baseline auf
+einen nicht bestätigten Stand vorwegzunehmen: Die Baseline wird zunächst bis zum unmittelbaren Vor-`033`-Stand
+migriert, repräsentative operative Änderungen innerhalb und außerhalb des tatsächlichen `033`-Schreibumfangs werden
+eingebracht, anschließend laufen Reconciliation und der reguläre Master. Erst nach einem real bestätigten
+Produktionsdeployment wird die versionierte Production-Baseline gemäß ADR 0011 separat fortgeschrieben.
 
 Die einmalige Finalisierung in `catalog/016-final-catalog-snapshot.sql` bildet dabei eine bewusst enge Upgrade-Brücke: Als Ausgangszustand sind nur die unberührte Repository-Baseline und die dokumentierte Produktions-Fixture vom 13. August 2026 zulässig. Ein kanonischer, codebasierter Precondition-Fingerprint schließt technische IDs, Zeitstempel und Optimistic-Locking-Versionen aus und lehnt jeden anderen fachlichen Zustand vor dem ersten Schreibzugriff sichtbar ab. Beide zulässigen Pfade ergeben denselben normalisierten SHA-256-Snapshot `26c62af11e8b5c41bd93e29960799d2602b322d551afa8d0e1c68d81615e1a52`; bestehende IDs bleiben beim Upgrade erhalten. Nach der einmaligen Ausführung ist wieder die laufende Datenbank redaktionelle Quelle der Wahrheit.
 

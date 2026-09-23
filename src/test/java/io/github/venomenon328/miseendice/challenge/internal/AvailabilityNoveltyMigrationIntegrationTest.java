@@ -28,8 +28,6 @@ import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -147,34 +145,13 @@ class AvailabilityNoveltyMigrationIntegrationTest {
         }
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "update ingredient_concept set code = 'TEST_RENAMED' where id = (select min(id) from ingredient_concept)",
-            "DELETE_CONCEPT",
-            "insert into ingredient_concept (code, display_name, challenge_specificity, curator_note) values ('TEST_NEW', 'Technical new concept', 'SPECIFIC', 'Technical note.')",
-            "update ingredient_concept set active = not active where id = (select min(id) from ingredient_concept)",
-            "update ingredient_concept set base_draw_weight = base_draw_weight + 1 where id = (select min(id) from ingredient_concept)",
-            "update ingredient_availability set availability_level = case when availability_level = 'EASY' then 'DIFFICULT' else 'EASY' end where ingredient_concept_id = (select min(ingredient_concept_id) from ingredient_availability)",
-            "update ingredient_availability set curator_note = 'Unreviewed note.' where ingredient_concept_id = (select min(ingredient_concept_id) from ingredient_availability)"
-    })
-    void rejectsUnknownDeltasBeforeAnyEditorialWrite(String mutation) throws Exception {
+    @Test
+    void publishedHistoricalChangesetRetainsItsOriginalFingerprintGuard() throws Exception {
         try (var temporaryDatabase = newDatabase(); Connection connection = temporaryDatabase.openConnection()) {
             migrate(connection, BEFORE);
             migrate(connection, "db/changelog/schema/019-availability-curator-note.sql");
             var database = new JdbcTemplate(new org.springframework.jdbc.datasource.SingleConnectionDataSource(connection, true));
-            if (mutation.equals("DELETE_CONCEPT")) {
-                long removedId = database.queryForObject("select max(id) from ingredient_concept", Long.class);
-                database.update("delete from ingredient_refinement where parent_concept_id = ? or child_concept_id = ?",
-                        removedId, removedId);
-                for (String table : List.of("exclusion_rule_target", "ingredient_culinary_country",
-                        "ingredient_availability", "ingredient_functional_role", "ingredient_culinary_flag",
-                        "ingredient_culinary_dimension", "ingredient_seasonality")) {
-                    database.update("delete from " + table + " where ingredient_concept_id = ?", removedId);
-                }
-                database.update("delete from ingredient_concept where id = ?", removedId);
-            } else {
-                database.execute(mutation);
-            }
+            database.update("update ingredient_concept set curator_note = 'Historical drift.' where code = 'CHAMPIGNON'");
             var concepts = database.queryForList("select to_jsonb(ic)::text from ingredient_concept ic order by id", String.class);
             var availability = database.queryForList("select to_jsonb(a)::text from ingredient_availability a order by ingredient_concept_id, participant_id", String.class);
             assertThatThrownBy(() -> migrate(connection, MASTER)).hasStackTraceContaining("Issue #189:");

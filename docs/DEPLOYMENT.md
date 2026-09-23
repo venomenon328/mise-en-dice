@@ -1,6 +1,6 @@
 # Deployment und Branch-Previews
 
-Stand: 9. September 2026
+Stand: 23. September 2026
 
 Dieses Dokument beschreibt den Betrieb von Mise en Dice auf einem einzelnen Debian-/Docker-VPS. Der bestehende Gridwords-Stack bleibt ein vollständig getrenntes Compose-Projekt. Mise en Dice kennt weder dessen Dateien noch Container, Netzwerke oder Volumes.
 
@@ -295,6 +295,48 @@ Statusausgabe noch Logs.
 Vor dem eigentlichen Umschalten führt der Operator einen vollständigen Smoke-Test des gebauten Images mit einer frischen temporären PostgreSQL-Datenbank aus. Existiert bereits eine Produktion, wird danach automatisch ein validiertes Backup erzeugt. Erst dann wird das feste Projekt `med-production` aktualisiert.
 
 Bei einem fehlgeschlagenen Healthcheck werden Logs ausgegeben und der vorherige App-Stand wieder gestartet. Eine bereits ausgeführte Datenbankmigration kann dabei bewusst nicht automatisch zurückgerollt werden. Das wäre keine Sicherheitsfunktion, sondern Datenbankroulette mit hübscher Konsolenausgabe. Deshalb gibt es vor dem Wechsel das frische Smoke-System und das Produktionsbackup.
+
+### 6.2 Einmalige Reconciliation vor Changeset 033
+
+Für den in Issue #291 dokumentierten historischen Produktionsübergang gibt es genau einen eng begrenzten
+Kompatibilitätsbefehl. Er ist ausschließlich zulässig, wenn die Produktionsdatenbank unmittelbar vor
+`033-availability-novelty-final-review` steht:
+
+```bash
+cd /opt/mise-en-dice/repository
+git switch main
+git pull --ff-only
+export MISE_EN_DICE_DEPLOY_ROOT=/opt/mise-en-dice/runtime
+
+./deploy/mise-en-dice.sh production reconcile-availability-novelty
+./deploy/mise-en-dice.sh production deploy main
+./deploy/mise-en-dice.sh production status
+```
+
+Der Reconciliation-Befehl verwendet den normalen Operator-Lock und ausschließlich das vorhandene Compose-Projekt
+`med-production` mit dessen PostgreSQL-Volume. Er klassifiziert zuerst die Liquibase-Historie. Nur beim exakt
+erkannten Vor-`033`-Stand stoppt er die App, lässt PostgreSQL weiterlaufen, erzeugt und validiert mit dem normalen
+Backupmechanismus ein Produktionsbackup und führt anschließend eine einzelne Transaktion aus. Diese Transaktion:
+
+- verlangt alle 860 reviewten Konzeptcodes sowie die Teilnehmer `GEORGIA` und `TOBIAS`,
+- setzt nur `novelty_level`, die Georgia-/Tobias-Availability samt freigegebenen Notizen und die zugehörige einmalige
+  Aggregatversionserhöhung aus dem versionierten, per SHA-256 gebundenen Reviewmanifest,
+- lässt alle anderen Konzeptfelder, Relationen, Länder, Saisonwerte, weitere Teilnehmer und zusätzliche operative
+  Daten unverändert,
+- markiert genau Changeset `033` als `MARK_RAN`, damit der anschließende normale Masterlauf es überspringt und alle
+  späteren Changesets regulär ausführt.
+
+Ein fehlender Pflichtcode oder Teilnehmer, ein bereits vorausgelaufenes späteres Changeset, eine aktive
+Liquibase-Sperre oder ein anderer unbekannter Zwischenzustand beendet den Befehl vor der Fachschreibung. Nach einer
+erfolgreichen Reconciliation bleibt die App absichtlich gestoppt; der unmittelbar folgende normale
+`production deploy main` führt Smoke, Backup, Mastermigration und Healthcheck über den üblichen Pfad aus. Ist `033`
+bereits mit der erwarteten Identität in der Liquibase-Historie vorhanden, endet der Befehl ohne Backup und ohne
+Fachschreibvorgang als sicherer No-op.
+
+Der Befehl ist kein allgemeines Migrationswerkzeug und kein SQL-Zugang. Er darf insbesondere nicht verwendet werden,
+um beliebige Changesets zu überspringen oder unbekannte Produktionszustände zu reparieren. Ein echter
+Produktionslauf erfolgt erst als eigener Betriebsauftrag nach Merge; Entwicklung und CI verwenden ausschließlich
+isolierte PostgreSQL-Datenbanken.
 
 Status, Logs, Stop und Start:
 

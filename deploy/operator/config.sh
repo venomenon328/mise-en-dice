@@ -12,6 +12,7 @@ Einmalig:
 
 Produktion:
   mise-en-dice.sh production deploy [git-ref]
+  mise-en-dice.sh production reconcile-availability-novelty
   mise-en-dice.sh production status
   mise-en-dice.sh production logs [--follow]
   mise-en-dice.sh production stop

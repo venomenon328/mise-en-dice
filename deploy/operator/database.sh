@@ -169,3 +169,53 @@ command_acceptance_sql() {
         --set ON_ERROR_STOP=1 \
         --command "BEGIN TRANSACTION READ ONLY; $sql; ROLLBACK;"
 }
+
+production_availability_novelty_reconciliation_state() {
+    local instance_dir=$1
+    local state_sql="$REPOSITORY_ROOT/deploy/reconciliation/291-availability-novelty-state.sql"
+    [[ -f $state_sql && ! -L $state_sql ]] \
+        || med_die 'Die versionierte #291-Zustandsprüfung fehlt oder ist ein Symlink.'
+    load_compose_env "$instance_dir"
+    compose_instance "$instance_dir" exec -T \
+        -e "PGPASSWORD=$MISE_EN_DICE_DB_PASSWORD" \
+        postgres psql \
+        --host=127.0.0.1 \
+        --username="$MISE_EN_DICE_DB_USERNAME" \
+        --dbname="$MISE_EN_DICE_DB_NAME" \
+        --no-psqlrc \
+        --no-align \
+        --tuples-only \
+        --quiet \
+        --set ON_ERROR_STOP=1 < "$state_sql"
+}
+
+apply_production_availability_novelty_reconciliation() {
+    local instance_dir=$1
+    local reconciliation_dir="$REPOSITORY_ROOT/deploy/reconciliation"
+    local manifest="$REPOSITORY_ROOT/docs/analysis/availability-novelty-final-review-v1-20260907.tsv"
+    local setup_sql="$reconciliation_dir/291-availability-novelty-setup.sql"
+    local apply_sql="$reconciliation_dir/291-availability-novelty-apply.sql"
+    local expected_manifest_sha='41c944942838ae0f58518126f0a79ca4309e99006a9e657cd70f1cd3683599bc'
+
+    [[ -f $manifest && ! -L $manifest ]] || med_die 'Das versionierte #291-Reconciliation-Manifest fehlt oder ist ein Symlink.'
+    [[ -f $setup_sql && ! -L $setup_sql && -f $apply_sql && ! -L $apply_sql ]] \
+        || med_die 'Die versionierten #291-Reconciliation-SQL-Dateien fehlen oder sind Symlinks.'
+    printf '%s  %s\n' "$expected_manifest_sha" "$manifest" | sha256sum --check --status \
+        || med_die 'Das #291-Reconciliation-Manifest stimmt nicht mit dem freigegebenen Stand überein.'
+
+    load_compose_env "$instance_dir"
+    {
+        cat "$setup_sql"
+        printf "\\copy issue_291_availability_novelty_source FROM STDIN WITH (FORMAT csv, HEADER true, DELIMITER E'\\\\t', ENCODING 'UTF8')\n"
+        cat "$manifest"
+        printf '\\.\n'
+        cat "$apply_sql"
+    } | compose_instance "$instance_dir" exec -T \
+        -e "PGPASSWORD=$MISE_EN_DICE_DB_PASSWORD" \
+        postgres psql \
+        --host=127.0.0.1 \
+        --username="$MISE_EN_DICE_DB_USERNAME" \
+        --dbname="$MISE_EN_DICE_DB_NAME" \
+        --no-psqlrc \
+        --set ON_ERROR_STOP=1
+}

@@ -222,7 +222,95 @@ jobs:
             | tr -d '[:space:]')
           test "$marker_count" = "1"
 
+          pre_033_ref=fcd418d6c4f78f2ac348b1b5bc5851150610d966
+          ./deploy/mise-en-dice.sh production deploy "$pre_033_ref"
+
+          production_env="$MISE_EN_DICE_DEPLOY_ROOT/instances/production/compose.env"
+          # shellcheck disable=SC1090
+          source "$production_env"
+          production_psql() {
+            docker compose \
+              --project-name med-production \
+              --env-file "$production_env" \
+              -f deploy/compose.yaml exec -T \
+              -e "PGPASSWORD=$MISE_EN_DICE_DB_PASSWORD" \
+              postgres psql \
+              --host=127.0.0.1 \
+              --username="$MISE_EN_DICE_DB_USERNAME" \
+              --dbname="$MISE_EN_DICE_DB_NAME" \
+              --no-psqlrc \
+              --set ON_ERROR_STOP=1 "$@"
+          }
+
+          docker compose \
+            --project-name med-production \
+            --env-file "$production_env" \
+            -f deploy/compose.yaml stop app
+          production_psql < src/main/resources/db/changelog/schema/019-availability-curator-note.sql
+          production_psql --command "
+            INSERT INTO databasechangelog (
+              id, author, filename, dateexecuted, orderexecuted, exectype, md5sum,
+              description, comments, tag, liquibase, contexts, labels, deployment_id
+            )
+            SELECT '019-availability-curator-note', 'venomenon328',
+              'db/changelog/schema/019-availability-curator-note.sql', current_timestamp,
+              max(orderexecuted) + 1, 'EXECUTED', NULL, 'sql', '', NULL,
+              (array_agg(liquibase ORDER BY orderexecuted DESC))[1], NULL, NULL,
+              (array_agg(deployment_id ORDER BY orderexecuted DESC))[1]
+            FROM databasechangelog;"
+          production_psql --command "
+            UPDATE ingredient_concept
+            SET curator_note = 'ci-preserved-issue-291-field', novelty_level = 5
+            WHERE code = 'CHAMPIGNON';
+            UPDATE ingredient_availability availability
+            SET availability_level = 'DIFFICULT', curator_note = 'ci-overwritten-issue-291-field'
+            FROM ingredient_concept concept, participant participant_row
+            WHERE availability.ingredient_concept_id = concept.id
+              AND availability.participant_id = participant_row.id
+              AND concept.code = 'CHAMPIGNON'
+              AND participant_row.code IN ('GEORGIA', 'TOBIAS');
+            INSERT INTO ingredient_concept (
+              code, display_name, active, random_draw_enabled, challenge_specificity, curator_note
+            ) VALUES (
+              'ISSUE_291_CI_EXTRA', 'Issue 291 CI extra', false, false, 'SPECIFIC',
+              'Additional operational row outside the 033 write scope.'
+            );"
+
+          backups_before=$(find "$MISE_EN_DICE_DEPLOY_ROOT/backups" -maxdepth 1 -type f \
+            -name 'mise-en-dice-*.dump' | wc -l)
+          reconciliation_output=$(./deploy/mise-en-dice.sh production reconcile-availability-novelty)
+          printf '%s\n' "$reconciliation_output" | grep -qx 'RECONCILIATION=applied'
+          reconciliation_backup=$(printf '%s\n' "$reconciliation_output" | sed -n 's/^BACKUP_FILE=//p')
+          test -s "$reconciliation_backup"
+          test -s "$reconciliation_backup.sha256"
+          backups_after=$(find "$MISE_EN_DICE_DEPLOY_ROOT/backups" -maxdepth 1 -type f \
+            -name 'mise-en-dice-*.dump' | wc -l)
+          test "$backups_after" -eq $((backups_before + 1))
+
+          reconciled_state=$(production_psql --tuples-only --no-align --quiet --command "
+            SELECT exectype || ':' || coalesce((
+              SELECT novelty_level::text FROM ingredient_concept WHERE code = 'CHAMPIGNON'
+            ), '')
+            FROM databasechangelog
+            WHERE id = '033-availability-novelty-final-review';" | tr -d '[:space:]')
+          test "$reconciled_state" = 'MARK_RAN:1'
+          preserved_field=$(production_psql --tuples-only --no-align --quiet --command "
+            SELECT curator_note FROM ingredient_concept WHERE code = 'CHAMPIGNON';" | tr -d '\r\n')
+          test "$preserved_field" = 'ci-preserved-issue-291-field'
+          test "$(production_psql --tuples-only --no-align --quiet --command "
+            SELECT count(*) FROM ingredient_concept WHERE code = 'ISSUE_291_CI_EXTRA';" | tr -d '[:space:]')" = 1
+
+          second_reconciliation=$(./deploy/mise-en-dice.sh production reconcile-availability-novelty)
+          printf '%s\n' "$second_reconciliation" | grep -qx 'RECONCILIATION=already-applied'
+          backups_after_second=$(find "$MISE_EN_DICE_DEPLOY_ROOT/backups" -maxdepth 1 -type f \
+            -name 'mise-en-dice-*.dump' | wc -l)
+          test "$backups_after_second" -eq "$backups_after"
+
           ./deploy/mise-en-dice.sh production deploy "$GITHUB_SHA"
+          test "$(production_psql --tuples-only --no-align --quiet --command "
+            SELECT count(*) FROM databasechangelog
+            WHERE id IN ('033-availability-novelty-final-review', '047-catalog-draw-weight-calibration');" \
+            | tr -d '[:space:]')" = 2
           backup_output=$(./deploy/mise-en-dice.sh production backup)
           backup_file=$(printf '%s\n' "$backup_output" | sed -n 's/^BACKUP_FILE=//p')
           test -n "$backup_file"
@@ -238,7 +326,6 @@ jobs:
             | tr -d '[:space:]')
           test "$restored_marker_count" = "0"
 
-          production_env="$MISE_EN_DICE_DEPLOY_ROOT/instances/production/compose.env"
           database_container=$(docker compose \
             --project-name med-production \
             --env-file "$production_env" \
