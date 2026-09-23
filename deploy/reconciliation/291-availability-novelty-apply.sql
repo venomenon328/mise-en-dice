@@ -1,11 +1,11 @@
 CREATE TEMP TABLE issue_291_availability_novelty_target ON COMMIT DROP AS
 SELECT concept_code AS code,
        review_applicability = 'APPLICABLE' AS applicable,
-       NULLIF(cooking_novelty, '')::smallint AS novelty_level,
-       NULLIF(availability_georgia, '') AS georgia_level,
-       NULLIF(availability_tobias, '') AS tobias_level,
-       NULLIF(availability_note_georgia, '') AS georgia_note,
-       NULLIF(availability_note_tobias, '') AS tobias_note
+       CASE WHEN review_applicability = 'APPLICABLE' THEN cooking_novelty::smallint END AS novelty_level,
+       CASE WHEN review_applicability = 'APPLICABLE' THEN availability_georgia END AS georgia_level,
+       CASE WHEN review_applicability = 'APPLICABLE' THEN availability_tobias END AS tobias_level,
+       CASE WHEN review_applicability = 'APPLICABLE' THEN availability_note_georgia END AS georgia_note,
+       CASE WHEN review_applicability = 'APPLICABLE' THEN availability_note_tobias END AS tobias_note
 FROM issue_291_availability_novelty_source;
 
 DO $guard$
@@ -18,7 +18,7 @@ BEGIN
         OR (SELECT count(*) FROM issue_291_availability_novelty_source
             WHERE review_applicability = 'APPLICABLE') <> 853
         OR (SELECT count(*) FROM issue_291_availability_novelty_source
-            WHERE review_applicability = 'NOT_APPLICABLE') <> 7 THEN
+            WHERE review_applicability = 'NOT_APPLICABLE_STRUCTURE') <> 7 THEN
         RAISE EXCEPTION 'Issue #291: invalid reconciliation manifest cardinality';
     END IF;
 
@@ -28,7 +28,7 @@ BEGIN
            OR catalog_commit <> 'f8855121af336a7c13cd799cafede5f9b9420f28'
            OR final_acceptance_status <> 'APPROVED_FINAL'
            OR overall_approval_origin = ''
-           OR review_applicability NOT IN ('APPLICABLE', 'NOT_APPLICABLE')
+           OR review_applicability NOT IN ('APPLICABLE', 'NOT_APPLICABLE_STRUCTURE')
     ) THEN
         RAISE EXCEPTION 'Issue #291: reconciliation manifest identity or approval is invalid';
     END IF;

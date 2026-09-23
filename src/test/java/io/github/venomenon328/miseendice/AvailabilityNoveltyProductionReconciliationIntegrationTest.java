@@ -170,7 +170,9 @@ class AvailabilityNoveltyProductionReconciliationIntegrationTest {
     @Test
     void missingParticipantAbortsBeforeAnyPersistentReconciliationWrite() throws Exception {
         assertMissingDependencyAbortsBeforeWrite("""
-                update participant set code = 'ISSUE_291_MISSING_TOBIAS' where code = 'TOBIAS'
+                alter table participant disable trigger trg_participant_code_immutable;
+                update participant set code = 'ISSUE_291_MISSING_TOBIAS' where code = 'TOBIAS';
+                alter table participant enable trigger trg_participant_code_immutable
                 """, "required participants are missing: TOBIAS");
     }
 

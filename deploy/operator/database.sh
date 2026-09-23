@@ -206,9 +206,9 @@ apply_production_availability_novelty_reconciliation() {
     load_compose_env "$instance_dir"
     {
         cat "$setup_sql"
-        printf "\\copy issue_291_availability_novelty_source FROM STDIN WITH (FORMAT csv, HEADER true, DELIMITER E'\\\\t', ENCODING 'UTF8')\n"
+        printf '%s\n' "COPY issue_291_availability_novelty_source FROM STDIN WITH (FORMAT csv, HEADER true, DELIMITER E'\\t', ENCODING 'UTF8');"
         cat "$manifest"
-        printf '\\.\n'
+        printf '%s\n' '\.'
         cat "$apply_sql"
     } | compose_instance "$instance_dir" exec -T \
         -e "PGPASSWORD=$MISE_EN_DICE_DB_PASSWORD" \
