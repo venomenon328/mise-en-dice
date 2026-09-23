@@ -31,6 +31,38 @@ class CatalogDrawWeightMigrationIntegrationTest {
     private static final String CALIBRATION_CHANGESET_ID = "047-catalog-draw-weight-calibration";
     private static List<CalibrationChange> calibrationChanges;
 
+    @Test
+    void newlyRenderedMigrationUsesTargetsWithoutRequiringHistoricalWeights() throws Exception {
+        try (var database = PostgreSqlTestServer.createTemporaryDatabase("draw_weight_new_renderer");
+                Connection connection = database.openConnection()) {
+            liquibase(connection).update(new Contexts(), new LabelExpression());
+            executeUpdate(connection, """
+                    insert into ingredient_concept (code,display_name,challenge_specificity,curator_note,base_draw_weight)
+                    values ('ISSUE_293_WEIGHT','Synthetic calibration','SPECIFIC','Preserved note',0.3333)
+                    """);
+            connection.commit();
+            var decision = new CatalogDrawWeightFiles.Decision("ISSUE_293_WEIGHT", "Synthetic calibration",
+                    "APPLICABLE", new BigDecimal("1.0000"), new BigDecimal("0.7500"), "CHANGED",
+                    "TEST", "ISSUE_293_WEIGHT", "Synthetic decision", "", "test");
+            String sql = CatalogDrawWeightFiles.renderMigration("test-293-forward-target",
+                    new CatalogDrawWeightFiles.Validation(List.of(), List.of(decision)));
+            long before = version(connection, "ISSUE_293_WEIGHT");
+            try (var statement = connection.createStatement()) {
+                statement.execute(sql);
+                connection.commit();
+                assertThat(weight(connection, "ISSUE_293_WEIGHT")).isEqualByComparingTo("0.7500");
+                assertThat(version(connection, "ISSUE_293_WEIGHT")).isEqualTo(before + 1);
+                statement.execute(sql);
+                connection.commit();
+                assertThat(version(connection, "ISSUE_293_WEIGHT")).isEqualTo(before + 1);
+                executeUpdate(connection,"update ingredient_concept set code='ISSUE_293_MISSING' where code='ISSUE_293_WEIGHT'");
+                connection.commit();
+                assertThatThrownBy(() -> statement.execute(sql)).hasMessageContaining("missing target codes");
+                connection.rollback();
+            }
+        }
+    }
+
     @BeforeAll
     static void discoverCalibrationChangesFromTheMigrationItself() throws Exception {
         try (var database = PostgreSqlTestServer.createTemporaryDatabase("draw_weight_probe");

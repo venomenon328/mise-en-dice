@@ -338,6 +338,44 @@ um beliebige Changesets zu überspringen oder unbekannte Produktionszustände zu
 Produktionslauf erfolgt erst als eigener Betriebsauftrag nach Merge; Entwicklung und CI verwenden ausschließlich
 isolierte PostgreSQL-Datenbanken.
 
+### 6.3 Einmaliger Upgradekorridor nach 036
+
+Für den aktuellen Incident aus #293 (`033 MARK_RAN`, `034–036 EXECUTED`, anschließend
+037 noch offen) genügt nach Merge der folgende Ablauf. Eine Wiederherstellung des alten App-Stands
+ist dafür nicht erforderlich:
+
+```bash
+cd /opt/mise-en-dice/repository
+git switch main
+git pull --ff-only
+export MISE_EN_DICE_DEPLOY_ROOT=/opt/mise-en-dice/runtime
+
+./deploy/mise-en-dice.sh production reconcile-editorial-upgrade
+./deploy/mise-en-dice.sh production deploy main
+./deploy/mise-en-dice.sh production status
+```
+
+Der erste Befehl erkennt ausschließlich den vollständigen dokumentierten Nach-036-Stand oder seinen
+eigenen vollständigen Abschluss. Andere Zwischenstände werden fail-closed abgewiesen. Er hält den
+Operator-Lock, stoppt nur die Produktions-App, erzeugt und validiert ein Produktionsbackup und führt
+anschließend den **gesamten** festen Korridor 037–047 einschließlich Schema 022/023 und Referenz 004
+atomar aus. Die freigegebenen Zielwrites bleiben erhalten; historische redaktionelle Vorzustände
+sind keine Gates. Pflichtcodes, Zielkollisionen, Normalisierung, FKs und Graphzyklen bleiben geprüft.
+Die [vollständige Korridorprüfung](../deploy/reconciliation/293/README.md) beschreibt jeden Schritt.
+
+Nach Erfolg bleibt die App gestoppt. `production deploy main` führt den normalen Smoke-, Backup-,
+Master- und Healthcheckpfad aus. Die Wiederholung der Reconciliation ist ein No-op ohne neues Backup
+oder Fachwrites; auch der Master ist danach idempotent. Bei einem Fehler rollt die gesamte
+Reconciliation zurück, einschließlich zwischenzeitlicher Schema- und Historienänderungen.
+Die App bleibt zur Diagnose gestoppt. Backup-Pfad sichern, den konkreten Strukturfehler prüfen und
+erst nach bewusster Behebung erneut ausführen. Kein manuelles Changeset-Skipping und kein
+Produktions-SQL-Befehl werden bereitgestellt.
+
+Dieser Ablauf ersetzt für den bereits erreichten Nach-036-Incident den historischen Vor-033-Ablauf
+aus 6.2. Der bekannte Rollback-Permissionsfehler an `application.properties` wird durch #293 nicht
+behoben. Realer Lauf und Health-/Backupkontrolle benötigen weiterhin einen gesonderten Betriebsauftrag.
+Nach bestätigtem realem Deployment den Production-Baseline-Cutoff gemäß ADR 0011 separat fortschreiben.
+
 Status, Logs, Stop und Start:
 
 ```bash

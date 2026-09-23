@@ -33,6 +33,8 @@ source "$SCRIPT_DIR/operator/runtime.sh"
 source "$SCRIPT_DIR/operator/git-image.sh"
 # shellcheck source=deploy/operator/database.sh
 source "$SCRIPT_DIR/operator/database.sh"
+# shellcheck source=deploy/operator/editorial-upgrade.sh
+source "$SCRIPT_DIR/operator/editorial-upgrade.sh"
 # shellcheck source=deploy/operator/commands.sh
 source "$SCRIPT_DIR/operator/commands.sh"
 

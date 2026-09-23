@@ -251,7 +251,8 @@ abgleichen. Nur den ausdrücklich freigegebenen Umfang übernehmen:
 
 - neue append-only Liquibase-Changesets nach den bestehenden Includes; veröffentlichte Changesets, #188-Review
   und historische Manifeste nicht umschreiben,
-- stabile Codes statt geratener IDs; Kollisionen oder unbekannte Deltas sichtbar stoppen,
+- stabile Codes statt geratener IDs; echte Zielkollisionen und Strukturfehler sichtbar stoppen,
+- [Katalogmigrationen](CATALOG_MIGRATIONS.md) vollständig beachten: redaktionelle Altwert-/Fingerprint-Gates sind verboten, auch in WHERE-Klauseln und Postconditions. Review-/Diff-QA erfolgt vor Merge, nicht gegen später weitergepflegte Produktionsinhalte,
 - kanonische Anzeigenamen, vollständige Aliaslisten sowie Kurator- und Availability-Notizen exakt wie freigegeben
   übernehmen; keine ungeprüften Aliasse nachtragen oder aus Notizen ableiten,
 - Kanten und Änderungen an bestehenden Aggregaten explizit pflegen; keine abgeleiteten Länder-, Rating-, Rollen-

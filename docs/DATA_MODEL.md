@@ -499,6 +499,8 @@ Sie bildet den bestätigten Produktionsstand
 Produktionsdump noch kopierte Changesets. PostgreSQL 17 prüft ihren Upgradepfad zum aktuellen Master samt
 idempotentem zweiten Master-Lauf; der vollständige Aufbau einer leeren Datenbank bleibt ein eigenständiger Test.
 
+Der feste Incidentkorridor aus [Issue #293](../deploy/reconciliation/293/README.md) ergänzt den Nach-036-Zustand mit `033 MARK_RAN`, `034–036 EXECUTED` und operativer Drift (insbesondere EGG/Hühnerei). Er führt 037–047 einschließlich Schema-/Referenzschritten atomar und ohne historische Content-Gates aus. [CATALOG_MIGRATIONS.md](CATALOG_MIGRATIONS.md) gilt dauerhaft für neue Katalogmigrationen. Die dokumentierten historischen Fingerprintprüfungen unten sind keine Vorlage für neue Deployment-Gates.
+
 Der spezielle Incidentpfad aus Issue #291 ergänzt diesen automatischen Horizont, ohne die Production-Baseline auf
 einen nicht bestätigten Stand vorwegzunehmen: Die Baseline wird zunächst bis zum unmittelbaren Vor-`033`-Stand
 migriert, repräsentative operative Änderungen innerhalb und außerhalb des tatsächlichen `033`-Schreibumfangs werden

@@ -304,13 +304,13 @@ Insbesondere:
 
 - produktive `random_draw_enabled`-Abweichungen bleiben unangetastet,
 - alle nicht beauftragten Katalogmetadaten bleiben unangetastet,
-- vor Namens-/Aliaswrites werden die tatsächlich vorausgesetzten bisherigen Namens-/Aliaswerte geschützt geprüft,
-- unbekannte Namens-/Aliasabweichungen führen zum Abbruch statt zum Überschreiben,
-- ein Schutzfingerprint darf nicht Ziehbarkeit, Availability, Länder, Rollen oder andere unabhängige operative Metadaten als Voraussetzung erzwingen,
+- gemäß #293 und [CATALOG_MIGRATIONS.md](CATALOG_MIGRATIONS.md) werden nur ausdrücklich auszuliefernde Namens-/Aliasziele geschrieben, unabhängig vom alten redaktionellen Wert,
+- unverändert reviewte Namen und Aliasse außerhalb des tatsächlichen Schreibumfangs bleiben erhalten,
+- Zielkollisionen, Normalisierung und Eindeutigkeits-Constraints bleiben echte Integritätsprüfungen; historische Content-Fingerprints sind kein Deployment-Gate,
 - veröffentlichte Changesets bleiben append-only,
 - die freigegebenen Daten werden nicht per `runAlways` oder ähnlichem Mechanismus bei jedem Start erneut durchgesetzt.
 
-Bekannte spätere Namens-/Aliasänderungen zwischen Reviewstart und Einpflege müssen vor dem Write ausdrücklich reconciliert werden.
+Bekannte spätere Namens-/Aliasänderungen werden in der Review-/Diff-QA vor Merge berücksichtigt. Sie erzeugen keinen historischen Altwertvertrag für den späteren Produktionsbestand. Das unverändert veröffentlichte Changeset 044 bleibt historischer Stand; der Incidentkorridor aus #293 korrigiert seine Wirkung vorwärtsgerichtet.
 
 ## 14. Paketschnitt und Abnahme
 

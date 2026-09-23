@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
-/** Deterministic validation and guarded-SQL derivation for a complete draw-weight review. */
+/** Review validation and target-only SQL derivation with structural integrity checks. */
 final class CatalogDrawWeightFiles {
 
     static final List<String> HEADERS = List.of(
@@ -137,23 +137,23 @@ final class CatalogDrawWeightFiles {
         return new Validation(source, decisions);
     }
 
-    static String renderMigration(Validation validation) {
+    static String renderMigration(String changesetId, Validation validation) {
+        require(changesetId.matches("[A-Za-z0-9_-]+"), "Invalid changeset ID");
         List<Decision> changed = validation.changedDecisions();
         require(!changed.isEmpty(), "A calibration migration needs at least one changed decision");
         StringBuilder sql = new StringBuilder();
         sql.append("--liquibase formatted sql\n\n")
-                .append("--changeset venomenon328:047-catalog-draw-weight-calibration splitStatements:false runInTransaction:true\n")
-                .append("--comment: Apply the complete issue-288 base-draw-weight review with per-code drift guards.\n\n")
+                .append("--changeset venomenon328:").append(changesetId)
+                .append(" splitStatements:false runInTransaction:true\n")
+                .append("--comment: Apply approved base-draw-weight targets without historical content gates.\n\n")
                 .append("CREATE TEMPORARY TABLE approved_catalog_draw_weight (\n")
                 .append("    code VARCHAR(100) PRIMARY KEY,\n")
-                .append("    expected_weight NUMERIC(8,4) NOT NULL,\n")
                 .append("    target_weight NUMERIC(8,4) NOT NULL\n")
                 .append(") ON COMMIT DROP;\n\n")
-                .append("INSERT INTO approved_catalog_draw_weight (code, expected_weight, target_weight) VALUES\n");
+                .append("INSERT INTO approved_catalog_draw_weight (code, target_weight) VALUES\n");
         for (int index = 0; index < changed.size(); index++) {
             Decision decision = changed.get(index);
             sql.append("    ('").append(decision.conceptCode()).append("', ")
-                    .append(fourDecimals(decision.currentWeight())).append(", ")
                     .append(fourDecimals(decision.targetWeight())).append(')')
                     .append(index + 1 == changed.size() ? ";\n\n" : ",\n");
         }
@@ -175,21 +175,13 @@ final class CatalogDrawWeightFiles {
                 .append("    IF problem_codes IS NOT NULL THEN\n")
                 .append("        RAISE EXCEPTION 'Catalog draw-weight calibration is missing target codes: %', problem_codes;\n")
                 .append("    END IF;\n\n")
-                .append("    SELECT string_agg(concept.code || '=' || concept.base_draw_weight, ', ' ORDER BY concept.code)\n")
-                .append("      INTO problem_codes\n")
-                .append("      FROM ingredient_concept concept\n")
-                .append("      JOIN approved_catalog_draw_weight approved ON approved.code = concept.code\n")
-                .append("     WHERE concept.base_draw_weight NOT IN (approved.expected_weight, approved.target_weight);\n")
-                .append("    IF problem_codes IS NOT NULL THEN\n")
-                .append("        RAISE EXCEPTION 'Catalog draw-weight calibration found unexpected weight drift: %', problem_codes;\n")
-                .append("    END IF;\n\n")
                 .append("    UPDATE ingredient_concept concept\n")
                 .append("       SET base_draw_weight = approved.target_weight,\n")
                 .append("           version = concept.version + 1,\n")
                 .append("           updated_at = CURRENT_TIMESTAMP\n")
                 .append("      FROM approved_catalog_draw_weight approved\n")
                 .append("     WHERE concept.code = approved.code\n")
-                .append("       AND concept.base_draw_weight = approved.expected_weight;\n\n")
+                .append("       AND concept.base_draw_weight IS DISTINCT FROM approved.target_weight;\n\n")
                 .append("    SELECT string_agg(concept.code, ', ' ORDER BY concept.code)\n")
                 .append("      INTO problem_codes\n")
                 .append("      FROM ingredient_concept concept\n")
@@ -203,7 +195,10 @@ final class CatalogDrawWeightFiles {
     }
 
     static void writeMigrationAtomically(Path output, Validation validation) throws IOException {
-        String migration = renderMigration(validation);
+        require(!Files.exists(output), "Migration output already exists; published changesets are append-only");
+        String filename = output.getFileName().toString();
+        require(filename.endsWith(".sql"), "Migration output must end in .sql");
+        String migration = renderMigration(filename.substring(0, filename.length() - 4), validation);
         Path absolute = output.toAbsolutePath().normalize();
         Files.createDirectories(absolute.getParent());
         Path temporary = Files.createTempFile(absolute.getParent(), ".catalog-draw-weight-", ".tmp");

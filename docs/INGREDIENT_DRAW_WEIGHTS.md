@@ -58,7 +58,7 @@ Für Neuaufnahmen und wesentliche Produktformänderungen bleiben die bestehenden
 
 Die Erstbewertung erfolgt möglichst ohne Sicht auf das alte Gewicht. Anschließend werden Altwert und Änderungsstatus ergänzt und Familienausreißer, historische mechanische Abschläge sowie doppelt berücksichtigte Faktoren kontrolliert. Gewichtsbegründungen gehören in den Entscheidungsnachweis, nicht in die nutzerseitige Kuratornotiz.
 
-Eine Einpflege verwendet stabile Konzeptcodes, prüft die vorausgesetzten Altwerte und sperrt die betroffenen Zeilen in derselben Transaktion. Unbekannte Abweichungen brechen atomar ab; ein bereits identischer Zielwert ist ein geprüfter No-op. Nur tatsächlich geänderte Konzepte erhalten genau einen zusätzlichen Aggregatversionsschritt. `active`, `random_draw_enabled` und andere fachliche Felder sind weder Laufzeitgate noch Schreibziel.
+Eine Einpflege verwendet stabile Konzeptcodes und sperrt die betroffenen Zeilen in derselben Transaktion. Nach [CATALOG_MIGRATIONS.md](CATALOG_MIGRATIONS.md) werden freigegebene Zielgewichte unabhängig vom bisherigen operativen Gewicht gesetzt. Altwertprüfungen gehören zur Review-QA vor Merge und sind kein Deployment-Gate; ein bereits identischer Zielwert ist ein No-op. Fehlende Pflichtcodes und echte Integritätsfehler brechen atomar ab. Nur tatsächlich geänderte Konzepte erhalten genau einen zusätzlichen Aggregatversionsschritt. `active`, `random_draw_enabled` und andere fachliche Felder sind weder Laufzeitgate noch Schreibziel.
 
 Der Repository-Validator kann mit folgendem Befehl auf vollständige Export- und Entscheidungsdateien angewendet werden:
 
@@ -66,7 +66,7 @@ Der Repository-Validator kann mit folgendem Befehl auf vollständige Export- und
 .\mvnw.cmd -Pcatalog-draw-weights "-Dexec.args=validate --repository-root . --source <source.jsonl> --decisions <decisions.tsv>" exec:java
 ```
 
-Er prüft Vollständigkeit, Eindeutigkeit, Codes, Altwerte, Skala, Referenzen, N/A-Verwendung und Änderungsstatus. `render-migration` erzeugt daraus die per Code geschützte Migration atomar; es gibt keinen dauerhaft selbstschreibenden Gewichtsjob.
+Er prüft Vollständigkeit, Eindeutigkeit, Codes, Altwerte, Skala, Referenzen, N/A-Verwendung und Änderungsstatus. `render-migration --output <neuer-name>.sql` erzeugt daraus atomar eine zielwertbasierte Migration ohne operative Altwert-Gates. Die Changeset-ID folgt dem neuen Dateinamen; bereits vorhandene Ausgabedateien werden zum Append-only-Schutz abgewiesen. Die veröffentlichte 047-Datei wird nicht neu erzeugt; es gibt keinen dauerhaft selbstschreibenden Gewichtsjob.
 
 ## 5. Katalogweiter Referenzstand #288
 

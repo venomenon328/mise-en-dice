@@ -20,14 +20,20 @@ class CatalogDrawWeightFilesTest {
                 "POME_FRUIT", "APPLE", "", "review"));
 
         var validation = CatalogDrawWeightFiles.validate(source, decisions);
-        String first = CatalogDrawWeightFiles.renderMigration(validation);
-        String second = CatalogDrawWeightFiles.renderMigration(validation);
+        String first = CatalogDrawWeightFiles.renderMigration("test-calibration", validation);
+        String second = CatalogDrawWeightFiles.renderMigration("test-calibration", validation);
 
         assertThat(first).isEqualTo(second)
-                .contains("('APPLE', 0.6000, 0.7500)")
+                .contains("('APPLE', 0.7500)")
                 .contains("FOR UPDATE OF concept")
                 .contains("version = concept.version + 1")
-                .doesNotContain("random_draw_enabled", "availability");
+                .contains("IS DISTINCT FROM approved.target_weight")
+                .doesNotContain("random_draw_enabled", "availability", "expected_weight", "unexpected weight drift", "047-");
+        Path output = temporaryDirectory.resolve("test-calibration.sql");
+        CatalogDrawWeightFiles.writeMigrationAtomically(output, validation);
+        assertThatThrownBy(() -> CatalogDrawWeightFiles.writeMigrationAtomically(output, validation))
+                .hasMessageContaining("append-only");
+        assertThat(Files.readString(output)).isEqualTo(first);
     }
 
     @Test
